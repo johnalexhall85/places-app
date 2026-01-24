@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+.ENV
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Local data (DO NOT COMMIT PLACES CSVs)
+data/
+*.csv
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
+
+# Docker volumes
+infra/volumes/
