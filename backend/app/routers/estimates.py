@@ -18,11 +18,6 @@ def list_estimates(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
-    location_id = location_id.strip() if location_id else None
-    state_abbr = state_abbr.strip().upper() if state_abbr else None
-    measure_id = measure_id.strip().upper() if measure_id else None
-    data_value_type_id = data_value_type_id.strip().upper() if data_value_type_id else None
-
     if not (location_id or state_abbr or measure_id):
         raise HTTPException(
             status_code=400,
@@ -38,7 +33,7 @@ def list_estimates(
         query = query.join(
             models.DimCounty,
             models.FactEstimateCounty.location_id == models.DimCounty.location_id,
-        ).filter(models.DimCounty.state_abbr == state_abbr)
+        ).filter(models.DimCounty.state_abbr == state_abbr.upper())
 
     if year is not None:
         query = query.filter(models.FactEstimateCounty.year == year)
