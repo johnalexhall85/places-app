@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import text
+from sqlalchemy import Float, bindparam, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -28,7 +29,7 @@ def get_legend(
             MIN(f.data_value) AS min,
             MAX(f.data_value) AS max,
             COALESCE(
-                percentile_cont((:quantiles)::float8[])
+                percentile_cont(:quantiles)
                   WITHIN GROUP (ORDER BY f.data_value)
                   FILTER (WHERE f.data_value IS NOT NULL),
                 ARRAY[]::float8[]
@@ -39,9 +40,9 @@ def get_legend(
         WHERE f.year = :year
           AND m.measure_id = :measure_id
           AND m.data_value_type_id = :data_value_type_id
-          AND (:state_abbr IS NULL OR c.state_abbr = :state_abbr)
+          AND ((:state_abbr)::text IS NULL OR c.state_abbr = (:state_abbr)::text)
         """
-    )
+    ).bindparams(bindparam("quantiles", type_=ARRAY(Float)))
 
     row = db.execute(
         sql,
