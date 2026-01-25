@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Query
+from app.routers.health import router as health_router
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from .db import get_db
@@ -75,3 +76,5 @@ def county_points(
         })
 
     return {"type": "FeatureCollection", "features": features}
+
+app.include_router(health_router)
