@@ -12,7 +12,7 @@ router = APIRouter(tags=["legend"])
 def get_legend(
     measure_id: str = Query(...),
     year: int = Query(...),
-    data_value_type_id: int = Query(default=1, ge=1),
+    data_value_type_id: int = Query(default=1),
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
     bins: int = Query(default=5, ge=2, le=9),
     db: Session = Depends(get_db),
@@ -27,14 +27,14 @@ def get_legend(
             COUNT(*) FILTER (WHERE f.data_value IS NULL) AS nulls,
             MIN(f.data_value) AS min,
             MAX(f.data_value) AS max,
-            percentile_cont((:quantiles)::float8[]) WITHIN GROUP (ORDER BY f.data_value) AS quantiles
+            percentile_cont(:quantiles) WITHIN GROUP (ORDER BY f.data_value) AS quantiles
         FROM fact_estimate_county AS f
         JOIN dim_measure AS m ON f.measure_dim_id = m.id
         JOIN dim_county AS c ON f.location_id = c.location_id
         WHERE f.year = :year
           AND m.measure_id = :measure_id
           AND m.data_value_type_id = :data_value_type_id
-          AND ((:state_abbr)::text IS NULL OR c.state_abbr = (:state_abbr)::text)
+          AND (:state_abbr IS NULL OR c.state_abbr = :state_abbr)
         """
     )
 
@@ -43,7 +43,7 @@ def get_legend(
         {
             "year": year,
             "measure_id": measure_id,
-            "data_value_type_id": data_value_type_id,
+            "data_value_type_id": str(data_value_type_id),
             "state_abbr": state_abbr_upper,
             "quantiles": quantile_fractions,
         },
