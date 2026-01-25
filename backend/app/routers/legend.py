@@ -27,7 +27,12 @@ def get_legend(
             COUNT(*) FILTER (WHERE f.data_value IS NULL) AS nulls,
             MIN(f.data_value) AS min,
             MAX(f.data_value) AS max,
-            percentile_cont(:quantiles) WITHIN GROUP (ORDER BY f.data_value) AS quantiles
+            COALESCE(
+                percentile_cont((:quantiles)::float8[])
+                  WITHIN GROUP (ORDER BY f.data_value)
+                  FILTER (WHERE f.data_value IS NOT NULL),
+                ARRAY[]::float8[]
+            ) AS quantiles
         FROM fact_estimate_county AS f
         JOIN dim_measure AS m ON f.measure_dim_id = m.id
         JOIN dim_county AS c ON f.location_id = c.location_id
@@ -48,6 +53,21 @@ def get_legend(
             "quantiles": quantile_fractions,
         },
     ).mappings().one()
+
+    if row["n"] == 0:
+        return {
+            "measure_id": measure_id,
+            "year": year,
+            "data_value_type_id": data_value_type_id,
+            "state_abbr": state_abbr_upper,
+            "bins": bins,
+            "n": int(row["n"]),
+            "nulls": int(row["nulls"]),
+            "min": None,
+            "max": None,
+            "quantiles": [],
+            "breaks": [],
+        }
 
     min_value = row["min"]
     max_value = row["max"]
