@@ -39,7 +39,7 @@ def get_legend(
         JOIN dim_county AS c ON f.location_id = c.location_id
         WHERE f.year = :year
           AND m.measure_id = :measure_id
-          AND (:data_value_type_id IS NULL OR m.data_value_type_id = :data_value_type_id)
+          AND ((:data_value_type_id)::text IS NULL OR m.data_value_type_id = (:data_value_type_id)::text)
           AND ((:state_abbr)::text IS NULL OR c.state_abbr = (:state_abbr)::text)
         """
     ).bindparams(bindparam("quantiles", type_=ARRAY(Float)))
