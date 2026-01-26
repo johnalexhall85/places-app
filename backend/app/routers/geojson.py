@@ -71,21 +71,28 @@ def counties_geojson(
             for row in rows
         ]
     else:
-        data_value_type_filter = ""
         params = {
             "year": year,
             "measure_id": measure_id,
             "limit": limit,
             "offset": offset,
         }
-        if data_value_type_id:
-            data_value_type_filter = "AND m.data_value_type_id = :data_value_type_id"
-            params["data_value_type_id"] = data_value_type_id
+        params["data_value_type_id"] = data_value_type_id or "CrdPrv"
         if state_abbr_value:
             params["state_abbr"] = state_abbr_value
 
         query = text(
             f"""
+            WITH selected_measure AS (
+                SELECT
+                    id,
+                    measure_id,
+                    data_value_type_id
+                FROM dim_measure
+                WHERE measure_id = :measure_id
+                    AND data_value_type_id = :data_value_type_id
+                LIMIT 1
+            )
             SELECT
                 c.location_id,
                 c.state_abbr,
@@ -93,23 +100,21 @@ def counties_geojson(
                 c.county_name,
                 c.total_population,
                 c.total_pop_18_plus,
-                CASE WHEN m.id IS NULL THEN NULL ELSE f.year END AS year,
-                m.measure_id,
-                m.data_value_type_id,
-                CASE WHEN m.id IS NULL THEN NULL ELSE f.data_value END AS data_value,
-                CASE WHEN m.id IS NULL THEN NULL ELSE f.low_confidence_limit END
+                CASE WHEN sm.id IS NULL THEN NULL ELSE f.year END AS year,
+                sm.measure_id,
+                sm.data_value_type_id,
+                CASE WHEN sm.id IS NULL THEN NULL ELSE f.data_value END AS data_value,
+                CASE WHEN sm.id IS NULL THEN NULL ELSE f.low_confidence_limit END
                     AS low_confidence_limit,
-                CASE WHEN m.id IS NULL THEN NULL ELSE f.high_confidence_limit END
+                CASE WHEN sm.id IS NULL THEN NULL ELSE f.high_confidence_limit END
                     AS high_confidence_limit,
                 ST_AsGeoJSON(c.geom)::json AS geometry
             FROM dim_county AS c
+            LEFT JOIN selected_measure AS sm ON TRUE
             LEFT JOIN fact_estimate_county AS f
                 ON f.location_id = c.location_id
                 AND f.year = :year
-            LEFT JOIN dim_measure AS m
-                ON f.measure_dim_id = m.id
-                AND m.measure_id = :measure_id
-                {data_value_type_filter}
+                AND f.measure_dim_id = sm.id
             WHERE c.geom IS NOT NULL
                 {state_filter}
             ORDER BY c.state_abbr, c.county_name
