@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
 
-const LEGEND_URL =
-  "http://localhost:8000/legend?measure_id=CASTHMA&year=2023&data_value_type_id=CrdPrv&bins=5";
-const GEOJSON_URL =
-  "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023&data_value_type_id=CrdPrv&limit=10000";
-
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#9ca3af";
 
@@ -33,23 +28,42 @@ function formatRange(min, max) {
 }
 
 export default function App() {
+  const [measures, setMeasures] = useState([]);
+  const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
+  const [selectedYear, setSelectedYear] = useState(2023);
+  const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
   const [geojson, setGeojson] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const yearOptions = useMemo(() => {
+    // TODO: Derive years from backend data when available.
+    return [2023];
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchLegend = fetch(LEGEND_URL).then((response) => response.json());
-    const fetchGeojson = fetch(GEOJSON_URL).then((response) => response.json());
-
-    Promise.all([fetchLegend, fetchGeojson])
-      .then(([legendData, geojsonData]) => {
-        if (!isMounted) return;
-        setLegend(legendData);
-        setGeojson(geojsonData);
+    fetch("http://localhost:8000/measures")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load measures.");
+        }
+        return response.json();
       })
-      .catch((error) => {
-        console.error("Failed to load map data (possible CORS issue):", error);
+      .then((data) => {
+        if (!isMounted) return;
+        const sorted = [...data].sort((a, b) => {
+          const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
+          const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
+          return labelA.localeCompare(labelB);
+        });
+        setMeasures(sorted);
+      })
+      .catch((errorResponse) => {
+        if (!isMounted) return;
+        setError(errorResponse.message ?? "Failed to load measures.");
       });
 
     return () => {
@@ -57,11 +71,142 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    const legendUrl = new URL("http://localhost:8000/legend");
+    legendUrl.searchParams.set("measure_id", selectedMeasureId);
+    legendUrl.searchParams.set("year", String(selectedYear));
+    legendUrl.searchParams.set("data_value_type_id", selectedType);
+    legendUrl.searchParams.set("bins", "5");
+
+    const geojsonUrl = new URL("http://localhost:8000/counties/geojson");
+    geojsonUrl.searchParams.set("measure_id", selectedMeasureId);
+    geojsonUrl.searchParams.set("year", String(selectedYear));
+    geojsonUrl.searchParams.set("data_value_type_id", selectedType);
+    geojsonUrl.searchParams.set("limit", "10000");
+
+    const fetchLegend = fetch(legendUrl).then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to load legend data.");
+      }
+      return response.json();
+    });
+    const fetchGeojson = fetch(geojsonUrl).then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to load map data.");
+      }
+      return response.json();
+    });
+
+    Promise.all([fetchLegend, fetchGeojson])
+      .then(([legendData, geojsonData]) => {
+        if (!isMounted) return;
+        setLegend(legendData);
+        setGeojson(geojsonData);
+      })
+      .catch((errorResponse) => {
+        if (!isMounted) return;
+        setError(
+          errorResponse.message ??
+            "Failed to load map data (possible CORS issue)."
+        );
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedMeasureId, selectedYear, selectedType]);
+
   const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
   const features = geojson?.features ?? [];
+  const selectedMeasure = measures.find(
+    (measure) => measure.measure_id === selectedMeasureId
+  );
 
   return (
     <div className="app">
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          background: "white",
+          padding: "12px 14px",
+          borderRadius: 8,
+          boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
+          fontSize: 12,
+          minWidth: 240,
+          display: "grid",
+          gap: 10,
+          zIndex: 1000,
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: 13 }}>
+          Measure controls {isLoading ? "· Loading…" : ""}
+        </div>
+        {error ? (
+          <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div>
+        ) : null}
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>Measure</span>
+          <select
+            value={selectedMeasureId}
+            onChange={(event) => setSelectedMeasureId(event.target.value)}
+            style={{ padding: "6px 8px", borderRadius: 6 }}
+          >
+            {measures.length === 0 ? (
+              <option value={selectedMeasureId}>Loading measures…</option>
+            ) : (
+              measures.map((measure) => {
+                const label = measure.measure ?? measure.short_question_text ?? "";
+                return (
+                  <option key={measure.measure_id} value={measure.measure_id}>
+                    {measure.measure_id}
+                    {label ? ` — ${label}` : ""}
+                  </option>
+                );
+              })
+            )}
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>Year</span>
+          <select
+            value={selectedYear}
+            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            style={{ padding: "6px 8px", borderRadius: 6 }}
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>Data value type</span>
+          <select
+            value={selectedType}
+            onChange={(event) => setSelectedType(event.target.value)}
+            style={{ padding: "6px 8px", borderRadius: 6 }}
+          >
+            <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
+            <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
+          </select>
+        </label>
+        {measures.length === 0 ? null : (
+          <div style={{ color: "#475569" }}>
+            {selectedMeasure?.measure ?? selectedMeasure?.short_question_text ?? ""}
+          </div>
+        )}
+      </div>
       <div className="map-wrapper">
         <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%" }}>
           <TileLayer
@@ -94,6 +239,9 @@ export default function App() {
                       {properties?.county_name ?? "Unknown County"},{" "}
                       {properties?.state_abbr ?? ""}
                     </strong>
+                    <div>
+                      {selectedMeasureId} · {selectedYear} · {selectedType}
+                    </div>
                     <div>Value: {value ?? "No data"}</div>
                   </div>
                 </Tooltip>
@@ -116,9 +264,13 @@ export default function App() {
           minWidth: 180,
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Legend (CrdPrv)</div>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          Legend ({selectedType})
+        </div>
         <div style={{ display: "grid", gap: 6 }}>
-          {breaks.length > 1
+          {isLoading ? (
+            "Loading..."
+          ) : breaks.length > 1
             ? breaks.slice(0, -1).map((start, index) => {
                 const end = breaks[index + 1];
                 const color = COLORS[index] ?? COLORS[COLORS.length - 1];
@@ -168,7 +320,8 @@ export default function App() {
           fontSize: 12,
         }}
       >
-        measure_id=CASTHMA · year=2023 · data_value_type_id=CrdPrv · bins=5
+        measure_id={selectedMeasureId} · year={selectedYear} ·
+        data_value_type_id={selectedType} · bins=5
       </div>
     </div>
   );
