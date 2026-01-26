@@ -7,8 +7,7 @@ from app.db import get_db
 router = APIRouter(tags=["geojson"])
 
 # curl "http://localhost:8000/counties/geojson"
-# curl "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023"
-# curl "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023&data_value_type_id=AgeAdjPrv"
+# curl "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023&data_value_type_id=CrdPrv"
 @router.get("/counties/geojson")
 def counties_geojson(
     year: int | None = Query(default=None),
@@ -72,16 +71,16 @@ def counties_geojson(
             for row in rows
         ]
     else:
+        data_value_type_filter = ""
         params = {
             "year": year,
             "measure_id": measure_id,
             "limit": limit,
             "offset": offset,
         }
-        data_value_type_id_value = (
-            data_value_type_id if data_value_type_id else "CrdPrv"
-        )
-        params["data_value_type_id"] = data_value_type_id_value
+        if data_value_type_id:
+            data_value_type_filter = "AND m.data_value_type_id = :data_value_type_id"
+            params["data_value_type_id"] = data_value_type_id
         if state_abbr_value:
             params["state_abbr"] = state_abbr_value
 
@@ -94,21 +93,23 @@ def counties_geojson(
                 c.county_name,
                 c.total_population,
                 c.total_pop_18_plus,
-                :year AS year,
+                CASE WHEN m.id IS NULL THEN NULL ELSE f.year END AS year,
                 m.measure_id,
                 m.data_value_type_id,
-                f.data_value,
-                f.low_confidence_limit,
-                f.high_confidence_limit,
+                CASE WHEN m.id IS NULL THEN NULL ELSE f.data_value END AS data_value,
+                CASE WHEN m.id IS NULL THEN NULL ELSE f.low_confidence_limit END
+                    AS low_confidence_limit,
+                CASE WHEN m.id IS NULL THEN NULL ELSE f.high_confidence_limit END
+                    AS high_confidence_limit,
                 ST_AsGeoJSON(c.geom)::json AS geometry
             FROM dim_county AS c
-            LEFT JOIN dim_measure AS m
-                ON m.measure_id = :measure_id
-                AND m.data_value_type_id = :data_value_type_id
             LEFT JOIN fact_estimate_county AS f
                 ON f.location_id = c.location_id
                 AND f.year = :year
-                AND f.measure_dim_id = m.id
+            LEFT JOIN dim_measure AS m
+                ON f.measure_dim_id = m.id
+                AND m.measure_id = :measure_id
+                {data_value_type_filter}
             WHERE c.geom IS NOT NULL
                 {state_filter}
             ORDER BY c.state_abbr, c.county_name
