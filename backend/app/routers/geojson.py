@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -6,85 +6,139 @@ from app.db import get_db
 
 router = APIRouter(tags=["geojson"])
 
-# curl "http://localhost:8000/counties/geojson?year=2021&measure_id=ACCESS2&data_value_type_id=CrdPrv&state_abbr=CA&limit=5000&offset=0"
+# curl "http://localhost:8000/counties/geojson"
+# curl "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023"
+# curl "http://localhost:8000/counties/geojson?measure_id=CASTHMA&year=2023&data_value_type_id=AgeAdjPrv"
 @router.get("/counties/geojson")
 def counties_geojson(
-    year: int = Query(...),
-    measure_id: str = Query(...),
-    data_value_type_id: str = Query(default="CrdPrv"),
+    year: int | None = Query(default=None),
+    measure_id: str | None = Query(default=None),
+    data_value_type_id: str | None = Query(default=None),
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
+    if (year is None) != (measure_id is None):
+        raise HTTPException(
+            status_code=400, detail="measure_id and year must be provided together"
+        )
+
     state_abbr_value = state_abbr.upper() if state_abbr else None
-    params = {
-        "year": year,
-        "measure_id": measure_id,
-        "data_value_type_id": data_value_type_id,
-        "limit": limit,
-        "offset": offset,
-    }
 
     state_filter = ""
     if state_abbr_value:
-        state_filter = "AND dim_county.state_abbr = :state_abbr"
-        params["state_abbr"] = state_abbr_value
+        state_filter = "AND c.state_abbr = :state_abbr"
 
-    query = text(
-        f"""
-        SELECT
-            dim_county.location_id,
-            dim_county.state_abbr,
-            dim_county.state_desc,
-            dim_county.county_name,
-            dim_county.total_population,
-            dim_county.total_pop_18_plus,
-            fact_estimate_county.year,
-            dim_measure.measure_id,
-            dim_measure.data_value_type_id,
-            fact_estimate_county.data_value,
-            fact_estimate_county.low_confidence_limit,
-            fact_estimate_county.high_confidence_limit,
-            ST_AsGeoJSON(dim_county.geom)::json AS geometry
-        FROM fact_estimate_county
-        JOIN dim_measure
-            ON fact_estimate_county.measure_dim_id = dim_measure.id
-        JOIN dim_county
-            ON fact_estimate_county.location_id = dim_county.location_id
-        WHERE fact_estimate_county.year = :year
-            AND dim_measure.measure_id = :measure_id
-            AND dim_measure.data_value_type_id = :data_value_type_id
-            AND dim_county.geom IS NOT NULL
-            {state_filter}
-        ORDER BY dim_county.state_abbr, dim_county.county_name
-        LIMIT :limit
-        OFFSET :offset
-        """
-    )
+    if year is None and measure_id is None:
+        params = {"limit": limit, "offset": offset}
+        if state_abbr_value:
+            params["state_abbr"] = state_abbr_value
 
-    rows = db.execute(query, params).mappings().all()
+        query = text(
+            f"""
+            SELECT
+                c.location_id,
+                c.state_abbr,
+                c.state_desc,
+                c.county_name,
+                c.total_population,
+                c.total_pop_18_plus,
+                ST_AsGeoJSON(c.geom)::json AS geometry
+            FROM dim_county AS c
+            WHERE c.geom IS NOT NULL
+                {state_filter}
+            ORDER BY c.state_abbr, c.county_name
+            LIMIT :limit
+            OFFSET :offset
+            """
+        )
 
-    features = [
-        {
-            "type": "Feature",
-            "geometry": row["geometry"],
-            "properties": {
-                "location_id": row["location_id"],
-                "state_abbr": row["state_abbr"],
-                "state_desc": row["state_desc"],
-                "county_name": row["county_name"],
-                "total_population": row["total_population"],
-                "total_pop_18_plus": row["total_pop_18_plus"],
-                "year": row["year"],
-                "measure_id": row["measure_id"],
-                "data_value_type_id": row["data_value_type_id"],
-                "data_value": row["data_value"],
-                "low_confidence_limit": row["low_confidence_limit"],
-                "high_confidence_limit": row["high_confidence_limit"],
-            },
+        rows = db.execute(query, params).mappings().all()
+
+        features = [
+            {
+                "type": "Feature",
+                "geometry": row["geometry"],
+                "properties": {
+                    "location_id": row["location_id"],
+                    "state_abbr": row["state_abbr"],
+                    "state_desc": row["state_desc"],
+                    "county_name": row["county_name"],
+                    "total_population": row["total_population"],
+                    "total_pop_18_plus": row["total_pop_18_plus"],
+                },
+            }
+            for row in rows
+        ]
+    else:
+        params = {
+            "year": year,
+            "measure_id": measure_id,
+            "limit": limit,
+            "offset": offset,
         }
-        for row in rows
-    ]
+        data_value_type_id_value = (
+            data_value_type_id if data_value_type_id else "CrdPrv"
+        )
+        params["data_value_type_id"] = data_value_type_id_value
+        if state_abbr_value:
+            params["state_abbr"] = state_abbr_value
+
+        query = text(
+            f"""
+            SELECT
+                c.location_id,
+                c.state_abbr,
+                c.state_desc,
+                c.county_name,
+                c.total_population,
+                c.total_pop_18_plus,
+                :year AS year,
+                m.measure_id,
+                m.data_value_type_id,
+                f.data_value,
+                f.low_confidence_limit,
+                f.high_confidence_limit,
+                ST_AsGeoJSON(c.geom)::json AS geometry
+            FROM dim_county AS c
+            LEFT JOIN dim_measure AS m
+                ON m.measure_id = :measure_id
+                AND m.data_value_type_id = :data_value_type_id
+            LEFT JOIN fact_estimate_county AS f
+                ON f.location_id = c.location_id
+                AND f.year = :year
+                AND f.measure_dim_id = m.id
+            WHERE c.geom IS NOT NULL
+                {state_filter}
+            ORDER BY c.state_abbr, c.county_name
+            LIMIT :limit
+            OFFSET :offset
+            """
+        )
+
+        rows = db.execute(query, params).mappings().all()
+
+        features = [
+            {
+                "type": "Feature",
+                "geometry": row["geometry"],
+                "properties": {
+                    "location_id": row["location_id"],
+                    "state_abbr": row["state_abbr"],
+                    "state_desc": row["state_desc"],
+                    "county_name": row["county_name"],
+                    "total_population": row["total_population"],
+                    "total_pop_18_plus": row["total_pop_18_plus"],
+                    "year": row["year"],
+                    "measure_id": row["measure_id"],
+                    "data_value_type_id": row["data_value_type_id"],
+                    "data_value": row["data_value"],
+                    "low_confidence_limit": row["low_confidence_limit"],
+                    "high_confidence_limit": row["high_confidence_limit"],
+                },
+            }
+            for row in rows
+        ]
 
     return {"type": "FeatureCollection", "features": features}
