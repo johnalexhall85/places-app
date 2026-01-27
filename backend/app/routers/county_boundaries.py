@@ -10,6 +10,7 @@ router = APIRouter(tags=["county-boundaries"])
 @router.get("/counties/boundaries/geojson")
 def counties_boundary_geojson(
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
+    simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -24,6 +25,13 @@ def counties_boundary_geojson(
     if state_abbr_value:
         params["state_abbr"] = state_abbr_value
 
+    geometry_expr = "ST_AsGeoJSON(b.geom)::json"
+    if simplify is not None:
+        geometry_expr = (
+            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+        )
+        params["simplify"] = simplify
+
     query = text(
         f"""
         SELECT
@@ -34,7 +42,7 @@ def counties_boundary_geojson(
             b.countyfp,
             c.state_abbr,
             c.state_desc,
-            ST_AsGeoJSON(b.geom)::json AS geometry
+            {geometry_expr} AS geometry
         FROM dim_county_boundary AS b
         LEFT JOIN dim_county AS c
             ON c.location_id = b.location_id
@@ -74,7 +82,7 @@ def counties_boundary_geojson_estimates(
     year: int = Query(...),
     data_value_type_id: str | None = Query(default="CrdPrv"),
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
-    simplify: float | None = Query(default=None, gt=0, le=0.5),
+    simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
