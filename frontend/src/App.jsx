@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
@@ -156,17 +156,21 @@ export default function App() {
   );
   const selectedProperties = selectedFeature?.properties ?? null;
 
-  const styleFeature = (feature) => {
-    const value = feature?.properties?.data_value ?? null;
-    const fillColor = getColor(value, breaks);
+  const styleFeature = useCallback(
+    (feature) => {
+      const value = feature?.properties?.data_value ?? null;
+      const fillColor = getColor(value, legend?.breaks ?? []);
 
-    return {
-      color: "#555",
-      weight: 1,
-      fillColor,
-      fillOpacity: 0.7,
-    };
-  };
+      return {
+        color: "#555",
+        weight: 1,
+        fillColor,
+        fillOpacity: 0.7,
+      };
+    },
+    [legend]
+  );
+  const geoJsonKey = `${selectedMeasureId}-${selectedYear}-${selectedType}`;
 
   const handleEachFeature = (feature, layer) => {
     layer.on("mouseover", () => {
@@ -262,6 +266,7 @@ export default function App() {
           />
           {geojson ? (
             <GeoJSON
+              key={geoJsonKey}
               ref={geoJsonRef}
               data={geojson}
               style={styleFeature}
@@ -270,6 +275,25 @@ export default function App() {
           ) : null}
         </MapContainer>
       </div>
+      {isLoading ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 24,
+            background: "rgba(15, 23, 42, 0.85)",
+            color: "white",
+            padding: "10px 16px",
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: 0.2,
+            zIndex: 1100,
+          }}
+        >
+          Loading…
+        </div>
+      ) : null}
 
       <div
         style={{
