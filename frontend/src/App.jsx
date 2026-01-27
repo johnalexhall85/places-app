@@ -37,6 +37,7 @@ export default function App() {
   const [renderVersion, setRenderVersion] = useState(0);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
+  const [hoveredProps, setHoveredProps] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const geoJsonRef = useRef(null);
@@ -180,11 +181,13 @@ export default function App() {
       layer.setStyle(styleFeature(feature));
     });
     layer.on("mouseover", () => {
+      setHoveredProps(feature.properties);
       if (feature.properties.location_id !== selectedLocationIdRef.current) {
         layer.setStyle({ weight: 2, color: "#000" });
       }
     });
     layer.on("mouseout", () => {
+      setHoveredProps(null);
       layer.setStyle(styleFeature(feature));
     });
   }, [styleFeature]);
@@ -198,7 +201,10 @@ export default function App() {
   }, [geojson, legend, selectedLocationId, styleFeature]);
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      style={{ position: "relative", height: "100vh", width: "100vw" }}
+    >
       <div
         style={{
           position: "absolute",
@@ -212,7 +218,7 @@ export default function App() {
           minWidth: 240,
           display: "grid",
           gap: 10,
-          zIndex: 1000,
+          zIndex: 2000,
         }}
       >
         <div style={{ fontWeight: 600, fontSize: 13 }}>
@@ -274,7 +280,7 @@ export default function App() {
           </div>
         )}
       </div>
-      <div className="map-wrapper">
+      <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
         <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%" }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -304,7 +310,7 @@ export default function App() {
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: 0.2,
-            zIndex: 1100,
+            zIndex: 2100,
           }}
         >
           Loading…
@@ -322,6 +328,7 @@ export default function App() {
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
           minWidth: 180,
+          zIndex: 2000,
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 8 }}>
@@ -375,6 +382,21 @@ export default function App() {
             gap: 6,
           }}
         >
+          <div style={{ fontWeight: 600 }}>Hovered county</div>
+          {hoveredProps ? (
+            <>
+              <div>
+                {hoveredProps.name ??
+                  hoveredProps.county_name ??
+                  "Unknown County"}
+                {", "}
+                {hoveredProps.state_abbr ?? hoveredProps.state_desc ?? ""}
+              </div>
+              <div>Value: {hoveredProps.data_value ?? "No data"}</div>
+            </>
+          ) : (
+            <div style={{ color: "#64748b" }}>Hover a county.</div>
+          )}
           <div style={{ fontWeight: 600 }}>Selected county</div>
           {selectedProps ? (
             <>
