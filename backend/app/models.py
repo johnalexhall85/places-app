@@ -31,6 +31,18 @@ class DimCounty(Base):
     estimates = relationship("FactEstimateCounty", back_populates="county")
 
 
+class DimCountyBoundary(Base):
+    __tablename__ = "dim_county_boundary"
+
+    location_id = Column(String, primary_key=True)  # e.g., "01001"
+    geoid = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    statefp = Column(String, nullable=False)
+    countyfp = Column(String, nullable=False)
+
+    geom = Column(Geometry("MULTIPOLYGON", srid=4326), nullable=False)
+
+
 class DimMeasure(Base):
     __tablename__ = "dim_measure"
 
