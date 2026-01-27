@@ -39,6 +39,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const geoJsonRef = useRef(null);
+  const selectedLocationIdRef = useRef(null);
+  const styleFeatureRef = useRef(null);
 
   const yearOptions = useMemo(() => {
     // TODO: Derive years from backend data when available.
@@ -144,6 +146,10 @@ export default function App() {
     };
   }, [selectedMeasureId, selectedYear, selectedType]);
 
+  useEffect(() => {
+    selectedLocationIdRef.current = selectedLocationId;
+  }, [selectedLocationId]);
+
   const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
   const features = geojson?.features ?? [];
   const selectedMeasure = measures.find(
@@ -167,29 +173,40 @@ export default function App() {
   );
   const geoJsonKey = `${selectedMeasureId}-${selectedYear}-${selectedType}`;
 
-  const handleEachFeature = useCallback(
-    (feature, layer) => {
-      layer.on("click", () => {
-        setSelectedLocationId(feature.properties.location_id);
-        setSelectedProps(feature.properties);
-      });
-      layer.on("mouseover", () => {
-        if (feature.properties.location_id !== selectedLocationId) {
-          layer.setStyle({ weight: 2, color: "#000" });
-        }
-      });
-      layer.on("mouseout", () => {
-        geoJsonRef.current?.resetStyle(layer);
-      });
-    },
-    [selectedLocationId]
-  );
+  useEffect(() => {
+    styleFeatureRef.current = styleFeature;
+  }, [styleFeature]);
+
+  const handleEachFeature = useCallback((feature, layer) => {
+    layer.on("click", () => {
+      setSelectedLocationId(feature.properties.location_id);
+      setSelectedProps(feature.properties);
+    });
+    layer.on("mouseover", () => {
+      if (feature.properties.location_id !== selectedLocationIdRef.current) {
+        layer.setStyle({ weight: 2, color: "#000" });
+      }
+    });
+    layer.on("mouseout", () => {
+      if (styleFeatureRef.current) {
+        layer.setStyle(styleFeatureRef.current(feature));
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (geoJsonRef.current) {
       geoJsonRef.current.setStyle(styleFeature);
     }
   }, [styleFeature]);
+
+  useEffect(() => {
+    const gj = geoJsonRef.current;
+    if (!gj) return;
+    gj.eachLayer((layer) => {
+      if (layer?.feature) layer.setStyle(styleFeature(layer.feature));
+    });
+  }, [geojson, legend, selectedLocationId, styleFeature]);
 
   return (
     <div className="app">
