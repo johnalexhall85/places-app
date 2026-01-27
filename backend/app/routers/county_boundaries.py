@@ -10,6 +10,7 @@ router = APIRouter(tags=["county-boundaries"])
 @router.get("/counties/boundaries/geojson")
 def counties_boundary_geojson(
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
+    bbox: str | None = Query(default=None),
     simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
@@ -21,9 +22,21 @@ def counties_boundary_geojson(
     if state_abbr_value:
         state_filter = "AND c.state_abbr = :state_abbr"
 
+    bbox_filter = ""
+    if bbox:
+        try:
+            minx, miny, maxx, maxy = (float(value) for value in bbox.split(","))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
+        if minx >= maxx or miny >= maxy:
+            raise HTTPException(status_code=400, detail="Invalid bbox bounds")
+        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+
     params = {"limit": limit, "offset": offset}
     if state_abbr_value:
         params["state_abbr"] = state_abbr_value
+    if bbox:
+        params.update({"minx": minx, "miny": miny, "maxx": maxx, "maxy": maxy})
 
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
@@ -48,6 +61,7 @@ def counties_boundary_geojson(
             ON c.location_id = b.location_id
         WHERE b.geom IS NOT NULL
             {state_filter}
+            {bbox_filter}
         ORDER BY b.location_id
         LIMIT :limit
         OFFSET :offset
@@ -82,6 +96,7 @@ def counties_boundary_geojson_estimates(
     year: int = Query(...),
     data_value_type_id: str | None = Query(default="CrdPrv"),
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
+    bbox: str | None = Query(default=None),
     simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
@@ -108,6 +123,16 @@ def counties_boundary_geojson_estimates(
     if state_abbr_value:
         state_filter = "AND c.state_abbr = :state_abbr"
 
+    bbox_filter = ""
+    if bbox:
+        try:
+            minx, miny, maxx, maxy = (float(value) for value in bbox.split(","))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
+        if minx >= maxx or miny >= maxy:
+            raise HTTPException(status_code=400, detail="Invalid bbox bounds")
+        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+
     params = {
         "measure_id": measure_id,
         "year": year,
@@ -117,6 +142,8 @@ def counties_boundary_geojson_estimates(
     }
     if state_abbr_value:
         params["state_abbr"] = state_abbr_value
+    if bbox:
+        params.update({"minx": minx, "miny": miny, "maxx": maxx, "maxy": maxy})
 
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
@@ -164,6 +191,7 @@ def counties_boundary_geojson_estimates(
             ON c.location_id = b.location_id
         WHERE b.geom IS NOT NULL
             {state_filter}
+            {bbox_filter}
         ORDER BY b.location_id
         LIMIT :limit
         OFFSET :offset
