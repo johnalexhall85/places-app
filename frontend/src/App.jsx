@@ -35,6 +35,7 @@ export default function App() {
   const [legend, setLegend] = useState(null);
   const [geojson, setGeojson] = useState(null);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
+  const [selectedProps, setSelectedProps] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const geoJsonRef = useRef(null);
@@ -85,6 +86,7 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     setSelectedLocationId(null);
+    setSelectedProps(null);
 
     const legendUrl = new URL("http://localhost:8000/legend");
     legendUrl.searchParams.set("measure_id", selectedMeasureId);
@@ -147,39 +149,47 @@ export default function App() {
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
-  const selectedFeature = useMemo(
-    () =>
-      features.find(
-        (feature) => feature?.properties?.location_id === selectedLocationId
-      ),
-    [features, selectedLocationId]
-  );
-  const selectedProperties = selectedFeature?.properties ?? null;
-
   const styleFeature = useCallback(
     (feature) => {
       const value = feature?.properties?.data_value ?? null;
       const fillColor = getColor(value, legend?.breaks ?? []);
+      const isSelected =
+        feature?.properties?.location_id === selectedLocationId;
 
       return {
-        color: "#555",
-        weight: 1,
+        color: isSelected ? "#000" : "#555",
+        weight: isSelected ? 3 : 1,
         fillColor,
         fillOpacity: 0.7,
       };
     },
-    [legend]
+    [legend?.breaks, selectedLocationId]
   );
   const geoJsonKey = `${selectedMeasureId}-${selectedYear}-${selectedType}`;
 
-  const handleEachFeature = (feature, layer) => {
-    layer.on("mouseover", () => {
-      layer.setStyle({ weight: 2, color: "#000" });
-    });
-    layer.on("mouseout", () => {
-      geoJsonRef.current?.resetStyle(layer);
-    });
-  };
+  const handleEachFeature = useCallback(
+    (feature, layer) => {
+      layer.on("click", () => {
+        setSelectedLocationId(feature.properties.location_id);
+        setSelectedProps(feature.properties);
+      });
+      layer.on("mouseover", () => {
+        if (feature.properties.location_id !== selectedLocationId) {
+          layer.setStyle({ weight: 2, color: "#000" });
+        }
+      });
+      layer.on("mouseout", () => {
+        geoJsonRef.current?.resetStyle(layer);
+      });
+    },
+    [selectedLocationId]
+  );
+
+  useEffect(() => {
+    if (geoJsonRef.current) {
+      geoJsonRef.current.setStyle(styleFeature);
+    }
+  }, [styleFeature]);
 
   return (
     <div className="app">
@@ -312,9 +322,7 @@ export default function App() {
           Legend ({selectedType})
         </div>
         <div style={{ display: "grid", gap: 6 }}>
-          {isLoading ? (
-            "Loading..."
-          ) : breaks.length > 1
+          {breaks.length > 1
             ? breaks.slice(0, -1).map((start, index) => {
                 const end = breaks[index + 1];
                 const color = COLORS[index] ?? COLORS[COLORS.length - 1];
@@ -336,7 +344,9 @@ export default function App() {
                   </div>
                 );
               })
-            : "Loading..."}
+            : isLoading
+              ? "Loading..."
+              : "Legend unavailable."}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
@@ -360,18 +370,27 @@ export default function App() {
           }}
         >
           <div style={{ fontWeight: 600 }}>Selected county</div>
-          {selectedProperties ? (
+          {selectedProps ? (
             <>
               <div>
-                {selectedProperties.county_name ?? "Unknown County"},{" "}
-                {selectedProperties.state_abbr ?? ""}
+                {selectedProps.name ??
+                  selectedProps.county_name ??
+                  "Unknown County"}
+                {", "}
+                {selectedProps.state_abbr ?? selectedProps.state_desc ?? ""}
               </div>
-              <div>Value: {selectedProperties.data_value ?? "No data"}</div>
+              <div>Value: {selectedProps.data_value ?? "No data"}</div>
+              <div>Year: {selectedProps.year ?? selectedYear}</div>
+              <div>Measure: {selectedProps.measure_id ?? selectedMeasureId}</div>
+              <div>
+                Data value type:{" "}
+                {selectedProps.data_value_type ??
+                  selectedProps.data_value_type_id ??
+                  selectedType}
+              </div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>
-              Click a county to see details.
-            </div>
+            <div style={{ color: "#64748b" }}>Click a county.</div>
           )}
         </div>
       </div>
