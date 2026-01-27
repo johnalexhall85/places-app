@@ -55,7 +55,14 @@ export default function App() {
       })
       .then((data) => {
         if (!isMounted) return;
-        const sorted = [...data].sort((a, b) => {
+        const byId = new Map();
+        for (const measure of data) {
+          if (!byId.has(measure.measure_id)) {
+            byId.set(measure.measure_id, measure);
+          }
+        }
+        const deduped = Array.from(byId.values());
+        const sorted = deduped.sort((a, b) => {
           const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
           const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
           return labelA.localeCompare(labelB);
@@ -91,15 +98,21 @@ export default function App() {
     geojsonUrl.searchParams.set("year", String(selectedYear));
     geojsonUrl.searchParams.set("data_value_type_id", selectedType);
 
-    const fetchLegend = fetch(legendUrl).then((response) => {
+    const fetchLegend = fetch(legendUrl).then(async (response) => {
       if (!response.ok) {
-        throw new Error("Failed to load legend data.");
+        const body = await response.text();
+        throw new Error(
+          `Legend request failed (${response.status}): ${body || "No body"}`
+        );
       }
       return response.json();
     });
-    const fetchGeojson = fetch(geojsonUrl).then((response) => {
+    const fetchGeojson = fetch(geojsonUrl).then(async (response) => {
       if (!response.ok) {
-        throw new Error("Failed to load map data.");
+        const body = await response.text();
+        throw new Error(
+          `Map request failed (${response.status}): ${body || "No body"}`
+        );
       }
       return response.json();
     });
@@ -112,6 +125,7 @@ export default function App() {
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
+        console.error(errorResponse);
         setError(
           errorResponse.message ??
             "Failed to load map data (possible CORS issue)."
