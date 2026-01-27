@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
+import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#9ca3af";
@@ -34,6 +34,7 @@ export default function App() {
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
   const [geojson, setGeojson] = useState(null);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -54,7 +55,14 @@ export default function App() {
       })
       .then((data) => {
         if (!isMounted) return;
-        const sorted = [...data].sort((a, b) => {
+        const byId = new Map();
+        for (const measure of data) {
+          if (!byId.has(measure.measure_id)) {
+            byId.set(measure.measure_id, measure);
+          }
+        }
+        const deduped = Array.from(byId.values());
+        const sorted = deduped.sort((a, b) => {
           const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
           const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
           return labelA.localeCompare(labelB);
@@ -75,6 +83,7 @@ export default function App() {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
+    setSelectedLocationId(null);
 
     const legendUrl = new URL("http://localhost:8000/legend");
     legendUrl.searchParams.set("measure_id", selectedMeasureId);
@@ -82,21 +91,28 @@ export default function App() {
     legendUrl.searchParams.set("data_value_type_id", selectedType);
     legendUrl.searchParams.set("bins", "5");
 
-    const geojsonUrl = new URL("http://localhost:8000/counties/geojson");
+    const geojsonUrl = new URL(
+      "http://localhost:8000/counties/boundaries/geojson/estimates"
+    );
     geojsonUrl.searchParams.set("measure_id", selectedMeasureId);
     geojsonUrl.searchParams.set("year", String(selectedYear));
     geojsonUrl.searchParams.set("data_value_type_id", selectedType);
-    geojsonUrl.searchParams.set("limit", "10000");
 
-    const fetchLegend = fetch(legendUrl).then((response) => {
+    const fetchLegend = fetch(legendUrl).then(async (response) => {
       if (!response.ok) {
-        throw new Error("Failed to load legend data.");
+        const body = await response.text();
+        throw new Error(
+          `Legend request failed (${response.status}): ${body || "No body"}`
+        );
       }
       return response.json();
     });
-    const fetchGeojson = fetch(geojsonUrl).then((response) => {
+    const fetchGeojson = fetch(geojsonUrl).then(async (response) => {
       if (!response.ok) {
-        throw new Error("Failed to load map data.");
+        const body = await response.text();
+        throw new Error(
+          `Map request failed (${response.status}): ${body || "No body"}`
+        );
       }
       return response.json();
     });
@@ -109,6 +125,7 @@ export default function App() {
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
+        console.error(errorResponse);
         setError(
           errorResponse.message ??
             "Failed to load map data (possible CORS issue)."
@@ -129,6 +146,33 @@ export default function App() {
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
+  const selectedFeature = useMemo(
+    () =>
+      features.find(
+        (feature) => feature?.properties?.location_id === selectedLocationId
+      ),
+    [features, selectedLocationId]
+  );
+  const selectedProperties = selectedFeature?.properties ?? null;
+
+  const styleFeature = (feature) => {
+    const value = feature?.properties?.data_value ?? null;
+    const isSelected = feature?.properties?.location_id === selectedLocationId;
+    const fillColor = getColor(value, breaks);
+
+    return {
+      color: isSelected ? "#000" : "#555",
+      weight: isSelected ? 3 : 1,
+      fillColor,
+      fillOpacity: 0.7,
+    };
+  };
+
+  const handleEachFeature = (feature, layer) => {
+    layer.on("click", () => {
+      setSelectedLocationId(feature?.properties?.location_id ?? null);
+    });
+  };
 
   return (
     <div className="app">
@@ -213,41 +257,13 @@ export default function App() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {features.map((feature) => {
-            const { geometry, properties } = feature;
-            if (!geometry || geometry.type !== "Point") return null;
-
-            const [lon, lat] = geometry.coordinates;
-            const value = properties?.data_value ?? null;
-            const color = getColor(value, breaks);
-
-            return (
-              <CircleMarker
-                key={properties?.geoid ?? `${lat}-${lon}`}
-                center={[lat, lon]}
-                radius={4}
-                pathOptions={{
-                  color,
-                  fillColor: color,
-                  fillOpacity: 0.8,
-                  weight: 1,
-                }}
-              >
-                <Tooltip direction="top" offset={[0, -4]}>
-                  <div>
-                    <strong>
-                      {properties?.county_name ?? "Unknown County"},{" "}
-                      {properties?.state_abbr ?? ""}
-                    </strong>
-                    <div>
-                      {selectedMeasureId} · {selectedYear} · {selectedType}
-                    </div>
-                    <div>Value: {value ?? "No data"}</div>
-                  </div>
-                </Tooltip>
-              </CircleMarker>
-            );
-          })}
+          {geojson ? (
+            <GeoJSON
+              data={geojson}
+              style={styleFeature}
+              onEachFeature={handleEachFeature}
+            />
+          ) : null}
         </MapContainer>
       </div>
 
@@ -305,6 +321,30 @@ export default function App() {
             />
             <span>No data</span>
           </div>
+        </div>
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: "1px solid #e2e8f0",
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>Selected county</div>
+          {selectedProperties ? (
+            <>
+              <div>
+                {selectedProperties.county_name ?? "Unknown County"},{" "}
+                {selectedProperties.state_abbr ?? ""}
+              </div>
+              <div>Value: {selectedProperties.data_value ?? "No data"}</div>
+            </>
+          ) : (
+            <div style={{ color: "#64748b" }}>
+              Click a county to see details.
+            </div>
+          )}
         </div>
       </div>
 
