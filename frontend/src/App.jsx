@@ -34,13 +34,13 @@ export default function App() {
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
   const [geojson, setGeojson] = useState(null);
+  const [renderVersion, setRenderVersion] = useState(0);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const geoJsonRef = useRef(null);
   const selectedLocationIdRef = useRef(null);
-  const styleFeatureRef = useRef(null);
 
   const yearOptions = useMemo(() => {
     // TODO: Derive years from backend data when available.
@@ -127,6 +127,7 @@ export default function App() {
         if (!isMounted) return;
         setLegend(legendData);
         setGeojson(geojsonData);
+        setRenderVersion((v) => v + 1);
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
@@ -171,16 +172,12 @@ export default function App() {
     },
     [legend?.breaks, selectedLocationId]
   );
-  const geoJsonKey = `${selectedMeasureId}-${selectedYear}-${selectedType}`;
-
-  useEffect(() => {
-    styleFeatureRef.current = styleFeature;
-  }, [styleFeature]);
 
   const handleEachFeature = useCallback((feature, layer) => {
     layer.on("click", () => {
       setSelectedLocationId(feature.properties.location_id);
       setSelectedProps(feature.properties);
+      layer.setStyle(styleFeature(feature));
     });
     layer.on("mouseover", () => {
       if (feature.properties.location_id !== selectedLocationIdRef.current) {
@@ -188,16 +185,8 @@ export default function App() {
       }
     });
     layer.on("mouseout", () => {
-      if (styleFeatureRef.current) {
-        layer.setStyle(styleFeatureRef.current(feature));
-      }
+      layer.setStyle(styleFeature(feature));
     });
-  }, []);
-
-  useEffect(() => {
-    if (geoJsonRef.current) {
-      geoJsonRef.current.setStyle(styleFeature);
-    }
   }, [styleFeature]);
 
   useEffect(() => {
@@ -293,7 +282,7 @@ export default function App() {
           />
           {geojson ? (
             <GeoJSON
-              key={geoJsonKey}
+              key={`geo-${renderVersion}`}
               ref={geoJsonRef}
               data={geojson}
               style={styleFeature}
