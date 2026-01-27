@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
-const NO_DATA_COLOR = "#9ca3af";
+const NO_DATA_COLOR = "#eee";
 
 function getColor(value, breaks) {
   if (value == null || !Array.isArray(breaks) || breaks.length < 2) {
@@ -37,6 +37,7 @@ export default function App() {
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const geoJsonRef = useRef(null);
 
   const yearOptions = useMemo(() => {
     // TODO: Derive years from backend data when available.
@@ -157,20 +158,22 @@ export default function App() {
 
   const styleFeature = (feature) => {
     const value = feature?.properties?.data_value ?? null;
-    const isSelected = feature?.properties?.location_id === selectedLocationId;
     const fillColor = getColor(value, breaks);
 
     return {
-      color: isSelected ? "#000" : "#555",
-      weight: isSelected ? 3 : 1,
+      color: "#555",
+      weight: 1,
       fillColor,
       fillOpacity: 0.7,
     };
   };
 
   const handleEachFeature = (feature, layer) => {
-    layer.on("click", () => {
-      setSelectedLocationId(feature?.properties?.location_id ?? null);
+    layer.on("mouseover", () => {
+      layer.setStyle({ weight: 2, color: "#000" });
+    });
+    layer.on("mouseout", () => {
+      geoJsonRef.current?.resetStyle(layer);
     });
   };
 
@@ -259,6 +262,7 @@ export default function App() {
           />
           {geojson ? (
             <GeoJSON
+              ref={geoJsonRef}
               data={geojson}
               style={styleFeature}
               onEachFeature={handleEachFeature}
