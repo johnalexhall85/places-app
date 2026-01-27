@@ -81,6 +81,18 @@ def counties_boundary_geojson_estimates(
     if not measure_id:
         raise HTTPException(status_code=400, detail="measure_id is required")
 
+    boundary_table_exists = db.execute(
+        text("SELECT to_regclass('public.dim_county_boundary') AS exists")
+    ).mappings().one()
+    if boundary_table_exists["exists"] is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "County boundaries not loaded. Run the boundary loader script to create "
+                "dim_county_boundary."
+            ),
+        )
+
     state_abbr_value = state_abbr.upper() if state_abbr else None
 
     state_filter = ""
