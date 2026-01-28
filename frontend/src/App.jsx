@@ -99,6 +99,17 @@ function CountyMvtLayer({
     };
 
     const layer = L.vectorGrid.protobuf(baseUrl, vectorTileOptions);
+    if (!layer.setVectorTileLayerStyles) {
+      layer.setVectorTileLayerStyles = function setVectorTileLayerStyles(
+        styles
+      ) {
+        this.options.vectorTileLayerStyles = {
+          ...this.options.vectorTileLayerStyles,
+          ...styles,
+        };
+        return this;
+      };
+    }
 
     layer.on("mouseover", (event) => {
       const props = event?.layer?.properties;
