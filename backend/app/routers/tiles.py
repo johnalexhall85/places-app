@@ -25,13 +25,13 @@ def get_county_tiles(
         """
         /* tiles_v2 */
         WITH bounds AS (
-            SELECT ST_TileEnvelope(%(z)s, %(x)s, %(y)s) AS env_3857
+            SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
         ),
         selected_measure AS (
             SELECT id, measure_id, data_value_type_id
             FROM dim_measure
-            WHERE measure_id = %(measure_id)s
-              AND data_value_type_id = %(data_value_type_id)s
+            WHERE measure_id = (:measure_id)::text
+              AND data_value_type_id = (:data_value_type_id)::text
             LIMIT 1
         ),
         tile AS (
@@ -42,7 +42,7 @@ def get_county_tiles(
                 c.state_desc,
                 sm.measure_id,
                 sm.data_value_type_id,
-                %(year)s::int AS year,
+                (:year)::int AS year,
                 f.data_value,
                 f.low_confidence_limit,
                 f.high_confidence_limit,
@@ -58,7 +58,7 @@ def get_county_tiles(
             LEFT JOIN selected_measure sm ON TRUE
             LEFT JOIN fact_estimate_county f
                 ON f.location_id = b.location_id
-                AND f.year = %(year)s
+                AND f.year = :year
                 AND f.measure_dim_id = sm.id
             LEFT JOIN dim_county c ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
@@ -98,9 +98,17 @@ def get_county_tiles(
     if isinstance(mvt_data, memoryview):
         mvt_bytes = mvt_data.tobytes()
     elif isinstance(mvt_data, str):
-        mvt_bytes = mvt_data.encode()
+        mvt_bytes = b""
     else:
         mvt_bytes = mvt_data or b""
+    logger.info(
+        "County tile %s/%s/%s rows=%s bytes=%s",
+        z,
+        x,
+        y,
+        result["tile_total"],
+        len(mvt_bytes),
+    )
     response = Response(content=mvt_bytes, media_type="application/x-protobuf")
     if request.method == "HEAD":
         return Response(
