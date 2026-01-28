@@ -81,17 +81,27 @@ def get_county_tiles(
         """
     )
 
-    result = db.execute(
-        query,
-        {
-            "z": z,
-            "x": x,
-            "y": y,
-            "measure_id": measure_id,
-            "data_value_type_id": data_value_type_id,
-            "year": year,
-        },
-    ).mappings().one()
+        try:
+        result = db.execute(
+            query,
+            {
+                "z": z,
+                "x": x,
+                "y": y,
+                "measure_id": measure_id,
+                "data_value_type_id": data_value_type_id,
+                "year": year,
+            },
+        ).mappings().one()
+    except Exception:
+        logger.exception(
+            "Tile query failed z=%s x=%s y=%s measure=%s year=%s type=%s",
+            z, x, y, measure_id, year, data_value_type_id
+        )
+        # Return a *valid empty tile* so the map doesn't die.
+        # Still keep 200 so Leaflet won't treat it as fatal.
+        return Response(content=b"", media_type="application/x-protobuf")
+
 
     tile_total = result["tile_total"]
     mvt_data = result["mvt"]
