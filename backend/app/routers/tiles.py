@@ -24,13 +24,13 @@ def get_county_tiles(
     query = text(
         """
         WITH bounds AS (
-            SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
+            SELECT ST_TileEnvelope(%(z)s, %(x)s, %(y)s) AS env_3857
         ),
         selected_measure AS (
             SELECT id, measure_id, data_value_type_id
             FROM dim_measure
-            WHERE measure_id = :measure_id
-              AND data_value_type_id = :data_value_type_id
+            WHERE measure_id = %(measure_id)s
+              AND data_value_type_id = %(data_value_type_id)s
             LIMIT 1
         ),
         tile AS (
@@ -41,7 +41,7 @@ def get_county_tiles(
                 c.state_desc,
                 sm.measure_id,
                 sm.data_value_type_id,
-                :year::int AS year,
+                %(year)s::int AS year,
                 f.data_value,
                 f.low_confidence_limit,
                 f.high_confidence_limit,
@@ -57,7 +57,7 @@ def get_county_tiles(
             LEFT JOIN selected_measure sm ON TRUE
             LEFT JOIN fact_estimate_county f
                 ON f.location_id = b.location_id
-                AND f.year = :year
+                AND f.year = %(year)s
                 AND f.measure_dim_id = sm.id
             LEFT JOIN dim_county c ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
