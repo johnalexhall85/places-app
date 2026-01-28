@@ -1,30 +1,53 @@
-from fastapi import APIRouter, Depends, Request, Response
+import logging
+
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 
 router = APIRouter(tags=["tiles"])
+logger = logging.getLogger(__name__)
 
 
 @router.api_route("/tiles/counties/{z}/{x}/{y}.mvt", methods=["GET", "HEAD"])
 def get_county_tiles(
-    z: int, x: int, y: int, request: Request, db: Session = Depends(get_db)
+    z: int,
+    x: int,
+    y: int,
+    request: Request,
+    measure_id: str = Query(...),
+    year: int = Query(...),
+    data_value_type_id: str | None = Query(default="CrdPrv"),
+    db: Session = Depends(get_db),
 ) -> Response:
     query = text(
         """
-        WITH bounds AS (
+        WITH selected_measure AS (
+            SELECT
+                id,
+                measure_id,
+                data_value_type_id
+            FROM dim_measure
+            WHERE measure_id = :measure_id
+                AND data_value_type_id = :data_value_type_id
+            LIMIT 1
+        ),
+        bounds AS (
             SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
         ),
         tile AS (
             SELECT
                 b.location_id,
-                b.geoid,
                 b.name,
-                b.statefp,
-                b.countyfp,
                 c.state_abbr,
                 c.state_desc,
+                sm.measure_id,
+                sm.data_value_type_id,
+                :year::int AS year,
+                f.data_value,
+                f.low_confidence_limit,
+                f.high_confidence_limit,
                 ST_AsMVTGeom(
                     ST_Transform(b.geom, 3857),
                     bounds.env_3857,
@@ -32,18 +55,44 @@ def get_county_tiles(
                     256,
                     true
                 ) AS geom
-            FROM dim_county_boundary AS b
-            LEFT JOIN dim_county AS c
-                ON c.location_id = b.location_id
+            FROM dim_county_boundary b
             CROSS JOIN bounds
+            LEFT JOIN dim_county c ON c.location_id = b.location_id
+            LEFT JOIN selected_measure sm ON TRUE
+            LEFT JOIN fact_estimate_county f
+                ON f.location_id = b.location_id
+                AND f.year = :year
+                AND f.measure_dim_id = sm.id
             WHERE b.geom IS NOT NULL
                 AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
+        ),
+        tile_count AS (
+            SELECT COUNT(*) AS total FROM tile
         )
-        SELECT COALESCE(ST_AsMVT(tile, 'counties', 4096, 'geom'), '') AS mvt
-        FROM tile
+        SELECT
+            COALESCE(ST_AsMVT(tile, 'counties', 4096, 'geom'), ''::bytea) AS mvt,
+            tile_count.total AS tile_total
+        FROM tile, tile_count
         """
     )
-    result = db.execute(query, {"z": z, "x": x, "y": y}).mappings().one()
+    result = db.execute(
+        query,
+        {
+            "z": z,
+            "x": x,
+            "y": y,
+            "measure_id": measure_id,
+            "data_value_type_id": data_value_type_id or "CrdPrv",
+            "year": year,
+        },
+    ).mappings().one()
+    logger.debug(
+        "County tile %s/%s/%s produced %s rows",
+        z,
+        x,
+        y,
+        result["tile_total"],
+    )
     mvt_data = result["mvt"]
     if isinstance(mvt_data, memoryview):
         mvt_bytes = mvt_data.tobytes()
@@ -51,9 +100,7 @@ def get_county_tiles(
         mvt_bytes = mvt_data.encode()
     else:
         mvt_bytes = mvt_data or b""
-    response = Response(
-        content=mvt_bytes, media_type="application/vnd.mapbox-vector-tile"
-    )
+    response = Response(content=mvt_bytes, media_type="application/x-protobuf")
     if request.method == "HEAD":
         return Response(
             content=b"", status_code=response.status_code, headers=dict(response.headers)
