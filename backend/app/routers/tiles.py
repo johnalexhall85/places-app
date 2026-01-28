@@ -23,6 +23,7 @@ def get_county_tiles(
 ) -> Response:
     query = text(
         """
+        /* tiles_v2 */
         WITH bounds AS (
             SELECT ST_TileEnvelope(%(z)s, %(x)s, %(y)s) AS env_3857
         ),
