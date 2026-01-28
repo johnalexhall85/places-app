@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet.vectorgrid";
@@ -39,26 +39,47 @@ function CountyMvtLayer({
   const map = useMap();
   const layerRef = useRef(null);
   const hoveredIdRef = useRef(null);
+  const hoveredPropsRef = useRef(null);
   const onHoverRef = useRef(onHover);
   const onSelectRef = useRef(onSelect);
+  const styleForPropsRef = useRef(null);
+  const hoverStyleForPropsRef = useRef(null);
 
   useEffect(() => {
     onHoverRef.current = onHover;
     onSelectRef.current = onSelect;
   }, [onHover, onSelect]);
 
-  const styleFromProps = (props) => {
-    const value = props?.data_value ?? null;
-    const fillColor = getColor(value, breaks);
-    const isSelected = props?.location_id === selectedLocationId;
-    return {
-      fill: true,
-      fillColor,
-      fillOpacity: 0.7,
-      color: isSelected ? "#111827" : "#64748b",
-      weight: isSelected ? 3 : 1,
-    };
-  };
+  const styleForProps = useCallback(
+    (props) => {
+      const value = props?.data_value ?? null;
+      const fillColor = getColor(value, breaks);
+      const isSelected = props?.location_id === selectedLocationId;
+      return {
+        fill: true,
+        fillColor,
+        fillOpacity: 0.7,
+        color: isSelected ? "#111827" : "#64748b",
+        weight: isSelected ? 3 : 1,
+      };
+    },
+    [breaks, selectedLocationId]
+  );
+
+  const hoverStyleForProps = useCallback(
+    (props) => ({
+      ...styleForProps(props),
+      color: "#0f172a",
+      weight: 3,
+      fillOpacity: 0.9,
+    }),
+    [styleForProps]
+  );
+
+  useEffect(() => {
+    styleForPropsRef.current = styleForProps;
+    hoverStyleForPropsRef.current = hoverStyleForProps;
+  }, [styleForProps, hoverStyleForProps]);
 
   useEffect(() => {
     if (!map) return;
@@ -72,12 +93,23 @@ function CountyMvtLayer({
       rendererFactory: L.canvas.tile,
       interactive: true,
       vectorTileLayerStyles: {
-        counties: (props) => styleFromProps(props),
+        counties: (props) => styleForPropsRef.current?.(props),
       },
       getFeatureId: (feature) => feature?.properties?.location_id,
     };
 
     const layer = L.vectorGrid.protobuf(baseUrl, vectorTileOptions);
+    if (!layer.setVectorTileLayerStyles) {
+      layer.setVectorTileLayerStyles = function setVectorTileLayerStyles(
+        styles
+      ) {
+        this.options.vectorTileLayerStyles = {
+          ...this.options.vectorTileLayerStyles,
+          ...styles,
+        };
+        return this;
+      };
+    }
 
     layer.on("mouseover", (event) => {
       const props = event?.layer?.properties;
@@ -85,12 +117,11 @@ function CountyMvtLayer({
       if (featureId == null) return;
       if (hoveredIdRef.current === featureId) return;
       hoveredIdRef.current = featureId;
-      layer.setFeatureStyle(featureId, {
-        ...styleFromProps(props),
-        color: "#0f172a",
-        weight: 3,
-        fillOpacity: 0.9,
-      });
+      hoveredPropsRef.current = props;
+      layer.setFeatureStyle(
+        featureId,
+        hoverStyleForPropsRef.current?.(props)
+      );
       onHoverRef.current?.(props);
     });
     layer.on("mouseout", (event) => {
@@ -100,6 +131,7 @@ function CountyMvtLayer({
         layer.resetFeatureStyle(featureId);
       }
       hoveredIdRef.current = null;
+      hoveredPropsRef.current = null;
       onHoverRef.current?.(null);
     });
     layer.on("click", (event) => {
@@ -122,10 +154,18 @@ function CountyMvtLayer({
 
   useEffect(() => {
     if (!layerRef.current) return;
-    layerRef.current.setStyle({
-      counties: (props) => styleFromProps(props),
+    layerRef.current.setVectorTileLayerStyles({
+      counties: (props) => styleForProps(props),
     });
-  }, [breaks, selectedLocationId]);
+    layerRef.current.redraw();
+
+    if (hoveredIdRef.current != null && hoveredPropsRef.current) {
+      layerRef.current.setFeatureStyle(
+        hoveredIdRef.current,
+        hoverStyleForProps(hoveredPropsRef.current)
+      );
+    }
+  }, [styleForProps, hoverStyleForProps]);
 
   return null;
 }
