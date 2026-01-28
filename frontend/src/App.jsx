@@ -38,6 +38,27 @@ function CountyMvtLayer({
 }) {
   const map = useMap();
   const layerRef = useRef(null);
+  const hoveredIdRef = useRef(null);
+  const onHoverRef = useRef(onHover);
+  const onSelectRef = useRef(onSelect);
+
+  useEffect(() => {
+    onHoverRef.current = onHover;
+    onSelectRef.current = onSelect;
+  }, [onHover, onSelect]);
+
+  const styleFromProps = (props) => {
+    const value = props?.data_value ?? null;
+    const fillColor = getColor(value, breaks);
+    const isSelected = props?.location_id === selectedLocationId;
+    return {
+      fill: true,
+      fillColor,
+      fillOpacity: 0.7,
+      color: isSelected ? "#111827" : "#64748b",
+      weight: isSelected ? 3 : 1,
+    };
+  };
 
   useEffect(() => {
     if (!map) return;
@@ -51,18 +72,7 @@ function CountyMvtLayer({
       rendererFactory: L.canvas.tile,
       interactive: true,
       vectorTileLayerStyles: {
-        counties: (props) => {
-          const value = props?.data_value ?? null;
-          const fillColor = getColor(value, breaks);
-          const isSelected = props?.location_id === selectedLocationId;
-          return {
-            fill: true,
-            fillColor,
-            fillOpacity: 0.7,
-            color: isSelected ? "#000" : "#555",
-            weight: isSelected ? 3 : 1,
-          };
-        },
+        counties: (props) => styleFromProps(props),
       },
       getFeatureId: (feature) => feature?.properties?.location_id,
     };
@@ -71,14 +81,32 @@ function CountyMvtLayer({
 
     layer.on("mouseover", (event) => {
       const props = event?.layer?.properties;
-      if (props) onHover(props);
+      const featureId = props?.location_id;
+      if (featureId == null) return;
+      if (hoveredIdRef.current === featureId) return;
+      hoveredIdRef.current = featureId;
+      layer.setFeatureStyle(featureId, {
+        ...styleFromProps(props),
+        color: "#0f172a",
+        weight: 3,
+        fillOpacity: 0.9,
+      });
+      onHoverRef.current?.(props);
     });
-    layer.on("mouseout", () => {
-      onHover(null);
+    layer.on("mouseout", (event) => {
+      const props = event?.layer?.properties;
+      const featureId = props?.location_id;
+      if (featureId != null) {
+        layer.resetFeatureStyle(featureId);
+      }
+      hoveredIdRef.current = null;
+      onHoverRef.current?.(null);
     });
     layer.on("click", (event) => {
       const props = event?.layer?.properties;
-      if (props) onSelect(props);
+      if (props) {
+        onSelectRef.current?.(props);
+      }
     });
 
     layer.addTo(map);
@@ -90,7 +118,14 @@ function CountyMvtLayer({
         layerRef.current = null;
       }
     };
-  }, [map, baseUrl, breaks, selectedLocationId, onHover, onSelect]);
+  }, [map, baseUrl]);
+
+  useEffect(() => {
+    if (!layerRef.current) return;
+    layerRef.current.setStyle({
+      counties: (props) => styleFromProps(props),
+    });
+  }, [breaks, selectedLocationId]);
 
   return null;
 }
