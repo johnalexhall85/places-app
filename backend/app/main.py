@@ -1,17 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.health import router as health_router
-from app.routers.counties import router as counties_router
-from app.routers.measures import router as measures_router
-from app.routers.estimates import router as estimates_router
-from app.routers.geojson import router as geojson_router
-from app.routers.legend import router as legend_router
-from app.routers.county_boundaries import router as county_boundaries_router
-from app.routers.tiles import router as tiles_router
+# import your routers (adjust these imports to match your project)
+from app.routers import measures, legend, tiles, county_boundaries
 
-app = FastAPI(title="PLACES (independent) API", version="0.1.0")
+app = FastAPI()
 
+# CORS must be added to the SAME `app` uvicorn runs.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -23,11 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health_router)
-app.include_router(counties_router)
-app.include_router(measures_router)
-app.include_router(estimates_router)
-app.include_router(geojson_router)
-app.include_router(legend_router)
-app.include_router(county_boundaries_router)
-app.include_router(tiles_router)
+# Include routers AFTER middleware is added
+app.include_router(measures.router)
+app.include_router(legend.router)
+app.include_router(tiles.router)
+app.include_router(county_boundaries.router)
