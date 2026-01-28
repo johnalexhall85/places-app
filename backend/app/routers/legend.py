@@ -1,95 +1,76 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import Float, bindparam, text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 
 router = APIRouter(tags=["legend"])
 
-# curl "http://localhost:8000/legend?measure_id=CASTHMA&year=2022&data_value_type_id=1&bins=5"
-# curl "http://localhost:8000/legend?measure_id=CASTHMA&year=2022&state_abbr=CA&bins=7"
+
 @router.get("/legend")
 def get_legend(
     measure_id: str = Query(...),
     year: int = Query(...),
-    data_value_type_id: str | None = Query(default=None),
-    state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
-    bins: int = Query(default=5, ge=2, le=9),
+    data_value_type_id: str = Query("CrdPrv"),
+    bins: int = Query(5, ge=2, le=9),
     db: Session = Depends(get_db),
 ):
-    state_abbr_upper = state_abbr.upper() if state_abbr else None
-    quantile_fractions = [i / bins for i in range(1, bins)]
+    """
+    Returns legend breaks for the current measure/year/type.
+    Uses equal-interval bins between min and max.
+    """
+    # 1) Find the selected measure dimension id
+    measure_dim = db.execute(
+        text(
+            """
+            SELECT id
+            FROM dim_measure
+            WHERE measure_id = :measure_id
+              AND data_value_type_id = :data_value_type_id
+            LIMIT 1
+            """
+        ),
+        {"measure_id": measure_id, "data_value_type_id": data_value_type_id},
+    ).scalar_one_or_none()
 
-    sql = text(
-        """
-        SELECT
-            COUNT(*) FILTER (WHERE f.data_value IS NOT NULL) AS n,
-            COUNT(*) FILTER (WHERE f.data_value IS NULL) AS nulls,
-            MIN(f.data_value) AS min,
-            MAX(f.data_value) AS max,
-            COALESCE(
-                percentile_cont(%(quantiles)s)
-                  WITHIN GROUP (ORDER BY f.data_value)
-                  FILTER (WHERE f.data_value IS NOT NULL),
-                ARRAY[]::float8[]
-            ) AS quantiles
-        FROM fact_estimate_county AS f
-        JOIN dim_measure AS m ON f.measure_dim_id = m.id
-        JOIN dim_county AS c ON f.location_id = c.location_id
-        WHERE f.year = %(year)s
-          AND m.measure_id = %(measure_id)s
-          AND ((%(data_value_type_id)s)::text IS NULL OR m.data_value_type_id = (%(data_value_type_id)s)::text)
-          AND ((%(state_abbr)s)::text IS NULL OR c.state_abbr = (%(state_abbr)s)::text)
-        """
-    ).bindparams(bindparam("quantiles", type_=ARRAY(Float)))
+    if measure_dim is None:
+        return {"breaks": [], "bins": bins}
 
+    # 2) Get min/max for that measure/year
     row = db.execute(
-        sql,
-        {
-            "year": year,
-            "measure_id": measure_id,
-            "data_value_type_id": data_value_type_id,
-            "state_abbr": state_abbr_upper,
-            "quantiles": quantile_fractions,
-        },
+        text(
+            """
+            SELECT
+              MIN(data_value) AS min_value,
+              MAX(data_value) AS max_value
+            FROM fact_estimate_county
+            WHERE year = :year
+              AND measure_dim_id = :measure_dim_id
+              AND data_value IS NOT NULL
+            """
+        ),
+        {"year": year, "measure_dim_id": measure_dim},
     ).mappings().one()
 
-    if row["n"] == 0:
-        return {
-            "measure_id": measure_id,
-            "year": year,
-            "data_value_type_id": data_value_type_id,
-            "state_abbr": state_abbr_upper,
-            "bins": bins,
-            "n": int(row["n"]),
-            "nulls": int(row["nulls"]),
-            "min": None,
-            "max": None,
-            "quantiles": [],
-            "breaks": [],
-        }
+    min_value = row["min_value"]
+    max_value = row["max_value"]
 
-    min_value = row["min"]
-    max_value = row["max"]
     if min_value is None or max_value is None:
-        quantiles = []
-        breaks = []
+        return {"breaks": [], "bins": bins}
+
+    # 3) Build breaks (bins+1 values)
+    if float(min_value) == float(max_value):
+        breaks = [float(min_value), float(max_value)]
     else:
-        raw_quantiles = row["quantiles"] or []
-        quantiles = [float(value) for value in raw_quantiles]
-        breaks = [float(min_value), *quantiles, float(max_value)]
+        step = (float(max_value) - float(min_value)) / bins
+        breaks = [float(min_value) + step * i for i in range(bins + 1)]
+        # avoid tiny float noise in UI
+        breaks = [round(x, 6) for x in breaks]
 
     return {
         "measure_id": measure_id,
         "year": year,
         "data_value_type_id": data_value_type_id,
-        "state_abbr": state_abbr_upper,
         "bins": bins,
-        "n": int(row["n"]),
-        "nulls": int(row["nulls"]),
-        "min": float(min_value) if min_value is not None else None,
-        "max": float(max_value) if max_value is not None else None,
-        "quantiles": quantiles,
         "breaks": breaks,
     }
