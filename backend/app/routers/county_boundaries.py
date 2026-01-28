@@ -20,7 +20,7 @@ def counties_boundary_geojson(
 
     state_filter = ""
     if state_abbr_value:
-        state_filter = "AND c.state_abbr = :state_abbr"
+        state_filter = "AND c.state_abbr = %(state_abbr)s"
 
     bbox_filter = ""
     if bbox:
@@ -30,7 +30,9 @@ def counties_boundary_geojson(
             raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
         if minx >= maxx or miny >= maxy:
             raise HTTPException(status_code=400, detail="Invalid bbox bounds")
-        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+        bbox_filter = (
+            "AND b.geom && ST_MakeEnvelope(%(minx)s, %(miny)s, %(maxx)s, %(maxy)s, 4326)"
+        )
 
     params = {"limit": limit, "offset": offset}
     if state_abbr_value:
@@ -41,7 +43,7 @@ def counties_boundary_geojson(
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
         geometry_expr = (
-            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, %(simplify)s))::json"
         )
         params["simplify"] = simplify
 
@@ -63,8 +65,8 @@ def counties_boundary_geojson(
             {state_filter}
             {bbox_filter}
         ORDER BY b.location_id
-        LIMIT :limit
-        OFFSET :offset
+        LIMIT %(limit)s
+        OFFSET %(offset)s
         """
     )
 
@@ -121,7 +123,7 @@ def counties_boundary_geojson_estimates(
 
     state_filter = ""
     if state_abbr_value:
-        state_filter = "AND c.state_abbr = :state_abbr"
+        state_filter = "AND c.state_abbr = %(state_abbr)s"
 
     bbox_filter = ""
     if bbox:
@@ -131,7 +133,9 @@ def counties_boundary_geojson_estimates(
             raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
         if minx >= maxx or miny >= maxy:
             raise HTTPException(status_code=400, detail="Invalid bbox bounds")
-        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+        bbox_filter = (
+            "AND b.geom && ST_MakeEnvelope(%(minx)s, %(miny)s, %(maxx)s, %(maxy)s, 4326)"
+        )
 
     params = {
         "measure_id": measure_id,
@@ -148,7 +152,7 @@ def counties_boundary_geojson_estimates(
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
         geometry_expr = (
-            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, %(simplify)s))::json"
         )
         params["simplify"] = simplify
 
@@ -160,8 +164,8 @@ def counties_boundary_geojson_estimates(
                 measure_id,
                 data_value_type_id
             FROM dim_measure
-            WHERE measure_id = :measure_id
-                AND data_value_type_id = :data_value_type_id
+            WHERE measure_id = %(measure_id)s
+                AND data_value_type_id = %(data_value_type_id)s
             LIMIT 1
         )
         SELECT
@@ -185,7 +189,7 @@ def counties_boundary_geojson_estimates(
         LEFT JOIN selected_measure AS sm ON TRUE
         LEFT JOIN fact_estimate_county AS f
             ON f.location_id = b.location_id
-            AND f.year = :year
+            AND f.year = %(year)s
             AND f.measure_dim_id = sm.id
         LEFT JOIN dim_county AS c
             ON c.location_id = b.location_id
@@ -193,8 +197,8 @@ def counties_boundary_geojson_estimates(
             {state_filter}
             {bbox_filter}
         ORDER BY b.location_id
-        LIMIT :limit
-        OFFSET :offset
+        LIMIT %(limit)s
+        OFFSET %(offset)s
         """
     )
 

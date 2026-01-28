@@ -27,7 +27,7 @@ def counties_geojson(
 
     state_filter = ""
     if state_abbr_value:
-        state_filter = "AND c.state_abbr = :state_abbr"
+        state_filter = "AND c.state_abbr = %(state_abbr)s"
 
     if year is None and measure_id is None:
         params = {"limit": limit, "offset": offset}
@@ -48,8 +48,8 @@ def counties_geojson(
             WHERE c.geom IS NOT NULL
                 {state_filter}
             ORDER BY c.state_abbr, c.county_name
-            LIMIT :limit
-            OFFSET :offset
+            LIMIT %(limit)s
+            OFFSET %(offset)s
             """
         )
 
@@ -89,8 +89,8 @@ def counties_geojson(
                     measure_id,
                     data_value_type_id
                 FROM dim_measure
-                WHERE measure_id = :measure_id
-                    AND data_value_type_id = :data_value_type_id
+                WHERE measure_id = %(measure_id)s
+                    AND data_value_type_id = %(data_value_type_id)s
                 LIMIT 1
             )
             SELECT
@@ -113,13 +113,13 @@ def counties_geojson(
             LEFT JOIN selected_measure AS sm ON TRUE
             LEFT JOIN fact_estimate_county AS f
                 ON f.location_id = c.location_id
-                AND f.year = :year
+                AND f.year = %(year)s
                 AND f.measure_dim_id = sm.id
             WHERE c.geom IS NOT NULL
                 {state_filter}
             ORDER BY c.state_abbr, c.county_name
-            LIMIT :limit
-            OFFSET :offset
+            LIMIT %(limit)s
+            OFFSET %(offset)s
             """
         )
 

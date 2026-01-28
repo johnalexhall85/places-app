@@ -29,7 +29,7 @@ def get_legend(
             MIN(f.data_value) AS min,
             MAX(f.data_value) AS max,
             COALESCE(
-                percentile_cont(:quantiles)
+                percentile_cont(%(quantiles)s)
                   WITHIN GROUP (ORDER BY f.data_value)
                   FILTER (WHERE f.data_value IS NOT NULL),
                 ARRAY[]::float8[]
@@ -37,10 +37,10 @@ def get_legend(
         FROM fact_estimate_county AS f
         JOIN dim_measure AS m ON f.measure_dim_id = m.id
         JOIN dim_county AS c ON f.location_id = c.location_id
-        WHERE f.year = :year
-          AND m.measure_id = :measure_id
-          AND ((:data_value_type_id)::text IS NULL OR m.data_value_type_id = (:data_value_type_id)::text)
-          AND ((:state_abbr)::text IS NULL OR c.state_abbr = (:state_abbr)::text)
+        WHERE f.year = %(year)s
+          AND m.measure_id = %(measure_id)s
+          AND ((%(data_value_type_id)s)::text IS NULL OR m.data_value_type_id = (%(data_value_type_id)s)::text)
+          AND ((%(state_abbr)s)::text IS NULL OR c.state_abbr = (%(state_abbr)s)::text)
         """
     ).bindparams(bindparam("quantiles", type_=ARRAY(Float)))
 
