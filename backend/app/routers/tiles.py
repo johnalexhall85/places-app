@@ -27,13 +27,10 @@ def get_county_tiles(
             SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
         ),
         selected_measure AS (
-            SELECT
-                id,
-                measure_id,
-                data_value_type_id
+            SELECT id, measure_id, data_value_type_id
             FROM dim_measure
             WHERE measure_id = :measure_id
-                AND data_value_type_id = :data_value_type_id
+              AND data_value_type_id = :data_value_type_id
             LIMIT 1
         ),
         tile AS (
@@ -64,7 +61,7 @@ def get_county_tiles(
                 AND f.measure_dim_id = sm.id
             LEFT JOIN dim_county c ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
-                AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
+              AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
         ),
         tile_count AS (
             SELECT COUNT(*) AS total FROM tile
