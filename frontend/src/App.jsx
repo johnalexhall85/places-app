@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet.vectorgrid";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#eee";
@@ -27,21 +29,83 @@ function formatRange(min, max) {
   return `${min} – ${max}`;
 }
 
+function CountyMvtLayer({
+  baseUrl,
+  breaks,
+  selectedLocationId,
+  onHover,
+  onSelect,
+}) {
+  const map = useMap();
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    if (layerRef.current) {
+      layerRef.current.removeFrom(map);
+      layerRef.current = null;
+    }
+
+    const vectorTileOptions = {
+      rendererFactory: L.canvas.tile,
+      interactive: true,
+      vectorTileLayerStyles: {
+        counties: (props) => {
+          const value = props?.data_value ?? null;
+          const fillColor = getColor(value, breaks);
+          const isSelected = props?.location_id === selectedLocationId;
+          return {
+            fill: true,
+            fillColor,
+            fillOpacity: 0.7,
+            color: isSelected ? "#000" : "#555",
+            weight: isSelected ? 3 : 1,
+          };
+        },
+      },
+      getFeatureId: (feature) => feature?.properties?.location_id,
+    };
+
+    const layer = L.vectorGrid.protobuf(baseUrl, vectorTileOptions);
+
+    layer.on("mouseover", (event) => {
+      const props = event?.layer?.properties;
+      if (props) onHover(props);
+    });
+    layer.on("mouseout", () => {
+      onHover(null);
+    });
+    layer.on("click", (event) => {
+      const props = event?.layer?.properties;
+      if (props) onSelect(props);
+    });
+
+    layer.addTo(map);
+    layerRef.current = layer;
+
+    return () => {
+      if (layerRef.current) {
+        layerRef.current.removeFrom(map);
+        layerRef.current = null;
+      }
+    };
+  }, [map, baseUrl, breaks, selectedLocationId, onHover, onSelect]);
+
+  return null;
+}
+
 export default function App() {
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [selectedYear, setSelectedYear] = useState(2023);
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
-  const [geojson, setGeojson] = useState(null);
-  const [renderVersion, setRenderVersion] = useState(0);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
   const [hoveredProps, setHoveredProps] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const geoJsonRef = useRef(null);
-  const selectedLocationIdRef = useRef(null);
 
   const yearOptions = useMemo(() => {
     // TODO: Derive years from backend data when available.
@@ -97,38 +161,19 @@ export default function App() {
     legendUrl.searchParams.set("data_value_type_id", selectedType);
     legendUrl.searchParams.set("bins", "5");
 
-    const geojsonUrl = new URL(
-      "http://localhost:8000/counties/boundaries/geojson/estimates"
-    );
-    geojsonUrl.searchParams.set("measure_id", selectedMeasureId);
-    geojsonUrl.searchParams.set("year", String(selectedYear));
-    geojsonUrl.searchParams.set("data_value_type_id", selectedType);
-
-    const fetchLegend = fetch(legendUrl).then(async (response) => {
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(
-          `Legend request failed (${response.status}): ${body || "No body"}`
-        );
-      }
-      return response.json();
-    });
-    const fetchGeojson = fetch(geojsonUrl).then(async (response) => {
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(
-          `Map request failed (${response.status}): ${body || "No body"}`
-        );
-      }
-      return response.json();
-    });
-
-    Promise.all([fetchLegend, fetchGeojson])
-      .then(([legendData, geojsonData]) => {
+    fetch(legendUrl)
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `Legend request failed (${response.status}): ${body || "No body"}`
+          );
+        }
+        return response.json();
+      })
+      .then((legendData) => {
         if (!isMounted) return;
         setLegend(legendData);
-        setGeojson(geojsonData);
-        setRenderVersion((v) => v + 1);
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
@@ -148,57 +193,11 @@ export default function App() {
     };
   }, [selectedMeasureId, selectedYear, selectedType]);
 
-  useEffect(() => {
-    selectedLocationIdRef.current = selectedLocationId;
-  }, [selectedLocationId]);
-
   const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
-  const features = geojson?.features ?? [];
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
-  const styleFeature = useCallback(
-    (feature) => {
-      const value = feature?.properties?.data_value ?? null;
-      const fillColor = getColor(value, legend?.breaks ?? []);
-      const isSelected =
-        feature?.properties?.location_id === selectedLocationId;
-
-      return {
-        color: isSelected ? "#000" : "#555",
-        weight: isSelected ? 3 : 1,
-        fillColor,
-        fillOpacity: 0.7,
-      };
-    },
-    [legend?.breaks, selectedLocationId]
-  );
-
-  const handleEachFeature = useCallback((feature, layer) => {
-    layer.on("click", () => {
-      setSelectedLocationId(feature.properties.location_id);
-      setSelectedProps(feature.properties);
-      layer.setStyle(styleFeature(feature));
-    });
-    layer.on("mouseover", () => {
-      setHoveredProps(feature.properties);
-      if (feature.properties.location_id !== selectedLocationIdRef.current) {
-        layer.setStyle({ weight: 2, color: "#000" });
-      }
-    });
-    layer.on("mouseout", () => {
-      setHoveredProps(null);
-      layer.setStyle(styleFeature(feature));
-    });
-  }, [styleFeature]);
-
-  useEffect(() => {
-    const gj = geoJsonRef.current;
-    if (!gj) return;
-    gj.eachLayer((layer) => {
-      if (layer?.feature) layer.setStyle(styleFeature(layer.feature));
-    });
-  }, [geojson, legend, selectedLocationId, styleFeature]);
+  const tileUrl = `http://localhost:8000/tiles/counties/{z}/{x}/{y}.mvt?measure_id=${selectedMeasureId}&year=${selectedYear}&data_value_type_id=${selectedType}`;
 
   return (
     <div
@@ -286,15 +285,16 @@ export default function App() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {geojson ? (
-            <GeoJSON
-              key={`geo-${renderVersion}`}
-              ref={geoJsonRef}
-              data={geojson}
-              style={styleFeature}
-              onEachFeature={handleEachFeature}
-            />
-          ) : null}
+          <CountyMvtLayer
+            baseUrl={tileUrl}
+            breaks={breaks}
+            selectedLocationId={selectedLocationId}
+            onHover={(props) => setHoveredProps(props)}
+            onSelect={(props) => {
+              setSelectedLocationId(props.location_id);
+              setSelectedProps(props);
+            }}
+          />
         </MapContainer>
       </div>
       {isLoading ? (
