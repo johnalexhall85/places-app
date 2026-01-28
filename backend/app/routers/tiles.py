@@ -1,3 +1,4 @@
+# backend/app/routers/tiles.py
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -21,21 +22,22 @@ def get_county_tiles(
     data_value_type_id: str = Query(default="CrdPrv"),
     db: Session = Depends(get_db),
 ) -> Response:
-    """
-    Returns a Mapbox Vector Tile (MVT) for county boundaries joined to PLACES data.
-    """
+    # NOTE:
+    # - Use SQLAlchemy "text()" with :named params (NOT %(...) or :year::int with a raw colon param).
+    # - Avoid GROUP BY issues by computing MVT + COUNT via scalar subselects.
+    # - Always return bytes for MVT. On error, return an empty tile (b"") but log the exception.
 
-    query = text(
+    sql = text(
         """
-        /* tiles_v2 */
+        /* tiles_v3 */
         WITH bounds AS (
             SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
         ),
         selected_measure AS (
-            SELECT id
+            SELECT id, measure_id, data_value_type_id
             FROM dim_measure
-            WHERE measure_id = :measure_id
-              AND data_value_type_id = :data_value_type_id
+            WHERE measure_id = (:measure_id)::text
+              AND data_value_type_id = (:data_value_type_id)::text
             LIMIT 1
         ),
         tile AS (
@@ -44,9 +46,9 @@ def get_county_tiles(
                 b.name,
                 c.state_abbr,
                 c.state_desc,
-                :measure_id::text AS measure_id,
-                :data_value_type_id::text AS data_value_type_id,
-                :year::int AS year,
+                sm.measure_id,
+                sm.data_value_type_id,
+                (:year)::int AS year,
                 f.data_value,
                 f.low_confidence_limit,
                 f.high_confidence_limit,
@@ -62,15 +64,12 @@ def get_county_tiles(
             LEFT JOIN selected_measure sm ON TRUE
             LEFT JOIN fact_estimate_county f
                 ON f.location_id = b.location_id
-                AND f.year = :year
-                AND f.measure_dim_id = sm.id
+               AND f.year = :year
+               AND f.measure_dim_id = sm.id
             LEFT JOIN dim_county c
                 ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
-              AND ST_Intersects(
-                    ST_Transform(b.geom, 3857),
-                    bounds.env_3857
-                  )
+              AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
         )
         SELECT
             COALESCE(
@@ -81,60 +80,61 @@ def get_county_tiles(
         """
     )
 
-        try:
-        result = db.execute(
-            query,
-            {
-                "z": z,
-                "x": x,
-                "y": y,
-                "measure_id": measure_id,
-                "data_value_type_id": data_value_type_id,
-                "year": year,
-            },
-        ).mappings().one()
+    params = {
+        "z": z,
+        "x": x,
+        "y": y,
+        "measure_id": measure_id,
+        "data_value_type_id": data_value_type_id or "CrdPrv",
+        "year": year,
+    }
+
+    try:
+        row = db.execute(sql, params).mappings().one()
+        tile_total = row.get("tile_total", 0)
+
+        mvt_data = row.get("mvt", b"")
+        if isinstance(mvt_data, memoryview):
+            mvt_bytes = mvt_data.tobytes()
+        elif isinstance(mvt_data, (bytes, bytearray)):
+            mvt_bytes = bytes(mvt_data)
+        elif isinstance(mvt_data, str):
+            # Shouldn't happen (we cast to bytea), but be safe.
+            mvt_bytes = mvt_data.encode("utf-8")
+        else:
+            mvt_bytes = b""
+
+        logger.info(
+            "County tile z=%s x=%s y=%s measure=%s year=%s type=%s rows=%s bytes=%s",
+            z,
+            x,
+            y,
+            measure_id,
+            year,
+            data_value_type_id or "CrdPrv",
+            tile_total,
+            len(mvt_bytes),
+        )
+
+        # Always respond with vector-tile protobuf
+        # (Leaflet VectorGrid is fine with application/x-protobuf)
+        if request.method == "HEAD":
+            return Response(content=b"", media_type="application/x-protobuf")
+
+        return Response(content=mvt_bytes, media_type="application/x-protobuf")
+
     except Exception:
         logger.exception(
             "Tile query failed z=%s x=%s y=%s measure=%s year=%s type=%s",
-            z, x, y, measure_id, year, data_value_type_id
+            z,
+            x,
+            y,
+            measure_id,
+            year,
+            data_value_type_id or "CrdPrv",
         )
-        # Return a *valid empty tile* so the map doesn't die.
-        # Still keep 200 so Leaflet won't treat it as fatal.
+        # Return an empty tile so the frontend doesn't crash,
+        # but the real error will be in the backend logs.
+        if request.method == "HEAD":
+            return Response(content=b"", media_type="application/x-protobuf")
         return Response(content=b"", media_type="application/x-protobuf")
-
-
-    tile_total = result["tile_total"]
-    mvt_data = result["mvt"]
-
-    if isinstance(mvt_data, memoryview):
-        mvt_bytes = mvt_data.tobytes()
-    elif isinstance(mvt_data, bytes):
-        mvt_bytes = mvt_data
-    else:
-        mvt_bytes = b""
-
-    logger.info(
-        "County tile %s/%s/%s measure=%s year=%s type=%s rows=%s bytes=%s",
-        z,
-        x,
-        y,
-        measure_id,
-        year,
-        data_value_type_id,
-        tile_total,
-        len(mvt_bytes),
-    )
-
-    response = Response(
-        content=mvt_bytes,
-        media_type="application/x-protobuf",
-    )
-
-    if request.method == "HEAD":
-        return Response(
-            content=b"",
-            status_code=response.status_code,
-            headers=dict(response.headers),
-        )
-
-    return response
