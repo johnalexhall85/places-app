@@ -23,7 +23,10 @@ def get_county_tiles(
 ) -> Response:
     query = text(
         """
-        WITH selected_measure AS (
+        WITH bounds AS (
+            SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
+        ),
+        selected_measure AS (
             SELECT
                 id,
                 measure_id,
@@ -32,9 +35,6 @@ def get_county_tiles(
             WHERE measure_id = :measure_id
                 AND data_value_type_id = :data_value_type_id
             LIMIT 1
-        ),
-        bounds AS (
-            SELECT ST_TileEnvelope(:z, :x, :y) AS env_3857
         ),
         tile AS (
             SELECT
@@ -57,12 +57,12 @@ def get_county_tiles(
                 ) AS geom
             FROM dim_county_boundary b
             CROSS JOIN bounds
-            LEFT JOIN dim_county c ON c.location_id = b.location_id
             LEFT JOIN selected_measure sm ON TRUE
             LEFT JOIN fact_estimate_county f
                 ON f.location_id = b.location_id
                 AND f.year = :year
                 AND f.measure_dim_id = sm.id
+            LEFT JOIN dim_county c ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
                 AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
         ),
@@ -86,11 +86,14 @@ def get_county_tiles(
             "year": year,
         },
     ).mappings().one()
-    logger.debug(
-        "County tile %s/%s/%s produced %s rows",
+    logger.info(
+        "County tile %s/%s/%s measure=%s year=%s type=%s rows=%s",
         z,
         x,
         y,
+        measure_id,
+        year,
+        data_value_type_id or "CrdPrv",
         result["tile_total"],
     )
     mvt_data = result["mvt"]
