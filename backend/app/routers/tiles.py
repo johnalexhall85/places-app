@@ -1,15 +1,3 @@
-import logging
-
-from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-
-from app.db import get_db
-
-router = APIRouter(tags=["tiles"])
-logger = logging.getLogger(__name__)
-
-
 @router.api_route("/tiles/counties/{z}/{x}/{y}.mvt", methods=["GET", "HEAD"])
 def get_county_tiles(
     z: int,
@@ -63,16 +51,16 @@ def get_county_tiles(
             LEFT JOIN dim_county c ON c.location_id = b.location_id
             WHERE b.geom IS NOT NULL
               AND ST_Intersects(ST_Transform(b.geom, 3857), bounds.env_3857)
-        ),
-        tile_count AS (
-            SELECT COUNT(*) AS total FROM tile
         )
         SELECT
-            COALESCE(ST_AsMVT(tile, 'counties', 4096, 'geom'), ''::bytea) AS mvt,
-            tile_count.total AS tile_total
-        FROM tile, tile_count
+            COALESCE(
+                (SELECT ST_AsMVT(t, 'counties', 4096, 'geom') FROM tile t),
+                ''::bytea
+            ) AS mvt,
+            (SELECT COUNT(*) FROM tile) AS tile_total
         """
     )
+
     result = db.execute(
         query,
         {
@@ -84,6 +72,7 @@ def get_county_tiles(
             "year": year,
         },
     ).mappings().one()
+
     logger.info(
         "County tile %s/%s/%s measure=%s year=%s type=%s rows=%s",
         z,
@@ -94,13 +83,15 @@ def get_county_tiles(
         data_value_type_id or "CrdPrv",
         result["tile_total"],
     )
+
     mvt_data = result["mvt"]
     if isinstance(mvt_data, memoryview):
         mvt_bytes = mvt_data.tobytes()
     elif isinstance(mvt_data, str):
-        mvt_bytes = b""
+        mvt_bytes = mvt_data.encode("utf-8")
     else:
         mvt_bytes = mvt_data or b""
+
     logger.info(
         "County tile %s/%s/%s rows=%s bytes=%s",
         z,
@@ -109,6 +100,7 @@ def get_county_tiles(
         result["tile_total"],
         len(mvt_bytes),
     )
+
     response = Response(content=mvt_bytes, media_type="application/x-protobuf")
     if request.method == "HEAD":
         return Response(
