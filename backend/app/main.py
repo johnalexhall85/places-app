@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 # import your routers (adjust these imports to match your project)
+from app.db import get_db
 from app.routers import county_boundaries, geojson, legend, measures, state_geojson, tiles
 
 app = FastAPI()
@@ -17,6 +20,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/debug/cors")
+def debug_cors():
+    return {"ok": True}
+
+
+@app.get("/debug/db/states_table")
+def debug_states_table(db: Session = Depends(get_db)):
+    query = text(
+        """
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'states'
+        ORDER BY ordinal_position
+        """
+    )
+    rows = db.execute(query).mappings().all()
+    return {"columns": rows}
 
 # Include routers AFTER middleware is added
 app.include_router(measures.router)
