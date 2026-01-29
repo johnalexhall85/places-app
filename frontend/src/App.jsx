@@ -41,7 +41,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const geoJsonRef = useRef(null);
-  const selectedLocationIdRef = useRef(null);
+  const selectedLayerRef = useRef(null);
 
   const yearOptions = useMemo(() => {
     // TODO: Derive years from backend data when available.
@@ -148,57 +148,81 @@ export default function App() {
     };
   }, [selectedMeasureId, selectedYear, selectedType]);
 
-  useEffect(() => {
-    selectedLocationIdRef.current = selectedLocationId;
-  }, [selectedLocationId]);
-
   const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
   const features = geojson?.features ?? [];
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
-  const styleFeature = useCallback(
+  const countyBaseStyle = useCallback(
     (feature) => {
       const value = feature?.properties?.data_value ?? null;
       const fillColor = getColor(value, legend?.breaks ?? []);
-      const isSelected =
-        feature?.properties?.location_id === selectedLocationId;
-
       return {
-        color: isSelected ? "#000" : "#555",
-        weight: isSelected ? 3 : 1,
+        color: "#555",
+        weight: 1,
         fillColor,
         fillOpacity: 0.7,
       };
     },
-    [legend?.breaks, selectedLocationId]
+    [legend?.breaks]
   );
 
-  const handleEachFeature = useCallback((feature, layer) => {
-    layer.on("click", () => {
+  const handleCountyClick = useCallback(
+    (feature, layer) => {
+      const geoJsonLayer = geoJsonRef.current;
+      if (!geoJsonLayer) return;
+      if (selectedLayerRef.current && selectedLayerRef.current !== layer) {
+        geoJsonLayer.resetStyle(selectedLayerRef.current);
+      }
+      selectedLayerRef.current = layer;
       setSelectedLocationId(feature.properties.location_id);
       setSelectedProps(feature.properties);
-      layer.setStyle(styleFeature(feature));
-    });
-    layer.on("mouseover", () => {
-      setHoveredProps(feature.properties);
-      if (feature.properties.location_id !== selectedLocationIdRef.current) {
-        layer.setStyle({ weight: 2, color: "#000" });
-      }
-    });
-    layer.on("mouseout", () => {
-      setHoveredProps(null);
-      layer.setStyle(styleFeature(feature));
-    });
-  }, [styleFeature]);
+      layer.setStyle({ color: "orange", weight: 3 });
+    },
+    [setSelectedLocationId, setSelectedProps]
+  );
+
+  const handleEachFeature = useCallback(
+    (feature, layer) => {
+      layer.on("click", () => {
+        handleCountyClick(feature, layer);
+      });
+      layer.on("mouseover", () => {
+        setHoveredProps(feature.properties);
+        if (selectedLayerRef.current !== layer) {
+          layer.setStyle({ weight: 2, color: "#000" });
+        }
+      });
+      layer.on("mouseout", () => {
+        setHoveredProps(null);
+        if (selectedLayerRef.current === layer) {
+          layer.setStyle({ color: "orange", weight: 3 });
+        } else if (geoJsonRef.current) {
+          geoJsonRef.current.resetStyle(layer);
+        }
+      });
+    },
+    [handleCountyClick]
+  );
 
   useEffect(() => {
     const gj = geoJsonRef.current;
     if (!gj) return;
     gj.eachLayer((layer) => {
-      if (layer?.feature) layer.setStyle(styleFeature(layer.feature));
+      if (layer?.feature) {
+        gj.resetStyle(layer);
+      }
     });
-  }, [geojson, legend, selectedLocationId, styleFeature]);
+    if (selectedLayerRef.current) {
+      selectedLayerRef.current.setStyle({ color: "orange", weight: 3 });
+    }
+  }, [geojson, legend, countyBaseStyle]);
+
+  useEffect(() => {
+    selectedLayerRef.current = null;
+    setSelectedLocationId(null);
+    setSelectedProps(null);
+  }, [geojson]);
 
   return (
     <div
@@ -291,7 +315,7 @@ export default function App() {
               key={`geo-${renderVersion}`}
               ref={geoJsonRef}
               data={geojson}
-              style={styleFeature}
+              style={countyBaseStyle}
               onEachFeature={handleEachFeature}
             />
           ) : null}
