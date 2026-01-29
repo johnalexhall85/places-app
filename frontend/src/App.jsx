@@ -1,28 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer } from "react-leaflet";
-import StateLayer from "./StateLayer";
+import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
+import CountiesChoropleth from "./layers/CountiesChoropleth";
+import StatesChoropleth from "./layers/StatesChoropleth";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
-const NO_DATA_COLOR = "#eee";
-
-function getColor(value, breaks) {
-  if (value == null || !Array.isArray(breaks) || breaks.length < 2) {
-    return NO_DATA_COLOR;
-  }
-
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
-    return NO_DATA_COLOR;
-  }
-
-  for (let i = 0; i < breaks.length - 1; i += 1) {
-    if (numericValue >= breaks[i] && numericValue <= breaks[i + 1]) {
-      return COLORS[i] ?? COLORS[COLORS.length - 1];
-    }
-  }
-
-  return COLORS[COLORS.length - 1];
-}
+const NO_DATA_COLOR = "#e2e8f0";
+const ZOOM_THRESHOLD = 6;
 
 function formatRange(min, max) {
   return `${min} – ${max}`;
@@ -33,13 +16,10 @@ export default function App() {
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [selectedYear, setSelectedYear] = useState(2023);
   const [selectedType, setSelectedType] = useState("CrdPrv");
-  const [legend, setLegend] = useState(null);
-  const [stateGeojson, setStateGeojson] = useState(null);
-  const [selectedStateAbbr, setSelectedStateAbbr] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
   const [hoveredProps, setHoveredProps] = useState(null);
-  const [legendLoading, setLegendLoading] = useState(false);
-  const [geojsonLoading, setGeojsonLoading] = useState(false);
+  const [legendBreaks, setLegendBreaks] = useState([]);
+  const [zoom, setZoom] = useState(4);
   const [error, setError] = useState(null);
 
   const yearOptions = useMemo(() => {
@@ -84,102 +64,37 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    setLegendLoading(true);
-    setError(null);
-    setSelectedStateAbbr(null);
-    setSelectedProps(null);
-
-    const legendUrl = new URL("http://localhost:8000/legend");
-    legendUrl.searchParams.set("measure_id", selectedMeasureId);
-    legendUrl.searchParams.set("year", String(selectedYear));
-    legendUrl.searchParams.set("data_value_type_id", selectedType);
-    legendUrl.searchParams.set("bins", "5");
-
-    fetch(legendUrl)
-      .then(async (response) => {
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(
-            `Legend request failed (${response.status}): ${body || "No body"}`
-          );
-        }
-        return response.json();
-      })
-      .then((legendData) => {
-        if (!isMounted) return;
-        setLegend(legendData);
-      })
-      .catch((errorResponse) => {
-        if (!isMounted) return;
-        console.error(errorResponse);
-        setError(
-          errorResponse.message ??
-            "Failed to load map data (possible CORS issue)."
-        );
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setLegendLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedMeasureId, selectedYear, selectedType]);
-
-  useEffect(() => {
-    let isMounted = true;
-    setGeojsonLoading(true);
-    setError(null);
-    setSelectedStateAbbr(null);
     setSelectedProps(null);
     setHoveredProps(null);
-
-    const statesUrl = new URL("http://localhost:8000/geojson/states");
-    statesUrl.searchParams.set("measure_id", selectedMeasureId);
-    statesUrl.searchParams.set("year", String(selectedYear));
-    statesUrl.searchParams.set("data_value_type_id", selectedType);
-
-    fetch(statesUrl)
-      .then(async (response) => {
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(
-            `State GeoJSON request failed (${response.status}): ${
-              body || "No body"
-            }`
-          );
-        }
-        return response.json();
-      })
-      .then((geojson) => {
-        if (!isMounted) return;
-        setStateGeojson(geojson);
-      })
-      .catch((errorResponse) => {
-        if (!isMounted) return;
-        console.error(errorResponse);
-        setError(
-          errorResponse.message ??
-            "Failed to load state GeoJSON (possible CORS issue)."
-        );
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setGeojsonLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    setLegendBreaks([]);
+    setError(null);
   }, [selectedMeasureId, selectedYear, selectedType]);
 
-  const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
+  const breaks = useMemo(() => legendBreaks ?? [], [legendBreaks]);
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
-  const isLoading = legendLoading || geojsonLoading;
+  const isLoading = false;
+
+  const params = useMemo(
+    () => ({
+      measure_id: selectedMeasureId,
+      year: selectedYear,
+      data_value_type_id: selectedType,
+    }),
+    [selectedMeasureId, selectedYear, selectedType]
+  );
+
+  function MapEvents() {
+    useMapEvents({
+      zoomend(event) {
+        setZoom(event.target.getZoom());
+      },
+    });
+    return null;
+  }
+
+  const showingCounties = zoom >= ZOOM_THRESHOLD;
 
   return (
     <div
@@ -263,19 +178,31 @@ export default function App() {
       </div>
       <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
         <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%" }}>
+          <MapEvents />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <StateLayer
-            data={stateGeojson}
-            breaks={breaks}
-            selectedStateAbbr={selectedStateAbbr}
-            getColor={getColor}
+          <StatesChoropleth
+            params={params}
+            enabled={!showingCounties}
             onHover={(props) => setHoveredProps(props)}
-            onSelect={(props) => {
-              setSelectedStateAbbr(props.state_abbr);
-              setSelectedProps(props);
+            onSelect={(props) => setSelectedProps(props)}
+            onBreaks={(incomingBreaks) => {
+              if (!showingCounties) {
+                setLegendBreaks(incomingBreaks);
+              }
+            }}
+          />
+          <CountiesChoropleth
+            params={params}
+            enabled={showingCounties}
+            onHover={(props) => setHoveredProps(props)}
+            onSelect={(props) => setSelectedProps(props)}
+            onBreaks={(incomingBreaks) => {
+              if (showingCounties) {
+                setLegendBreaks(incomingBreaks);
+              }
             }}
           />
         </MapContainer>
@@ -365,39 +292,40 @@ export default function App() {
             gap: 6,
           }}
         >
-          <div style={{ fontWeight: 600 }}>Hovered state</div>
+          <div style={{ fontWeight: 600 }}>
+            Hovered {showingCounties ? "county" : "state"}
+          </div>
           {hoveredProps ? (
             <>
               <div>
-                {hoveredProps.state_desc ??
+                {hoveredProps.name ??
+                  hoveredProps.state_desc ??
                   hoveredProps.state_abbr ??
-                  "Unknown State"}
+                  "Unknown"}
               </div>
-              <div>Value: {hoveredProps.data_value ?? "No data"}</div>
+              <div>Value: {hoveredProps.value ?? "No data"}</div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Hover a state.</div>
+            <div style={{ color: "#64748b" }}>Hover an area.</div>
           )}
-          <div style={{ fontWeight: 600 }}>Selected state</div>
+          <div style={{ fontWeight: 600 }}>
+            Selected {showingCounties ? "county" : "state"}
+          </div>
           {selectedProps ? (
             <>
               <div>
-                {selectedProps.state_desc ??
+                {selectedProps.name ??
+                  selectedProps.state_desc ??
                   selectedProps.state_abbr ??
-                  "Unknown State"}
+                  "Unknown"}
               </div>
-              <div>Value: {selectedProps.data_value ?? "No data"}</div>
-              <div>Year: {selectedProps.year ?? selectedYear}</div>
-              <div>Measure: {selectedProps.measure_id ?? selectedMeasureId}</div>
-              <div>
-                Data value type:{" "}
-                {selectedProps.data_value_type ??
-                  selectedProps.data_value_type_id ??
-                  selectedType}
-              </div>
+              <div>Value: {selectedProps.value ?? "No data"}</div>
+              <div>Year: {selectedYear}</div>
+              <div>Measure: {selectedMeasureId}</div>
+              <div>Data value type: {selectedType}</div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Click a state.</div>
+            <div style={{ color: "#64748b" }}>Click an area.</div>
           )}
         </div>
       </div>
