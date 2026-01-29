@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet.vectorgrid";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer } from "react-leaflet";
+import StateLayer from "./StateLayer";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#eee";
@@ -29,157 +28,18 @@ function formatRange(min, max) {
   return `${min} – ${max}`;
 }
 
-function CountyMvtLayer({
-  baseUrl,
-  breaks,
-  selectedLocationId,
-  onHover,
-  onSelect,
-}) {
-  const map = useMap();
-  const layerRef = useRef(null);
-  const hoveredIdRef = useRef(null);
-  const hoveredPropsRef = useRef(null);
-  const onHoverRef = useRef(onHover);
-  const onSelectRef = useRef(onSelect);
-  const styleForPropsRef = useRef(null);
-  const hoverStyleForPropsRef = useRef(null);
-
-  useEffect(() => {
-    onHoverRef.current = onHover;
-    onSelectRef.current = onSelect;
-  }, [onHover, onSelect]);
-
-  const styleForProps = useCallback(
-    (props) => {
-      const value = props?.data_value ?? null;
-      const fillColor = getColor(value, breaks);
-      const isSelected = props?.location_id === selectedLocationId;
-      return {
-        fill: true,
-        fillColor,
-        fillOpacity: 0.7,
-        color: isSelected ? "#111827" : "#64748b",
-        weight: isSelected ? 3 : 1,
-      };
-    },
-    [breaks, selectedLocationId]
-  );
-
-  const hoverStyleForProps = useCallback(
-    (props) => ({
-      ...styleForProps(props),
-      color: "#0f172a",
-      weight: 3,
-      fillOpacity: 0.9,
-    }),
-    [styleForProps]
-  );
-
-  useEffect(() => {
-    styleForPropsRef.current = styleForProps;
-    hoverStyleForPropsRef.current = hoverStyleForProps;
-  }, [styleForProps, hoverStyleForProps]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    if (layerRef.current) {
-      layerRef.current.removeFrom(map);
-      layerRef.current = null;
-    }
-
-    const vectorTileOptions = {
-      rendererFactory: L.canvas.tile,
-      interactive: true,
-      vectorTileLayerStyles: {
-        counties: (props) => styleForPropsRef.current?.(props),
-      },
-      getFeatureId: (feature) => feature?.properties?.location_id,
-    };
-
-    const layer = L.vectorGrid.protobuf(baseUrl, vectorTileOptions);
-    if (!layer.setVectorTileLayerStyles) {
-      layer.setVectorTileLayerStyles = function setVectorTileLayerStyles(
-        styles
-      ) {
-        this.options.vectorTileLayerStyles = {
-          ...this.options.vectorTileLayerStyles,
-          ...styles,
-        };
-        return this;
-      };
-    }
-
-    layer.on("mouseover", (event) => {
-      const props = event?.layer?.properties;
-      const featureId = props?.location_id;
-      if (featureId == null) return;
-      if (hoveredIdRef.current === featureId) return;
-      hoveredIdRef.current = featureId;
-      hoveredPropsRef.current = props;
-      layer.setFeatureStyle(
-        featureId,
-        hoverStyleForPropsRef.current?.(props)
-      );
-      onHoverRef.current?.(props);
-    });
-    layer.on("mouseout", (event) => {
-      const props = event?.layer?.properties;
-      const featureId = props?.location_id;
-      if (featureId != null) {
-        layer.resetFeatureStyle(featureId);
-      }
-      hoveredIdRef.current = null;
-      hoveredPropsRef.current = null;
-      onHoverRef.current?.(null);
-    });
-    layer.on("click", (event) => {
-      const props = event?.layer?.properties;
-      if (props) {
-        onSelectRef.current?.(props);
-      }
-    });
-
-    layer.addTo(map);
-    layerRef.current = layer;
-
-    return () => {
-      if (layerRef.current) {
-        layerRef.current.removeFrom(map);
-        layerRef.current = null;
-      }
-    };
-  }, [map, baseUrl]);
-
-  useEffect(() => {
-    if (!layerRef.current) return;
-    layerRef.current.setVectorTileLayerStyles({
-      counties: (props) => styleForProps(props),
-    });
-    layerRef.current.redraw();
-
-    if (hoveredIdRef.current != null && hoveredPropsRef.current) {
-      layerRef.current.setFeatureStyle(
-        hoveredIdRef.current,
-        hoverStyleForProps(hoveredPropsRef.current)
-      );
-    }
-  }, [styleForProps, hoverStyleForProps]);
-
-  return null;
-}
-
 export default function App() {
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [selectedYear, setSelectedYear] = useState(2023);
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  const [stateGeojson, setStateGeojson] = useState(null);
+  const [selectedStateAbbr, setSelectedStateAbbr] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
   const [hoveredProps, setHoveredProps] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [legendLoading, setLegendLoading] = useState(false);
+  const [geojsonLoading, setGeojsonLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const yearOptions = useMemo(() => {
@@ -225,9 +85,9 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
-    setIsLoading(true);
+    setLegendLoading(true);
     setError(null);
-    setSelectedLocationId(null);
+    setSelectedStateAbbr(null);
     setSelectedProps(null);
 
     const legendUrl = new URL("http://localhost:8000/legend");
@@ -260,7 +120,54 @@ export default function App() {
       })
       .finally(() => {
         if (!isMounted) return;
-        setIsLoading(false);
+        setLegendLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedMeasureId, selectedYear, selectedType]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setGeojsonLoading(true);
+    setError(null);
+    setSelectedStateAbbr(null);
+    setSelectedProps(null);
+    setHoveredProps(null);
+
+    const statesUrl = new URL("http://localhost:8000/geojson/states");
+    statesUrl.searchParams.set("measure_id", selectedMeasureId);
+    statesUrl.searchParams.set("year", String(selectedYear));
+    statesUrl.searchParams.set("data_value_type_id", selectedType);
+
+    fetch(statesUrl)
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `State GeoJSON request failed (${response.status}): ${
+              body || "No body"
+            }`
+          );
+        }
+        return response.json();
+      })
+      .then((geojson) => {
+        if (!isMounted) return;
+        setStateGeojson(geojson);
+      })
+      .catch((errorResponse) => {
+        if (!isMounted) return;
+        console.error(errorResponse);
+        setError(
+          errorResponse.message ??
+            "Failed to load state GeoJSON (possible CORS issue)."
+        );
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setGeojsonLoading(false);
       });
 
     return () => {
@@ -272,7 +179,7 @@ export default function App() {
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
-  const tileUrl = `http://localhost:8000/tiles/counties/{z}/{x}/{y}.mvt?measure_id=${selectedMeasureId}&year=${selectedYear}&data_value_type_id=${selectedType}`;
+  const isLoading = legendLoading || geojsonLoading;
 
   return (
     <div
@@ -360,13 +267,14 @@ export default function App() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <CountyMvtLayer
-            baseUrl={tileUrl}
+          <StateLayer
+            data={stateGeojson}
             breaks={breaks}
-            selectedLocationId={selectedLocationId}
+            selectedStateAbbr={selectedStateAbbr}
+            getColor={getColor}
             onHover={(props) => setHoveredProps(props)}
             onSelect={(props) => {
-              setSelectedLocationId(props.location_id);
+              setSelectedStateAbbr(props.state_abbr);
               setSelectedProps(props);
             }}
           />
@@ -457,30 +365,26 @@ export default function App() {
             gap: 6,
           }}
         >
-          <div style={{ fontWeight: 600 }}>Hovered county</div>
+          <div style={{ fontWeight: 600 }}>Hovered state</div>
           {hoveredProps ? (
             <>
               <div>
-                {hoveredProps.name ??
-                  hoveredProps.county_name ??
-                  "Unknown County"}
-                {", "}
-                {hoveredProps.state_abbr ?? hoveredProps.state_desc ?? ""}
+                {hoveredProps.state_desc ??
+                  hoveredProps.state_abbr ??
+                  "Unknown State"}
               </div>
               <div>Value: {hoveredProps.data_value ?? "No data"}</div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Hover a county.</div>
+            <div style={{ color: "#64748b" }}>Hover a state.</div>
           )}
-          <div style={{ fontWeight: 600 }}>Selected county</div>
+          <div style={{ fontWeight: 600 }}>Selected state</div>
           {selectedProps ? (
             <>
               <div>
-                {selectedProps.name ??
-                  selectedProps.county_name ??
-                  "Unknown County"}
-                {", "}
-                {selectedProps.state_abbr ?? selectedProps.state_desc ?? ""}
+                {selectedProps.state_desc ??
+                  selectedProps.state_abbr ??
+                  "Unknown State"}
               </div>
               <div>Value: {selectedProps.data_value ?? "No data"}</div>
               <div>Year: {selectedProps.year ?? selectedYear}</div>
@@ -493,7 +397,7 @@ export default function App() {
               </div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Click a county.</div>
+            <div style={{ color: "#64748b" }}>Click a state.</div>
           )}
         </div>
       </div>
