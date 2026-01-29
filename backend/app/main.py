@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # import your routers (adjust these imports to match your project)
-from app.routers import measures, legend, tiles, county_boundaries
+from app.routers import county_boundaries, geojson, legend, measures, tiles
 
 app = FastAPI()
 
@@ -23,3 +23,4 @@ app.include_router(measures.router)
 app.include_router(legend.router)
 app.include_router(tiles.router)
 app.include_router(county_boundaries.router)
+app.include_router(geojson.router)
