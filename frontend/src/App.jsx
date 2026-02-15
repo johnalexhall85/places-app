@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
+import { GeoJSON, MapContainer, Pane, TileLayer } from "react-leaflet";
 
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#eee";
@@ -34,6 +34,7 @@ export default function App() {
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [legend, setLegend] = useState(null);
   const [geojson, setGeojson] = useState(null);
+  const [stateGeojson, setStateGeojson] = useState(null);
   const [renderVersion, setRenderVersion] = useState(0);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [selectedProps, setSelectedProps] = useState(null);
@@ -148,6 +149,33 @@ export default function App() {
     };
   }, [selectedMeasureId, selectedYear, selectedType]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("http://localhost:8000/states/boundaries/geojson?simplify=0.02")
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `State boundary request failed (${response.status}): ${body || "No body"}`
+          );
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!isMounted) return;
+        setStateGeojson(data);
+      })
+      .catch((stateError) => {
+        if (!isMounted) return;
+        console.warn(stateError);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
   const features = geojson?.features ?? [];
   const selectedMeasure = measures.find(
@@ -166,6 +194,15 @@ export default function App() {
     },
     [legend?.breaks]
   );
+
+  const stateBoundaryStyle = useCallback(() => {
+    return {
+      color: "#3b0764",
+      weight: 2,
+      opacity: 0.95,
+      fill: false,
+    };
+  }, []);
 
   const handleCountyClick = useCallback(
     (feature, layer) => {
@@ -318,6 +355,17 @@ export default function App() {
               style={countyBaseStyle}
               onEachFeature={handleEachFeature}
             />
+          ) : null}
+          {stateGeojson ? (
+            <Pane name="state-boundaries-pane" style={{ zIndex: 650 }}>
+              <GeoJSON
+                key="state-boundaries"
+                data={stateGeojson}
+                style={stateBoundaryStyle}
+                interactive={false}
+                pane="state-boundaries-pane"
+              />
+            </Pane>
           ) : null}
         </MapContainer>
       </div>
