@@ -28,7 +28,15 @@ from app.db import Base
 from app import models  # noqa: F401
 target_metadata = Base.metadata
 
-TARGET_TABLES = {"dim_county", "dim_measure", "fact_estimate_county", "alembic_version"}
+TARGET_TABLES = {
+    "dim_county",
+    "dim_county_boundary",
+    "dim_measure",
+    "fact_estimate_county",
+    "tract_shapes",
+    "tract_estimates",
+    "alembic_version",
+}
 
 def include_object(object, name, type_, reflected, compare_to):
     # Only include our app tables in autogenerate.

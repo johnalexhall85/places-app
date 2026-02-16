@@ -90,3 +90,43 @@ class FactEstimateCounty(Base):
 
     county = relationship("DimCounty", back_populates="estimates")
     measure = relationship("DimMeasure", back_populates="estimates")
+
+
+class TractShape(Base):
+    __tablename__ = "tract_shapes"
+
+    geoid11 = Column(String(11), primary_key=True)
+    statefp = Column(String(2), nullable=False)
+    countyfp = Column(String(3), nullable=False)
+    tractce = Column(String(6), nullable=False)
+    name = Column(String, nullable=True)
+
+    geom = Column(Geometry("MULTIPOLYGON", srid=4326), nullable=False)
+
+
+class TractEstimate(Base):
+    __tablename__ = "tract_estimates"
+
+    year = Column(Integer, primary_key=True)
+    locationid = Column(String(11), primary_key=True)
+    measure_id = Column(String, primary_key=True)
+    data_value_type_id = Column(String, primary_key=True)
+
+    state_abbr = Column(String(2), nullable=True)
+    state_desc = Column(String, nullable=True)
+    county_name = Column(String, nullable=True)
+    county_fips = Column(String(5), nullable=True)
+    location_name = Column(String(11), nullable=True)
+    data_source = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    category_id = Column(String, nullable=True)
+    measure = Column(String, nullable=True)
+    data_value_unit = Column(String, nullable=True)
+    data_value_type = Column(String, nullable=True)
+    data_value = Column(Float, nullable=True)
+    low_confidence_limit = Column(Float, nullable=True)
+    high_confidence_limit = Column(Float, nullable=True)
+    total_population = Column(BigInteger, nullable=True)
+    total_pop_18_plus = Column(BigInteger, nullable=True)
+    short_question_text = Column(String, nullable=True)
+    geolocation = Column(Geometry("POINT", srid=4326), nullable=True)

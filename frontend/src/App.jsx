@@ -1,8 +1,72 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GeoJSON, MapContainer, Pane, TileLayer } from "react-leaflet";
+import {
+  GeoJSON,
+  MapContainer,
+  Pane,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 
+const API_BASE = "http://localhost:8000";
+const DEFAULT_CENTER = [39.5, -98.35];
+const DEFAULT_ZOOM = 4;
+const TRACT_ZOOM = 10;
+const BBOX_PRECISION = 4;
+const BIN_COUNT = 5;
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#eee";
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const VIEWPORT_DEBOUNCE_MS = 200;
+
+function quantile(sortedValues, q) {
+  if (sortedValues.length === 0) return null;
+  if (sortedValues.length === 1) return sortedValues[0];
+  const position = (sortedValues.length - 1) * q;
+  const base = Math.floor(position);
+  const rest = position - base;
+  const lower = sortedValues[base];
+  const upper = sortedValues[base + 1] ?? lower;
+  return lower + rest * (upper - lower);
+}
+
+function computeBreaks(values, bins = BIN_COUNT) {
+  const numeric = values
+    .map((value) => Number(value))
+    .filter((value) => !Number.isNaN(value))
+    .sort((a, b) => a - b);
+
+  if (numeric.length === 0) {
+    return [];
+  }
+
+  const breaks = [];
+  for (let i = 0; i <= bins; i += 1) {
+    breaks.push(quantile(numeric, i / bins));
+  }
+
+  const deduped = [breaks[0]];
+  for (let i = 1; i < breaks.length; i += 1) {
+    const current = breaks[i];
+    const last = deduped[deduped.length - 1];
+    if (current > last) {
+      deduped.push(current);
+    }
+  }
+
+  if (deduped.length < 2) {
+    deduped.push(deduped[0]);
+  }
+
+  return deduped;
+}
+
+function getValueFromProperties(properties) {
+  if (!properties) return null;
+  if (properties.value != null) return properties.value;
+  if (properties.data_value != null) return properties.data_value;
+  return null;
+}
 
 function getColor(value, breaks) {
   if (value == null || !Array.isArray(breaks) || breaks.length < 2) {
@@ -24,7 +88,136 @@ function getColor(value, breaks) {
 }
 
 function formatRange(min, max) {
-  return `${min} – ${max}`;
+  if (min == null || max == null) return "No data";
+  return `${Number(min).toFixed(1)} - ${Number(max).toFixed(1)}`;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function boundsToPaddedBbox(bounds, zoom) {
+  const west = bounds.getWest();
+  const south = bounds.getSouth();
+  const east = bounds.getEast();
+  const north = bounds.getNorth();
+
+  const dx = east - west;
+  const dy = north - south;
+  const padX = dx * 0.15;
+  const padY = dy * 0.15;
+
+  const paddedWest = clamp(west - padX, -180, 180);
+  const paddedSouth = clamp(south - padY, -90, 90);
+  const paddedEast = clamp(east + padX, -180, 180);
+  const paddedNorth = clamp(north + padY, -90, 90);
+
+  void zoom;
+  return [
+    paddedWest.toFixed(BBOX_PRECISION),
+    paddedSouth.toFixed(BBOX_PRECISION),
+    paddedEast.toFixed(BBOX_PRECISION),
+    paddedNorth.toFixed(BBOX_PRECISION),
+  ].join(",");
+}
+
+function makeCacheKey(layer, year, measureId, typeId, bboxString) {
+  return `${layer}|${year}|${measureId}|${typeId}|${bboxString}`;
+}
+
+function parseErrorBody(response) {
+  return response
+    .text()
+    .then((body) => body || "No body")
+    .catch(() => "No body");
+}
+
+function MapViewportWatcher({ onViewportChange }) {
+  const map = useMapEvents({
+    moveend() {
+      onViewportChange(map.getZoom(), map.getBounds());
+    },
+    zoomend() {
+      requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+      });
+      onViewportChange(map.getZoom(), map.getBounds());
+    },
+    resize() {
+      requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+      });
+    },
+  });
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false });
+    });
+    onViewportChange(map.getZoom(), map.getBounds());
+  }, [map, onViewportChange]);
+
+  return null;
+}
+
+function MapToolbar({ defaultCenter, defaultZoom }) {
+  const map = useMap();
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 16,
+        left: 16,
+        zIndex: 2200,
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => map.setView(defaultCenter, defaultZoom)}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid #cbd5e1",
+          background: "white",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Home
+      </button>
+      <button
+        type="button"
+        onClick={() => map.zoomIn()}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid #cbd5e1",
+          background: "white",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Zoom In
+      </button>
+      <button
+        type="button"
+        onClick={() => map.zoomOut()}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid #cbd5e1",
+          background: "white",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Zoom Out
+      </button>
+    </div>
+  );
 }
 
 export default function App() {
@@ -32,27 +225,93 @@ export default function App() {
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [selectedYear, setSelectedYear] = useState(2023);
   const [selectedType, setSelectedType] = useState("CrdPrv");
-  const [legend, setLegend] = useState(null);
-  const [geojson, setGeojson] = useState(null);
-  const [stateGeojson, setStateGeojson] = useState(null);
-  const [renderVersion, setRenderVersion] = useState(0);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
+
+  const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
+  const [bbox, setBbox] = useState(null);
+
+  const [countyGeojson, setCountyGeojson] = useState(null);
+  const [tractGeojson, setTractGeojson] = useState(null);
+  const [countyBoundaryOverlay, setCountyBoundaryOverlay] = useState(null);
+
   const [selectedProps, setSelectedProps] = useState(null);
   const [hoveredProps, setHoveredProps] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isCountyLoading, setIsCountyLoading] = useState(false);
+  const [isTractLoading, setIsTractLoading] = useState(false);
+  const [isOutlineLoading, setIsOutlineLoading] = useState(false);
   const [error, setError] = useState(null);
+
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
+  
+  // Per-layer request tracking
+  const latestCountyReqRef = useRef(0);
+  const latestTractReqRef = useRef(0);
+  const latestOutlineReqRef = useRef(0);
+  
+  // Per-layer abort controllers
+  const countyAbortRef = useRef(null);
+  const tractAbortRef = useRef(null);
+  const outlineAbortRef = useRef(null);
+  
+  // Caching
+  const cacheRef = useRef(new Map()); // { key: { data, ts } }
+  const inflightRef = useRef(new Map()); // { key: Promise }
+  
+  // Viewport debouncing
+  const viewportDebounceRef = useRef(null);
+  const pendingViewportRef = useRef(null);
 
-  const yearOptions = useMemo(() => {
-    // TODO: Derive years from backend data when available.
-    return [2023];
+  const yearOptions = useMemo(() => [2023], []);
+  const tractsActive = mapZoom >= TRACT_ZOOM;
+  const selectedMeasure = measures.find(
+    (measure) => measure.measure_id === selectedMeasureId
+  );
+
+  const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
+  const activeFeatures = activeGeojson?.features ?? [];
+
+  // Cache helper functions
+  const getCached = useCallback((key) => {
+    const entry = cacheRef.current.get(key);
+    if (!entry) return null;
+    const { data, ts } = entry;
+    if (Date.now() - ts > CACHE_TTL_MS) {
+      cacheRef.current.delete(key);
+      return null;
+    }
+    return data;
   }, []);
+
+  const setCached = useCallback((key, data) => {
+    cacheRef.current.set(key, { data, ts: Date.now() });
+  }, []);
+
+  const fetchWithDedupe = useCallback(async (key, fetcher) => {
+    // If already inflight, return existing promise
+    if (inflightRef.current.has(key)) {
+      return inflightRef.current.get(key);
+    }
+
+    // Create new promise
+    const promise = fetcher()
+      .finally(() => {
+        inflightRef.current.delete(key);
+      });
+
+    inflightRef.current.set(key, promise);
+    return promise;
+  }, []);
+
+  const breaks = useMemo(() => {
+    return computeBreaks(
+      activeFeatures.map((feature) => getValueFromProperties(feature.properties))
+    );
+  }, [activeFeatures]);
 
   useEffect(() => {
     let isMounted = true;
 
-    fetch("http://localhost:8000/measures")
+    fetch(`${API_BASE}/measures`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to load measures.");
@@ -67,8 +326,7 @@ export default function App() {
             byId.set(measure.measure_id, measure);
           }
         }
-        const deduped = Array.from(byId.values());
-        const sorted = deduped.sort((a, b) => {
+        const sorted = Array.from(byId.values()).sort((a, b) => {
           const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
           const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
           return labelA.localeCompare(labelB);
@@ -85,181 +343,376 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-    setSelectedLocationId(null);
-    setSelectedProps(null);
+  const fetchCountyChoropleth = useCallback(
+    async (bboxValue) => {
+      const url = new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
+      url.searchParams.set("measure_id", selectedMeasureId);
+      url.searchParams.set("year", String(selectedYear));
+      url.searchParams.set("data_value_type_id", selectedType);
+      url.searchParams.set("bbox", bboxValue);
 
-    const legendUrl = new URL("http://localhost:8000/legend");
-    legendUrl.searchParams.set("measure_id", selectedMeasureId);
-    legendUrl.searchParams.set("year", String(selectedYear));
-    legendUrl.searchParams.set("data_value_type_id", selectedType);
-    legendUrl.searchParams.set("bins", "5");
+      // Abort previous request if any
+      if (countyAbortRef.current) {
+        countyAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      countyAbortRef.current = controller;
 
-    const geojsonUrl = new URL(
-      "http://localhost:8000/counties/boundaries/geojson/estimates"
-    );
-    geojsonUrl.searchParams.set("measure_id", selectedMeasureId);
-    geojsonUrl.searchParams.set("year", String(selectedYear));
-    geojsonUrl.searchParams.set("data_value_type_id", selectedType);
-
-    const fetchLegend = fetch(legendUrl).then(async (response) => {
+      const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
-        const body = await response.text();
-        throw new Error(
-          `Legend request failed (${response.status}): ${body || "No body"}`
-        );
+        const body = await parseErrorBody(response);
+        throw new Error(`County request failed (${response.status}): ${body}`);
       }
       return response.json();
-    });
-    const fetchGeojson = fetch(geojsonUrl).then(async (response) => {
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(
-          `Map request failed (${response.status}): ${body || "No body"}`
-        );
-      }
-      return response.json();
-    });
+    },
+    [selectedMeasureId, selectedYear, selectedType]
+  );
 
-    Promise.all([fetchLegend, fetchGeojson])
-      .then(([legendData, geojsonData]) => {
-        if (!isMounted) return;
-        setLegend(legendData);
-        setGeojson(geojsonData);
-        setRenderVersion((v) => v + 1);
-      })
-      .catch((errorResponse) => {
-        if (!isMounted) return;
-        console.error(errorResponse);
-        setError(
-          errorResponse.message ??
-            "Failed to load map data (possible CORS issue)."
-        );
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsLoading(false);
-      });
+  const fetchCountyBoundaryOverlay = useCallback(async (bboxValue) => {
+    const url = new URL(`${API_BASE}/counties/boundaries/geojson`);
+    url.searchParams.set("bbox", bboxValue);
+    url.searchParams.set("boundaries_only", "true");
+    url.searchParams.set("simplify", "0.01");
 
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedMeasureId, selectedYear, selectedType]);
+    // Abort previous request if any
+    if (outlineAbortRef.current) {
+      outlineAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    outlineAbortRef.current = controller;
 
-  useEffect(() => {
-    let isMounted = true;
-
-    fetch("http://localhost:8000/states/boundaries/geojson?simplify=0.02")
-      .then(async (response) => {
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(
-            `State boundary request failed (${response.status}): ${body || "No body"}`
-          );
-        }
-        return response.json();
-      })
-      .then((data) => {
-        if (!isMounted) return;
-        setStateGeojson(data);
-      })
-      .catch((stateError) => {
-        if (!isMounted) return;
-        console.warn(stateError);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      const body = await parseErrorBody(response);
+      throw new Error(
+        `County boundary overlay request failed (${response.status}): ${body}`
+      );
+    }
+    return response.json();
   }, []);
 
-  const breaks = useMemo(() => legend?.breaks ?? [], [legend]);
-  const features = geojson?.features ?? [];
-  const selectedMeasure = measures.find(
-    (measure) => measure.measure_id === selectedMeasureId
-  );
-  const countyBaseStyle = useCallback(
-    (feature) => {
-      const value = feature?.properties?.data_value ?? null;
-      const fillColor = getColor(value, legend?.breaks ?? []);
-      return {
-        color: "#555",
-        weight: 1,
-        fillColor,
-        fillOpacity: 0.7,
-      };
+  const fetchTractsForBbox = useCallback(
+    async (bboxValue) => {
+      if (!bboxValue) {
+        throw new Error("bbox is required for tract requests.");
+      }
+
+      // Abort previous request if any
+      if (tractAbortRef.current) {
+        tractAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      tractAbortRef.current = controller;
+
+      const url = new URL(`${API_BASE}/geojson/tracts`);
+      url.searchParams.set("year", String(selectedYear));
+      url.searchParams.set("measure_id", selectedMeasureId);
+      url.searchParams.set("data_value_type_id", selectedType);
+      url.searchParams.set("bbox", bboxValue);
+
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        const body = await parseErrorBody(response);
+        throw new Error(`Tract request failed (${response.status}): ${body}`);
+      }
+      return response.json();
     },
-    [legend?.breaks]
+    [selectedMeasureId, selectedYear, selectedType]
   );
 
-  const stateBoundaryStyle = useCallback(() => {
+  // Clear cache when measure/year/type changes
+  useEffect(() => {
+    cacheRef.current.clear();
+    // Abort all in-flight requests
+    if (countyAbortRef.current) countyAbortRef.current.abort();
+    if (tractAbortRef.current) tractAbortRef.current.abort();
+    if (outlineAbortRef.current) outlineAbortRef.current.abort();
+  }, [selectedMeasureId, selectedYear, selectedType]);
+
+  // Prefetch tract data when approaching zoom threshold
+  useEffect(() => {
+    if (!bbox || mapZoom !== TRACT_ZOOM - 1) {
+      return;
+    }
+
+    const key = makeCacheKey("tracts", selectedYear, selectedMeasureId, selectedType, bbox);
+    
+    fetchWithDedupe(key, async () => {
+      try {
+        const data = await fetchTractsForBbox(bbox);
+        setCached(key, data);
+      } catch (prefetchError) {
+        console.warn("Tract prefetch failed:", prefetchError);
+      }
+    }).catch(() => {
+      // Silently ignore prefetch errors
+    });
+  }, [bbox, mapZoom, selectedMeasureId, selectedYear, selectedType, fetchTractsForBbox, fetchWithDedupe, setCached]);
+
+  // Main data-fetching effect with caching, deduping, and stale-while-revalidate
+  useEffect(() => {
+    if (!bbox) {
+      return;
+    }
+
+    if (tractsActive) {
+      // Fetch tracts + county boundary overlay
+      
+      // Tracts
+      {
+        const tractReqId = latestTractReqRef.current + 1;
+        latestTractReqRef.current = tractReqId;
+        
+        const tractKey = makeCacheKey("tracts", selectedYear, selectedMeasureId, selectedType, bbox);
+        
+        // Check cache first
+        const cachedTractData = getCached(tractKey);
+        if (cachedTractData) {
+          setTractGeojson(cachedTractData);
+          // Background refresh
+          fetchWithDedupe(tractKey, async () => {
+            try {
+              const data = await fetchTractsForBbox(bbox);
+              if (latestTractReqRef.current === tractReqId) {
+                setCached(tractKey, data);
+                setTractGeojson(data);
+              }
+            } catch (err) {
+              if (latestTractReqRef.current === tractReqId) {
+                console.error("Tract background refresh failed:", err);
+              }
+            }
+          }).catch(() => {
+            // Ignore errors in background refresh
+          });
+        } else {
+          // No cache, do a for-real fetch (with loading state)
+          setIsTractLoading(true);
+          
+          fetchWithDedupe(tractKey, async () => {
+            try {
+              const data = await fetchTractsForBbox(bbox);
+              if (latestTractReqRef.current === tractReqId) {
+                setCached(tractKey, data);
+                setTractGeojson(data);
+                setError(null);
+              }
+            } catch (err) {
+              if (latestTractReqRef.current === tractReqId) {
+                console.error(err);
+                setError(err.message ?? "Failed to load tract map data.");
+              }
+            } finally {
+              if (latestTractReqRef.current === tractReqId) {
+                setIsTractLoading(false);
+              }
+            }
+          }).catch(() => {
+            // Ignore
+          });
+        }
+      }
+      
+      // County boundary overlay
+      {
+        const outlineReqId = latestOutlineReqRef.current + 1;
+        latestOutlineReqRef.current = outlineReqId;
+        
+        const outlineKey = makeCacheKey("countyOutline", selectedYear, selectedMeasureId, selectedType, bbox);
+        
+        // Check cache first
+        const cachedOutlineData = getCached(outlineKey);
+        if (cachedOutlineData) {
+          setCountyBoundaryOverlay(cachedOutlineData);
+          // Background refresh
+          fetchWithDedupe(outlineKey, async () => {
+            try {
+              const data = await fetchCountyBoundaryOverlay(bbox);
+              if (latestOutlineReqRef.current === outlineReqId) {
+                setCached(outlineKey, data);
+                setCountyBoundaryOverlay(data);
+              }
+            } catch (err) {
+              if (latestOutlineReqRef.current === outlineReqId) {
+                console.error("Outline background refresh failed:", err);
+              }
+            }
+          }).catch(() => {
+            // Ignore errors
+          });
+        } else {
+          // No cache
+          setIsOutlineLoading(true);
+          
+          fetchWithDedupe(outlineKey, async () => {
+            try {
+              const data = await fetchCountyBoundaryOverlay(bbox);
+              if (latestOutlineReqRef.current === outlineReqId) {
+                setCached(outlineKey, data);
+                setCountyBoundaryOverlay(data);
+              }
+            } catch (err) {
+              if (latestOutlineReqRef.current === outlineReqId) {
+                console.error(err);
+                // Don't set error for overlay; it's secondary
+              }
+            } finally {
+              if (latestOutlineReqRef.current === outlineReqId) {
+                setIsOutlineLoading(false);
+              }
+            }
+          }).catch(() => {
+            // Ignore
+          });
+        }
+      }
+    } else {
+      // Fetch county choropleth only
+      const countyReqId = latestCountyReqRef.current + 1;
+      latestCountyReqRef.current = countyReqId;
+      
+      const countyKey = makeCacheKey("counties", selectedYear, selectedMeasureId, selectedType, bbox);
+      
+      // Check cache first
+      const cachedCountyData = getCached(countyKey);
+      if (cachedCountyData) {
+        setCountyGeojson(cachedCountyData);
+        setCountyBoundaryOverlay(null);
+        // Background refresh
+        fetchWithDedupe(countyKey, async () => {
+          try {
+            const data = await fetchCountyChoropleth(bbox);
+            if (latestCountyReqRef.current === countyReqId) {
+              setCached(countyKey, data);
+              setCountyGeojson(data);
+            }
+          } catch (err) {
+            if (latestCountyReqRef.current === countyReqId) {
+              console.error("County background refresh failed:", err);
+            }
+          }
+        }).catch(() => {
+          // Ignore
+        });
+      } else {
+        // No cache
+        setIsCountyLoading(true);
+        
+        fetchWithDedupe(countyKey, async () => {
+          try {
+            const data = await fetchCountyChoropleth(bbox);
+            if (latestCountyReqRef.current === countyReqId) {
+              setCached(countyKey, data);
+              setCountyGeojson(data);
+              setCountyBoundaryOverlay(null);
+              setError(null);
+            }
+          } catch (err) {
+            if (latestCountyReqRef.current === countyReqId) {
+              console.error(err);
+              setError(err.message ?? "Failed to load county map data.");
+              // Don't clear county geojson—keep it visible
+            }
+          } finally {
+            if (latestCountyReqRef.current === countyReqId) {
+              setIsCountyLoading(false);
+            }
+          }
+        }).catch(() => {
+          // Ignore
+        });
+      }
+    }
+  }, [bbox, tractsActive, selectedMeasureId, selectedYear, selectedType, fetchCountyChoropleth, fetchCountyBoundaryOverlay, fetchTractsForBbox, getCached, setCached, fetchWithDedupe]);
+
+  const choroplethStyle = useCallback(
+    (feature) => {
+      const value = getValueFromProperties(feature?.properties);
+      const fillColor = getColor(value, breaks);
+      return {
+        color: tractsActive ? "#334155" : "#555",
+        weight: tractsActive ? 0.6 : 1,
+        fillColor,
+        fillOpacity: 0.72,
+      };
+    },
+    [breaks, tractsActive]
+  );
+
+  const countyBoundaryLineStyle = useCallback(() => {
     return {
-      color: "#3b0764",
-      weight: 2,
-      opacity: 0.95,
+      color: "#1f2937",
+      weight: 1,
+      opacity: 0.8,
       fill: false,
     };
   }, []);
 
-  const handleCountyClick = useCallback(
+  const applySelectedStyle = useCallback((layer) => {
+    layer.setStyle({ color: "orange", weight: 2.5 });
+  }, []);
+
+  const handleFeatureClick = useCallback(
     (feature, layer) => {
       const geoJsonLayer = geoJsonRef.current;
       if (!geoJsonLayer) return;
+
       if (selectedLayerRef.current && selectedLayerRef.current !== layer) {
         geoJsonLayer.resetStyle(selectedLayerRef.current);
       }
+
       selectedLayerRef.current = layer;
-      setSelectedLocationId(feature.properties.location_id);
       setSelectedProps(feature.properties);
-      layer.setStyle({ color: "orange", weight: 3 });
+      applySelectedStyle(layer);
     },
-    [setSelectedLocationId, setSelectedProps]
+    [applySelectedStyle]
   );
 
   const handleEachFeature = useCallback(
     (feature, layer) => {
       layer.on("click", () => {
-        handleCountyClick(feature, layer);
+        handleFeatureClick(feature, layer);
       });
       layer.on("mouseover", () => {
         setHoveredProps(feature.properties);
         if (selectedLayerRef.current !== layer) {
-          layer.setStyle({ weight: 2, color: "#000" });
+          layer.setStyle({ weight: tractsActive ? 1.2 : 2, color: "#0f172a" });
         }
       });
       layer.on("mouseout", () => {
         setHoveredProps(null);
         if (selectedLayerRef.current === layer) {
-          layer.setStyle({ color: "orange", weight: 3 });
+          applySelectedStyle(layer);
         } else if (geoJsonRef.current) {
           geoJsonRef.current.resetStyle(layer);
         }
       });
     },
-    [handleCountyClick]
+    [handleFeatureClick, applySelectedStyle, tractsActive]
   );
 
   useEffect(() => {
-    const gj = geoJsonRef.current;
-    if (!gj) return;
-    gj.eachLayer((layer) => {
+    const geoJsonLayer = geoJsonRef.current;
+    if (!geoJsonLayer) return;
+
+    geoJsonLayer.eachLayer((layer) => {
       if (layer?.feature) {
-        gj.resetStyle(layer);
+        geoJsonLayer.resetStyle(layer);
       }
     });
+
     if (selectedLayerRef.current) {
-      selectedLayerRef.current.setStyle({ color: "orange", weight: 3 });
+      applySelectedStyle(selectedLayerRef.current);
     }
-  }, [geojson, legend, countyBaseStyle]);
+  }, [activeGeojson, choroplethStyle, applySelectedStyle]);
 
   useEffect(() => {
     selectedLayerRef.current = null;
-    setSelectedLocationId(null);
     setSelectedProps(null);
-  }, [geojson]);
+    setHoveredProps(null);
+  }, [activeGeojson, tractsActive]);
+
+  const currentLayerLabel = tractsActive ? "tract" : "county";
 
   return (
     <div
@@ -270,24 +723,22 @@ export default function App() {
         style={{
           position: "absolute",
           top: 16,
-          left: 16,
+          left: 150,
           background: "white",
           padding: "12px 14px",
           borderRadius: 8,
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
-          minWidth: 240,
+          minWidth: 260,
           display: "grid",
           gap: 10,
           zIndex: 2000,
         }}
       >
         <div style={{ fontWeight: 600, fontSize: 13 }}>
-          Measure controls {isLoading ? "· Loading…" : ""}
+          Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
         </div>
-        {error ? (
-          <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div>
-        ) : null}
+        {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Measure</span>
           <select
@@ -296,14 +747,14 @@ export default function App() {
             style={{ padding: "6px 8px", borderRadius: 6 }}
           >
             {measures.length === 0 ? (
-              <option value={selectedMeasureId}>Loading measures…</option>
+              <option value={selectedMeasureId}>Loading measures...</option>
             ) : (
               measures.map((measure) => {
                 const label = measure.measure ?? measure.short_question_text ?? "";
                 return (
                   <option key={measure.measure_id} value={measure.measure_id}>
                     {measure.measure_id}
-                    {label ? ` — ${label}` : ""}
+                    {label ? ` - ${label}` : ""}
                   </option>
                 );
               })
@@ -341,35 +792,61 @@ export default function App() {
           </div>
         )}
       </div>
+
       <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
-        <MapContainer center={[39.5, -98.35]} zoom={4} style={{ height: "100%" }}>
+        <MapContainer
+          center={DEFAULT_CENTER}
+          zoom={DEFAULT_ZOOM}
+          style={{ height: "100%" }}
+        >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {geojson ? (
+
+          <MapViewportWatcher
+            onViewportChange={(zoom, bounds) => {
+              setMapZoom(zoom);
+              
+              const bboxString = boundsToPaddedBbox(bounds, zoom);
+              
+              // Debounce bbox updates to prevent excessive fetches
+              if (viewportDebounceRef.current) {
+                clearTimeout(viewportDebounceRef.current);
+              }
+              
+              viewportDebounceRef.current = setTimeout(() => {
+                setBbox(bboxString);
+              }, VIEWPORT_DEBOUNCE_MS);
+            }}
+          />
+          <MapToolbar defaultCenter={DEFAULT_CENTER} defaultZoom={DEFAULT_ZOOM} />
+
+          {activeGeojson ? (
             <GeoJSON
-              key={`geo-${renderVersion}`}
+              key={`${tractsActive ? "tracts" : "counties"}-${selectedYear}-${selectedMeasureId}-${selectedType}`}
               ref={geoJsonRef}
-              data={geojson}
-              style={countyBaseStyle}
+              data={activeGeojson}
+              style={choroplethStyle}
               onEachFeature={handleEachFeature}
             />
           ) : null}
-          {stateGeojson ? (
-            <Pane name="state-boundaries-pane" style={{ zIndex: 650 }}>
+
+          {tractsActive && countyBoundaryOverlay ? (
+            <Pane name="county-boundary-overlay" style={{ zIndex: 640 }}>
               <GeoJSON
-                key="state-boundaries"
-                data={stateGeojson}
-                style={stateBoundaryStyle}
+                key="outline"
+                data={countyBoundaryOverlay}
+                style={countyBoundaryLineStyle}
                 interactive={false}
-                pane="state-boundaries-pane"
+                pane="county-boundary-overlay"
               />
             </Pane>
           ) : null}
         </MapContainer>
       </div>
-      {isLoading ? (
+
+      {isCountyLoading || isTractLoading ? (
         <div
           style={{
             position: "absolute",
@@ -385,7 +862,7 @@ export default function App() {
             zIndex: 2100,
           }}
         >
-          Loading…
+          Loading...
         </div>
       ) : null}
 
@@ -399,12 +876,12 @@ export default function App() {
           borderRadius: 8,
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
-          minWidth: 180,
+          minWidth: 210,
           zIndex: 2000,
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 8 }}>
-          Legend ({selectedType})
+          Legend ({selectedType}) - {tractsActive ? "Tracts" : "Counties"}
         </div>
         <div style={{ display: "grid", gap: 6 }}>
           {breaks.length > 1
@@ -429,7 +906,7 @@ export default function App() {
                   </div>
                 );
               })
-            : isLoading
+            : isCountyLoading || isTractLoading
               ? "Loading..."
               : "Legend unavailable."}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -445,6 +922,7 @@ export default function App() {
             <span>No data</span>
           </div>
         </div>
+
         <div
           style={{
             marginTop: 12,
@@ -454,43 +932,35 @@ export default function App() {
             gap: 6,
           }}
         >
-          <div style={{ fontWeight: 600 }}>Hovered county</div>
+          <div style={{ fontWeight: 600 }}>Hovered {currentLayerLabel}</div>
           {hoveredProps ? (
             <>
+              <div>{hoveredProps.locationid ?? hoveredProps.location_id ?? "Unknown"}</div>
+              <div>State: {hoveredProps.state_abbr ?? "N/A"}</div>
               <div>
-                {hoveredProps.name ??
-                  hoveredProps.county_name ??
-                  "Unknown County"}
-                {", "}
-                {hoveredProps.state_abbr ?? hoveredProps.state_desc ?? ""}
+                Value: {getValueFromProperties(hoveredProps) ?? "No data"}
               </div>
-              <div>Value: {hoveredProps.data_value ?? "No data"}</div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Hover a county.</div>
+            <div style={{ color: "#64748b" }}>Hover a {currentLayerLabel}.</div>
           )}
-          <div style={{ fontWeight: 600 }}>Selected county</div>
+
+          <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
           {selectedProps ? (
             <>
+              <div>{selectedProps.locationid ?? selectedProps.location_id ?? "Unknown"}</div>
+              <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
               <div>
-                {selectedProps.name ??
-                  selectedProps.county_name ??
-                  "Unknown County"}
-                {", "}
-                {selectedProps.state_abbr ?? selectedProps.state_desc ?? ""}
+                Value: {getValueFromProperties(selectedProps) ?? "No data"}
               </div>
-              <div>Value: {selectedProps.data_value ?? "No data"}</div>
               <div>Year: {selectedProps.year ?? selectedYear}</div>
               <div>Measure: {selectedProps.measure_id ?? selectedMeasureId}</div>
               <div>
-                Data value type:{" "}
-                {selectedProps.data_value_type ??
-                  selectedProps.data_value_type_id ??
-                  selectedType}
+                Data value type: {selectedProps.data_value_type_id ?? selectedType}
               </div>
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Click a county.</div>
+            <div style={{ color: "#64748b" }}>Click a {currentLayerLabel}.</div>
           )}
         </div>
       </div>
@@ -505,10 +975,12 @@ export default function App() {
           borderRadius: 8,
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.12)",
           fontSize: 12,
+          zIndex: 2000,
         }}
       >
-        measure_id={selectedMeasureId} · year={selectedYear} ·
-        data_value_type_id={selectedType} · bins=5
+        layer={tractsActive ? "tracts + county-lines" : "counties"} - zoom={mapZoom.toFixed(2)} -
+        measure_id={selectedMeasureId} - year={selectedYear} - data_value_type_id={selectedType} -
+        tract_zoom={TRACT_ZOOM}
       </div>
     </div>
   );

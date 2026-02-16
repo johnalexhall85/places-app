@@ -11,6 +11,7 @@ router = APIRouter(tags=["county-boundaries"])
 def counties_boundary_geojson(
     state_abbr: str | None = Query(default=None, min_length=2, max_length=2),
     bbox: str | None = Query(default=None),
+    boundaries_only: bool = Query(default=False),
     simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
@@ -23,6 +24,8 @@ def counties_boundary_geojson(
         state_filter = "AND c.state_abbr = :state_abbr"
 
     bbox_filter = ""
+    bbox_cte = ""
+    bbox_join = ""
     if bbox:
         try:
             minx, miny, maxx, maxy = (float(value) for value in bbox.split(","))
@@ -30,7 +33,16 @@ def counties_boundary_geojson(
             raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
         if minx >= maxx or miny >= maxy:
             raise HTTPException(status_code=400, detail="Invalid bbox bounds")
-        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+        bbox_filter = (
+            "AND b.geom && bbox.geom "
+            "AND ST_Intersects(b.geom, bbox.geom)"
+        )
+        bbox_cte = (
+            "WITH bbox AS ("
+            "SELECT ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326) AS geom"
+            ")"
+        )
+        bbox_join = "CROSS JOIN bbox"
 
     params = {"limit": limit, "offset": offset}
     if state_abbr_value:
@@ -45,47 +57,88 @@ def counties_boundary_geojson(
         )
         params["simplify"] = simplify
 
-    query = text(
-        f"""
-        SELECT
-            b.location_id,
-            b.geoid,
-            b.name,
-            b.statefp,
-            b.countyfp,
-            c.state_abbr,
-            c.state_desc,
-            {geometry_expr} AS geometry
-        FROM dim_county_boundary AS b
-        LEFT JOIN dim_county AS c
-            ON c.location_id = b.location_id
-        WHERE b.geom IS NOT NULL
-            {state_filter}
-            {bbox_filter}
-        ORDER BY b.location_id
-        LIMIT :limit
-        OFFSET :offset
-        """
-    )
+    if boundaries_only:
+        query = text(
+            f"""
+            {bbox_cte}
+            SELECT
+                b.location_id,
+                b.statefp,
+                b.countyfp,
+                c.state_abbr,
+                {geometry_expr} AS geometry
+            FROM dim_county_boundary AS b
+            {bbox_join}
+            LEFT JOIN dim_county AS c
+                ON c.location_id = b.location_id
+            WHERE b.geom IS NOT NULL
+                {state_filter}
+                {bbox_filter}
+            ORDER BY b.location_id
+            LIMIT :limit
+            OFFSET :offset
+            """
+        )
+    else:
+        query = text(
+            f"""
+            {bbox_cte}
+            SELECT
+                b.location_id,
+                b.geoid,
+                b.name,
+                b.statefp,
+                b.countyfp,
+                c.state_abbr,
+                c.state_desc,
+                {geometry_expr} AS geometry
+            FROM dim_county_boundary AS b
+            {bbox_join}
+            LEFT JOIN dim_county AS c
+                ON c.location_id = b.location_id
+            WHERE b.geom IS NOT NULL
+                {state_filter}
+                {bbox_filter}
+            ORDER BY b.location_id
+            LIMIT :limit
+            OFFSET :offset
+            """
+        )
 
     rows = db.execute(query, params).mappings().all()
 
-    features = [
-        {
-            "type": "Feature",
-            "geometry": row["geometry"],
-            "properties": {
-                "location_id": row["location_id"],
-                "geoid": row["geoid"],
-                "name": row["name"],
-                "statefp": row["statefp"],
-                "countyfp": row["countyfp"],
-                "state_abbr": row["state_abbr"],
-                "state_desc": row["state_desc"],
-            },
-        }
-        for row in rows
-    ]
+    if boundaries_only:
+        features = [
+            {
+                "type": "Feature",
+                "geometry": row["geometry"],
+                "properties": {
+                    "location_id": row["location_id"],
+                    "statefp": row["statefp"],
+                    "countyfp": row["countyfp"],
+                    "county_fips": f"{row['statefp']}{row['countyfp']}",
+                    "state_abbr": row["state_abbr"],
+                },
+            }
+            for row in rows
+        ]
+    else:
+        features = [
+            {
+                "type": "Feature",
+                "geometry": row["geometry"],
+                "properties": {
+                    "location_id": row["location_id"],
+                    "geoid": row["geoid"],
+                    "name": row["name"],
+                    "statefp": row["statefp"],
+                    "countyfp": row["countyfp"],
+                    "state_abbr": row["state_abbr"],
+                    "state_desc": row["state_desc"],
+                },
+            }
+            for row in rows
+        ]
 
     return {"type": "FeatureCollection", "features": features}
 
@@ -124,6 +177,8 @@ def counties_boundary_geojson_estimates(
         state_filter = "AND c.state_abbr = :state_abbr"
 
     bbox_filter = ""
+    bbox_cte = ""
+    bbox_join = ""
     if bbox:
         try:
             minx, miny, maxx, maxy = (float(value) for value in bbox.split(","))
@@ -131,7 +186,16 @@ def counties_boundary_geojson_estimates(
             raise HTTPException(status_code=400, detail="Invalid bbox format") from exc
         if minx >= maxx or miny >= maxy:
             raise HTTPException(status_code=400, detail="Invalid bbox bounds")
-        bbox_filter = "AND b.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326)"
+        bbox_filter = (
+            "AND b.geom && bbox.geom "
+            "AND ST_Intersects(b.geom, bbox.geom)"
+        )
+        bbox_cte = (
+            "bbox AS ("
+            "SELECT ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326) AS geom"
+            ")"
+        )
+        bbox_join = "CROSS JOIN bbox"
 
     params = {
         "measure_id": measure_id,
@@ -152,9 +216,12 @@ def counties_boundary_geojson_estimates(
         )
         params["simplify"] = simplify
 
-    query = text(
-        f"""
-        WITH selected_measure AS (
+    with_parts = []
+    if bbox_cte:
+        with_parts.append(bbox_cte)
+    with_parts.append(
+        """
+        selected_measure AS (
             SELECT
                 id,
                 measure_id,
@@ -164,6 +231,13 @@ def counties_boundary_geojson_estimates(
                 AND data_value_type_id = :data_value_type_id
             LIMIT 1
         )
+        """
+    )
+    with_clause = ", ".join(with_parts)
+
+    query = text(
+        f"""
+        WITH {with_clause}
         SELECT
             b.location_id,
             b.geoid,
@@ -182,6 +256,7 @@ def counties_boundary_geojson_estimates(
                 AS high_confidence_limit,
             {geometry_expr} AS geometry
         FROM dim_county_boundary AS b
+        {bbox_join}
         LEFT JOIN selected_measure AS sm ON TRUE
         LEFT JOIN fact_estimate_county AS f
             ON f.location_id = b.location_id
