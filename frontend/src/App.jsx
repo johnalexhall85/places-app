@@ -12,10 +12,13 @@ const API_BASE = "http://localhost:8000";
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
 const TRACT_ZOOM = 10;
+const COUNTY_RELOAD_ZOOM = 8;
 const BBOX_PRECISION = 4;
 const BIN_COUNT = 5;
 const COLORS = ["#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c"];
 const NO_DATA_COLOR = "#eee";
+const STATE_BORDER_COLOR = "#4c1d95";
+const FALLBACK_YEARS = [2023];
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VIEWPORT_DEBOUNCE_MS = 200;
 
@@ -66,6 +69,16 @@ function getValueFromProperties(properties) {
   if (properties.value != null) return properties.value;
   if (properties.data_value != null) return properties.data_value;
   return null;
+}
+
+function getFeatureId(properties) {
+  if (!properties) return "Unknown";
+  return properties.locationid ?? properties.location_id ?? properties.geoid ?? "Unknown";
+}
+
+function getCountyName(properties) {
+  if (!properties) return "Unknown";
+  return properties.county_name ?? properties.name ?? getFeatureId(properties);
 }
 
 function getColor(value, breaks) {
@@ -223,8 +236,11 @@ function MapToolbar({ defaultCenter, defaultZoom }) {
 export default function App() {
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
-  const [selectedYear, setSelectedYear] = useState(2023);
+  const [years, setYears] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(null);
   const [selectedType, setSelectedType] = useState("CrdPrv");
+  const [isYearsLoading, setIsYearsLoading] = useState(true);
+  const [yearsError, setYearsError] = useState(null);
 
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [bbox, setBbox] = useState(null);
@@ -232,26 +248,32 @@ export default function App() {
   const [countyGeojson, setCountyGeojson] = useState(null);
   const [tractGeojson, setTractGeojson] = useState(null);
   const [countyBoundaryOverlay, setCountyBoundaryOverlay] = useState(null);
+  const [stateBoundaryOverlay, setStateBoundaryOverlay] = useState(null);
 
   const [selectedProps, setSelectedProps] = useState(null);
   const [hoveredProps, setHoveredProps] = useState(null);
   const [isCountyLoading, setIsCountyLoading] = useState(false);
   const [isTractLoading, setIsTractLoading] = useState(false);
   const [isOutlineLoading, setIsOutlineLoading] = useState(false);
+  const [countyReloadNonce, setCountyReloadNonce] = useState(0);
   const [error, setError] = useState(null);
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
+  const mapRef = useRef(null);
+  const previousZoomRef = useRef(DEFAULT_ZOOM);
   
   // Per-layer request tracking
   const latestCountyReqRef = useRef(0);
   const latestTractReqRef = useRef(0);
   const latestOutlineReqRef = useRef(0);
+  const latestStateReqRef = useRef(0);
   
   // Per-layer abort controllers
   const countyAbortRef = useRef(null);
   const tractAbortRef = useRef(null);
   const outlineAbortRef = useRef(null);
+  const stateAbortRef = useRef(null);
   
   // Caching
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
@@ -261,7 +283,6 @@ export default function App() {
   const viewportDebounceRef = useRef(null);
   const pendingViewportRef = useRef(null);
 
-  const yearOptions = useMemo(() => [2023], []);
   const tractsActive = mapZoom >= TRACT_ZOOM;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
@@ -343,6 +364,56 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    setIsYearsLoading(true);
+
+    fetch(`${API_BASE}/meta/years?geography=county`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load available years.");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!isMounted) return;
+        const fetchedYears = Array.isArray(data?.years)
+          ? data.years.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+          : [];
+        const uniqueSortedYears = Array.from(new Set(fetchedYears)).sort((a, b) => b - a);
+        if (uniqueSortedYears.length === 0) {
+          throw new Error("No years returned from API.");
+        }
+        console.log("Available county years:", uniqueSortedYears);
+        setYears(uniqueSortedYears);
+        setYearsError(null);
+        setSelectedYear((currentYear) => (
+          currentYear != null && uniqueSortedYears.includes(currentYear)
+            ? currentYear
+            : uniqueSortedYears[0]
+        ));
+      })
+      .catch((yearsFetchError) => {
+        if (!isMounted) return;
+        console.error("Failed to load years:", yearsFetchError);
+        setYearsError("Could not load years from API. Falling back to 2023.");
+        setYears(FALLBACK_YEARS);
+        setSelectedYear((currentYear) => (
+          currentYear != null && FALLBACK_YEARS.includes(currentYear)
+            ? currentYear
+            : FALLBACK_YEARS[0]
+        ));
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsYearsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const fetchCountyChoropleth = useCallback(
     async (bboxValue) => {
       const url = new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
@@ -391,6 +462,24 @@ export default function App() {
     return response.json();
   }, []);
 
+  const fetchStateBoundaryOverlay = useCallback(async () => {
+    const url = new URL(`${API_BASE}/states/boundaries/geojson`);
+    url.searchParams.set("simplify", "0.02");
+
+    if (stateAbortRef.current) {
+      stateAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    stateAbortRef.current = controller;
+
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      const body = await parseErrorBody(response);
+      throw new Error(`State boundary request failed (${response.status}): ${body}`);
+    }
+    return response.json();
+  }, []);
+
   const fetchTractsForBbox = useCallback(
     async (bboxValue) => {
       if (!bboxValue) {
@@ -427,11 +516,45 @@ export default function App() {
     if (countyAbortRef.current) countyAbortRef.current.abort();
     if (tractAbortRef.current) tractAbortRef.current.abort();
     if (outlineAbortRef.current) outlineAbortRef.current.abort();
+    if (stateAbortRef.current) stateAbortRef.current.abort();
+    // Clear currently-displayed geojson so the map updates for the new measure
+    setCountyGeojson(null);
+    setTractGeojson(null);
+    setCountyBoundaryOverlay(null);
+    setStateBoundaryOverlay(null);
+    // Clear any selected/hovered features tied to the previous measure
+    selectedLayerRef.current = null;
+    setSelectedProps(null);
+    setHoveredProps(null);
   }, [selectedMeasureId, selectedYear, selectedType]);
+
+  // Ensure we have a bbox and clear the inactive layer when crossing the tract zoom
+  useEffect(() => {
+    // Recompute bbox from the current map immediately so the newly-active
+    // layer fetch uses the correct viewport (ensures counties render when
+    // zooming out from tracts).
+    if (mapRef.current) {
+      try {
+        const m = mapRef.current;
+        const bboxString = boundsToPaddedBbox(m.getBounds(), m.getZoom());
+        setBbox(bboxString);
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    // Clear the layer that's not active to avoid showing stale geometry
+    if (tractsActive) {
+      setCountyGeojson(null);
+    } else {
+      setTractGeojson(null);
+      setCountyBoundaryOverlay(null);
+    }
+  }, [tractsActive]);
 
   // Prefetch tract data when approaching zoom threshold
   useEffect(() => {
-    if (!bbox || mapZoom !== TRACT_ZOOM - 1) {
+    if (!bbox || selectedYear == null || mapZoom !== TRACT_ZOOM - 1) {
       return;
     }
 
@@ -449,9 +572,43 @@ export default function App() {
     });
   }, [bbox, mapZoom, selectedMeasureId, selectedYear, selectedType, fetchTractsForBbox, fetchWithDedupe, setCached]);
 
+  // Fetch state boundary overlay for county view
+  useEffect(() => {
+    if (tractsActive) {
+      setStateBoundaryOverlay(null);
+      return;
+    }
+
+    const stateReqId = latestStateReqRef.current + 1;
+    latestStateReqRef.current = stateReqId;
+    const stateKey = "stateOutline|nationwide|simplify:0.02";
+
+    const cachedStateData = getCached(stateKey);
+    if (cachedStateData) {
+      setStateBoundaryOverlay(cachedStateData);
+      return;
+    }
+
+    fetchWithDedupe(stateKey, async () => {
+      try {
+        const data = await fetchStateBoundaryOverlay();
+        if (latestStateReqRef.current === stateReqId) {
+          setCached(stateKey, data);
+          setStateBoundaryOverlay(data);
+        }
+      } catch (err) {
+        if (latestStateReqRef.current === stateReqId) {
+          console.error("State boundary fetch failed:", err);
+        }
+      }
+    }).catch(() => {
+      // Ignore
+    });
+  }, [tractsActive, fetchStateBoundaryOverlay, getCached, setCached, fetchWithDedupe]);
+
   // Main data-fetching effect with caching, deduping, and stale-while-revalidate
   useEffect(() => {
-    if (!bbox) {
+    if (!bbox || selectedYear == null) {
       return;
     }
 
@@ -571,7 +728,13 @@ export default function App() {
       const countyReqId = latestCountyReqRef.current + 1;
       latestCountyReqRef.current = countyReqId;
       
-      const countyKey = makeCacheKey("counties", selectedYear, selectedMeasureId, selectedType, bbox);
+      const countyKey = `${makeCacheKey(
+        "counties",
+        selectedYear,
+        selectedMeasureId,
+        selectedType,
+        bbox
+      )}|reload:${countyReloadNonce}`;
       
       // Check cache first
       const cachedCountyData = getCached(countyKey);
@@ -623,7 +786,7 @@ export default function App() {
         });
       }
     }
-  }, [bbox, tractsActive, selectedMeasureId, selectedYear, selectedType, fetchCountyChoropleth, fetchCountyBoundaryOverlay, fetchTractsForBbox, getCached, setCached, fetchWithDedupe]);
+  }, [bbox, tractsActive, selectedMeasureId, selectedYear, selectedType, countyReloadNonce, fetchCountyChoropleth, fetchCountyBoundaryOverlay, fetchTractsForBbox, getCached, setCached, fetchWithDedupe]);
 
   const choroplethStyle = useCallback(
     (feature) => {
@@ -644,6 +807,15 @@ export default function App() {
       color: "#1f2937",
       weight: 1,
       opacity: 0.8,
+      fill: false,
+    };
+  }, []);
+
+  const stateBoundaryLineStyle = useCallback(() => {
+    return {
+      color: STATE_BORDER_COLOR,
+      weight: 2.0,
+      opacity: 0.95,
       fill: false,
     };
   }, []);
@@ -735,10 +907,10 @@ export default function App() {
           zIndex: 2000,
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 13 }}>
-          Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
-        </div>
-        {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+          <div style={{ fontWeight: 600, fontSize: 13 }}>
+            Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
+          </div>
+          {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Measure</span>
           <select
@@ -764,16 +936,24 @@ export default function App() {
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Year</span>
           <select
-            value={selectedYear}
+            value={selectedYear ?? ""}
             onChange={(event) => setSelectedYear(Number(event.target.value))}
+            disabled={isYearsLoading || years.length === 0}
             style={{ padding: "6px 8px", borderRadius: 6 }}
           >
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
+            {isYearsLoading && years.length === 0 ? (
+              <option value="">Loading years...</option>
+            ) : (
+              years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))
+            )}
           </select>
+          {yearsError ? (
+            <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
+          ) : null}
         </label>
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Data value type</span>
@@ -797,6 +977,9 @@ export default function App() {
         <MapContainer
           center={DEFAULT_CENTER}
           zoom={DEFAULT_ZOOM}
+            whenCreated={(m) => {
+              mapRef.current = m;
+            }}
           style={{ height: "100%" }}
         >
           <TileLayer
@@ -809,6 +992,15 @@ export default function App() {
               setMapZoom(zoom);
               
               const bboxString = boundsToPaddedBbox(bounds, zoom);
+              const previousZoom = previousZoomRef.current;
+              const crossedCountyReloadZoom =
+                previousZoom > COUNTY_RELOAD_ZOOM && zoom <= COUNTY_RELOAD_ZOOM && zoom < previousZoom;
+              previousZoomRef.current = zoom;
+              if (crossedCountyReloadZoom) {
+                setCountyGeojson(null);
+                setCountyReloadNonce((value) => value + 1);
+                setBbox(bboxString);
+              }
               
               // Debounce bbox updates to prevent excessive fetches
               if (viewportDebounceRef.current) {
@@ -824,7 +1016,7 @@ export default function App() {
 
           {activeGeojson ? (
             <GeoJSON
-              key={`${tractsActive ? "tracts" : "counties"}-${selectedYear}-${selectedMeasureId}-${selectedType}`}
+              key={`${tractsActive ? "tracts" : "counties"}-${selectedYear}-${selectedMeasureId}-${selectedType}-${bbox ?? "no-bbox"}-${tractsActive ? "tract" : `county-${countyReloadNonce}`}`}
               ref={geoJsonRef}
               data={activeGeojson}
               style={choroplethStyle}
@@ -840,6 +1032,18 @@ export default function App() {
                 style={countyBoundaryLineStyle}
                 interactive={false}
                 pane="county-boundary-overlay"
+              />
+            </Pane>
+          ) : null}
+
+          {!tractsActive && stateBoundaryOverlay ? (
+            <Pane name="state-boundary-overlay" style={{ zIndex: 640 }}>
+              <GeoJSON
+                key="state-outline"
+                data={stateBoundaryOverlay}
+                style={stateBoundaryLineStyle}
+                interactive={false}
+                pane="state-boundary-overlay"
               />
             </Pane>
           ) : null}
@@ -935,7 +1139,9 @@ export default function App() {
           <div style={{ fontWeight: 600 }}>Hovered {currentLayerLabel}</div>
           {hoveredProps ? (
             <>
-              <div>{hoveredProps.locationid ?? hoveredProps.location_id ?? "Unknown"}</div>
+              <div>
+                {tractsActive ? getFeatureId(hoveredProps) : getCountyName(hoveredProps)}
+              </div>
               <div>State: {hoveredProps.state_abbr ?? "N/A"}</div>
               <div>
                 Value: {getValueFromProperties(hoveredProps) ?? "No data"}
@@ -948,7 +1154,9 @@ export default function App() {
           <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
           {selectedProps ? (
             <>
-              <div>{selectedProps.locationid ?? selectedProps.location_id ?? "Unknown"}</div>
+              <div>
+                {tractsActive ? getFeatureId(selectedProps) : getCountyName(selectedProps)}
+              </div>
               <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
               <div>
                 Value: {getValueFromProperties(selectedProps) ?? "No data"}
