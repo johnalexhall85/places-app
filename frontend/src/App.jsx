@@ -1066,6 +1066,7 @@ export default function App() {
 
       selectedLayerRef.current = layer;
       setSelectedProps(feature.properties);
+      setHistoryOpen(true);
       applySelectedStyle(layer);
     },
     [applySelectedStyle]
@@ -1572,7 +1573,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                {historyOpen ? "Hide history" : "History (2018-2023)"}
+                {historyOpen ? "Hide history" : "Show history"}
               </button>
 
               {historyOpen ? (
