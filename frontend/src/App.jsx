@@ -7,6 +7,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import SearchBar from "./SearchBar";
 
 const API_BASE = "http://localhost:8000";
 const DEFAULT_CENTER = [39.5, -98.35];
@@ -21,6 +22,8 @@ const STATE_BORDER_COLOR = "#4c1d95";
 const FALLBACK_YEARS = [2023];
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VIEWPORT_DEBOUNCE_MS = 200;
+const HISTORY_START_YEAR = 2018;
+const HISTORY_END_YEAR = 2023;
 
 function quantile(sortedValues, q) {
   if (sortedValues.length === 0) return null;
@@ -103,6 +106,12 @@ function getColor(value, breaks) {
 function formatRange(min, max) {
   if (min == null || max == null) return "No data";
   return `${Number(min).toFixed(1)} - ${Number(max).toFixed(1)}`;
+}
+
+function formatValue(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "No data";
+  return numericValue.toFixed(1);
 }
 
 function clamp(value, min, max) {
@@ -233,6 +242,191 @@ function MapToolbar({ defaultCenter, defaultZoom }) {
   );
 }
 
+function MiniHistoryChart({
+  series,
+  startYear = HISTORY_START_YEAR,
+  endYear = HISTORY_END_YEAR,
+  yLabel = "Value",
+}) {
+  const width = 260;
+  const height = 150;
+  const marginTop = 12;
+  const marginRight = 14;
+  const marginBottom = 30;
+  const marginLeft = 42;
+  const plotWidth = width - marginLeft - marginRight;
+  const plotHeight = height - marginTop - marginBottom;
+
+  const years = [];
+  for (let year = startYear; year <= endYear; year += 1) {
+    years.push(year);
+  }
+
+  const valueByYear = new Map();
+  for (const point of series ?? []) {
+    const year = Number(point?.year);
+    const value = point?.value;
+    if (Number.isFinite(year)) {
+      valueByYear.set(year, value == null ? null : Number(value));
+    }
+  }
+
+  const points = years.map((year, index) => {
+    const x =
+      marginLeft + (years.length > 1 ? (index / (years.length - 1)) * plotWidth : 0);
+    const value = valueByYear.has(year) ? valueByYear.get(year) : null;
+    return { year, x, value };
+  });
+
+  const numericValues = points
+    .map((point) => point.value)
+    .filter((value) => Number.isFinite(value));
+  const hasData = numericValues.length > 0;
+
+  const minValue = hasData ? Math.min(...numericValues) : 0;
+  const maxValue = hasData ? Math.max(...numericValues) : 1;
+  const paddedMin = hasData ? minValue - Math.max((maxValue - minValue) * 0.1, 0.5) : 0;
+  const paddedMax = hasData ? maxValue + Math.max((maxValue - minValue) * 0.1, 0.5) : 1;
+  const valueRange = Math.max(paddedMax - paddedMin, 1);
+
+  const yForValue = (value) =>
+    marginTop + ((paddedMax - value) / valueRange) * plotHeight;
+
+  let path = "";
+  let segmentOpen = false;
+  for (const point of points) {
+    if (!Number.isFinite(point.value)) {
+      segmentOpen = false;
+      continue;
+    }
+    const command = segmentOpen ? "L" : "M";
+    path += `${command}${point.x},${yForValue(point.value)} `;
+    segmentOpen = true;
+  }
+
+  const yTicks = [];
+  const yTickCount = 4;
+  for (let i = 0; i <= yTickCount; i += 1) {
+    const ratio = i / yTickCount;
+    const value = paddedMax - ratio * valueRange;
+    yTicks.push({
+      value,
+      y: marginTop + ratio * plotHeight,
+    });
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <svg
+        width={width}
+        height={height}
+        role="img"
+        aria-label={`History chart from ${startYear} to ${endYear}`}
+      >
+        <line
+          x1={marginLeft}
+          y1={marginTop + plotHeight}
+          x2={width - marginRight}
+          y2={marginTop + plotHeight}
+          stroke="#475569"
+          strokeWidth={1}
+        />
+        <line
+          x1={marginLeft}
+          y1={marginTop}
+          x2={marginLeft}
+          y2={marginTop + plotHeight}
+          stroke="#475569"
+          strokeWidth={1}
+        />
+
+        {yTicks.map((tick) => (
+          <g key={`y-${tick.y}`}>
+            <line
+              x1={marginLeft}
+              y1={tick.y}
+              x2={width - marginRight}
+              y2={tick.y}
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+            <text
+              x={marginLeft - 6}
+              y={tick.y + 3}
+              textAnchor="end"
+              fontSize={9}
+              fill="#64748b"
+            >
+              {tick.value.toFixed(1)}
+            </text>
+          </g>
+        ))}
+
+        {points.map((point) => (
+          <text
+            key={`x-${point.year}`}
+            x={point.x}
+            y={height - 10}
+            textAnchor="middle"
+            fontSize={9}
+            fill="#64748b"
+          >
+            {point.year}
+          </text>
+        ))}
+
+        {path ? (
+          <path
+            d={path.trim()}
+            fill="none"
+            stroke="#2563eb"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : null}
+
+        {points
+          .filter((point) => Number.isFinite(point.value))
+          .map((point) => (
+            <circle
+              key={`point-${point.year}`}
+              cx={point.x}
+              cy={yForValue(point.value)}
+              r={2.8}
+              fill="#1d4ed8"
+            />
+          ))}
+
+        <text
+          x={marginLeft + plotWidth / 2}
+          y={height - 2}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#334155"
+        >
+          Year
+        </text>
+        <text
+          x={12}
+          y={marginTop + plotHeight / 2}
+          transform={`rotate(-90 12 ${marginTop + plotHeight / 2})`}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#334155"
+        >
+          {yLabel}
+        </text>
+      </svg>
+      {!hasData ? (
+        <div style={{ fontSize: 11, color: "#64748b" }}>
+          No values available in this period.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function App() {
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
@@ -257,9 +451,16 @@ export default function App() {
   const [isOutlineLoading, setIsOutlineLoading] = useState(false);
   const [countyReloadNonce, setCountyReloadNonce] = useState(0);
   const [error, setError] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySeries, setHistorySeries] = useState([]);
+  const [historyMeta, setHistoryMeta] = useState(null);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
+  const pendingCountySelectionRef = useRef(null);
+  const pendingCountySelectionTimerRef = useRef(null);
   const mapRef = useRef(null);
   const previousZoomRef = useRef(DEFAULT_ZOOM);
   
@@ -274,6 +475,7 @@ export default function App() {
   const tractAbortRef = useRef(null);
   const outlineAbortRef = useRef(null);
   const stateAbortRef = useRef(null);
+  const historyAbortRef = useRef(null);
   
   // Caching
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
@@ -283,6 +485,14 @@ export default function App() {
   const viewportDebounceRef = useRef(null);
   const pendingViewportRef = useRef(null);
 
+  useEffect(() => {
+    return () => {
+      if (pendingCountySelectionTimerRef.current) {
+        clearTimeout(pendingCountySelectionTimerRef.current);
+      }
+    };
+  }, []);
+
   const tractsActive = mapZoom >= TRACT_ZOOM;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
@@ -290,6 +500,13 @@ export default function App() {
 
   const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
   const activeFeatures = activeGeojson?.features ?? [];
+  const selectedLocationId = useMemo(() => {
+    if (!selectedProps) return null;
+    if (tractsActive) {
+      return selectedProps.locationid ?? selectedProps.location_id ?? null;
+    }
+    return selectedProps.location_id ?? selectedProps.locationid ?? selectedProps.geoid ?? null;
+  }, [selectedProps, tractsActive]);
 
   // Cache helper functions
   const getCached = useCallback((key) => {
@@ -367,8 +584,9 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
     setIsYearsLoading(true);
+    const yearsGeography = tractsActive ? "tract" : "county";
 
-    fetch(`${API_BASE}/meta/years?geography=county`)
+    fetch(`${API_BASE}/meta/years?geography=${yearsGeography}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to load available years.");
@@ -384,7 +602,7 @@ export default function App() {
         if (uniqueSortedYears.length === 0) {
           throw new Error("No years returned from API.");
         }
-        console.log("Available county years:", uniqueSortedYears);
+        console.log(`Available ${yearsGeography} years:`, uniqueSortedYears);
         setYears(uniqueSortedYears);
         setYearsError(null);
         setSelectedYear((currentYear) => (
@@ -396,7 +614,9 @@ export default function App() {
       .catch((yearsFetchError) => {
         if (!isMounted) return;
         console.error("Failed to load years:", yearsFetchError);
-        setYearsError("Could not load years from API. Falling back to 2023.");
+        setYearsError(
+          `Could not load ${yearsGeography} years from API. Falling back to 2023.`
+        );
         setYears(FALLBACK_YEARS);
         setSelectedYear((currentYear) => (
           currentYear != null && FALLBACK_YEARS.includes(currentYear)
@@ -412,7 +632,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [tractsActive]);
 
   const fetchCountyChoropleth = useCallback(
     async (bboxValue) => {
@@ -517,6 +737,7 @@ export default function App() {
     if (tractAbortRef.current) tractAbortRef.current.abort();
     if (outlineAbortRef.current) outlineAbortRef.current.abort();
     if (stateAbortRef.current) stateAbortRef.current.abort();
+    if (historyAbortRef.current) historyAbortRef.current.abort();
     // Clear currently-displayed geojson so the map updates for the new measure
     setCountyGeojson(null);
     setTractGeojson(null);
@@ -526,6 +747,16 @@ export default function App() {
     selectedLayerRef.current = null;
     setSelectedProps(null);
     setHoveredProps(null);
+    setHistoryOpen(false);
+    setHistorySeries([]);
+    setHistoryMeta(null);
+    setHistoryError(null);
+    setIsHistoryLoading(false);
+    if (pendingCountySelectionTimerRef.current) {
+      clearTimeout(pendingCountySelectionTimerRef.current);
+      pendingCountySelectionTimerRef.current = null;
+    }
+    pendingCountySelectionRef.current = null;
   }, [selectedMeasureId, selectedYear, selectedType]);
 
   // Ensure we have a bbox and clear the inactive layer when crossing the tract zoom
@@ -863,6 +1094,48 @@ export default function App() {
     [handleFeatureClick, applySelectedStyle, tractsActive]
   );
 
+  const selectCountyFeatureByFips = useCallback(
+    (countyFips) => {
+      if (tractsActive || !countyFips) return false;
+
+      const geoJsonLayer = geoJsonRef.current;
+      if (!geoJsonLayer) return false;
+
+      const targetCountyFips = String(countyFips);
+      let didSelect = false;
+
+      geoJsonLayer.eachLayer((layer) => {
+        if (didSelect || !layer?.feature) return;
+        const properties = layer.feature.properties ?? {};
+        const locationId =
+          properties.location_id ?? properties.locationid ?? properties.geoid ?? null;
+        if (locationId && String(locationId) === targetCountyFips) {
+          handleFeatureClick(layer.feature, layer);
+          didSelect = true;
+        }
+      });
+
+      return didSelect;
+    },
+    [tractsActive, handleFeatureClick]
+  );
+
+  const handleCountySearchSelection = useCallback(
+    (countyFips) => {
+      if (!countyFips) return;
+      pendingCountySelectionRef.current = String(countyFips);
+      selectCountyFeatureByFips(countyFips);
+      if (pendingCountySelectionTimerRef.current) {
+        clearTimeout(pendingCountySelectionTimerRef.current);
+      }
+      pendingCountySelectionTimerRef.current = setTimeout(() => {
+        pendingCountySelectionRef.current = null;
+        pendingCountySelectionTimerRef.current = null;
+      }, 10000);
+    },
+    [selectCountyFeatureByFips]
+  );
+
   useEffect(() => {
     const geoJsonLayer = geoJsonRef.current;
     if (!geoJsonLayer) return;
@@ -882,7 +1155,121 @@ export default function App() {
     selectedLayerRef.current = null;
     setSelectedProps(null);
     setHoveredProps(null);
+    setHistoryOpen(false);
+    setHistorySeries([]);
+    setHistoryMeta(null);
+    setHistoryError(null);
+    setIsHistoryLoading(false);
   }, [activeGeojson, tractsActive]);
+
+  useEffect(() => {
+    if (tractsActive) return;
+    const pendingCountyFips = pendingCountySelectionRef.current;
+    if (!pendingCountyFips) return;
+    if (selectCountyFeatureByFips(pendingCountyFips)) {
+      pendingCountySelectionRef.current = null;
+      if (pendingCountySelectionTimerRef.current) {
+        clearTimeout(pendingCountySelectionTimerRef.current);
+        pendingCountySelectionTimerRef.current = null;
+      }
+    }
+  }, [activeGeojson, tractsActive, selectCountyFeatureByFips]);
+
+  useEffect(() => {
+    if (!historyOpen || !selectedLocationId) {
+      return;
+    }
+
+    const geography = tractsActive ? "tract" : "county";
+    const historyKey = `history|${geography}|${selectedLocationId}|${selectedMeasureId}|${selectedType}|${HISTORY_START_YEAR}|${HISTORY_END_YEAR}`;
+    const cachedHistory = getCached(historyKey);
+    if (cachedHistory) {
+      setHistorySeries(cachedHistory.series ?? []);
+      setHistoryMeta({
+        measure_id: cachedHistory.measure_id ?? selectedMeasureId,
+        measure: cachedHistory.measure ?? selectedMeasure?.measure ?? selectedMeasureId,
+        data_value_type_id: cachedHistory.data_value_type_id ?? selectedType,
+        data_value_type: cachedHistory.data_value_type ?? selectedType,
+      });
+      setHistoryError(null);
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    if (historyAbortRef.current) {
+      historyAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+
+    const url = new URL(`${API_BASE}/history`);
+    url.searchParams.set("geography", geography);
+    url.searchParams.set("location_id", String(selectedLocationId));
+    url.searchParams.set("measure_id", selectedMeasureId);
+    url.searchParams.set("data_value_type_id", selectedType);
+    url.searchParams.set("start_year", String(HISTORY_START_YEAR));
+    url.searchParams.set("end_year", String(HISTORY_END_YEAR));
+
+    fetch(url, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await parseErrorBody(response);
+          throw new Error(`History request failed (${response.status}): ${body}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setCached(historyKey, data);
+        setHistorySeries(Array.isArray(data?.series) ? data.series : []);
+        setHistoryMeta({
+          measure_id: data?.measure_id ?? selectedMeasureId,
+          measure: data?.measure ?? selectedMeasure?.measure ?? selectedMeasureId,
+          data_value_type_id: data?.data_value_type_id ?? selectedType,
+          data_value_type: data?.data_value_type ?? selectedType,
+        });
+        setHistoryError(null);
+      })
+      .catch((historyFetchError) => {
+        if (controller.signal.aborted) return;
+        console.error("History fetch failed:", historyFetchError);
+        const isNetworkFetchError =
+          historyFetchError instanceof TypeError
+          && /failed to fetch/i.test(historyFetchError.message ?? "");
+        setHistorySeries([]);
+        setHistoryMeta({
+          measure_id: selectedMeasureId,
+          measure: selectedMeasure?.measure ?? selectedMeasureId,
+          data_value_type_id: selectedType,
+          data_value_type: selectedType,
+        });
+        setHistoryError(
+          isNetworkFetchError
+            ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
+            : (historyFetchError.message ?? "Failed to load history.")
+        );
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        setIsHistoryLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    historyOpen,
+    selectedLocationId,
+    tractsActive,
+    selectedMeasureId,
+    selectedType,
+    selectedMeasure,
+    getCached,
+    setCached,
+  ]);
 
   const currentLayerLabel = tractsActive ? "tract" : "county";
 
@@ -1013,6 +1400,10 @@ export default function App() {
             }}
           />
           <MapToolbar defaultCenter={DEFAULT_CENTER} defaultZoom={DEFAULT_ZOOM} />
+          <SearchBar
+            apiBase={API_BASE}
+            onCountySelected={handleCountySearchSelection}
+          />
 
           {activeGeojson ? (
             <GeoJSON
@@ -1166,6 +1557,74 @@ export default function App() {
               <div>
                 Data value type: {selectedProps.data_value_type_id ?? selectedType}
               </div>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((current) => !current)}
+                style={{
+                  marginTop: 4,
+                  width: "fit-content",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {historyOpen ? "Hide history" : "History (2018-2023)"}
+              </button>
+
+              {historyOpen ? (
+                <div
+                  style={{
+                    marginTop: 6,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>
+                    {tractsActive ? "Tract" : "County"} history
+                  </div>
+                  <div>
+                    Measure:{" "}
+                    {historyMeta?.measure ??
+                      selectedMeasure?.measure ??
+                      selectedMeasureId}
+                  </div>
+                  <div>
+                    Data value type: {historyMeta?.data_value_type ?? selectedType}
+                  </div>
+                  {isHistoryLoading ? (
+                    <div style={{ color: "#64748b" }}>Loading history...</div>
+                  ) : null}
+                  {historyError ? (
+                    <div style={{ color: "#b91c1c" }}>{historyError}</div>
+                  ) : null}
+                  {!isHistoryLoading && !historyError ? (
+                    <>
+                      <MiniHistoryChart
+                        series={historySeries}
+                        startYear={HISTORY_START_YEAR}
+                        endYear={HISTORY_END_YEAR}
+                        yLabel="Value"
+                      />
+                      <div style={{ fontSize: 11, color: "#64748b" }}>
+                        {historySeries.map((point) => (
+                          <span
+                            key={`history-summary-${point.year}`}
+                            style={{ marginRight: 8, display: "inline-block" }}
+                          >
+                            {point.year}: {formatValue(point.value)}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : (
             <div style={{ color: "#64748b" }}>Click a {currentLayerLabel}.</div>

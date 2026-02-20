@@ -38,3 +38,17 @@ python backend/scripts/ingest_tract_estimates.py
 ```
 
 For full national TIGER download/import, omit `--state` on both scripts.
+
+## Preflight county CSV (2024 release)
+
+Run read-only validation (no DB writes):
+
+```bash
+python backend/scripts/preflight_places_county_2024.py
+```
+
+Run preflight + write ingestion (uses same mapping/codepath):
+
+```bash
+python backend/scripts/preflight_places_county_2024.py --write
+```

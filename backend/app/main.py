@@ -11,6 +11,8 @@ from app.routers.county_boundaries import router as county_boundaries_router
 from app.routers.state_geojson import router as state_geojson_router
 from app.routers.tracts import router as tracts_router
 from app.routers.meta import router as meta_router
+from app.routers.history import router as history_router
+from app.routers.search import router as search_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -35,3 +37,5 @@ app.include_router(county_boundaries_router)
 app.include_router(state_geojson_router)
 app.include_router(tracts_router)
 app.include_router(meta_router)
+app.include_router(history_router)
+app.include_router(search_router)
