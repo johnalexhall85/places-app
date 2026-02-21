@@ -225,10 +225,36 @@ def counties_boundary_geojson_estimates(
             SELECT
                 id,
                 measure_id,
-                data_value_type_id
+                data_value_type_id,
+                measure,
+                short_question_text
             FROM dim_measure
             WHERE measure_id = :measure_id
                 AND data_value_type_id = :data_value_type_id
+            LIMIT 1
+        ),
+        selected_measure_crude AS (
+            SELECT
+                id,
+                measure_id,
+                data_value_type_id,
+                measure,
+                short_question_text
+            FROM dim_measure
+            WHERE measure_id = :measure_id
+                AND data_value_type_id = 'CrdPrv'
+            LIMIT 1
+        ),
+        selected_measure_age_adjusted AS (
+            SELECT
+                id,
+                measure_id,
+                data_value_type_id,
+                measure,
+                short_question_text
+            FROM dim_measure
+            WHERE measure_id = :measure_id
+                AND data_value_type_id = 'AgeAdjPrv'
             LIMIT 1
         )
         """
@@ -246,22 +272,53 @@ def counties_boundary_geojson_estimates(
             b.countyfp,
             c.state_abbr,
             c.state_desc,
-            CASE WHEN sm.id IS NULL THEN NULL ELSE f.year END AS year,
-            sm.measure_id,
-            sm.data_value_type_id,
-            CASE WHEN sm.id IS NULL THEN NULL ELSE f.data_value END AS data_value,
-            CASE WHEN sm.id IS NULL THEN NULL ELSE f.low_confidence_limit END
+            c.county_name,
+            c.total_population,
+            c.total_pop_18_plus,
+            COALESCE(f.year, f_crude.year, f_age.year, :year) AS year,
+            COALESCE(sm.measure_id, sm_crude.measure_id, sm_age.measure_id, :measure_id)
+                AS measure_id,
+            COALESCE(sm.data_value_type_id, :data_value_type_id) AS data_value_type_id,
+            COALESCE(
+                sm_crude.short_question_text,
+                sm.short_question_text,
+                sm_age.short_question_text,
+                sm_crude.measure,
+                sm.measure,
+                sm_age.measure
+            ) AS measure_name,
+            CASE WHEN sm.id IS NULL THEN NULL ELSE f.data_value END AS value,
+            CASE WHEN sm.id IS NULL THEN NULL ELSE f.low_confidence_limit END AS low,
+            CASE WHEN sm.id IS NULL THEN NULL ELSE f.high_confidence_limit END AS high,
+            CASE WHEN sm_crude.id IS NULL THEN NULL ELSE f_crude.data_value END AS data_value,
+            CASE WHEN sm_crude.id IS NULL THEN NULL ELSE f_crude.low_confidence_limit END
                 AS low_confidence_limit,
-            CASE WHEN sm.id IS NULL THEN NULL ELSE f.high_confidence_limit END
+            CASE WHEN sm_crude.id IS NULL THEN NULL ELSE f_crude.high_confidence_limit END
                 AS high_confidence_limit,
+            CASE WHEN sm_age.id IS NULL THEN NULL ELSE f_age.data_value END
+                AS age_adjusted_data_value,
+            CASE WHEN sm_age.id IS NULL THEN NULL ELSE f_age.low_confidence_limit END
+                AS age_adjusted_low_confidence_limit,
+            CASE WHEN sm_age.id IS NULL THEN NULL ELSE f_age.high_confidence_limit END
+                AS age_adjusted_high_confidence_limit,
             {geometry_expr} AS geometry
         FROM dim_county_boundary AS b
         {bbox_join}
         LEFT JOIN selected_measure AS sm ON TRUE
+        LEFT JOIN selected_measure_crude AS sm_crude ON TRUE
+        LEFT JOIN selected_measure_age_adjusted AS sm_age ON TRUE
         LEFT JOIN fact_estimate_county AS f
             ON f.location_id = b.location_id
             AND f.year = :year
             AND f.measure_dim_id = sm.id
+        LEFT JOIN fact_estimate_county AS f_crude
+            ON f_crude.location_id = b.location_id
+            AND f_crude.year = :year
+            AND f_crude.measure_dim_id = sm_crude.id
+        LEFT JOIN fact_estimate_county AS f_age
+            ON f_age.location_id = b.location_id
+            AND f_age.year = :year
+            AND f_age.measure_dim_id = sm_age.id
         LEFT JOIN dim_county AS c
             ON c.location_id = b.location_id
         WHERE b.geom IS NOT NULL
@@ -287,12 +344,33 @@ def counties_boundary_geojson_estimates(
                 "countyfp": row["countyfp"],
                 "state_abbr": row["state_abbr"],
                 "state_desc": row["state_desc"],
+                "county_name": row["county_name"],
+                "total_population": row["total_population"],
+                "total_pop_18_plus": row["total_pop_18_plus"],
                 "year": row["year"],
                 "measure_id": row["measure_id"],
                 "data_value_type_id": row["data_value_type_id"],
+                "measure_name": row["measure_name"],
+                "value": row["value"],
+                "low": row["low"],
+                "high": row["high"],
                 "data_value": row["data_value"],
                 "low_confidence_limit": row["low_confidence_limit"],
                 "high_confidence_limit": row["high_confidence_limit"],
+                "age_adjusted_data_value": row["age_adjusted_data_value"],
+                "age_adjusted_low_confidence_limit": row[
+                    "age_adjusted_low_confidence_limit"
+                ],
+                "age_adjusted_high_confidence_limit": row[
+                    "age_adjusted_high_confidence_limit"
+                ],
+                "population": (
+                    row["total_pop_18_plus"]
+                    if row["total_pop_18_plus"] is not None
+                    else row["total_population"]
+                ),
+                "location_name": row["county_name"] or row["name"],
+                "geo_level": "county",
             },
         }
         for row in rows

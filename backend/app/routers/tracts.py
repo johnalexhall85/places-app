@@ -155,24 +155,63 @@ def tracts_geojson(
             s.geoid11 AS locationid,
             s.statefp,
             s.countyfp,
-            e.year,
-            e.measure_id,
-            e.data_value_type_id,
-            e.data_value AS value,
-            e.low_confidence_limit AS low,
-            e.high_confidence_limit AS high,
-            e.total_population AS pop_total,
-            e.total_pop_18_plus AS pop_18plus,
-            e.short_question_text,
-            e.state_abbr,
+            COALESCE(e_selected.year, e_crude.year, e_age.year, :year) AS year,
+            COALESCE(e_selected.measure_id, e_crude.measure_id, e_age.measure_id, :measure_id)
+                AS measure_id,
+            COALESCE(e_selected.data_value_type_id, :data_value_type_id) AS data_value_type_id,
+            e_selected.data_value AS value,
+            e_selected.low_confidence_limit AS low,
+            e_selected.high_confidence_limit AS high,
+            COALESCE(
+                e_selected.total_population,
+                e_crude.total_population,
+                e_age.total_population
+            ) AS pop_total,
+            COALESCE(
+                e_selected.total_pop_18_plus,
+                e_crude.total_pop_18_plus,
+                e_age.total_pop_18_plus
+            ) AS pop_18plus,
+            COALESCE(
+                e_crude.short_question_text,
+                e_selected.short_question_text,
+                e_age.short_question_text,
+                e_crude.measure,
+                e_selected.measure,
+                e_age.measure
+            ) AS measure_name,
+            COALESCE(
+                e_selected.short_question_text,
+                e_crude.short_question_text,
+                e_age.short_question_text
+            ) AS short_question_text,
+            COALESCE(e_selected.state_abbr, e_crude.state_abbr, e_age.state_abbr) AS state_abbr,
+            COALESCE(e_selected.location_name, e_crude.location_name, e_age.location_name)
+                AS location_name,
+            e_crude.data_value AS data_value,
+            e_crude.low_confidence_limit AS low_confidence_limit,
+            e_crude.high_confidence_limit AS high_confidence_limit,
+            e_age.data_value AS age_adjusted_data_value,
+            e_age.low_confidence_limit AS age_adjusted_low_confidence_limit,
+            e_age.high_confidence_limit AS age_adjusted_high_confidence_limit,
             {geometry_expr} AS geometry
         FROM tract_shapes AS s
         CROSS JOIN bbox
-        LEFT JOIN tract_estimates AS e
-            ON e.locationid = s.geoid11
-            AND e.year = :year
-            AND e.measure_id = :measure_id
-            AND e.data_value_type_id = :data_value_type_id
+        LEFT JOIN tract_estimates AS e_selected
+            ON e_selected.locationid = s.geoid11
+            AND e_selected.year = :year
+            AND e_selected.measure_id = :measure_id
+            AND e_selected.data_value_type_id = :data_value_type_id
+        LEFT JOIN tract_estimates AS e_crude
+            ON e_crude.locationid = s.geoid11
+            AND e_crude.year = :year
+            AND e_crude.measure_id = :measure_id
+            AND e_crude.data_value_type_id = 'CrdPrv'
+        LEFT JOIN tract_estimates AS e_age
+            ON e_age.locationid = s.geoid11
+            AND e_age.year = :year
+            AND e_age.measure_id = :measure_id
+            AND e_age.data_value_type_id = 'AgeAdjPrv'
         WHERE s.geom IS NOT NULL
             AND s.geom && bbox.geom
             AND ST_Intersects(s.geom, bbox.geom)
@@ -196,6 +235,7 @@ def tracts_geojson(
                 "geometry": row["geometry"],
                 "properties": {
                     "locationid": row["locationid"],
+                    "location_id": row["locationid"],
                     "year": row["year"] if row["year"] is not None else year,
                     "measure_id": row["measure_id"] or measure_id,
                     "data_value_type_id": row["data_value_type_id"]
@@ -205,9 +245,25 @@ def tracts_geojson(
                     "high": row["high"],
                     "pop_total": row["pop_total"],
                     "pop_18plus": row["pop_18plus"],
+                    "total_population": row["pop_total"],
+                    "total_pop_18_plus": row["pop_18plus"],
+                    "population": row["pop_18plus"],
                     "county_fips": county_fips_value,
                     "state_abbr": state_abbr_value,
+                    "measure_name": row["measure_name"],
                     "short_question_text": row["short_question_text"],
+                    "location_name": row["location_name"],
+                    "data_value": row["data_value"],
+                    "low_confidence_limit": row["low_confidence_limit"],
+                    "high_confidence_limit": row["high_confidence_limit"],
+                    "age_adjusted_data_value": row["age_adjusted_data_value"],
+                    "age_adjusted_low_confidence_limit": row[
+                        "age_adjusted_low_confidence_limit"
+                    ],
+                    "age_adjusted_high_confidence_limit": row[
+                        "age_adjusted_high_confidence_limit"
+                    ],
+                    "geo_level": "tract",
                 },
             }
         )

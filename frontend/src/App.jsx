@@ -40,10 +40,24 @@ function quantile(sortedValues, q) {
   return lower + rest * (upper - lower);
 }
 
+function toFiniteNumericValue(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.toLowerCase() === "no data") return null;
+    const numericValue = Number(trimmed);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+  return null;
+}
+
 function computeBreaks(values, bins = BIN_COUNT) {
   const numeric = values
-    .map((value) => Number(value))
-    .filter((value) => !Number.isNaN(value))
+    .map((value) => toFiniteNumericValue(value))
+    .filter((value) => value != null)
     .sort((a, b) => a - b);
 
   if (numeric.length === 0) {
@@ -148,8 +162,8 @@ function getColor(value, breaks) {
     return NO_DATA_COLOR;
   }
 
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
+  const numericValue = toFiniteNumericValue(value);
+  if (numericValue == null) {
     return NO_DATA_COLOR;
   }
 
@@ -168,8 +182,8 @@ function formatRange(min, max) {
 }
 
 function formatValue(value) {
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return "No data";
+  const numericValue = toFiniteNumericValue(value);
+  if (numericValue == null) return "No data";
   return numericValue.toFixed(1);
 }
 
@@ -1711,6 +1725,95 @@ export default function App() {
   const zoomToSelectedLabel = tractsActive
     ? "Zoom to Selected Census Tract"
     : "Zoom to Selected County";
+  const selectedFeature = selectedProps ? { properties: selectedProps } : null;
+  const selectedFeatureProps = selectedFeature?.properties ?? null;
+  const firstDefined = (...values) => {
+    for (const value of values) {
+      if (value !== null && value !== undefined) {
+        return value;
+      }
+    }
+    return null;
+  };
+  const hasText = (value) =>
+    value !== null && value !== undefined && String(value).trim().length > 0;
+  const fmt1 = (x) => (x === null || x === undefined ? "N/A" : Number(x).toFixed(1));
+  const fmtPop = (x) => (x === null || x === undefined ? "N/A" : Number(x).toLocaleString());
+  const ciText = (lci, uci) =>
+    lci === null || lci === undefined || uci === null || uci === undefined
+      ? "N/A"
+      : `${fmt1(lci)}, ${fmt1(uci)}`;
+  const normalizeMeasureName = (value) => {
+    if (!hasText(value)) return "N/A";
+    const text = String(value).trim();
+    const simplified = text.replace(/\s+among adults aged.*$/i, "").trim();
+    return simplified || text;
+  };
+  const selectedGeoLevel = String(
+    firstDefined(selectedFeatureProps?.geo_level, tractsActive ? "tract" : "county")
+  ).toLowerCase() === "tract"
+    ? "tract"
+    : "county";
+  const crudeValue = firstDefined(
+    selectedFeatureProps?.data_value,
+    selectedFeatureProps?.data_value_type_id === "CrdPrv"
+      ? selectedFeatureProps?.value
+      : null
+  );
+  const crudeLow = firstDefined(
+    selectedFeatureProps?.low_confidence_limit,
+    selectedFeatureProps?.data_value_type_id === "CrdPrv" ? selectedFeatureProps?.low : null
+  );
+  const crudeHigh = firstDefined(
+    selectedFeatureProps?.high_confidence_limit,
+    selectedFeatureProps?.data_value_type_id === "CrdPrv" ? selectedFeatureProps?.high : null
+  );
+  const ageAdjustedValue = firstDefined(
+    selectedFeatureProps?.age_adjusted_data_value,
+    selectedFeatureProps?.data_value_type_id === "AgeAdjPrv"
+      ? selectedFeatureProps?.value
+      : null
+  );
+  const ageAdjustedLow = firstDefined(
+    selectedFeatureProps?.age_adjusted_low_confidence_limit,
+    selectedFeatureProps?.data_value_type_id === "AgeAdjPrv" ? selectedFeatureProps?.low : null
+  );
+  const ageAdjustedHigh = firstDefined(
+    selectedFeatureProps?.age_adjusted_high_confidence_limit,
+    selectedFeatureProps?.data_value_type_id === "AgeAdjPrv" ? selectedFeatureProps?.high : null
+  );
+  const measureNameValue = normalizeMeasureName(
+    firstDefined(
+      selectedFeatureProps?.measure_name,
+      selectedFeatureProps?.short_question_text,
+      selectedMeasure?.short_question_text,
+      selectedMeasure?.measure
+    )
+  );
+  const yearValue = firstDefined(selectedFeatureProps?.year, selectedYear);
+  const populationValue = firstDefined(
+    selectedFeatureProps?.population,
+    selectedFeatureProps?.pop_18plus,
+    selectedFeatureProps?.total_pop_18_plus,
+    selectedFeatureProps?.pop_total,
+    selectedFeatureProps?.total_population
+  );
+  const selectedLocationIdForLink = firstDefined(
+    selectedFeatureProps?.location_id,
+    selectedFeatureProps?.locationid
+  );
+  const selectedLocationNameForLink = firstDefined(
+    selectedFeatureProps?.location_name,
+    selectedFeatureProps?.county_name,
+    selectedFeatureProps?.name
+  );
+  const censusProfileHref = hasText(selectedLocationIdForLink)
+    ? `https://data.census.gov/profile/${String(selectedLocationIdForLink).trim()}`
+    : hasText(selectedLocationNameForLink)
+      ? `https://data.census.gov/profile/${encodeURIComponent(
+        String(selectedLocationNameForLink).trim()
+      )}`
+      : "https://data.census.gov/";
 
   const handleZoomToSelected = useCallback(() => {
     const map = mapRef.current;
@@ -1975,6 +2078,8 @@ export default function App() {
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
           minWidth: 210,
+          maxHeight: "calc(100vh - 32px)",
+          overflowY: "auto",
           zIndex: 2000,
         }}
       >
@@ -2020,6 +2125,34 @@ export default function App() {
             <span>No data</span>
           </div>
         </div>
+        {selectedFeature ? (
+          <>
+            <hr />
+            <div className="legend-details">
+              <p>
+                In this <strong>{selectedGeoLevel}</strong>, the estimated prevalence of{" "}
+                <strong>{measureNameValue}</strong> among adults aged 18 years and older
+                (%) was <strong>{fmt1(crudeValue)}</strong> with 95% CI (
+                <strong>{ciText(crudeLow, crudeHigh)}</strong>), and the age-adjusted
+                prevalence (%) was <strong>{fmt1(ageAdjustedValue)}</strong> (
+                <strong>{ciText(ageAdjustedLow, ageAdjustedHigh)}</strong>) in{" "}
+                <strong>{yearValue ?? "N/A"}</strong>.
+              </p>
+              <p>
+                According to the Census <strong>{yearValue ?? "N/A"}</strong> population
+                estimates, <strong>{fmtPop(populationValue)}</strong> adults live in this{" "}
+                <strong>{selectedGeoLevel}</strong>.
+              </p>
+              <p>
+                For more demographic, social, and economic data, visit{" "}
+                <a href={censusProfileHref} target="_blank" rel="noreferrer">
+                  Census County Profile
+                </a>
+                .
+              </p>
+            </div>
+          </>
+        ) : null}
 
         <div
           style={{

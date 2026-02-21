@@ -36,3 +36,17 @@ body {
   display: inline-block;
   animation: search-spin 0.8s linear infinite;
 }
+
+.legend-details {
+  font-size: 0.85rem;
+  color: #444;
+  margin-top: 10px;
+  line-height: 1.25rem;
+  max-width: 80ch;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.legend-details p {
+  margin: 0 0 8px;
+}
