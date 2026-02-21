@@ -52,3 +52,42 @@ Run preflight + write ingestion (uses same mapping/codepath):
 ```bash
 python backend/scripts/preflight_places_county_2024.py --write
 ```
+
+## Ask the map assistant (OpenRouter)
+
+Set assistant config in `config/llm_settings.json` (this repo already gitignores `config/`):
+
+```json
+{
+  "openrouter_api_key": "your_openrouter_api_key",
+  "openrouter_model": "openai/gpt-5.2",
+  "openrouter_base_url": "https://openrouter.ai/api/v1",
+  "openrouter_timeout_seconds": 60.0,
+  "openrouter_http_referer": "http://localhost:5173",
+  "openrouter_x_title": "PLACES Next App",
+  "openrouter_temperature": 0.0,
+  "openrouter_max_tokens": 1400,
+  "openrouter_tool_choice": "auto",
+  "assistant_max_steps": 8,
+  "assistant_format_retry_limit": 1,
+  "assistant_system_prompt": ""
+}
+```
+
+Then call:
+
+```bash
+curl -sS -X POST "http://localhost:8000/assistant/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "What is arthritis in Fulton County GA?",
+    "context": {
+      "measure_id": "ARTHRITIS",
+      "year": 2023,
+      "data_value_type_id": "CrdPrv",
+      "zoom": 6,
+      "bbox": [-85, 33, -84, 34],
+      "active_layer": "county"
+    }
+  }'
+```

@@ -8,6 +8,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import SearchBar from "./SearchBar";
+import AskMapChat from "./components/AskMapChat";
 
 const API_BASE = "http://localhost:8000";
 const DEFAULT_CENTER = [39.5, -98.35];
@@ -24,6 +25,9 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VIEWPORT_DEBOUNCE_MS = 200;
 const HISTORY_START_YEAR = 2018;
 const HISTORY_END_YEAR = 2023;
+const ASSISTANT_POST_CONTEXT_ACTION_DELAY_MS = 200;
+const ASSISTANT_STREAM_CHUNK_CHARS = 4;
+const ASSISTANT_STREAM_INTERVAL_MS = 18;
 
 function quantile(sortedValues, q) {
   if (sortedValues.length === 0) return null;
@@ -77,6 +81,61 @@ function getValueFromProperties(properties) {
 function getFeatureId(properties) {
   if (!properties) return "Unknown";
   return properties.locationid ?? properties.location_id ?? properties.geoid ?? "Unknown";
+}
+
+function getFeatureLocationId(properties) {
+  if (!properties) return null;
+  const locationId = properties.locationid ?? properties.location_id ?? properties.geoid ?? null;
+  if (locationId == null) return null;
+  const normalized = String(locationId).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function pushGeometryPoints(coordinates, output) {
+  if (!Array.isArray(coordinates)) return;
+  if (
+    coordinates.length >= 2
+    && typeof coordinates[0] === "number"
+    && typeof coordinates[1] === "number"
+  ) {
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      output.push([lat, lng]);
+    }
+    return;
+  }
+  coordinates.forEach((item) => pushGeometryPoints(item, output));
+}
+
+function getGeometryCenter(geometry) {
+  if (!geometry || typeof geometry !== "object") return null;
+  const points = [];
+  pushGeometryPoints(geometry.coordinates, points);
+  if (points.length === 0) return null;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  points.forEach(([lat, lng]) => {
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  });
+  if (
+    !Number.isFinite(minLat)
+    || !Number.isFinite(maxLat)
+    || !Number.isFinite(minLng)
+    || !Number.isFinite(maxLng)
+  ) {
+    return null;
+  }
+  return {
+    lat: (minLat + maxLat) / 2,
+    lng: (minLng + maxLng) / 2,
+  };
 }
 
 function getCountyName(properties) {
@@ -154,7 +213,68 @@ function parseErrorBody(response) {
     .catch(() => "No body");
 }
 
-function MapViewportWatcher({ onViewportChange }) {
+function toLeafletBounds(value) {
+  if (!value) return null;
+
+  if (Array.isArray(value) && value.length === 2) {
+    const sw = value[0];
+    const ne = value[1];
+    if (Array.isArray(sw) && Array.isArray(ne) && sw.length === 2 && ne.length === 2) {
+      const south = Number(sw[0]);
+      const west = Number(sw[1]);
+      const north = Number(ne[0]);
+      const east = Number(ne[1]);
+      if (
+        Number.isFinite(south)
+        && Number.isFinite(west)
+        && Number.isFinite(north)
+        && Number.isFinite(east)
+        && south < north
+        && west < east
+      ) {
+        return [[south, west], [north, east]];
+      }
+    }
+  }
+
+  if (Array.isArray(value) && value.length === 4) {
+    const west = Number(value[0]);
+    const south = Number(value[1]);
+    const east = Number(value[2]);
+    const north = Number(value[3]);
+    if (
+      Number.isFinite(south)
+      && Number.isFinite(west)
+      && Number.isFinite(north)
+      && Number.isFinite(east)
+      && south < north
+      && west < east
+    ) {
+      return [[south, west], [north, east]];
+    }
+  }
+
+  if (typeof value === "object") {
+    const south = Number(value.min_lat ?? value.south ?? value.south_lat);
+    const west = Number(value.min_lon ?? value.west ?? value.west_lon);
+    const north = Number(value.max_lat ?? value.north ?? value.north_lat);
+    const east = Number(value.max_lon ?? value.east ?? value.east_lon);
+    if (
+      Number.isFinite(south)
+      && Number.isFinite(west)
+      && Number.isFinite(north)
+      && Number.isFinite(east)
+      && south < north
+      && west < east
+    ) {
+      return [[south, west], [north, east]];
+    }
+  }
+
+  return null;
+}
+
+function MapViewportWatcher({ onViewportChange, onMapReady }) {
   const map = useMapEvents({
     moveend() {
       onViewportChange(map.getZoom(), map.getBounds());
@@ -173,11 +293,14 @@ function MapViewportWatcher({ onViewportChange }) {
   });
 
   useEffect(() => {
+    if (typeof onMapReady === "function") {
+      onMapReady(map);
+    }
     requestAnimationFrame(() => {
       map.invalidateSize({ pan: false });
     });
     onViewportChange(map.getZoom(), map.getBounds());
-  }, [map, onViewportChange]);
+  }, [map, onMapReady, onViewportChange]);
 
   return null;
 }
@@ -428,6 +551,11 @@ function MiniHistoryChart({
 }
 
 export default function App() {
+  const [assistantInput, setAssistantInput] = useState("");
+  const [assistantMessages, setAssistantMessages] = useState([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantScrollSignal, setAssistantScrollSignal] = useState(0);
+
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
@@ -456,11 +584,16 @@ export default function App() {
   const [historyMeta, setHistoryMeta] = useState(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
+  const [highlightedGeoid, setHighlightedGeoid] = useState(null);
+  const [highlightedLevel, setHighlightedLevel] = useState(null);
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
   const pendingCountySelectionRef = useRef(null);
   const pendingCountySelectionTimerRef = useRef(null);
+  const previousTractsActiveRef = useRef(null);
+  const assistantStreamTimerRef = useRef(null);
+  const assistantStreamRunIdRef = useRef(0);
   const mapRef = useRef(null);
   const previousZoomRef = useRef(DEFAULT_ZOOM);
   
@@ -483,13 +616,17 @@ export default function App() {
   
   // Viewport debouncing
   const viewportDebounceRef = useRef(null);
-  const pendingViewportRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
       }
+      if (assistantStreamTimerRef.current) {
+        clearTimeout(assistantStreamTimerRef.current);
+        assistantStreamTimerRef.current = null;
+      }
+      assistantStreamRunIdRef.current += 1;
     };
   }, []);
 
@@ -501,12 +638,8 @@ export default function App() {
   const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
   const activeFeatures = activeGeojson?.features ?? [];
   const selectedLocationId = useMemo(() => {
-    if (!selectedProps) return null;
-    if (tractsActive) {
-      return selectedProps.locationid ?? selectedProps.location_id ?? null;
-    }
-    return selectedProps.location_id ?? selectedProps.locationid ?? selectedProps.geoid ?? null;
-  }, [selectedProps, tractsActive]);
+    return getFeatureLocationId(selectedProps);
+  }, [selectedProps]);
 
   // Cache helper functions
   const getCached = useCallback((key) => {
@@ -743,15 +876,8 @@ export default function App() {
     setTractGeojson(null);
     setCountyBoundaryOverlay(null);
     setStateBoundaryOverlay(null);
-    // Clear any selected/hovered features tied to the previous measure
-    selectedLayerRef.current = null;
-    setSelectedProps(null);
+    // Keep selection across measure/year/type changes; only clear transient hover state.
     setHoveredProps(null);
-    setHistoryOpen(false);
-    setHistorySeries([]);
-    setHistoryMeta(null);
-    setHistoryError(null);
-    setIsHistoryLoading(false);
     if (pendingCountySelectionTimerRef.current) {
       clearTimeout(pendingCountySelectionTimerRef.current);
       pendingCountySelectionTimerRef.current = null;
@@ -1056,7 +1182,8 @@ export default function App() {
   }, []);
 
   const handleFeatureClick = useCallback(
-    (feature, layer) => {
+    (feature, layer, options = {}) => {
+      const shouldOpenHistory = options.openHistory !== false;
       const geoJsonLayer = geoJsonRef.current;
       if (!geoJsonLayer) return;
 
@@ -1065,8 +1192,30 @@ export default function App() {
       }
 
       selectedLayerRef.current = layer;
-      setSelectedProps(feature.properties);
-      setHistoryOpen(true);
+      const nextSelectedProps = { ...(feature.properties ?? {}) };
+      if (
+        nextSelectedProps.lat == null
+        || nextSelectedProps.lng == null
+        || Number.isNaN(Number(nextSelectedProps.lat))
+        || Number.isNaN(Number(nextSelectedProps.lng))
+      ) {
+        if (layer && typeof layer.getBounds === "function") {
+          const bounds = layer.getBounds();
+          if (bounds && typeof bounds.isValid === "function" && bounds.isValid()) {
+            const center = bounds.getCenter();
+            nextSelectedProps.lat = center.lat;
+            nextSelectedProps.lng = center.lng;
+          }
+        } else if (layer && typeof layer.getLatLng === "function") {
+          const center = layer.getLatLng();
+          nextSelectedProps.lat = center.lat;
+          nextSelectedProps.lng = center.lng;
+        }
+      }
+      setSelectedProps(nextSelectedProps);
+      if (shouldOpenHistory) {
+        setHistoryOpen(true);
+      }
       applySelectedStyle(layer);
     },
     [applySelectedStyle]
@@ -1075,7 +1224,7 @@ export default function App() {
   const handleEachFeature = useCallback(
     (feature, layer) => {
       layer.on("click", () => {
-        handleFeatureClick(feature, layer);
+        handleFeatureClick(feature, layer, { openHistory: true });
       });
       layer.on("mouseover", () => {
         setHoveredProps(feature.properties);
@@ -1095,37 +1244,40 @@ export default function App() {
     [handleFeatureClick, applySelectedStyle, tractsActive]
   );
 
-  const selectCountyFeatureByFips = useCallback(
-    (countyFips) => {
-      if (tractsActive || !countyFips) return false;
-
+  const selectActiveFeatureByLocationId = useCallback(
+    (locationId, options = {}) => {
+      const safeLocationId = String(locationId ?? "").trim();
+      if (!safeLocationId) return false;
       const geoJsonLayer = geoJsonRef.current;
       if (!geoJsonLayer) return false;
 
-      const targetCountyFips = String(countyFips);
       let didSelect = false;
-
       geoJsonLayer.eachLayer((layer) => {
         if (didSelect || !layer?.feature) return;
-        const properties = layer.feature.properties ?? {};
-        const locationId =
-          properties.location_id ?? properties.locationid ?? properties.geoid ?? null;
-        if (locationId && String(locationId) === targetCountyFips) {
-          handleFeatureClick(layer.feature, layer);
+        const featureLocationId = getFeatureLocationId(layer.feature.properties ?? {});
+        if (featureLocationId && featureLocationId === safeLocationId) {
+          handleFeatureClick(layer.feature, layer, options);
           didSelect = true;
         }
       });
-
       return didSelect;
     },
-    [tractsActive, handleFeatureClick]
+    [handleFeatureClick]
+  );
+
+  const selectCountyFeatureByFips = useCallback(
+    (countyFips, options = {}) => {
+      if (tractsActive || !countyFips) return false;
+      return selectActiveFeatureByLocationId(countyFips, options);
+    },
+    [tractsActive, selectActiveFeatureByLocationId]
   );
 
   const handleCountySearchSelection = useCallback(
     (countyFips) => {
       if (!countyFips) return;
       pendingCountySelectionRef.current = String(countyFips);
-      selectCountyFeatureByFips(countyFips);
+      selectCountyFeatureByFips(countyFips, { openHistory: true });
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
       }
@@ -1135,6 +1287,253 @@ export default function App() {
       }, 10000);
     },
     [selectCountyFeatureByFips]
+  );
+
+  const handleAssistantHighlight = useCallback(
+    ({ level, geoid }) => {
+      const safeLevel = String(level ?? "").trim().toLowerCase();
+      const safeGeoid = String(geoid ?? "").trim();
+      setHighlightedLevel(safeLevel || null);
+      setHighlightedGeoid(safeGeoid || null);
+
+      if (safeLevel === "county" && safeGeoid) {
+        handleCountySearchSelection(safeGeoid);
+        return;
+      }
+      if (safeLevel === "tract" && safeGeoid && tractsActive) {
+        selectActiveFeatureByLocationId(safeGeoid, { openHistory: true });
+      }
+    },
+    [handleCountySearchSelection, selectActiveFeatureByLocationId, tractsActive]
+  );
+
+  const executeAssistantActions = useCallback(
+    (actions) => {
+      if (!Array.isArray(actions)) return;
+      const map = mapRef.current;
+      const contextActions = [];
+      const mapActions = [];
+
+      actions.forEach((action) => {
+        const type = String(action?.type ?? "").toUpperCase();
+        if (type === "SET_MEASURE_CONTEXT") {
+          contextActions.push(action);
+          return;
+        }
+        mapActions.push(action);
+      });
+
+      contextActions.forEach((action) => {
+        const payload = action?.payload && typeof action.payload === "object"
+          ? action.payload
+          : {};
+        const measureId = String(action?.measure_id ?? payload.measure_id ?? "").trim();
+        const year = Number(action?.year ?? payload.year);
+        const dataValueTypeId = String(
+          action?.data_value_type_id ?? payload.data_value_type_id ?? ""
+        ).trim();
+
+        if (measureId) {
+          setSelectedMeasureId(measureId);
+        }
+        if (Number.isFinite(year)) {
+          setSelectedYear(year);
+        }
+        if (dataValueTypeId) {
+          setSelectedType(dataValueTypeId);
+        }
+      });
+
+      const hasCountyHighlight = mapActions.some(
+        (action) =>
+          String(action?.type ?? "").toUpperCase() === "MAP_HIGHLIGHT"
+          && String(action?.level ?? "").toLowerCase() === "county"
+          && String(
+            action?.geoid
+            ?? action?.county_fips
+            ?? action?.location_id
+            ?? action?.fips
+            ?? ""
+          ).trim().length > 0
+      );
+
+      const runMapActions = () => mapActions.forEach((action) => {
+        const type = String(action?.type ?? "").toUpperCase();
+
+        if (type === "MAP_FLY_TO") {
+          if (!map) return;
+          const lat = Number(action?.lat ?? action?.latitude ?? action?.centroid_lat);
+          const lng = Number(
+            action?.lng
+            ?? action?.lon
+            ?? action?.longitude
+            ?? action?.centroid_lng
+          );
+          const zoom = Number(action?.zoom);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          if (hasCountyHighlight) {
+            // Mirror SearchBar county selection behavior exactly.
+            map.setView([lat, lng], 9);
+          } else {
+            map.flyTo([lat, lng], Number.isFinite(zoom) ? zoom : 9);
+          }
+          return;
+        }
+
+        if (type === "MAP_FIT_BOUNDS") {
+          if (!map) return;
+          const bounds = toLeafletBounds(action?.bounds ?? action?.bbox ?? action);
+          if (!bounds) return;
+          map.fitBounds(bounds);
+          return;
+        }
+
+        if (type === "MAP_HIGHLIGHT") {
+          const level = String(action?.level ?? "county").toLowerCase();
+          const geoid = String(
+            action?.geoid
+            ?? action?.county_fips
+            ?? action?.location_id
+            ?? action?.fips
+            ?? ""
+          ).trim();
+          if (!geoid) return;
+          handleAssistantHighlight({ level, geoid });
+        }
+      });
+
+      if (contextActions.length > 0 && mapActions.length > 0) {
+        window.setTimeout(runMapActions, ASSISTANT_POST_CONTEXT_ACTION_DELAY_MS);
+      } else {
+        runMapActions();
+      }
+    },
+    [handleAssistantHighlight]
+  );
+
+  const cancelAssistantStream = useCallback(() => {
+    assistantStreamRunIdRef.current += 1;
+    if (assistantStreamTimerRef.current) {
+      clearTimeout(assistantStreamTimerRef.current);
+      assistantStreamTimerRef.current = null;
+    }
+  }, []);
+
+  const streamAssistantAnswer = useCallback((answerText) => {
+    const safeText = String(answerText ?? "").trim() || "Data unavailable";
+    const runId = assistantStreamRunIdRef.current + 1;
+    assistantStreamRunIdRef.current = runId;
+
+    let messageIndex = -1;
+    setAssistantMessages((current) => {
+      messageIndex = current.length;
+      return [...current, { role: "assistant", text: "" }];
+    });
+
+    return new Promise((resolve) => {
+      let cursor = 0;
+      const pushChunk = () => {
+        if (assistantStreamRunIdRef.current !== runId) {
+          resolve();
+          return;
+        }
+
+        cursor = Math.min(safeText.length, cursor + ASSISTANT_STREAM_CHUNK_CHARS);
+        const nextText = safeText.slice(0, cursor);
+        setAssistantMessages((current) => {
+          if (messageIndex < 0 || messageIndex >= current.length) return current;
+          const updated = [...current];
+          updated[messageIndex] = { ...updated[messageIndex], text: nextText };
+          return updated;
+        });
+
+        if (cursor >= safeText.length) {
+          assistantStreamTimerRef.current = null;
+          resolve();
+          return;
+        }
+
+        assistantStreamTimerRef.current = setTimeout(
+          pushChunk,
+          ASSISTANT_STREAM_INTERVAL_MS
+        );
+      };
+
+      pushChunk();
+    });
+  }, []);
+
+  const handleAssistantSubmit = useCallback(
+    async () => {
+      if (assistantLoading) return;
+      const trimmedInput = assistantInput.trim();
+      if (!trimmedInput || selectedYear == null) return;
+
+      setAssistantScrollSignal((value) => value + 1);
+      setAssistantMessages((current) => [
+        ...current,
+        { role: "user", text: trimmedInput },
+      ]);
+      setAssistantInput("");
+      setAssistantLoading(true);
+      cancelAssistantStream();
+
+      try {
+        const response = await fetch(`${API_BASE}/assistant/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: trimmedInput,
+            context: {
+              measure_id: selectedMeasureId,
+              year: selectedYear,
+              data_value_type_id: selectedType,
+              zoom: mapZoom,
+              bbox,
+              active_layer: tractsActive ? "tract" : "county",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await parseErrorBody(response);
+          throw new Error(`Assistant request failed (${response.status}): ${body}`);
+        }
+
+        const resp = await response.json();
+        console.log("assistant actions:", resp.actions);
+
+        const actions = Array.isArray(resp?.actions) ? resp.actions : [];
+        executeAssistantActions(actions);
+
+        const answerMarkdown = typeof resp?.answer_markdown === "string"
+          ? resp.answer_markdown
+          : "";
+        await streamAssistantAnswer(answerMarkdown);
+      } catch (submitError) {
+        cancelAssistantStream();
+        console.error("assistant submit failed:", submitError);
+        setAssistantMessages((current) => [
+          ...current,
+          { role: "assistant", text: "Sorry, the assistant request failed." },
+        ]);
+      } finally {
+        setAssistantLoading(false);
+      }
+    },
+    [
+      assistantInput,
+      assistantLoading,
+      bbox,
+      cancelAssistantStream,
+      executeAssistantActions,
+      mapZoom,
+      selectedMeasureId,
+      selectedType,
+      selectedYear,
+      streamAssistantAnswer,
+      tractsActive,
+    ]
   );
 
   useEffect(() => {
@@ -1147,12 +1546,27 @@ export default function App() {
       }
     });
 
-    if (selectedLayerRef.current) {
-      applySelectedStyle(selectedLayerRef.current);
+    selectedLayerRef.current = null;
+    if (!selectedLocationId) {
+      return;
     }
-  }, [activeGeojson, choroplethStyle, applySelectedStyle]);
+
+    if (!selectActiveFeatureByLocationId(selectedLocationId, { openHistory: false })) {
+      selectedLayerRef.current = null;
+    }
+  }, [activeGeojson, choroplethStyle, selectedLocationId, selectActiveFeatureByLocationId]);
 
   useEffect(() => {
+    const previousTractsActive = previousTractsActiveRef.current;
+    if (previousTractsActive == null) {
+      previousTractsActiveRef.current = tractsActive;
+      return;
+    }
+    if (previousTractsActive === tractsActive) {
+      return;
+    }
+    previousTractsActiveRef.current = tractsActive;
+
     selectedLayerRef.current = null;
     setSelectedProps(null);
     setHoveredProps(null);
@@ -1161,13 +1575,13 @@ export default function App() {
     setHistoryMeta(null);
     setHistoryError(null);
     setIsHistoryLoading(false);
-  }, [activeGeojson, tractsActive]);
+  }, [tractsActive]);
 
   useEffect(() => {
     if (tractsActive) return;
     const pendingCountyFips = pendingCountySelectionRef.current;
     if (!pendingCountyFips) return;
-    if (selectCountyFeatureByFips(pendingCountyFips)) {
+    if (selectCountyFeatureByFips(pendingCountyFips, { openHistory: true })) {
       pendingCountySelectionRef.current = null;
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
@@ -1273,6 +1687,73 @@ export default function App() {
   ]);
 
   const currentLayerLabel = tractsActive ? "tract" : "county";
+  const zoomToSelectedLabel = tractsActive
+    ? "Zoom to Selected Census Tract"
+    : "Zoom to Selected County";
+
+  const handleZoomToSelected = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !selectedLocationId) {
+      return;
+    }
+
+    const targetZoom = tractsActive ? 10.0 : 9.0;
+    if (!selectedLayerRef.current) {
+      selectActiveFeatureByLocationId(selectedLocationId);
+    }
+    const selectedLayer = selectedLayerRef.current;
+
+    let center = null;
+    if (selectedLayer && typeof selectedLayer.getBounds === "function") {
+      const bounds = selectedLayer.getBounds();
+      if (bounds && typeof bounds.isValid === "function" && bounds.isValid()) {
+        center = bounds.getCenter();
+      }
+    }
+
+    if (!center && selectedLayer && typeof selectedLayer.getLatLng === "function") {
+      center = selectedLayer.getLatLng();
+    }
+
+    if (!center) {
+      const lat = Number(
+        selectedProps.lat ?? selectedProps.latitude ?? selectedProps.centroid_lat
+      );
+      const lng = Number(
+        selectedProps.lng
+        ?? selectedProps.lon
+        ?? selectedProps.longitude
+        ?? selectedProps.centroid_lng
+      );
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        center = { lat, lng };
+      }
+    }
+
+    if (!center) {
+      const selectedFeature = activeFeatures.find((feature) => {
+        const featureLocationId = getFeatureLocationId(feature?.properties ?? {});
+        return featureLocationId && featureLocationId === selectedLocationId;
+      });
+      center = getGeometryCenter(selectedFeature?.geometry);
+    }
+
+    if (!center) {
+      return;
+    }
+
+    map.setView([center.lat, center.lng], targetZoom);
+  }, [
+    activeFeatures,
+    selectedLocationId,
+    selectedProps,
+    selectActiveFeatureByLocationId,
+    tractsActive,
+  ]);
+
+  const handleToggleHistoryClick = useCallback(() => {
+    setHistoryOpen((current) => !current);
+  }, []);
 
   return (
     <div
@@ -1362,20 +1843,20 @@ export default function App() {
       </div>
 
       <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
-        <MapContainer
-          center={DEFAULT_CENTER}
-          zoom={DEFAULT_ZOOM}
-            whenCreated={(m) => {
-              mapRef.current = m;
-            }}
-          style={{ height: "100%" }}
-        >
+          <MapContainer
+            center={DEFAULT_CENTER}
+            zoom={DEFAULT_ZOOM}
+            style={{ height: "100%" }}
+          >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
           <MapViewportWatcher
+            onMapReady={(map) => {
+              mapRef.current = map;
+            }}
             onViewportChange={(zoom, bounds) => {
               setMapZoom(zoom);
               
@@ -1560,7 +2041,24 @@ export default function App() {
               </div>
               <button
                 type="button"
-                onClick={() => setHistoryOpen((current) => !current)}
+                onClick={handleZoomToSelected}
+                style={{
+                  marginTop: 4,
+                  width: "fit-content",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #1d4ed8",
+                  background: "#eff6ff",
+                  color: "#1e40af",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {zoomToSelectedLabel}
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleHistoryClick}
                 style={{
                   marginTop: 4,
                   width: "fit-content",
@@ -1633,10 +2131,19 @@ export default function App() {
         </div>
       </div>
 
+      <AskMapChat
+        assistantInput={assistantInput}
+        assistantMessages={assistantMessages}
+        assistantLoading={assistantLoading}
+        scrollSignal={assistantScrollSignal}
+        onAssistantInputChange={setAssistantInput}
+        onAssistantSubmit={handleAssistantSubmit}
+      />
+
       <div
         style={{
           position: "absolute",
-          left: 16,
+          right: 16,
           bottom: 16,
           background: "white",
           padding: "10px 12px",
@@ -1648,7 +2155,8 @@ export default function App() {
       >
         layer={tractsActive ? "tracts + county-lines" : "counties"} - zoom={mapZoom.toFixed(2)} -
         measure_id={selectedMeasureId} - year={selectedYear} - data_value_type_id={selectedType} -
-        tract_zoom={TRACT_ZOOM}
+        tract_zoom={TRACT_ZOOM} - highlight_level={highlightedLevel ?? "none"} -
+        highlight_geoid={highlightedGeoid ?? "none"}
       </div>
     </div>
   );

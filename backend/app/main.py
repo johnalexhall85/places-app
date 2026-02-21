@@ -13,6 +13,7 @@ from app.routers.tracts import router as tracts_router
 from app.routers.meta import router as meta_router
 from app.routers.history import router as history_router
 from app.routers.search import router as search_router
+from app.routers.assistant import router as assistant_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -39,3 +40,4 @@ app.include_router(tracts_router)
 app.include_router(meta_router)
 app.include_router(history_router)
 app.include_router(search_router)
+app.include_router(assistant_router)
