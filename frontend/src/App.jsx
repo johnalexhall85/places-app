@@ -589,8 +589,10 @@ export default function App() {
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
+  const zoomToSelectedButtonRef = useRef(null);
   const pendingCountySelectionRef = useRef(null);
   const pendingCountySelectionTimerRef = useRef(null);
+  const pendingAssistantCountyZoomRef = useRef(false);
   const previousTractsActiveRef = useRef(null);
   const assistantStreamTimerRef = useRef(null);
   const assistantStreamRunIdRef = useRef(0);
@@ -622,6 +624,7 @@ export default function App() {
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
       }
+      pendingAssistantCountyZoomRef.current = false;
       if (assistantStreamTimerRef.current) {
         clearTimeout(assistantStreamTimerRef.current);
         assistantStreamTimerRef.current = null;
@@ -1284,6 +1287,7 @@ export default function App() {
       pendingCountySelectionTimerRef.current = setTimeout(() => {
         pendingCountySelectionRef.current = null;
         pendingCountySelectionTimerRef.current = null;
+        pendingAssistantCountyZoomRef.current = false;
       }, 10000);
     },
     [selectCountyFeatureByFips]
@@ -1297,6 +1301,7 @@ export default function App() {
       setHighlightedGeoid(safeGeoid || null);
 
       if (safeLevel === "county" && safeGeoid) {
+        pendingAssistantCountyZoomRef.current = true;
         handleCountySearchSelection(safeGeoid);
         return;
       }
@@ -1567,6 +1572,7 @@ export default function App() {
     }
     previousTractsActiveRef.current = tractsActive;
 
+    pendingAssistantCountyZoomRef.current = false;
     selectedLayerRef.current = null;
     setSelectedProps(null);
     setHoveredProps(null);
@@ -1589,6 +1595,21 @@ export default function App() {
       }
     }
   }, [activeGeojson, tractsActive, selectCountyFeatureByFips]);
+
+  useEffect(() => {
+    if (!pendingAssistantCountyZoomRef.current) return;
+    if (tractsActive) return;
+    if (String(highlightedLevel ?? "").toLowerCase() !== "county") return;
+    if (!selectedLocationId) return;
+    const highlightedCountyGeoid = String(highlightedGeoid ?? "").trim();
+    if (!highlightedCountyGeoid || highlightedCountyGeoid !== String(selectedLocationId)) {
+      return;
+    }
+    const zoomButton = zoomToSelectedButtonRef.current;
+    if (!zoomButton || typeof zoomButton.click !== "function") return;
+    zoomButton.click();
+    pendingAssistantCountyZoomRef.current = false;
+  }, [highlightedGeoid, highlightedLevel, selectedLocationId, tractsActive]);
 
   useEffect(() => {
     if (!historyOpen || !selectedLocationId) {
@@ -2041,6 +2062,7 @@ export default function App() {
               </div>
               <button
                 type="button"
+                ref={zoomToSelectedButtonRef}
                 onClick={handleZoomToSelected}
                 style={{
                   marginTop: 4,
