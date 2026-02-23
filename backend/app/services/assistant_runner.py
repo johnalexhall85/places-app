@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.services.assistant_prompt import SYSTEM_PROMPT, build_developer_context
 from app.services.assistant_tools import TOOLS
 from app.services.assistant_tools_impl import (
+    export_profile_pdf,
+    generate_full_profile,
     get_estimate_county,
     get_estimate_nation,
+    get_profile,
     get_estimate_state,
     get_estimates_for_counties,
     get_neighbor_counties,
@@ -839,6 +842,71 @@ def _run_tool(
         runtime_state["neighbor_estimates"] = result.get("counties") or []
         return result
 
+    if name == "generate_full_profile":
+        resolved_county = runtime_state.get("resolved_county")
+        fallback_location_id = (
+            str(resolved_county.get("county_fips")).strip()
+            if isinstance(resolved_county, dict) and resolved_county.get("county_fips")
+            else ""
+        )
+        location_id = str(args.get("location_id") or fallback_location_id).strip()
+        geography_value = str(args.get("geography") or "county").strip().lower()
+        if geography_value not in {"county", "tract"}:
+            geography_value = "county"
+        places_year = _to_int(args.get("places_year"), context["year"])
+        places_measure_id = str(args.get("places_measure_id") or context["measure_id"]).strip()
+        places_data_type = str(
+            args.get("places_data_value_type_id") or context["data_value_type_id"]
+        ).strip()
+        acs_year_window = args.get("acs_year_window")
+        if acs_year_window is not None:
+            acs_year_window = str(acs_year_window).strip() or None
+        acs_data_type = str(args.get("acs_data_value_type_id") or "Percent").strip() or "Percent"
+        include_charts = bool(args.get("include_charts", True))
+        include_full_narrative = bool(args.get("include_full_narrative", True))
+        include_profile_json = bool(args.get("include_profile_json", False))
+
+        result = generate_full_profile(
+            db,
+            geography=geography_value,
+            location_id=location_id,
+            places_year=places_year,
+            places_measure_id=places_measure_id,
+            places_data_value_type_id=places_data_type,
+            acs_year_window=acs_year_window,
+            acs_data_value_type_id=acs_data_type,
+            include_charts=include_charts,
+            include_full_narrative=include_full_narrative,
+            include_profile_json=include_profile_json,
+        )
+        if result.get("found") and result.get("profile_id"):
+            runtime_state["generated_profile_id"] = str(result.get("profile_id"))
+            runtime_state["generated_profile_summary"] = str(result.get("summary_text") or "")
+        return result
+
+    if name == "get_profile":
+        fallback_profile_id = str(runtime_state.get("generated_profile_id") or "").strip()
+        profile_id = str(args.get("profile_id") or fallback_profile_id).strip()
+        result = get_profile(
+            db,
+            profile_id=profile_id,
+        )
+        if result.get("found") and result.get("profile_id"):
+            runtime_state["generated_profile_id"] = str(result.get("profile_id"))
+            runtime_state["generated_profile_summary"] = str(result.get("summary_text") or "")
+        return result
+
+    if name == "export_profile_pdf":
+        fallback_profile_id = str(runtime_state.get("generated_profile_id") or "").strip()
+        profile_id = str(args.get("profile_id") or fallback_profile_id).strip()
+        result = export_profile_pdf(
+            db,
+            profile_id=profile_id,
+        )
+        if result.get("found") and result.get("profile_id"):
+            runtime_state["generated_profile_id"] = str(result.get("profile_id"))
+        return result
+
     return {"found": False, "reason": f"Unknown tool: {name}"}
 
 
@@ -864,6 +932,8 @@ def run_assistant(
         "nation_estimate": None,
         "neighbor_counties": [],
         "neighbor_estimates": [],
+        "generated_profile_id": None,
+        "generated_profile_summary": None,
     }
     debug_summary: dict[str, Any] = {
         "tool_calls": [],

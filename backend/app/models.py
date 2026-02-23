@@ -7,7 +7,11 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     BigInteger,
+    DateTime,
+    Index,
+    text,
 )
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 
@@ -130,3 +134,130 @@ class TractEstimate(Base):
     total_pop_18_plus = Column(BigInteger, nullable=True)
     short_question_text = Column(String, nullable=True)
     geolocation = Column(Geometry("POINT", srid=4326), nullable=True)
+
+
+class AcsNmfCountyEstimate(Base):
+    __tablename__ = "acs_nmf_county_estimates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    year_window = Column(String, nullable=False)
+    state_abbr = Column(String(2), nullable=False)
+    location_id = Column(String, nullable=False)
+    location_name = Column(String, nullable=False)
+    category_id = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    measure_id = Column(String, nullable=False)
+    measure = Column(String, nullable=False)
+    data_value_type_id = Column(String, nullable=False)
+    data_value_type = Column(String, nullable=False)
+    data_value_unit = Column(String, nullable=True)
+    data_value = Column(Float, nullable=True)
+    moe = Column(Float, nullable=True)
+    total_population = Column(Integer, nullable=True)
+    geolocation = Column(Geometry("POINT", srid=4326), nullable=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "year_window",
+            "location_id",
+            "measure_id",
+            "data_value_type_id",
+            name="uq_acs_nmf_county_estimate",
+        ),
+        Index(
+            "idx_acs_nmf_year_measure_type",
+            "year_window",
+            "measure_id",
+            "data_value_type_id",
+        ),
+        Index("idx_acs_nmf_location_id", "location_id"),
+        Index("idx_acs_nmf_measure_location", "measure_id", "location_id"),
+    )
+
+
+class AcsNmfTractEstimate(Base):
+    __tablename__ = "acs_nmf_tract_estimates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    year_window = Column(String, nullable=False)
+    state_abbr = Column(String(2), nullable=False)
+    location_id = Column(String(11), nullable=False)
+    location_name = Column(String, nullable=False)
+    category_id = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    measure_id = Column(String, nullable=False)
+    measure = Column(String, nullable=False)
+    data_value_type_id = Column(String, nullable=False)
+    data_value_type = Column(String, nullable=False)
+    data_value_unit = Column(String, nullable=True)
+    data_value = Column(Float, nullable=True)
+    moe = Column(Float, nullable=True)
+    total_population = Column(Integer, nullable=True)
+    geolocation = Column(Geometry("POINT", srid=4326), nullable=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "year_window",
+            "location_id",
+            "measure_id",
+            "data_value_type_id",
+            name="uq_acs_nmf_tract_estimate",
+        ),
+        Index(
+            "idx_acs_nmf_tract_year_measure_type",
+            "year_window",
+            "measure_id",
+            "data_value_type_id",
+        ),
+        Index("idx_acs_nmf_tract_location_id", "location_id"),
+        Index("idx_acs_nmf_tract_measure_location", "measure_id", "location_id"),
+    )
+
+
+class Profile(Base):
+    __tablename__ = "profiles"
+
+    id = Column(UUID(as_uuid=False), primary_key=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+    geography = Column(String(16), nullable=False)
+    location_id = Column(String(16), nullable=False)
+    request_signature = Column(String(64), nullable=False)
+    payload_json = Column(JSONB, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("request_signature", name="uq_profiles_request_signature"),
+        Index("idx_profiles_lookup", "geography", "location_id", "created_at"),
+    )
+
+    assets = relationship(
+        "ProfileAsset",
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class ProfileAsset(Base):
+    __tablename__ = "profile_assets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(
+        UUID(as_uuid=False),
+        ForeignKey("profiles.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    asset_name = Column(String(160), nullable=False)
+    mime_type = Column(String(120), nullable=False)
+    asset_path = Column(String(512), nullable=False)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("profile_id", "asset_name", name="uq_profile_assets_name"),
+        Index("idx_profile_assets_profile_id", "profile_id"),
+    )
+
+    profile = relationship("Profile", back_populates="assets")

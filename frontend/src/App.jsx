@@ -9,8 +9,13 @@ import {
 } from "react-leaflet";
 import SearchBar from "./SearchBar";
 import AskMapChat from "./components/AskMapChat";
+import FullProfilePanel from "./components/FullProfilePanel";
 
 const API_BASE = "http://localhost:8000";
+const DATA_SOURCES = {
+  PLACES: "places",
+  ACS_NMF: "acs_nmf",
+};
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
 const TRACT_ZOOM = 10;
@@ -28,6 +33,7 @@ const HISTORY_END_YEAR = 2023;
 const ASSISTANT_POST_CONTEXT_ACTION_DELAY_MS = 200;
 const ASSISTANT_STREAM_CHUNK_CHARS = 4;
 const ASSISTANT_STREAM_INTERVAL_MS = 18;
+const ANALYSIS_PROMPT_PATTERN = /\b(analy[sz]e|analysis|full profile|profile)\b/i;
 
 function quantile(sortedValues, q) {
   if (sortedValues.length === 0) return null;
@@ -83,6 +89,14 @@ function computeBreaks(values, bins = BIN_COUNT) {
   }
 
   return deduped;
+}
+
+function tagMeasuresForSource(measuresList, source) {
+  const sourceTag = source === DATA_SOURCES.ACS_NMF ? "acs" : "places";
+  return (measuresList ?? []).map((measure) => ({
+    ...measure,
+    source: measure?.source ?? sourceTag,
+  }));
 }
 
 function getValueFromProperties(properties) {
@@ -185,6 +199,13 @@ function formatValue(value) {
   const numericValue = toFiniteNumericValue(value);
   if (numericValue == null) return "No data";
   return numericValue.toFixed(1);
+}
+
+function formatYearWindowDisplay(value) {
+  if (value == null) return "N/A";
+  const text = String(value).trim();
+  if (!text) return "N/A";
+  return text.replace("-", "\u2013");
 }
 
 function clamp(value, min, max) {
@@ -569,14 +590,26 @@ export default function App() {
   const [assistantMessages, setAssistantMessages] = useState([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantScrollSignal, setAssistantScrollSignal] = useState(0);
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+  const [activeProfileId, setActiveProfileId] = useState(null);
+  const [profileGenerating, setProfileGenerating] = useState(false);
+  const [placesProfileContext, setPlacesProfileContext] = useState({
+    year: null,
+    measureId: "CASTHMA",
+    dataValueTypeId: "CrdPrv",
+  });
 
+  const [selectedDataSource, setSelectedDataSource] = useState(DATA_SOURCES.PLACES);
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedYearWindow, setSelectedYearWindow] = useState(null);
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [isYearsLoading, setIsYearsLoading] = useState(true);
   const [yearsError, setYearsError] = useState(null);
+  const [acsLegend, setAcsLegend] = useState(null);
+  const [isLegendLoading, setIsLegendLoading] = useState(false);
 
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [bbox, setBbox] = useState(null);
@@ -629,6 +662,7 @@ export default function App() {
   // Caching
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
   const inflightRef = useRef(new Map()); // { key: Promise }
+  const measuresCacheRef = useRef(new Map()); // { source: measures[] }
   
   // Viewport debouncing
   const viewportDebounceRef = useRef(null);
@@ -647,10 +681,38 @@ export default function App() {
     };
   }, []);
 
+  const isAcsDataSource = selectedDataSource === DATA_SOURCES.ACS_NMF;
+  const historySupported = !isAcsDataSource;
   const tractsActive = mapZoom >= TRACT_ZOOM;
+  const acsGeography = isAcsDataSource && tractsActive ? "tract" : "county";
+  const selectedTemporalValue = isAcsDataSource ? selectedYearWindow : selectedYear;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
+  const selectedMeasureSource = selectedMeasure?.source ?? null;
+  const isAcsMeasureSelected = isAcsDataSource && selectedMeasureSource === "acs";
+  const acsYearWindows = useMemo(() => {
+    if (!isAcsDataSource) return [];
+    if (!selectedMeasure || !Array.isArray(selectedMeasure.year_windows)) return [];
+    return selectedMeasure.year_windows;
+  }, [isAcsDataSource, selectedMeasure]);
+  const acsDataValueTypeIds = useMemo(() => {
+    if (!isAcsDataSource) return [];
+    if (!selectedMeasure || !Array.isArray(selectedMeasure.data_value_type_ids)) return [];
+    return selectedMeasure.data_value_type_ids;
+  }, [isAcsDataSource, selectedMeasure]);
+
+  useEffect(() => {
+    if (isAcsDataSource) return;
+    if (!selectedMeasureId) return;
+    if (selectedYear == null || !Number.isFinite(Number(selectedYear))) return;
+    if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") return;
+    setPlacesProfileContext({
+      year: Number(selectedYear),
+      measureId: selectedMeasureId,
+      dataValueTypeId: selectedType,
+    });
+  }, [isAcsDataSource, selectedMeasureId, selectedType, selectedYear]);
 
   const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
   const activeFeatures = activeGeojson?.features ?? [];
@@ -690,16 +752,65 @@ export default function App() {
     return promise;
   }, []);
 
-  const breaks = useMemo(() => {
+  const computedBreaks = useMemo(() => {
     return computeBreaks(
       activeFeatures.map((feature) => getValueFromProperties(feature.properties))
     );
   }, [activeFeatures]);
 
+  const breaks = useMemo(() => {
+    if (!isAcsDataSource) {
+      return computedBreaks;
+    }
+    const bins = Array.isArray(acsLegend?.bins) ? acsLegend.bins : [];
+    if (bins.length === 0) return [];
+
+    const values = [Number(bins[0]?.min)];
+    bins.forEach((bin) => {
+      values.push(Number(bin?.max));
+    });
+    const numeric = values.filter((value) => Number.isFinite(value));
+    if (numeric.length < 2) return [];
+    return numeric;
+  }, [acsLegend, computedBreaks, isAcsDataSource, tractsActive]);
+  const legendBbox = acsGeography === "tract" ? bbox : null;
+
   useEffect(() => {
     let isMounted = true;
+    const source = selectedDataSource;
+    const sourceKey = source === DATA_SOURCES.ACS_NMF
+      ? `acs_nmf:${acsGeography}`
+      : DATA_SOURCES.PLACES;
+    const cachedMeasures = measuresCacheRef.current.get(sourceKey);
+    const endpoint = source === DATA_SOURCES.ACS_NMF
+      ? (acsGeography === "tract" ? "/acs-nmf/tracts/measures" : "/acs-nmf/measures")
+      : "/measures";
 
-    fetch(`${API_BASE}/measures`)
+    const applyMeasureDefaults = (nextMeasures) => {
+      setSelectedMeasureId((currentId) => {
+        if (currentId && nextMeasures.some((measure) => measure.measure_id === currentId)) {
+          return currentId;
+        }
+        if (
+          source === DATA_SOURCES.PLACES
+          && nextMeasures.some((measure) => measure.measure_id === "CASTHMA")
+        ) {
+          return "CASTHMA";
+        }
+        return nextMeasures[0]?.measure_id ?? "";
+      });
+    };
+
+    if (cachedMeasures) {
+      const taggedCachedMeasures = tagMeasuresForSource(cachedMeasures, source);
+      setMeasures(taggedCachedMeasures);
+      applyMeasureDefaults(taggedCachedMeasures);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    fetch(`${API_BASE}${endpoint}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to load measures.");
@@ -708,18 +819,30 @@ export default function App() {
       })
       .then((data) => {
         if (!isMounted) return;
+        const list = Array.isArray(data) ? data : [];
         const byId = new Map();
-        for (const measure of data) {
-          if (!byId.has(measure.measure_id)) {
+        if (source === DATA_SOURCES.PLACES) {
+          for (const measure of list) {
+            if (!byId.has(measure.measure_id)) {
+              byId.set(measure.measure_id, measure);
+            }
+          }
+        } else {
+          for (const measure of list) {
             byId.set(measure.measure_id, measure);
           }
         }
+
         const sorted = Array.from(byId.values()).sort((a, b) => {
           const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
           const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
           return labelA.localeCompare(labelB);
         });
-        setMeasures(sorted);
+
+        const taggedMeasures = tagMeasuresForSource(sorted, source);
+        measuresCacheRef.current.set(sourceKey, taggedMeasures);
+        setMeasures(taggedMeasures);
+        applyMeasureDefaults(taggedMeasures);
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
@@ -729,9 +852,15 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [acsGeography, selectedDataSource]);
 
   useEffect(() => {
+    if (selectedDataSource === DATA_SOURCES.ACS_NMF) {
+      setIsYearsLoading(false);
+      setYearsError(null);
+      return;
+    }
+
     let isMounted = true;
     setIsYearsLoading(true);
     const yearsGeography = tractsActive ? "tract" : "county";
@@ -782,15 +911,68 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [tractsActive]);
+  }, [selectedDataSource, tractsActive]);
+
+  useEffect(() => {
+    if (!isAcsDataSource) return;
+    if (acsYearWindows.length === 0) {
+      setSelectedYearWindow(null);
+      return;
+    }
+    setSelectedYearWindow((currentYearWindow) => (
+      currentYearWindow != null && acsYearWindows.includes(currentYearWindow)
+        ? currentYearWindow
+        : acsYearWindows[0]
+    ));
+  }, [acsYearWindows, isAcsDataSource]);
+
+  useEffect(() => {
+    if (!isAcsDataSource) {
+      if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") {
+        setSelectedType("CrdPrv");
+      }
+      return;
+    }
+
+    if (acsDataValueTypeIds.length === 0) {
+      setSelectedType("");
+      return;
+    }
+
+    setSelectedType((currentType) => {
+      if (currentType && acsDataValueTypeIds.includes(currentType)) {
+        return currentType;
+      }
+      if (acsDataValueTypeIds.includes("Percent")) {
+        return "Percent";
+      }
+      return acsDataValueTypeIds[0];
+    });
+  }, [acsDataValueTypeIds, isAcsDataSource, selectedType]);
 
   const fetchCountyChoropleth = useCallback(
     async (bboxValue) => {
-      const url = new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
+      if (isAcsDataSource && !isAcsMeasureSelected) {
+        return { type: "FeatureCollection", features: [] };
+      }
+
+      const url = isAcsDataSource
+        ? new URL(`${API_BASE}/acs-nmf/counties`)
+        : new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
       url.searchParams.set("measure_id", selectedMeasureId);
-      url.searchParams.set("year", String(selectedYear));
-      url.searchParams.set("data_value_type_id", selectedType);
-      url.searchParams.set("bbox", bboxValue);
+      if (isAcsDataSource) {
+        if (selectedYearWindow) {
+          url.searchParams.set("year_window", String(selectedYearWindow));
+        }
+      } else {
+        url.searchParams.set("year", String(selectedYear));
+      }
+      if (selectedType) {
+        url.searchParams.set("data_value_type_id", selectedType);
+      }
+      if (bboxValue) {
+        url.searchParams.set("bbox", bboxValue);
+      }
 
       // Abort previous request if any
       if (countyAbortRef.current) {
@@ -806,7 +988,14 @@ export default function App() {
       }
       return response.json();
     },
-    [selectedMeasureId, selectedYear, selectedType]
+    [
+      isAcsDataSource,
+      isAcsMeasureSelected,
+      selectedMeasureId,
+      selectedYear,
+      selectedYearWindow,
+      selectedType,
+    ]
   );
 
   const fetchCountyBoundaryOverlay = useCallback(async (bboxValue) => {
@@ -850,10 +1039,85 @@ export default function App() {
     return response.json();
   }, []);
 
+  const fetchAcsLegend = useCallback(async () => {
+    const url = new URL(
+      acsGeography === "tract"
+        ? `${API_BASE}/acs-nmf/tracts/legend`
+        : `${API_BASE}/acs-nmf/legend`
+    );
+    url.searchParams.set("measure_id", selectedMeasureId);
+    if (selectedYearWindow) {
+      url.searchParams.set("year_window", String(selectedYearWindow));
+    }
+    if (acsGeography === "tract" && legendBbox) {
+      url.searchParams.set("bbox", legendBbox);
+    }
+    if (selectedType) {
+      url.searchParams.set("data_value_type_id", selectedType);
+    }
+    url.searchParams.set("bins", String(BIN_COUNT));
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      const body = await parseErrorBody(response);
+      throw new Error(`ACS legend request failed (${response.status}): ${body}`);
+    }
+    return response.json();
+  }, [acsGeography, legendBbox, selectedMeasureId, selectedType, selectedYearWindow]);
+
+  useEffect(() => {
+    if (!isAcsDataSource || !isAcsMeasureSelected || !selectedMeasureId || !selectedType) {
+      setAcsLegend(null);
+      setIsLegendLoading(false);
+      return;
+    }
+
+    const legendKey = (
+      `legend|acs-nmf|${acsGeography}|${selectedMeasureId}|`
+      + `${selectedYearWindow ?? "latest"}|${selectedType}|${legendBbox ?? "nationwide"}|${BIN_COUNT}`
+    );
+    const cachedLegend = getCached(legendKey);
+    if (cachedLegend) {
+      setAcsLegend(cachedLegend);
+      return;
+    }
+
+    setIsLegendLoading(true);
+    fetchWithDedupe(legendKey, async () => {
+      try {
+        const data = await fetchAcsLegend();
+        setCached(legendKey, data);
+        setAcsLegend(data);
+      } catch (legendError) {
+        console.error("ACS legend fetch failed:", legendError);
+        setAcsLegend(null);
+      } finally {
+        setIsLegendLoading(false);
+      }
+    }).catch(() => {
+      setIsLegendLoading(false);
+    });
+  }, [
+    fetchAcsLegend,
+    fetchWithDedupe,
+    getCached,
+    isAcsDataSource,
+    isAcsMeasureSelected,
+    acsGeography,
+    selectedMeasureId,
+    selectedType,
+    selectedYearWindow,
+    legendBbox,
+    setCached,
+  ]);
+
   const fetchTractsForBbox = useCallback(
     async (bboxValue) => {
       if (!bboxValue) {
         throw new Error("bbox is required for tract requests.");
+      }
+      if (isAcsDataSource && !isAcsMeasureSelected) {
+        return { type: "FeatureCollection", features: [] };
       }
 
       // Abort previous request if any
@@ -863,10 +1127,20 @@ export default function App() {
       const controller = new AbortController();
       tractAbortRef.current = controller;
 
-      const url = new URL(`${API_BASE}/geojson/tracts`);
-      url.searchParams.set("year", String(selectedYear));
+      const url = isAcsDataSource
+        ? new URL(`${API_BASE}/acs-nmf/tracts`)
+        : new URL(`${API_BASE}/geojson/tracts`);
+      if (isAcsDataSource) {
+        if (selectedYearWindow) {
+          url.searchParams.set("year_window", String(selectedYearWindow));
+        }
+      } else {
+        url.searchParams.set("year", String(selectedYear));
+      }
       url.searchParams.set("measure_id", selectedMeasureId);
-      url.searchParams.set("data_value_type_id", selectedType);
+      if (selectedType) {
+        url.searchParams.set("data_value_type_id", selectedType);
+      }
       url.searchParams.set("bbox", bboxValue);
 
       const response = await fetch(url, { signal: controller.signal });
@@ -876,10 +1150,17 @@ export default function App() {
       }
       return response.json();
     },
-    [selectedMeasureId, selectedYear, selectedType]
+    [
+      isAcsDataSource,
+      isAcsMeasureSelected,
+      selectedMeasureId,
+      selectedYear,
+      selectedType,
+      selectedYearWindow,
+    ]
   );
 
-  // Clear cache when measure/year/type changes
+  // Clear cache when data-source context changes
   useEffect(() => {
     cacheRef.current.clear();
     // Abort all in-flight requests
@@ -893,6 +1174,8 @@ export default function App() {
     setTractGeojson(null);
     setCountyBoundaryOverlay(null);
     setStateBoundaryOverlay(null);
+    setAcsLegend(null);
+    setHistoryOpen(false);
     // Keep selection across measure/year/type changes; only clear transient hover state.
     setHoveredProps(null);
     if (pendingCountySelectionTimerRef.current) {
@@ -900,7 +1183,7 @@ export default function App() {
       pendingCountySelectionTimerRef.current = null;
     }
     pendingCountySelectionRef.current = null;
-  }, [selectedMeasureId, selectedYear, selectedType]);
+  }, [selectedDataSource, selectedMeasureId, selectedTemporalValue, selectedType]);
 
   // Ensure we have a bbox and clear the inactive layer when crossing the tract zoom
   useEffect(() => {
@@ -928,11 +1211,20 @@ export default function App() {
 
   // Prefetch tract data when approaching zoom threshold
   useEffect(() => {
-    if (!bbox || selectedYear == null || mapZoom !== TRACT_ZOOM - 1) {
+    if (!bbox || selectedTemporalValue == null || mapZoom !== TRACT_ZOOM - 1) {
+      return;
+    }
+    if (isAcsDataSource && !isAcsMeasureSelected) {
       return;
     }
 
-    const key = makeCacheKey("tracts", selectedYear, selectedMeasureId, selectedType, bbox);
+    const key = makeCacheKey(
+      isAcsDataSource ? "acs-nmf-tracts" : "tracts",
+      selectedTemporalValue,
+      selectedMeasureId,
+      selectedType,
+      bbox
+    );
     
     fetchWithDedupe(key, async () => {
       try {
@@ -944,7 +1236,18 @@ export default function App() {
     }).catch(() => {
       // Silently ignore prefetch errors
     });
-  }, [bbox, mapZoom, selectedMeasureId, selectedYear, selectedType, fetchTractsForBbox, fetchWithDedupe, setCached]);
+  }, [
+    bbox,
+    fetchTractsForBbox,
+    fetchWithDedupe,
+    isAcsDataSource,
+    isAcsMeasureSelected,
+    mapZoom,
+    selectedMeasureId,
+    selectedTemporalValue,
+    selectedType,
+    setCached,
+  ]);
 
   // Fetch state boundary overlay for county view
   useEffect(() => {
@@ -982,7 +1285,13 @@ export default function App() {
 
   // Main data-fetching effect with caching, deduping, and stale-while-revalidate
   useEffect(() => {
-    if (!bbox || selectedYear == null) {
+    if (!bbox || selectedTemporalValue == null || !selectedMeasureId || !selectedType) {
+      return;
+    }
+    if (isAcsDataSource && !isAcsMeasureSelected) {
+      setCountyGeojson(null);
+      setTractGeojson(null);
+      setCountyBoundaryOverlay(null);
       return;
     }
 
@@ -994,7 +1303,13 @@ export default function App() {
         const tractReqId = latestTractReqRef.current + 1;
         latestTractReqRef.current = tractReqId;
         
-        const tractKey = makeCacheKey("tracts", selectedYear, selectedMeasureId, selectedType, bbox);
+        const tractKey = makeCacheKey(
+          isAcsDataSource ? "acs-nmf-tracts" : "tracts",
+          selectedTemporalValue,
+          selectedMeasureId,
+          selectedType,
+          bbox
+        );
         
         // Check cache first
         const cachedTractData = getCached(tractKey);
@@ -1049,7 +1364,13 @@ export default function App() {
         const outlineReqId = latestOutlineReqRef.current + 1;
         latestOutlineReqRef.current = outlineReqId;
         
-        const outlineKey = makeCacheKey("countyOutline", selectedYear, selectedMeasureId, selectedType, bbox);
+        const outlineKey = makeCacheKey(
+          "countyOutline",
+          selectedTemporalValue,
+          selectedMeasureId,
+          selectedType,
+          bbox
+        );
         
         // Check cache first
         const cachedOutlineData = getCached(outlineKey);
@@ -1103,8 +1424,8 @@ export default function App() {
       latestCountyReqRef.current = countyReqId;
       
       const countyKey = `${makeCacheKey(
-        "counties",
-        selectedYear,
+        isAcsDataSource ? "acs-nmf-counties" : "counties",
+        selectedTemporalValue,
         selectedMeasureId,
         selectedType,
         bbox
@@ -1160,7 +1481,23 @@ export default function App() {
         });
       }
     }
-  }, [bbox, tractsActive, selectedMeasureId, selectedYear, selectedType, countyReloadNonce, fetchCountyChoropleth, fetchCountyBoundaryOverlay, fetchTractsForBbox, getCached, setCached, fetchWithDedupe]);
+  }, [
+    bbox,
+    countyReloadNonce,
+    fetchCountyBoundaryOverlay,
+    fetchCountyChoropleth,
+    fetchTractsForBbox,
+    fetchWithDedupe,
+    getCached,
+    isAcsDataSource,
+    isAcsMeasureSelected,
+    selectedMeasureId,
+    selectedTemporalValue,
+    selectedType,
+    selectedYear,
+    setCached,
+    tractsActive,
+  ]);
 
   const choroplethStyle = useCallback(
     (feature) => {
@@ -1200,7 +1537,7 @@ export default function App() {
 
   const handleFeatureClick = useCallback(
     (feature, layer, options = {}) => {
-      const shouldOpenHistory = options.openHistory !== false;
+      const shouldOpenHistory = options.openHistory !== false && historySupported;
       const geoJsonLayer = geoJsonRef.current;
       if (!geoJsonLayer) return;
 
@@ -1232,10 +1569,12 @@ export default function App() {
       setSelectedProps(nextSelectedProps);
       if (shouldOpenHistory) {
         setHistoryOpen(true);
+      } else if (!historySupported) {
+        setHistoryOpen(false);
       }
       applySelectedStyle(layer);
     },
-    [applySelectedStyle]
+    [applySelectedStyle, historySupported]
   );
 
   const handleEachFeature = useCallback(
@@ -1294,7 +1633,7 @@ export default function App() {
     (countyFips) => {
       if (!countyFips) return;
       pendingCountySelectionRef.current = String(countyFips);
-      selectCountyFeatureByFips(countyFips, { openHistory: true });
+      selectCountyFeatureByFips(countyFips, { openHistory: historySupported });
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
       }
@@ -1304,7 +1643,7 @@ export default function App() {
         pendingAssistantCountyZoomRef.current = false;
       }, 10000);
     },
-    [selectCountyFeatureByFips]
+    [historySupported, selectCountyFeatureByFips]
   );
 
   const handleAssistantHighlight = useCallback(
@@ -1430,6 +1769,106 @@ export default function App() {
     [handleAssistantHighlight]
   );
 
+  const openProfilePanel = useCallback((profileId) => {
+    if (!profileId) return;
+    setActiveProfileId(profileId);
+    setProfilePanelOpen(true);
+  }, []);
+
+  const generateProfileForArea = useCallback(
+    async ({ geography, locationId, openPanel = false }) => {
+      const safeGeography = String(geography ?? "").trim().toLowerCase();
+      const safeLocationId = String(locationId ?? "").trim();
+      if (!safeLocationId || (safeGeography !== "county" && safeGeography !== "tract")) {
+        return null;
+      }
+
+      const placesYear = placesProfileContext.year ?? selectedYear;
+      const placesMeasureId = placesProfileContext.measureId ?? selectedMeasureId;
+      const placesTypeId = placesProfileContext.dataValueTypeId ?? "CrdPrv";
+      if (placesYear == null || !placesMeasureId || !placesTypeId) {
+        setAssistantMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            text: "Profile generation needs an available PLACES year and measure context.",
+          },
+        ]);
+        setAssistantScrollSignal((value) => value + 1);
+        return null;
+      }
+
+      setProfileGenerating(true);
+      try {
+        const response = await fetch(`${API_BASE}/profiles/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            geography: safeGeography,
+            location_id: safeLocationId,
+            places: {
+              year: Number(placesYear),
+              measure_id: placesMeasureId,
+              data_value_type_id: placesTypeId,
+            },
+            acs_nmf: {
+              year_window: selectedYearWindow ?? null,
+              data_value_type_id: isAcsDataSource ? (selectedType || "Percent") : "Percent",
+            },
+            include_charts: true,
+            include_full_narrative: true,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await parseErrorBody(response);
+          throw new Error(`Profile request failed (${response.status}): ${body}`);
+        }
+
+        const payload = await response.json();
+        const summaryText = String(payload?.summary_text ?? "").trim() || "Profile generated.";
+        const profileId = payload?.profile_id ? String(payload.profile_id) : null;
+
+        setAssistantMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            text: summaryText,
+            profileId,
+          },
+        ]);
+        setAssistantScrollSignal((value) => value + 1);
+
+        if (openPanel && profileId) {
+          openProfilePanel(profileId);
+        }
+        return payload;
+      } catch (profileError) {
+        console.error("profile generation failed:", profileError);
+        setAssistantMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            text: "Sorry, profile generation failed for that area.",
+          },
+        ]);
+        setAssistantScrollSignal((value) => value + 1);
+        return null;
+      } finally {
+        setProfileGenerating(false);
+      }
+    },
+    [
+      isAcsDataSource,
+      openProfilePanel,
+      placesProfileContext,
+      selectedMeasureId,
+      selectedType,
+      selectedYear,
+      selectedYearWindow,
+    ]
+  );
+
   const cancelAssistantStream = useCallback(() => {
     assistantStreamRunIdRef.current += 1;
     if (assistantStreamTimerRef.current) {
@@ -1529,6 +1968,50 @@ export default function App() {
           ? resp.answer_markdown
           : "";
         await streamAssistantAnswer(answerMarkdown);
+
+        if (ANALYSIS_PROMPT_PATTERN.test(trimmedInput)) {
+          let target = null;
+          for (let index = actions.length - 1; index >= 0; index -= 1) {
+            const action = actions[index];
+            const type = String(action?.type ?? "").toUpperCase();
+            if (type !== "MAP_HIGHLIGHT") continue;
+            const geoid = String(
+              action?.geoid
+              ?? action?.county_fips
+              ?? action?.location_id
+              ?? action?.fips
+              ?? ""
+            ).trim();
+            if (!geoid) continue;
+            const level = String(action?.level ?? "").toLowerCase() === "tract" ? "tract" : "county";
+            target = { geography: level, locationId: geoid };
+            break;
+          }
+
+          if (!target && selectedLocationId) {
+            target = {
+              geography: tractsActive ? "tract" : "county",
+              locationId: selectedLocationId,
+            };
+          }
+
+          if (target) {
+            await generateProfileForArea({
+              geography: target.geography,
+              locationId: target.locationId,
+              openPanel: false,
+            });
+          } else {
+            setAssistantMessages((current) => [
+              ...current,
+              {
+                role: "assistant",
+                text: "Select a county or tract first, then ask for analysis.",
+              },
+            ]);
+            setAssistantScrollSignal((value) => value + 1);
+          }
+        }
       } catch (submitError) {
         cancelAssistantStream();
         console.error("assistant submit failed:", submitError);
@@ -1546,8 +2029,10 @@ export default function App() {
       bbox,
       cancelAssistantStream,
       executeAssistantActions,
+      generateProfileForArea,
       mapZoom,
       selectedMeasureId,
+      selectedLocationId,
       selectedType,
       selectedYear,
       streamAssistantAnswer,
@@ -1572,6 +2057,7 @@ export default function App() {
 
     if (!selectActiveFeatureByLocationId(selectedLocationId, { openHistory: false })) {
       selectedLayerRef.current = null;
+      setSelectedProps(null);
     }
   }, [activeGeojson, choroplethStyle, selectedLocationId, selectActiveFeatureByLocationId]);
 
@@ -1601,14 +2087,14 @@ export default function App() {
     if (tractsActive) return;
     const pendingCountyFips = pendingCountySelectionRef.current;
     if (!pendingCountyFips) return;
-    if (selectCountyFeatureByFips(pendingCountyFips, { openHistory: true })) {
+    if (selectCountyFeatureByFips(pendingCountyFips, { openHistory: historySupported })) {
       pendingCountySelectionRef.current = null;
       if (pendingCountySelectionTimerRef.current) {
         clearTimeout(pendingCountySelectionTimerRef.current);
         pendingCountySelectionTimerRef.current = null;
       }
     }
-  }, [activeGeojson, tractsActive, selectCountyFeatureByFips]);
+  }, [activeGeojson, historySupported, tractsActive, selectCountyFeatureByFips]);
 
   useEffect(() => {
     if (!pendingAssistantCountyZoomRef.current) return;
@@ -1626,6 +2112,14 @@ export default function App() {
   }, [highlightedGeoid, highlightedLevel, selectedLocationId, tractsActive]);
 
   useEffect(() => {
+    if (!historySupported) {
+      setIsHistoryLoading(false);
+      setHistoryError(null);
+      setHistorySeries([]);
+      setHistoryMeta(null);
+      return;
+    }
+
     if (!historyOpen || !selectedLocationId) {
       return;
     }
@@ -1717,6 +2211,7 @@ export default function App() {
     selectedMeasureId,
     selectedType,
     selectedMeasure,
+    historySupported,
     getCached,
     setCached,
   ]);
@@ -1738,6 +2233,7 @@ export default function App() {
   const hasText = (value) =>
     value !== null && value !== undefined && String(value).trim().length > 0;
   const fmt1 = (x) => (x === null || x === undefined ? "N/A" : Number(x).toFixed(1));
+  const fmtPercent = (x) => (x === null || x === undefined ? "No data" : `${Number(x).toFixed(1)}%`);
   const fmtPop = (x) => (x === null || x === undefined ? "N/A" : Number(x).toLocaleString());
   const ciText = (lci, uci) =>
     lci === null || lci === undefined || uci === null || uci === undefined
@@ -1785,12 +2281,26 @@ export default function App() {
   const measureNameValue = normalizeMeasureName(
     firstDefined(
       selectedFeatureProps?.measure_name,
+      selectedFeatureProps?.measure,
       selectedFeatureProps?.short_question_text,
       selectedMeasure?.short_question_text,
       selectedMeasure?.measure
     )
   );
-  const yearValue = firstDefined(selectedFeatureProps?.year, selectedYear);
+  const yearValue = isAcsDataSource
+    ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
+    : firstDefined(selectedFeatureProps?.year, selectedYear);
+  const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
+  const acsMoe = firstDefined(selectedFeatureProps?.moe);
+  const acsGeoLabel = tractsActive ? "tract" : "county";
+  const acsLocationLabel = firstDefined(
+    selectedFeatureProps?.location_name,
+    selectedFeatureProps?.county_name,
+    selectedFeatureProps?.name,
+    selectedFeatureProps?.location_id,
+    selectedFeatureProps?.locationid,
+    selectedFeatureProps?.geoid
+  );
   const populationValue = firstDefined(
     selectedFeatureProps?.population,
     selectedFeatureProps?.pop_18plus,
@@ -1814,6 +2324,15 @@ export default function App() {
         String(selectedLocationNameForLink).trim()
       )}`
       : "https://data.census.gov/";
+
+  const handleAnalyzeSelectedArea = useCallback(() => {
+    if (!selectedLocationId) return;
+    generateProfileForArea({
+      geography: selectedGeoLevel === "tract" ? "tract" : "county",
+      locationId: selectedLocationId,
+      openPanel: false,
+    });
+  }, [generateProfileForArea, selectedGeoLevel, selectedLocationId]);
 
   const handleZoomToSelected = useCallback(() => {
     const map = mapRef.current;
@@ -1879,6 +2398,28 @@ export default function App() {
     setHistoryOpen((current) => !current);
   }, []);
 
+  const legendRows = useMemo(() => {
+    if (isAcsDataSource) {
+      const bins = Array.isArray(acsLegend?.bins) ? acsLegend.bins : [];
+      return bins.map((bin, index) => ({
+        key: `${bin?.min}-${bin?.max}-${index}`,
+        colorIndex: Number.isFinite(Number(bin?.colorIndex))
+          ? Number(bin.colorIndex)
+          : index,
+        label: String(bin?.label ?? formatRange(bin?.min, bin?.max)),
+      }));
+    }
+
+    return breaks.slice(0, -1).map((start, index) => {
+      const end = breaks[index + 1];
+      return {
+        key: `${start}-${end}-${index}`,
+        colorIndex: index,
+        label: formatRange(start, end),
+      };
+    });
+  }, [acsLegend, breaks, isAcsDataSource, tractsActive]);
+
   return (
     <div
       className="app"
@@ -1900,10 +2441,24 @@ export default function App() {
           zIndex: 2000,
         }}
       >
-          <div style={{ fontWeight: 600, fontSize: 13 }}>
-            Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
-          </div>
-          {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+        <div style={{ fontWeight: 600, fontSize: 13 }}>
+          Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
+        </div>
+        {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>Data source</span>
+          <select
+            value={selectedDataSource}
+            onChange={(event) => {
+              setSelectedDataSource(event.target.value);
+              setSelectedMeasureId("");
+            }}
+            style={{ padding: "6px 8px", borderRadius: 6 }}
+          >
+            <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
+            <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
+          </select>
+        </label>
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Measure</span>
           <select
@@ -1927,14 +2482,35 @@ export default function App() {
           </select>
         </label>
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>Year</span>
+          <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
           <select
-            value={selectedYear ?? ""}
-            onChange={(event) => setSelectedYear(Number(event.target.value))}
-            disabled={isYearsLoading || years.length === 0}
+            value={isAcsDataSource ? (selectedYearWindow ?? "") : (selectedYear ?? "")}
+            onChange={(event) => {
+              if (isAcsDataSource) {
+                const nextYearWindow = String(event.target.value ?? "").trim();
+                setSelectedYearWindow(nextYearWindow || null);
+              } else {
+                setSelectedYear(Number(event.target.value));
+              }
+            }}
+            disabled={
+              isAcsDataSource
+                ? acsYearWindows.length === 0
+                : (isYearsLoading || years.length === 0)
+            }
             style={{ padding: "6px 8px", borderRadius: 6 }}
           >
-            {isYearsLoading && years.length === 0 ? (
+            {isAcsDataSource ? (
+              acsYearWindows.length === 0 ? (
+                <option value="">Loading year windows...</option>
+              ) : (
+                acsYearWindows.map((yearWindow) => (
+                  <option key={yearWindow} value={yearWindow}>
+                    {formatYearWindowDisplay(yearWindow)}
+                  </option>
+                ))
+              )
+            ) : isYearsLoading && years.length === 0 ? (
               <option value="">Loading years...</option>
             ) : (
               years.map((year) => (
@@ -1944,7 +2520,7 @@ export default function App() {
               ))
             )}
           </select>
-          {yearsError ? (
+          {!isAcsDataSource && yearsError ? (
             <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
           ) : null}
         </label>
@@ -1953,10 +2529,25 @@ export default function App() {
           <select
             value={selectedType}
             onChange={(event) => setSelectedType(event.target.value)}
+            disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
             style={{ padding: "6px 8px", borderRadius: 6 }}
           >
-            <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
-            <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
+            {isAcsDataSource ? (
+              acsDataValueTypeIds.length === 0 ? (
+                <option value="">Loading types...</option>
+              ) : (
+                acsDataValueTypeIds.map((typeId) => (
+                  <option key={typeId} value={typeId}>
+                    {typeId}
+                  </option>
+                ))
+              )
+            ) : (
+              <>
+                <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
+                <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
+              </>
+            )}
           </select>
         </label>
         {measures.length === 0 ? null : (
@@ -2013,7 +2604,7 @@ export default function App() {
 
           {activeGeojson ? (
             <GeoJSON
-              key={`${tractsActive ? "tracts" : "counties"}-${selectedYear}-${selectedMeasureId}-${selectedType}-${bbox ?? "no-bbox"}-${tractsActive ? "tract" : `county-${countyReloadNonce}`}`}
+              key={`${selectedDataSource}-${tractsActive ? "tracts" : "counties"}-${selectedTemporalValue}-${selectedMeasureId}-${selectedType}-${bbox ?? "no-bbox"}-${tractsActive ? "tract" : `county-${countyReloadNonce}`}`}
               ref={geoJsonRef}
               data={activeGeojson}
               style={choroplethStyle}
@@ -2087,13 +2678,12 @@ export default function App() {
           Legend ({selectedType}) - {tractsActive ? "Tracts" : "Counties"}
         </div>
         <div style={{ display: "grid", gap: 6 }}>
-          {breaks.length > 1
-            ? breaks.slice(0, -1).map((start, index) => {
-                const end = breaks[index + 1];
-                const color = COLORS[index] ?? COLORS[COLORS.length - 1];
+          {legendRows.length > 0
+            ? legendRows.map((row) => {
+                const color = COLORS[row.colorIndex] ?? COLORS[COLORS.length - 1];
                 return (
                   <div
-                    key={`${start}-${end}`}
+                    key={row.key}
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
                     <span
@@ -2105,11 +2695,11 @@ export default function App() {
                         border: "1px solid #cbd5f5",
                       }}
                     />
-                    <span>{formatRange(start, end)}</span>
+                    <span>{row.label}</span>
                   </div>
                 );
               })
-            : isCountyLoading || isTractLoading
+            : isCountyLoading || isTractLoading || (isAcsDataSource && isLegendLoading)
               ? "Loading..."
               : "Legend unavailable."}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2124,32 +2714,51 @@ export default function App() {
             />
             <span>No data</span>
           </div>
+          {isAcsDataSource && acsLegend ? (
+            <div style={{ color: "#64748b" }}>
+              n={acsLegend.n ?? 0}, no data={acsLegend.noDataCount ?? 0}
+            </div>
+          ) : null}
         </div>
         {selectedFeature ? (
           <>
             <hr />
             <div className="legend-details">
-              <p>
-                In this <strong>{selectedGeoLevel}</strong>, the estimated prevalence of{" "}
-                <strong>{measureNameValue}</strong> among adults aged 18 years and older
-                (%) was <strong>{fmt1(crudeValue)}</strong> with 95% CI (
-                <strong>{ciText(crudeLow, crudeHigh)}</strong>), and the age-adjusted
-                prevalence (%) was <strong>{fmt1(ageAdjustedValue)}</strong> (
-                <strong>{ciText(ageAdjustedLow, ageAdjustedHigh)}</strong>) in{" "}
-                <strong>{yearValue ?? "N/A"}</strong>.
-              </p>
-              <p>
-                According to the Census <strong>{yearValue ?? "N/A"}</strong> population
-                estimates, <strong>{fmtPop(populationValue)}</strong> adults live in this{" "}
-                <strong>{selectedGeoLevel}</strong>.
-              </p>
-              <p>
-                For more demographic, social, and economic data, visit{" "}
-                <a href={censusProfileHref} target="_blank" rel="noreferrer">
-                  Census County Profile
-                </a>
-                .
-              </p>
+              {isAcsDataSource ? (
+                <p>
+                  In this <strong>{acsGeoLabel}</strong>{" "}
+                  (<strong>{acsLocationLabel ?? "N/A"}</strong>),{" "}
+                  <strong>{measureNameValue}</strong> is{" "}
+                  <strong>{fmtPercent(acsValue)}</strong>
+                  {acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`} for{" "}
+                  <strong>{formatYearWindowDisplay(yearValue)}</strong>.
+                  {` Population: ${fmtPop(populationValue)}.`}
+                </p>
+              ) : (
+                <>
+                  <p>
+                    In this <strong>{selectedGeoLevel}</strong>, the estimated prevalence of{" "}
+                    <strong>{measureNameValue}</strong> among adults aged 18 years and older
+                    (%) was <strong>{fmt1(crudeValue)}</strong> with 95% CI (
+                    <strong>{ciText(crudeLow, crudeHigh)}</strong>), and the age-adjusted
+                    prevalence (%) was <strong>{fmt1(ageAdjustedValue)}</strong> (
+                    <strong>{ciText(ageAdjustedLow, ageAdjustedHigh)}</strong>) in{" "}
+                    <strong>{yearValue ?? "N/A"}</strong>.
+                  </p>
+                  <p>
+                    According to the Census <strong>{yearValue ?? "N/A"}</strong> population
+                    estimates, <strong>{fmtPop(populationValue)}</strong> adults live in this{" "}
+                    <strong>{selectedGeoLevel}</strong>.
+                  </p>
+                  <p>
+                    For more demographic, social, and economic data, visit{" "}
+                    <a href={censusProfileHref} target="_blank" rel="noreferrer">
+                      Census County Profile
+                    </a>
+                    .
+                  </p>
+                </>
+              )}
             </div>
           </>
         ) : null}
@@ -2167,7 +2776,9 @@ export default function App() {
           {hoveredProps ? (
             <>
               <div>
-                {tractsActive ? getFeatureId(hoveredProps) : getCountyName(hoveredProps)}
+                {tractsActive
+                  ? (hoveredProps.location_name ?? hoveredProps.name ?? getFeatureId(hoveredProps))
+                  : getCountyName(hoveredProps)}
               </div>
               <div>State: {hoveredProps.state_abbr ?? "N/A"}</div>
               <div>
@@ -2182,17 +2793,34 @@ export default function App() {
           {selectedProps ? (
             <>
               <div>
-                {tractsActive ? getFeatureId(selectedProps) : getCountyName(selectedProps)}
+                {tractsActive
+                  ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
+                  : getCountyName(selectedProps)}
               </div>
               <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
               <div>
-                Value: {getValueFromProperties(selectedProps) ?? "No data"}
+                Value: {isAcsDataSource
+                  ? `${fmtPercent(acsValue)}${acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`}`
+                  : (getValueFromProperties(selectedProps) ?? "No data")}
               </div>
-              <div>Year: {selectedProps.year ?? selectedYear}</div>
-              <div>Measure: {selectedProps.measure_id ?? selectedMeasureId}</div>
+              <div>
+                {isAcsDataSource
+                  ? `Year window: ${formatYearWindowDisplay(
+                    selectedProps.year_window ?? selectedYearWindow
+                  )}`
+                  : `Year: ${selectedProps.year ?? selectedYear}`}
+              </div>
+              <div>
+                Measure: {selectedProps.measure ?? selectedProps.measure_id ?? selectedMeasureId}
+              </div>
               <div>
                 Data value type: {selectedProps.data_value_type_id ?? selectedType}
               </div>
+              {isAcsDataSource ? (
+                <div>
+                  Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
+                </div>
+              ) : null}
               <button
                 type="button"
                 ref={zoomToSelectedButtonRef}
@@ -2213,23 +2841,43 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={handleToggleHistoryClick}
+                onClick={handleAnalyzeSelectedArea}
+                disabled={profileGenerating}
                 style={{
                   marginTop: 4,
                   width: "fit-content",
                   padding: "6px 10px",
                   borderRadius: 6,
-                  border: "1px solid #cbd5e1",
-                  background: "#f8fafc",
-                  color: "#0f172a",
+                  border: "1px solid #1d4ed8",
+                  background: profileGenerating ? "#bfdbfe" : "#dbeafe",
+                  color: "#1e3a8a",
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: profileGenerating ? "wait" : "pointer",
                 }}
               >
-                {historyOpen ? "Hide history" : "Show history"}
+                {profileGenerating ? "Analyzing..." : "Analyze this area"}
               </button>
+              {historySupported ? (
+                <button
+                  type="button"
+                  onClick={handleToggleHistoryClick}
+                  style={{
+                    marginTop: 4,
+                    width: "fit-content",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    color: "#0f172a",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {historyOpen ? "Hide history" : "Show history"}
+                </button>
+              ) : null}
 
-              {historyOpen ? (
+              {historySupported && historyOpen ? (
                 <div
                   style={{
                     marginTop: 6,
@@ -2293,6 +2941,14 @@ export default function App() {
         scrollSignal={assistantScrollSignal}
         onAssistantInputChange={setAssistantInput}
         onAssistantSubmit={handleAssistantSubmit}
+        onOpenProfile={openProfilePanel}
+      />
+
+      <FullProfilePanel
+        apiBase={API_BASE}
+        profileId={activeProfileId}
+        open={profilePanelOpen}
+        onClose={() => setProfilePanelOpen(false)}
       />
 
       <div
@@ -2308,8 +2964,9 @@ export default function App() {
           zIndex: 2000,
         }}
       >
-        layer={tractsActive ? "tracts + county-lines" : "counties"} - zoom={mapZoom.toFixed(2)} -
-        measure_id={selectedMeasureId} - year={selectedYear} - data_value_type_id={selectedType} -
+        source={selectedDataSource} - layer={tractsActive ? "tracts + county-lines" : "counties"} -
+        zoom={mapZoom.toFixed(2)} - measure_id={selectedMeasureId} -
+        year={selectedTemporalValue ?? "n/a"} - data_value_type_id={selectedType} -
         tract_zoom={TRACT_ZOOM} - highlight_level={highlightedLevel ?? "none"} -
         highlight_geoid={highlightedGeoid ?? "none"}
       </div>

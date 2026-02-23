@@ -43,15 +43,18 @@ BACKEND_PID=$!
 # ---------- FRONTEND ----------
 echo
 echo "🌐 Starting frontend (Vite + React)"
-cd "$ROOT_DIR/frontend"
 
-if [ ! -d "node_modules" ]; then
-  echo "📦 Installing frontend dependencies"
-  npm install
+if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
+  echo "📦 Installing frontend dependencies..."
+  (cd "$ROOT_DIR/frontend" && npm install)
+fi
+if [ ! -x "$ROOT_DIR/frontend/node_modules/.bin/vite" ]; then
+  echo "📦 Reinstalling frontend dependencies (vite missing)..."
+  (cd "$ROOT_DIR/frontend" && npm install)
 fi
 
 echo "▶️  Starting Vite (http://localhost:5173)"
-npm run dev &
+(cd "$ROOT_DIR/frontend" && npm run dev) &
 FRONTEND_PID=$!
 
 # ---------- STATUS ----------

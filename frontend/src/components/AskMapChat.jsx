@@ -192,6 +192,7 @@ export default function AskMapChat({
   scrollSignal,
   onAssistantInputChange,
   onAssistantSubmit,
+  onOpenProfile,
 }) {
   const messagesContainerRef = useRef(null);
 
@@ -254,10 +255,35 @@ export default function AskMapChat({
                 {message.role === "user" ? "You" : "Assistant"}
               </div>
               {message.role === "assistant" ? (
-                <div
-                  style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}
-                  dangerouslySetInnerHTML={{ __html: markdownToHtml(message.text) }}
-                />
+                <>
+                  <div
+                    style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}
+                    dangerouslySetInnerHTML={{ __html: markdownToHtml(message.text) }}
+                  />
+                  {message.profileId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof onOpenProfile === "function") {
+                          onOpenProfile(message.profileId);
+                        }
+                      }}
+                      style={{
+                        marginTop: 8,
+                        padding: "6px 8px",
+                        borderRadius: 6,
+                        border: "1px solid #1d4ed8",
+                        background: "#eff6ff",
+                        color: "#1e40af",
+                        fontWeight: 600,
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Open full profile
+                    </button>
+                  ) : null}
+                </>
               ) : (
                 <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
                   {message.text}

@@ -196,4 +196,75 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_full_profile",
+            "description": (
+                "Generate or reuse a cached full profile for a county/tract using only "
+                "internal PLACES and ACS NMF data. Returns profile_id and summary text."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "geography": {
+                        "type": "string",
+                        "enum": ["county", "tract"],
+                        "description": "Geography level for profile generation.",
+                    },
+                    "location_id": {
+                        "type": "string",
+                        "description": "County FIPS (5 chars) or tract GEOID (11 chars).",
+                    },
+                    "places_year": {"type": "integer"},
+                    "places_measure_id": {"type": "string"},
+                    "places_data_value_type_id": {"type": "string"},
+                    "acs_year_window": {
+                        "type": "string",
+                        "description": "ACS year window like '2019-2023'.",
+                    },
+                    "acs_data_value_type_id": {"type": "string"},
+                    "include_charts": {"type": "boolean", "default": True},
+                    "include_full_narrative": {"type": "boolean", "default": True},
+                    "include_profile_json": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include the full profile_json in tool output.",
+                    },
+                },
+                "required": ["location_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_profile",
+            "description": "Fetch stored full profile JSON by profile_id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "profile_id": {"type": "string"},
+                },
+                "required": ["profile_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "export_profile_pdf",
+            "description": "Generate/reuse profile PDF for profile_id and return its URL.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "profile_id": {"type": "string"},
+                },
+                "required": ["profile_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]

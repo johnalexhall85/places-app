@@ -35,6 +35,10 @@ TARGET_TABLES = {
     "fact_estimate_county",
     "tract_shapes",
     "tract_estimates",
+    "acs_nmf_county_estimates",
+    "acs_nmf_tract_estimates",
+    "profiles",
+    "profile_assets",
     "alembic_version",
 }
 

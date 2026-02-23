@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from hashlib import sha256
+import json
+from pathlib import Path
 import re
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
+
+from app import models
+from app.services.profile_builder import ProfileBuildError, build_profile
+from app.services.profile_charts import generate_profile_charts
+from app.services.profile_pdf import render_profile_pdf
 
 ADJACENCY_TABLE_CANDIDATES: tuple[tuple[str, str, str], ...] = (
     ("county_adjacency", "county_fips", "neighbor_county_fips"),
@@ -20,6 +29,7 @@ COUNTY_FRAGMENT_PATTERN = re.compile(
     r"([A-Za-z][A-Za-z .'-]*\sCounty(?:,\s*[A-Za-z]{2}|\s+[A-Za-z]{2})?)",
     flags=re.IGNORECASE,
 )
+PROFILES_ROOT = Path(__file__).resolve().parents[1] / "data" / "profiles"
 
 
 def _safe_float(value: Any) -> float | None:
@@ -978,5 +988,383 @@ def get_estimates_for_counties(
     return {
         "found": any(item["found"] for item in counties),
         "counties": counties,
+        "reason": None,
+    }
+
+
+def _request_signature(payload: dict[str, Any]) -> str:
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _upsert_profile_asset(
+    db: Session,
+    *,
+    profile_id: str,
+    asset_name: str,
+    mime_type: str,
+    asset_path: str,
+) -> None:
+    existing = (
+        db.query(models.ProfileAsset)
+        .filter(
+            models.ProfileAsset.profile_id == profile_id,
+            models.ProfileAsset.asset_name == asset_name,
+        )
+        .one_or_none()
+    )
+    if existing is None:
+        db.add(
+            models.ProfileAsset(
+                profile_id=profile_id,
+                asset_name=asset_name,
+                mime_type=mime_type,
+                asset_path=asset_path,
+            )
+        )
+        return
+    existing.mime_type = mime_type
+    existing.asset_path = asset_path
+
+
+def _profile_summary(payload_json: dict[str, Any]) -> str:
+    narrative = payload_json.get("narrative")
+    if isinstance(narrative, dict):
+        summary_text = str(narrative.get("summary_text") or "").strip()
+        if summary_text:
+            return summary_text
+    return "Profile generated."
+
+
+def _ensure_profile_charts(
+    db: Session,
+    *,
+    profile: models.Profile,
+    chart_inputs: dict[str, Any],
+) -> None:
+    chart_assets = generate_profile_charts(
+        profile_id=str(profile.id),
+        profile_json=profile.payload_json,
+        chart_inputs=chart_inputs,
+        profiles_root=PROFILES_ROOT,
+    )
+    charts_payload = {}
+    for chart_name, asset in chart_assets.items():
+        _upsert_profile_asset(
+            db,
+            profile_id=str(profile.id),
+            asset_name=chart_name,
+            mime_type=asset["mime_type"],
+            asset_path=asset["path"],
+        )
+        charts_payload[chart_name] = {
+            "url": f"/profiles/{profile.id}/charts/{chart_name}.png",
+            "mime_type": asset["mime_type"],
+        }
+
+    payload_json = profile.payload_json if isinstance(profile.payload_json, dict) else {}
+    payload_json["charts"] = charts_payload
+    profile.payload_json = payload_json
+
+
+def generate_full_profile(
+    db: Session,
+    *,
+    geography: str,
+    location_id: str,
+    places_year: int,
+    places_measure_id: str,
+    places_data_value_type_id: str,
+    acs_year_window: str | None = None,
+    acs_data_value_type_id: str = "Percent",
+    include_charts: bool = True,
+    include_full_narrative: bool = True,
+    include_profile_json: bool = False,
+) -> dict[str, Any]:
+    normalized_geography = str(geography or "").strip().lower()
+    normalized_location_id = str(location_id or "").strip()
+    normalized_places_measure_id = str(places_measure_id or "").strip()
+    normalized_places_type = str(places_data_value_type_id or "").strip()
+    normalized_acs_type = str(acs_data_value_type_id or "Percent").strip() or "Percent"
+    normalized_year_window = str(acs_year_window).strip() if acs_year_window else None
+
+    if normalized_geography not in {"county", "tract"}:
+        return {
+            "found": False,
+            "profile_id": None,
+            "summary_text": "",
+            "cached": False,
+            "profile_json": None,
+            "reason": "geography must be county or tract.",
+        }
+
+    if (
+        not normalized_location_id
+        or not normalized_places_measure_id
+        or not normalized_places_type
+        or _to_int(places_year, 0) <= 0
+    ):
+        return {
+            "found": False,
+            "profile_id": None,
+            "summary_text": "",
+            "cached": False,
+            "profile_json": None,
+            "reason": (
+                "location_id, places_year, places_measure_id, and "
+                "places_data_value_type_id are required."
+            ),
+        }
+
+    request_payload = {
+        "geography": normalized_geography,
+        "location_id": normalized_location_id,
+        "places": {
+            "year": _to_int(places_year, 0),
+            "measure_id": normalized_places_measure_id,
+            "data_value_type_id": normalized_places_type,
+        },
+        "acs_nmf": {
+            "year_window": normalized_year_window,
+            "data_value_type_id": normalized_acs_type,
+        },
+        "include_full_narrative": bool(include_full_narrative),
+    }
+    request_signature = _request_signature(request_payload)
+
+    try:
+        existing_profile = (
+            db.query(models.Profile)
+            .filter(models.Profile.request_signature == request_signature)
+            .one_or_none()
+        )
+        cached = existing_profile is not None
+
+        if existing_profile is not None:
+            profile = existing_profile
+            if include_charts:
+                assets = (
+                    db.query(models.ProfileAsset)
+                    .filter(models.ProfileAsset.profile_id == str(profile.id))
+                    .all()
+                )
+                asset_by_name = {asset.asset_name: asset for asset in assets}
+                required_chart_names = (
+                    "bars_comparison",
+                    "us_distribution",
+                    "scatter_top_correlate",
+                )
+                has_all_charts = all(
+                    name in asset_by_name and Path(asset_by_name[name].asset_path).exists()
+                    for name in required_chart_names
+                )
+                if not has_all_charts:
+                    rebuilt = build_profile(
+                        db,
+                        geography=normalized_geography,
+                        location_id=normalized_location_id,
+                        places_year=_to_int(places_year, 0),
+                        places_measure_id=normalized_places_measure_id,
+                        places_data_value_type_id=normalized_places_type,
+                        acs_year_window=normalized_year_window,
+                        acs_data_value_type_id=normalized_acs_type,
+                        include_full_narrative=bool(include_full_narrative),
+                    )
+                    _ensure_profile_charts(
+                        db,
+                        profile=profile,
+                        chart_inputs=rebuilt.chart_inputs,
+                    )
+                    db.commit()
+        else:
+            built = build_profile(
+                db,
+                geography=normalized_geography,
+                location_id=normalized_location_id,
+                places_year=_to_int(places_year, 0),
+                places_measure_id=normalized_places_measure_id,
+                places_data_value_type_id=normalized_places_type,
+                acs_year_window=normalized_year_window,
+                acs_data_value_type_id=normalized_acs_type,
+                include_full_narrative=bool(include_full_narrative),
+            )
+            profile_id = str(uuid4())
+            payload_json = built.profile_json
+            payload_json["profile_id"] = profile_id
+            profile = models.Profile(
+                id=profile_id,
+                geography=normalized_geography,
+                location_id=normalized_location_id,
+                request_signature=request_signature,
+                payload_json=payload_json,
+            )
+            db.add(profile)
+            db.flush()
+            if include_charts:
+                _ensure_profile_charts(
+                    db,
+                    profile=profile,
+                    chart_inputs=built.chart_inputs,
+                )
+            db.commit()
+            db.refresh(profile)
+
+        payload_json = profile.payload_json if isinstance(profile.payload_json, dict) else {}
+        return {
+            "found": True,
+            "profile_id": str(profile.id),
+            "summary_text": _profile_summary(payload_json),
+            "cached": cached,
+            "profile_json": payload_json if include_profile_json else None,
+            "reason": None,
+        }
+    except ProfileBuildError as exc:
+        db.rollback()
+        return {
+            "found": False,
+            "profile_id": None,
+            "summary_text": "",
+            "cached": False,
+            "profile_json": None,
+            "reason": str(exc),
+        }
+    except Exception:
+        db.rollback()
+        return {
+            "found": False,
+            "profile_id": None,
+            "summary_text": "",
+            "cached": False,
+            "profile_json": None,
+            "reason": "Full profile generation failed.",
+        }
+
+
+def get_profile(
+    db: Session,
+    *,
+    profile_id: str,
+) -> dict[str, Any]:
+    normalized_profile_id = str(profile_id or "").strip()
+    if not normalized_profile_id:
+        return {
+            "found": False,
+            "profile_id": None,
+            "profile_json": None,
+            "summary_text": "",
+            "reason": "profile_id is required.",
+        }
+
+    row = (
+        db.query(models.Profile)
+        .filter(models.Profile.id == normalized_profile_id)
+        .one_or_none()
+    )
+    if row is None:
+        return {
+            "found": False,
+            "profile_id": normalized_profile_id,
+            "profile_json": None,
+            "summary_text": "",
+            "reason": "Profile not found.",
+        }
+
+    payload_json = row.payload_json if isinstance(row.payload_json, dict) else {}
+    return {
+        "found": True,
+        "profile_id": str(row.id),
+        "summary_text": _profile_summary(payload_json),
+        "profile_json": payload_json,
+        "reason": None,
+    }
+
+
+def export_profile_pdf(
+    db: Session,
+    *,
+    profile_id: str,
+) -> dict[str, Any]:
+    normalized_profile_id = str(profile_id or "").strip()
+    if not normalized_profile_id:
+        return {
+            "found": False,
+            "profile_id": None,
+            "pdf_url": None,
+            "reason": "profile_id is required.",
+        }
+
+    profile = (
+        db.query(models.Profile)
+        .filter(models.Profile.id == normalized_profile_id)
+        .one_or_none()
+    )
+    if profile is None:
+        return {
+            "found": False,
+            "profile_id": normalized_profile_id,
+            "pdf_url": None,
+            "reason": "Profile not found.",
+        }
+
+    existing_pdf = (
+        db.query(models.ProfileAsset)
+        .filter(
+            models.ProfileAsset.profile_id == normalized_profile_id,
+            models.ProfileAsset.asset_name == "profile_pdf",
+            models.ProfileAsset.mime_type == "application/pdf",
+        )
+        .one_or_none()
+    )
+    if existing_pdf is not None and Path(existing_pdf.asset_path).exists():
+        return {
+            "found": True,
+            "profile_id": normalized_profile_id,
+            "pdf_url": f"/profiles/{normalized_profile_id}.pdf",
+            "reason": None,
+        }
+
+    image_assets = (
+        db.query(models.ProfileAsset)
+        .filter(
+            models.ProfileAsset.profile_id == normalized_profile_id,
+            models.ProfileAsset.mime_type == "image/png",
+        )
+        .all()
+    )
+    chart_paths = {
+        asset.asset_name: asset.asset_path
+        for asset in image_assets
+        if asset.asset_name and asset.asset_path
+    }
+    payload_json = profile.payload_json if isinstance(profile.payload_json, dict) else {}
+
+    try:
+        pdf_bytes = render_profile_pdf(profile_json=payload_json, chart_paths=chart_paths)
+        profile_dir = PROFILES_ROOT / normalized_profile_id
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        pdf_path = profile_dir / "profile.pdf"
+        pdf_path.write_bytes(pdf_bytes)
+
+        _upsert_profile_asset(
+            db,
+            profile_id=normalized_profile_id,
+            asset_name="profile_pdf",
+            mime_type="application/pdf",
+            asset_path=str(pdf_path),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        return {
+            "found": False,
+            "profile_id": normalized_profile_id,
+            "pdf_url": None,
+            "reason": "Failed to export profile PDF.",
+        }
+
+    return {
+        "found": True,
+        "profile_id": normalized_profile_id,
+        "pdf_url": f"/profiles/{normalized_profile_id}.pdf",
         "reason": None,
     }
