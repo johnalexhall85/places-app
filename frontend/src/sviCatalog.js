@@ -15,7 +15,7 @@ const SVI_FIXED_BINS = [
     min: 0.25,
     max: 0.5,
     rangeLabel: "0.2501 — 0.50",
-    colorIndex: 1,
+    colorIndex: 2,
   },
   {
     key: "medium-high",
@@ -24,7 +24,7 @@ const SVI_FIXED_BINS = [
     min: 0.5,
     max: 0.75,
     rangeLabel: "0.5001 — 0.75",
-    colorIndex: 2,
+    colorIndex: 3,
   },
   {
     key: "high",
@@ -33,7 +33,7 @@ const SVI_FIXED_BINS = [
     min: 0.75,
     max: 1.0,
     rangeLabel: "0.7501 — 1.0",
-    colorIndex: 3,
+    colorIndex: 4,
   },
 ];
 
