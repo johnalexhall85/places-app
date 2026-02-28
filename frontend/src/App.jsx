@@ -16,6 +16,14 @@ const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
   PLACES: "places",
   ACS_NMF: "acs_nmf",
+  SVI: "svi",
+};
+const SVI_YEAR = 2022;
+const SVI_THEME_LABELS = {
+  RPL_THEME1: "Socioeconomic Status",
+  RPL_THEME2: "Household Characteristics",
+  RPL_THEME3: "Racial & Ethnic Minority Status",
+  RPL_THEME4: "Housing Type & Transportation",
 };
 const HEADER_HEIGHT = 56;
 const DEFAULT_CENTER = [39.5, -98.35];
@@ -94,7 +102,11 @@ function computeBreaks(values, bins = BIN_COUNT) {
 }
 
 function tagMeasuresForSource(measuresList, source) {
-  const sourceTag = source === DATA_SOURCES.ACS_NMF ? "acs" : "places";
+  const sourceTag = source === DATA_SOURCES.ACS_NMF
+    ? "acs"
+    : source === DATA_SOURCES.SVI
+      ? "svi"
+      : "places";
   return (measuresList ?? []).map((measure) => ({
     ...measure,
     source: measure?.source ?? sourceTag,
@@ -203,6 +215,16 @@ function formatValue(value) {
   return numericValue.toFixed(1);
 }
 
+function formatSviValue(value, valueType) {
+  const numericValue = toFiniteNumericValue(value);
+  if (numericValue == null) return "No data";
+  const normalizedValueType = String(valueType ?? "").trim().toLowerCase();
+  if (normalizedValueType === "percentile") {
+    return `${(numericValue * 100).toFixed(0)} percentile`;
+  }
+  return Number(numericValue).toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
 function formatYearWindowDisplay(value) {
   if (value == null) return "N/A";
   const text = String(value).trim();
@@ -220,6 +242,20 @@ function formatDataValueTypeLabel(typeId) {
     .replace(/_/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getMeasureDisplayName(measure) {
+  if (!measure) return "";
+  return measure.name ?? measure.measure ?? measure.short_question_text ?? measure.measure_id ?? "";
+}
+
+function getSviThemeLabel(measureId, theme) {
+  const normalizedMeasureId = String(measureId ?? "").trim().toUpperCase();
+  if (normalizedMeasureId in SVI_THEME_LABELS) {
+    return SVI_THEME_LABELS[normalizedMeasureId];
+  }
+  const normalizedTheme = String(theme ?? "").trim();
+  return normalizedTheme || null;
 }
 
 function clamp(value, min, max) {
@@ -751,10 +787,21 @@ export default function App() {
   }, []);
 
   const isAcsDataSource = selectedDataSource === DATA_SOURCES.ACS_NMF;
-  const historySupported = !isAcsDataSource;
+  const isSviDataSource = selectedDataSource === DATA_SOURCES.SVI;
+  const datasetCachePrefix = isAcsDataSource
+    ? "acs-nmf"
+    : isSviDataSource
+      ? "svi"
+      : "places";
+  const historySupported = selectedDataSource === DATA_SOURCES.PLACES;
   const tractsActive = mapZoom >= TRACT_ZOOM;
+  const activeGeography = tractsActive ? "tract" : "county";
   const acsGeography = isAcsDataSource && tractsActive ? "tract" : "county";
-  const selectedTemporalValue = isAcsDataSource ? selectedYearWindow : selectedYear;
+  const selectedTemporalValue = isAcsDataSource
+    ? selectedYearWindow
+    : isSviDataSource
+      ? SVI_YEAR
+      : selectedYear;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
@@ -772,7 +819,7 @@ export default function App() {
   }, [isAcsDataSource, selectedMeasure]);
 
   useEffect(() => {
-    if (isAcsDataSource) return;
+    if (isAcsDataSource || isSviDataSource) return;
     if (!selectedMeasureId) return;
     if (selectedYear == null || !Number.isFinite(Number(selectedYear))) return;
     if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") return;
@@ -781,7 +828,7 @@ export default function App() {
       measureId: selectedMeasureId,
       dataValueTypeId: selectedType,
     });
-  }, [isAcsDataSource, selectedMeasureId, selectedType, selectedYear]);
+  }, [isAcsDataSource, isSviDataSource, selectedMeasureId, selectedType, selectedYear]);
 
   const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
   const activeFeatures = activeGeojson?.features ?? [];
@@ -849,11 +896,16 @@ export default function App() {
     const source = selectedDataSource;
     const sourceKey = source === DATA_SOURCES.ACS_NMF
       ? `acs_nmf:${acsGeography}`
-      : DATA_SOURCES.PLACES;
+      : source === DATA_SOURCES.SVI
+        ? `svi:${activeGeography}`
+        : DATA_SOURCES.PLACES;
     const cachedMeasures = measuresCacheRef.current.get(sourceKey);
-    const endpoint = source === DATA_SOURCES.ACS_NMF
-      ? (acsGeography === "tract" ? "/acs-nmf/tracts/measures" : "/acs-nmf/measures")
-      : "/measures";
+    let endpoint = "/measures";
+    if (source === DATA_SOURCES.ACS_NMF) {
+      endpoint = acsGeography === "tract" ? "/acs-nmf/tracts/measures" : "/acs-nmf/measures";
+    } else if (source === DATA_SOURCES.SVI) {
+      endpoint = `/svi/measures?geography_level=${activeGeography}&year=${SVI_YEAR}`;
+    }
 
     const applyMeasureDefaults = (nextMeasures) => {
       setSelectedMeasureId((currentId) => {
@@ -865,6 +917,12 @@ export default function App() {
           && nextMeasures.some((measure) => measure.measure_id === "CASTHMA")
         ) {
           return "CASTHMA";
+        }
+        if (
+          source === DATA_SOURCES.SVI
+          && nextMeasures.some((measure) => measure.measure_id === "RPL_THEMES")
+        ) {
+          return "RPL_THEMES";
         }
         return nextMeasures[0]?.measure_id ?? "";
       });
@@ -902,11 +960,14 @@ export default function App() {
           }
         }
 
-        const sorted = Array.from(byId.values()).sort((a, b) => {
-          const labelA = (a.measure ?? a.short_question_text ?? "").toLowerCase();
-          const labelB = (b.measure ?? b.short_question_text ?? "").toLowerCase();
-          return labelA.localeCompare(labelB);
-        });
+        const deduped = Array.from(byId.values());
+        const sorted = source === DATA_SOURCES.SVI
+          ? deduped
+          : deduped.sort((a, b) => {
+            const labelA = getMeasureDisplayName(a).toLowerCase();
+            const labelB = getMeasureDisplayName(b).toLowerCase();
+            return labelA.localeCompare(labelB);
+          });
 
         const taggedMeasures = tagMeasuresForSource(sorted, source);
         measuresCacheRef.current.set(sourceKey, taggedMeasures);
@@ -921,10 +982,10 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [acsGeography, selectedDataSource]);
+  }, [acsGeography, activeGeography, selectedDataSource]);
 
   useEffect(() => {
-    if (selectedDataSource === DATA_SOURCES.ACS_NMF) {
+    if (selectedDataSource === DATA_SOURCES.ACS_NMF || selectedDataSource === DATA_SOURCES.SVI) {
       setIsYearsLoading(false);
       setYearsError(null);
       return;
@@ -1027,16 +1088,20 @@ export default function App() {
 
       const url = isAcsDataSource
         ? new URL(`${API_BASE}/acs-nmf/counties`)
-        : new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
+        : isSviDataSource
+          ? new URL(`${API_BASE}/svi/counties`)
+          : new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
       url.searchParams.set("measure_id", selectedMeasureId);
       if (isAcsDataSource) {
         if (selectedYearWindow) {
           url.searchParams.set("year_window", String(selectedYearWindow));
         }
+      } else if (isSviDataSource) {
+        url.searchParams.set("year", String(SVI_YEAR));
       } else {
         url.searchParams.set("year", String(selectedYear));
       }
-      if (selectedType) {
+      if (!isSviDataSource && selectedType) {
         url.searchParams.set("data_value_type_id", selectedType);
       }
       if (bboxValue) {
@@ -1059,6 +1124,7 @@ export default function App() {
     },
     [
       isAcsDataSource,
+      isSviDataSource,
       isAcsMeasureSelected,
       selectedMeasureId,
       selectedYear,
@@ -1198,16 +1264,20 @@ export default function App() {
 
       const url = isAcsDataSource
         ? new URL(`${API_BASE}/acs-nmf/tracts`)
-        : new URL(`${API_BASE}/geojson/tracts`);
+        : isSviDataSource
+          ? new URL(`${API_BASE}/svi/tracts`)
+          : new URL(`${API_BASE}/geojson/tracts`);
       if (isAcsDataSource) {
         if (selectedYearWindow) {
           url.searchParams.set("year_window", String(selectedYearWindow));
         }
+      } else if (isSviDataSource) {
+        url.searchParams.set("year", String(SVI_YEAR));
       } else {
         url.searchParams.set("year", String(selectedYear));
       }
       url.searchParams.set("measure_id", selectedMeasureId);
-      if (selectedType) {
+      if (!isSviDataSource && selectedType) {
         url.searchParams.set("data_value_type_id", selectedType);
       }
       url.searchParams.set("bbox", bboxValue);
@@ -1221,6 +1291,7 @@ export default function App() {
     },
     [
       isAcsDataSource,
+      isSviDataSource,
       isAcsMeasureSelected,
       selectedMeasureId,
       selectedYear,
@@ -1288,7 +1359,7 @@ export default function App() {
     }
 
     const key = makeCacheKey(
-      isAcsDataSource ? "acs-nmf-tracts" : "tracts",
+      `${datasetCachePrefix}-tracts`,
       selectedTemporalValue,
       selectedMeasureId,
       selectedType,
@@ -1307,6 +1378,7 @@ export default function App() {
     });
   }, [
     bbox,
+    datasetCachePrefix,
     fetchTractsForBbox,
     fetchWithDedupe,
     isAcsDataSource,
@@ -1354,7 +1426,12 @@ export default function App() {
 
   // Main data-fetching effect with caching, deduping, and stale-while-revalidate
   useEffect(() => {
-    if (!bbox || selectedTemporalValue == null || !selectedMeasureId || !selectedType) {
+    if (
+      !bbox
+      || selectedTemporalValue == null
+      || !selectedMeasureId
+      || (!isSviDataSource && !selectedType)
+    ) {
       return;
     }
     if (isAcsDataSource && !isAcsMeasureSelected) {
@@ -1373,7 +1450,7 @@ export default function App() {
         latestTractReqRef.current = tractReqId;
         
         const tractKey = makeCacheKey(
-          isAcsDataSource ? "acs-nmf-tracts" : "tracts",
+          `${datasetCachePrefix}-tracts`,
           selectedTemporalValue,
           selectedMeasureId,
           selectedType,
@@ -1493,7 +1570,7 @@ export default function App() {
       latestCountyReqRef.current = countyReqId;
       
       const countyKey = `${makeCacheKey(
-        isAcsDataSource ? "acs-nmf-counties" : "counties",
+        `${datasetCachePrefix}-counties`,
         selectedTemporalValue,
         selectedMeasureId,
         selectedType,
@@ -1558,7 +1635,9 @@ export default function App() {
     fetchTractsForBbox,
     fetchWithDedupe,
     getCached,
+    datasetCachePrefix,
     isAcsDataSource,
+    isSviDataSource,
     isAcsMeasureSelected,
     selectedMeasureId,
     selectedTemporalValue,
@@ -2356,20 +2435,39 @@ export default function App() {
     selectedFeatureProps?.age_adjusted_high_confidence_limit,
     selectedFeatureProps?.data_value_type_id === "AgeAdjPrv" ? selectedFeatureProps?.high : null
   );
+  const selectedMeasureDisplayName = getMeasureDisplayName(selectedMeasure);
   const measureNameValue = normalizeMeasureName(
     firstDefined(
       selectedFeatureProps?.measure_name,
       selectedFeatureProps?.measure,
       selectedFeatureProps?.short_question_text,
+      selectedMeasure?.name,
       selectedMeasure?.short_question_text,
       selectedMeasure?.measure
     )
   );
   const yearValue = isAcsDataSource
     ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
-    : firstDefined(selectedFeatureProps?.year, selectedYear);
+    : isSviDataSource
+      ? firstDefined(selectedFeatureProps?.year, SVI_YEAR)
+      : firstDefined(selectedFeatureProps?.year, selectedYear);
   const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const acsMoe = firstDefined(selectedFeatureProps?.moe);
+  const sviValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
+  const sviValueType = firstDefined(selectedFeatureProps?.value_type, selectedMeasure?.value_type);
+  const sviMeasureId = firstDefined(selectedFeatureProps?.measure_id, selectedMeasureId);
+  const sviMeasureName = firstDefined(
+    selectedFeatureProps?.measure_name,
+    selectedFeatureProps?.measure,
+    selectedMeasure?.name,
+    selectedMeasure?.measure,
+    selectedMeasureId
+  );
+  const sviThemeLabel = getSviThemeLabel(
+    sviMeasureId,
+    firstDefined(selectedFeatureProps?.theme, selectedMeasure?.theme)
+  );
+  const isSviThemeMeasure = /^RPL_THEME[1-4]$/i.test(String(sviMeasureId ?? "").trim());
   const acsGeoLabel = tractsActive ? "tract" : "county";
   const acsLocationLabel = firstDefined(
     selectedFeatureProps?.location_name,
@@ -2415,6 +2513,11 @@ export default function App() {
   const acsAreaLabel = acsGeoLabel === "county"
     ? countyOrParishLabel
     : (hasText(acsLocationLabel) ? String(acsLocationLabel).trim() : `this ${acsGeoLabel}`);
+  const sviAreaLabel = hasText(
+    firstDefined(selectedFeatureProps?.location_name, selectedFeatureProps?.name)
+  )
+    ? String(firstDefined(selectedFeatureProps?.location_name, selectedFeatureProps?.name)).trim()
+    : selectedAreaLabel;
   const censusProfileHref = hasText(selectedLocationIdForLink)
     ? `https://data.census.gov/profile/${String(selectedLocationIdForLink).trim()}`
     : hasText(selectedLocationNameForLink)
@@ -2530,9 +2633,11 @@ export default function App() {
     ? 16 + measurePanelHeight + 12
     : 16;
   const legendMaxHeight = Math.max(180, mapViewportHeight - (legendTopOffset + 16));
-  const legendTitle = `${formatDataValueTypeLabel(selectedType)} \u2013 ${
-    tractsActive ? "Census Tract Level" : "County Level"
-  }`;
+  const legendTitle = isSviDataSource
+    ? `Social Vulnerability Index \u2014 ${selectedMeasureDisplayName || selectedMeasureId}`
+    : `${formatDataValueTypeLabel(selectedType)} \u2013 ${
+      tractsActive ? "Census Tract Level" : "County Level"
+    }`;
   const floatingPanelStyle = {
     background: "#ffffff",
     border: "1px solid #E3E8ED",
@@ -2624,6 +2729,7 @@ export default function App() {
               >
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
+                <option value={DATA_SOURCES.SVI}>Social Vulnerability Index</option>
               </select>
             </label>
             <label style={{ display: "grid", gap: 6 }}>
@@ -2637,89 +2743,95 @@ export default function App() {
                   <option value={selectedMeasureId}>Loading measures...</option>
                 ) : (
                   measures.map((measure) => {
-                    const label = measure.measure ?? measure.short_question_text ?? "";
+                    const label = getMeasureDisplayName(measure);
+                    const optionLabel = isSviDataSource
+                      ? (label || measure.measure_id)
+                      : `${measure.measure_id}${label ? ` - ${label}` : ""}`;
                     return (
                       <option key={measure.measure_id} value={measure.measure_id}>
-                        {measure.measure_id}
-                        {label ? ` - ${label}` : ""}
+                        {optionLabel}
                       </option>
                     );
                   })
                 )}
               </select>
             </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
-              <select
-                value={isAcsDataSource ? (selectedYearWindow ?? "") : (selectedYear ?? "")}
-                onChange={(event) => {
-                  if (isAcsDataSource) {
-                    const nextYearWindow = String(event.target.value ?? "").trim();
-                    setSelectedYearWindow(nextYearWindow || null);
-                  } else {
-                    setSelectedYear(Number(event.target.value));
+            {!isSviDataSource ? (
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
+                <select
+                  value={isAcsDataSource ? (selectedYearWindow ?? "") : (selectedYear ?? "")}
+                  onChange={(event) => {
+                    if (isAcsDataSource) {
+                      const nextYearWindow = String(event.target.value ?? "").trim();
+                      setSelectedYearWindow(nextYearWindow || null);
+                    } else {
+                      setSelectedYear(Number(event.target.value));
+                    }
+                  }}
+                  disabled={
+                    isAcsDataSource
+                      ? acsYearWindows.length === 0
+                      : (isYearsLoading || years.length === 0)
                   }
-                }}
-                disabled={
-                  isAcsDataSource
-                    ? acsYearWindows.length === 0
-                    : (isYearsLoading || years.length === 0)
-                }
-                style={controlSelectStyle}
-              >
-                {isAcsDataSource ? (
-                  acsYearWindows.length === 0 ? (
-                    <option value="">Loading year windows...</option>
+                  style={controlSelectStyle}
+                >
+                  {isAcsDataSource ? (
+                    acsYearWindows.length === 0 ? (
+                      <option value="">Loading year windows...</option>
+                    ) : (
+                      acsYearWindows.map((yearWindow) => (
+                        <option key={yearWindow} value={yearWindow}>
+                          {formatYearWindowDisplay(yearWindow)}
+                        </option>
+                      ))
+                    )
+                  ) : isYearsLoading && years.length === 0 ? (
+                    <option value="">Loading years...</option>
                   ) : (
-                    acsYearWindows.map((yearWindow) => (
-                      <option key={yearWindow} value={yearWindow}>
-                        {formatYearWindowDisplay(yearWindow)}
+                    years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
                       </option>
                     ))
-                  )
-                ) : isYearsLoading && years.length === 0 ? (
-                  <option value="">Loading years...</option>
-                ) : (
-                  years.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))
-                )}
-              </select>
-              {!isAcsDataSource && yearsError ? (
-                <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
-              ) : null}
-            </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontWeight: 600 }}>Data value type</span>
-              <select
-                value={selectedType}
-                onChange={(event) => setSelectedType(event.target.value)}
-                disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
-                style={controlSelectStyle}
-              >
-                {isAcsDataSource ? (
-                  acsDataValueTypeIds.length === 0 ? (
-                    <option value="">Loading types...</option>
+                  )}
+                </select>
+                {!isAcsDataSource && yearsError ? (
+                  <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
+                ) : null}
+              </label>
+            ) : null}
+            {!isSviDataSource ? (
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>Data value type</span>
+                <select
+                  value={selectedType}
+                  onChange={(event) => setSelectedType(event.target.value)}
+                  disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
+                  style={controlSelectStyle}
+                >
+                  {isAcsDataSource ? (
+                    acsDataValueTypeIds.length === 0 ? (
+                      <option value="">Loading types...</option>
+                    ) : (
+                      acsDataValueTypeIds.map((typeId) => (
+                        <option key={typeId} value={typeId}>
+                          {formatDataValueTypeLabel(typeId)}
+                        </option>
+                      ))
+                    )
                   ) : (
-                    acsDataValueTypeIds.map((typeId) => (
-                      <option key={typeId} value={typeId}>
-                        {formatDataValueTypeLabel(typeId)}
-                      </option>
-                    ))
-                  )
-                ) : (
-                  <>
-                    <option value="CrdPrv">Crude Prevalence</option>
-                    <option value="AgeAdjPrv">Age-Adjusted Prevalence</option>
-                  </>
-                )}
-              </select>
-            </label>
+                    <>
+                      <option value="CrdPrv">Crude Prevalence</option>
+                      <option value="AgeAdjPrv">Age-Adjusted Prevalence</option>
+                    </>
+                  )}
+                </select>
+              </label>
+            ) : null}
             {measures.length === 0 ? null : (
               <div style={{ color: "#475569" }}>
-                {selectedMeasure?.measure ?? selectedMeasure?.short_question_text ?? ""}
+                {selectedMeasureDisplayName}
               </div>
             )}
           </>
@@ -2928,6 +3040,21 @@ export default function App() {
                   <strong>{formatYearWindowDisplay(yearValue)}</strong>.
                   {` Population: ${fmtPop(populationValue)}.`}
                 </p>
+              ) : isSviDataSource ? (
+                <>
+                  <p>
+                    In <strong>{sviAreaLabel}</strong>, Social Vulnerability Index is{" "}
+                    <strong>{formatSviValue(sviValue, sviValueType)}</strong>.
+                  </p>
+                  <p>
+                    Measure: <strong>{sviMeasureName}</strong>
+                  </p>
+                  {isSviThemeMeasure && sviThemeLabel ? (
+                    <p>
+                      Theme: <strong>{sviThemeLabel}</strong>
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <>
                   <p>
@@ -2975,26 +3102,40 @@ export default function App() {
                   : getCountyName(selectedProps)}
               </div>
               <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
-              <div>
-                Value: {isAcsDataSource
-                  ? `${fmtPercent(acsValue)}${acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`}`
-                  : (getValueFromProperties(selectedProps) ?? "No data")}
-              </div>
-              <div>
-                {isAcsDataSource
-                  ? `Year window: ${formatYearWindowDisplay(
-                    selectedProps.year_window ?? selectedYearWindow
-                  )}`
-                  : `Year: ${selectedProps.year ?? selectedYear}`}
-              </div>
-              <div>
-                Measure: {selectedProps.measure ?? selectedProps.measure_id ?? selectedMeasureId}
-              </div>
-              <div>
-                Data value type: {formatDataValueTypeLabel(
-                  selectedProps.data_value_type_id ?? selectedType
-                )}
-              </div>
+              {isSviDataSource ? (
+                <>
+                  <div>
+                    Social Vulnerability Index: {formatSviValue(sviValue, sviValueType)}
+                  </div>
+                  {isSviThemeMeasure && sviThemeLabel ? (
+                    <div>Theme: {sviThemeLabel}</div>
+                  ) : null}
+                  <div>Measure: {sviMeasureName}</div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    Value: {isAcsDataSource
+                      ? `${fmtPercent(acsValue)}${acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`}`
+                      : (getValueFromProperties(selectedProps) ?? "No data")}
+                  </div>
+                  <div>
+                    {isAcsDataSource
+                      ? `Year window: ${formatYearWindowDisplay(
+                        selectedProps.year_window ?? selectedYearWindow
+                      )}`
+                      : `Year: ${selectedProps.year ?? selectedYear}`}
+                  </div>
+                  <div>
+                    Measure: {selectedProps.measure ?? selectedProps.measure_id ?? selectedMeasureId}
+                  </div>
+                  <div>
+                    Data value type: {formatDataValueTypeLabel(
+                      selectedProps.data_value_type_id ?? selectedType
+                    )}
+                  </div>
+                </>
+              )}
               {isAcsDataSource ? (
                 <div>
                   Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
