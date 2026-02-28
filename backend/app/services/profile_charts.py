@@ -9,6 +9,28 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
+from app.services.report_branding import (
+    AXIS_TEXT_HEX,
+    CAPTION_TEXT_HEX,
+    GRIDLINE_HEX,
+    PRIMARY_NAVY_HEX,
+    SECONDARY_SLATE_BLUE_HEX,
+    TEAL_ACCENT_HEX,
+    chart_font_families,
+)
+
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.sans-serif": chart_font_families(),
+        "axes.labelcolor": AXIS_TEXT_HEX,
+        "axes.edgecolor": GRIDLINE_HEX,
+        "xtick.color": AXIS_TEXT_HEX,
+        "ytick.color": AXIS_TEXT_HEX,
+        "grid.color": GRIDLINE_HEX,
+    }
+)
+
 
 def _ensure_dir(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
@@ -25,7 +47,7 @@ def _draw_no_data(ax: Any, message: str) -> None:
         verticalalignment="center",
         transform=ax.transAxes,
         fontsize=10,
-        color="#475569",
+        color=CAPTION_TEXT_HEX,
     )
 
 
@@ -56,13 +78,14 @@ def _plot_comparison_panel(
         return
 
     plot_values = [value if value is not None else 0.0 for value in values]
-    colors = ["#2563eb", "#0ea5e9", "#334155"]
-    bars = ax.bar(labels, plot_values, color=colors, alpha=0.9)
+    series_colors = [PRIMARY_NAVY_HEX, SECONDARY_SLATE_BLUE_HEX, TEAL_ACCENT_HEX]
+    bars = ax.bar(labels, plot_values, color=series_colors, alpha=0.9)
     max_value = max(max(finite_values), 1.0)
     ax.set_ylim(0, max_value * 1.2)
-    ax.set_ylabel(unit)
-    ax.set_title(title, fontsize=11)
-    ax.grid(axis="y", alpha=0.2, linestyle="--")
+    ax.set_ylabel(unit, color=AXIS_TEXT_HEX)
+    ax.set_title(title, fontsize=11, color=PRIMARY_NAVY_HEX)
+    ax.grid(axis="y", color=GRIDLINE_HEX, alpha=1.0, linestyle="-", linewidth=0.7)
+    ax.tick_params(axis="both", colors=AXIS_TEXT_HEX)
     for idx, bar in enumerate(bars):
         value = values[idx]
         label = "N/A" if value is None else f"{value:.1f}"
@@ -73,7 +96,7 @@ def _plot_comparison_panel(
             ha="center",
             va="bottom",
             fontsize=9,
-            color="#0f172a",
+            color=AXIS_TEXT_HEX,
         )
 
 
@@ -90,20 +113,23 @@ def _plot_distribution(
         if not values:
             _draw_no_data(ax, "No distribution data available.")
         else:
-            ax.hist(values, bins=24, color="#0ea5e9", alpha=0.65, edgecolor="white")
+            ax.hist(values, bins=24, color=SECONDARY_SLATE_BLUE_HEX, alpha=0.7, edgecolor="white")
             if location_value is not None:
                 ax.axvline(
                     location_value,
-                    color="#dc2626",
+                    color=TEAL_ACCENT_HEX,
                     linewidth=2,
                     linestyle="-",
                     label=f"Location ({location_value:.1f})",
                 )
-                ax.legend(loc="upper right", fontsize=9)
-            ax.set_title(f"US Distribution: {label}", fontsize=11)
-            ax.set_xlabel(unit)
-            ax.set_ylabel("Count")
-            ax.grid(axis="y", linestyle="--", alpha=0.25)
+                legend = ax.legend(loc="upper right", fontsize=9)
+                if legend:
+                    legend.get_frame().set_edgecolor(GRIDLINE_HEX)
+            ax.set_title(f"US Distribution: {label}", fontsize=11, color=PRIMARY_NAVY_HEX)
+            ax.set_xlabel(unit, color=AXIS_TEXT_HEX)
+            ax.set_ylabel("Count", color=AXIS_TEXT_HEX)
+            ax.grid(axis="y", color=GRIDLINE_HEX, linestyle="-", linewidth=0.7)
+            ax.tick_params(axis="both", colors=AXIS_TEXT_HEX)
         fig.tight_layout()
         fig.savefig(output_path, format="png")
     finally:
@@ -133,14 +159,29 @@ def _plot_scatter(
         if not x_values or not y_values:
             _draw_no_data(ax, "No scatter pairs available.")
         else:
-            ax.scatter(x_values, y_values, s=10, alpha=0.2, color="#2563eb", edgecolors="none")
+            ax.scatter(
+                x_values,
+                y_values,
+                s=10,
+                alpha=0.25,
+                color=SECONDARY_SLATE_BLUE_HEX,
+                edgecolors="none",
+            )
             lx, ly = location_point
             if lx is not None and ly is not None:
-                ax.scatter([lx], [ly], s=90, color="#dc2626", edgecolors="#7f1d1d", linewidths=1.0)
-            ax.set_title("PLACES vs Top ACS Correlate", fontsize=11)
-            ax.set_xlabel(x_label)
-            ax.set_ylabel(y_label)
-            ax.grid(linestyle="--", alpha=0.25)
+                ax.scatter(
+                    [lx],
+                    [ly],
+                    s=90,
+                    color=TEAL_ACCENT_HEX,
+                    edgecolors=PRIMARY_NAVY_HEX,
+                    linewidths=1.0,
+                )
+            ax.set_title("PLACES vs Top ACS Correlate", fontsize=11, color=PRIMARY_NAVY_HEX)
+            ax.set_xlabel(x_label, color=AXIS_TEXT_HEX)
+            ax.set_ylabel(y_label, color=AXIS_TEXT_HEX)
+            ax.grid(color=GRIDLINE_HEX, linestyle="-", linewidth=0.7)
+            ax.tick_params(axis="both", colors=AXIS_TEXT_HEX)
         fig.tight_layout()
         fig.savefig(output_path, format="png")
     finally:

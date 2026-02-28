@@ -91,3 +91,23 @@ curl -sS -X POST "http://localhost:8000/assistant/query" \
     }
   }'
 ```
+
+## Report branding assets and cache
+
+CHIP report branding assets are stored in:
+- `backend/app/assets/brand/` (logos used by PDF rendering)
+- `backend/app/assets/fonts/` (optional Inter / Source Sans 3 files for PDF typography)
+
+Clear generated report caches:
+
+```bash
+cd backend
+python -m app.scripts.clear_report_cache
+```
+
+Also clear cached chart PNGs (forces chart restyling on regeneration):
+
+```bash
+cd backend
+python -m app.scripts.clear_report_cache --include-charts
+```

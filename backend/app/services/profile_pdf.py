@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from app.services.profile_pdf_brief import render_profile_pdf_brief
 from app.services.profile_pdf_full import render_profile_pdf_full
+from app.services.report_branding import REPORT_BRANDING_VERSION
 
 PDFTemplate = Literal["full", "brief"]
 DEFAULT_PDF_TEMPLATE: PDFTemplate = "full"
@@ -19,8 +20,8 @@ def normalize_pdf_template(template: str | None) -> PDFTemplate:
 def pdf_asset_name(template: str | None) -> str:
     normalized = normalize_pdf_template(template)
     if normalized == "brief":
-        return "profile_pdf_brief"
-    return "profile_pdf"
+        return f"profile_pdf_brief_{REPORT_BRANDING_VERSION}"
+    return f"profile_pdf_{REPORT_BRANDING_VERSION}"
 
 
 def pdf_storage_filename(template: str | None) -> str:

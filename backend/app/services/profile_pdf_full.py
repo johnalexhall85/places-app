@@ -7,9 +7,8 @@ from pathlib import Path
 import re
 from typing import Any
 
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
@@ -22,6 +21,17 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+)
+
+from app.services.report_branding import (
+    BrandedNumberedCanvas,
+    DOC_BOTTOM_MARGIN,
+    DOC_LEFT_MARGIN,
+    DOC_RIGHT_MARGIN,
+    DOC_TOP_MARGIN,
+    full_report_styles,
+    reportlab_fonts,
+    standard_table_style_commands,
 )
 
 MISSING_TEXT = "Not available"
@@ -207,6 +217,7 @@ def _render_bullets(
 ) -> None:
     if not bullets:
         return
+    fonts = reportlab_fonts()
     items = [
         ListItem(_render_paragraph(item, style), leftIndent=6)
         for item in bullets
@@ -216,7 +227,7 @@ def _render_bullets(
             items,
             bulletType="bullet",
             leftIndent=14,
-            bulletFontName="Helvetica",
+            bulletFontName=fonts["regular"],
             bulletFontSize=9,
             bulletDedent=4,
             spaceBefore=2,
@@ -290,24 +301,14 @@ def _add_table(
     if not rows:
         return
     table = Table(rows, colWidths=col_widths, hAlign="LEFT", repeatRows=1)
-    table_style_commands: list[tuple[Any, ...]] = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, 0), "LEFT"),
-    ]
-    for column_index in (right_align_columns or []):
-        table_style_commands.append(("ALIGN", (column_index, 1), (column_index, -1), "RIGHT"))
-    table.setStyle(TableStyle(table_style_commands))
+    table.setStyle(
+        TableStyle(
+            standard_table_style_commands(
+                font_size=9.0,
+                right_align_columns=right_align_columns,
+            )
+        )
+    )
     story.append(table)
     story.append(Spacer(1, 0.17 * inch))
 
@@ -321,77 +322,19 @@ def render_profile_pdf_full(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=0.75 * inch,
-        rightMargin=0.75 * inch,
-        topMargin=0.75 * inch,
-        bottomMargin=0.75 * inch,
+        leftMargin=DOC_LEFT_MARGIN,
+        rightMargin=DOC_RIGHT_MARGIN,
+        topMargin=DOC_TOP_MARGIN,
+        bottomMargin=DOC_BOTTOM_MARGIN,
     )
-    sample_styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "ProfileTitle",
-        parent=sample_styles["Title"],
-        fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=22,
-        textColor=colors.HexColor("#0f172a"),
-        spaceAfter=2,
-    )
-    subtitle_style = ParagraphStyle(
-        "ProfileSubtitle",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=13,
-        textColor=colors.HexColor("#475569"),
-        spaceAfter=4,
-    )
-    h2_style = ParagraphStyle(
-        "HeadingLevel2",
-        parent=sample_styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=13,
-        leading=16,
-        textColor=colors.HexColor("#0f172a"),
-        spaceBefore=6,
-        spaceAfter=5,
-    )
-    h3_style = ParagraphStyle(
-        "HeadingLevel3",
-        parent=sample_styles["Heading3"],
-        fontName="Helvetica-Bold",
-        fontSize=11,
-        leading=14,
-        textColor=colors.HexColor("#1e293b"),
-        spaceBefore=2,
-        spaceAfter=4,
-    )
-    body_style = ParagraphStyle(
-        "BodyText",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=14,
-        textColor=colors.HexColor("#1f2937"),
-        spaceAfter=4,
-    )
-    caption_style = ParagraphStyle(
-        "Caption",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica-Oblique",
-        fontSize=8.5,
-        leading=11,
-        textColor=colors.HexColor("#64748b"),
-        spaceAfter=4,
-    )
-    small_style = ParagraphStyle(
-        "Small",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=8.5,
-        leading=11,
-        textColor=colors.HexColor("#334155"),
-        spaceAfter=3,
-    )
+    styles = full_report_styles()
+    title_style = styles["title"]
+    subtitle_style = styles["subtitle"]
+    h2_style = styles["h2"]
+    h3_style = styles["h3"]
+    body_style = styles["body"]
+    caption_style = styles["caption"]
+    small_style = styles["small"]
 
     story: list[Any] = []
 
@@ -680,5 +623,5 @@ def render_profile_pdf_full(
     if methods_bullets:
         _render_bullets(story, methods_bullets, style=small_style)
 
-    doc.build(story)
+    doc.build(story, canvasmaker=BrandedNumberedCanvas)
     return buffer.getvalue()

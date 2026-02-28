@@ -5,9 +5,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
@@ -23,6 +21,15 @@ from app.services.profile_pdf_full import (
     _safe_float,
     _sanitize_text,
     _scale_image,
+)
+from app.services.report_branding import (
+    BrandedNumberedCanvas,
+    DOC_BOTTOM_MARGIN,
+    DOC_LEFT_MARGIN,
+    DOC_RIGHT_MARGIN,
+    DOC_TOP_MARGIN,
+    brief_report_styles,
+    compact_table_style_commands,
 )
 
 _BRIEF_CHART_NAME = "bars_comparison"
@@ -109,22 +116,10 @@ def _add_compact_table(
     table = Table(rows, colWidths=col_widths, hAlign="LEFT", repeatRows=1)
     table.setStyle(
         TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#dbeafe")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (0, 0), (-1, 0), "LEFT"),
-                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-            ]
+            compact_table_style_commands(
+                font_size=8.6,
+                right_align_columns=[1, 2, 3],
+            )
         )
     )
     story.append(table)
@@ -376,67 +371,18 @@ def render_profile_pdf_brief(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=0.75 * inch,
-        rightMargin=0.75 * inch,
-        topMargin=0.75 * inch,
-        bottomMargin=0.75 * inch,
+        leftMargin=DOC_LEFT_MARGIN,
+        rightMargin=DOC_RIGHT_MARGIN,
+        topMargin=DOC_TOP_MARGIN,
+        bottomMargin=DOC_BOTTOM_MARGIN,
     )
-    sample_styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "BriefTitle",
-        parent=sample_styles["Title"],
-        fontName="Helvetica-Bold",
-        fontSize=17,
-        leading=21,
-        textColor=colors.HexColor("#0f172a"),
-        spaceAfter=3,
-    )
-    subtitle_style = ParagraphStyle(
-        "BriefSubtitle",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#334155"),
-        spaceAfter=3,
-    )
-    note_style = ParagraphStyle(
-        "BriefNote",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica-Oblique",
-        fontSize=8,
-        leading=10,
-        textColor=colors.HexColor("#64748b"),
-        spaceAfter=6,
-    )
-    h2_style = ParagraphStyle(
-        "BriefH2",
-        parent=sample_styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=11.5,
-        leading=14,
-        textColor=colors.HexColor("#0f172a"),
-        spaceBefore=4,
-        spaceAfter=3,
-    )
-    body_style = ParagraphStyle(
-        "BriefBody",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=9.5,
-        leading=12.5,
-        textColor=colors.HexColor("#1f2937"),
-        spaceAfter=3,
-    )
-    small_style = ParagraphStyle(
-        "BriefSmall",
-        parent=sample_styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=8,
-        leading=10,
-        textColor=colors.HexColor("#334155"),
-        spaceAfter=2,
-    )
+    styles = brief_report_styles()
+    title_style = styles["title"]
+    subtitle_style = styles["subtitle"]
+    note_style = styles["note"]
+    h2_style = styles["h2"]
+    body_style = styles["body"]
+    small_style = styles["small"]
 
     narrative = profile_json.get("narrative") if isinstance(profile_json.get("narrative"), dict) else {}
     location = profile_json.get("location") if isinstance(profile_json.get("location"), dict) else {}
@@ -569,5 +515,5 @@ def render_profile_pdf_brief(
     for line in method_lines:
         story.append(_render_paragraph(line, small_style))
 
-    doc.build(story)
+    doc.build(story, canvasmaker=BrandedNumberedCanvas)
     return buffer.getvalue()
