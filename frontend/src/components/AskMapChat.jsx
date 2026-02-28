@@ -337,17 +337,30 @@ export default function AskMapChat({
         }}
         style={{ display: "grid", gap: 8 }}
       >
-        <input
-          type="text"
+        <textarea
           placeholder="e.g., What should local leaders focus on in Fulton County, GA?"
           value={assistantInput}
           onChange={(event) => onAssistantInputChange(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+              event.preventDefault();
+              if (typeof onAssistantSubmit === "function") {
+                onAssistantSubmit();
+              }
+            }
+          }}
           disabled={assistantLoading}
+          rows={3}
+          aria-label="Ask the CHIP Intelligence Assistant"
           style={{
             padding: "8px 10px",
             borderRadius: 8,
             border: "1px solid #C4D2E0",
             fontSize: 12,
+            width: "100%",
+            minHeight: 74,
+            resize: "vertical",
+            fontFamily: "inherit",
           }}
         />
         <button

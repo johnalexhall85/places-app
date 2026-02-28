@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import logoMonochromeSmall from "../assets/brand/chip-logo-monochrome-dark-small.svg";
+import logoFullColorSmall from "../assets/brand/chip-logo-fullcolor-light-small.svg";
 
 const NAV_ITEMS = [
   {
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
 export default function Header() {
   const [activeNavId, setActiveNavId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoSrc, setLogoSrc] = useState(logoMonochromeSmall);
 
   const activeNavItem = useMemo(
     () => NAV_ITEMS.find((item) => item.id === activeNavId) ?? null,
@@ -64,12 +66,19 @@ export default function Header() {
     <>
       <header className="chip-header">
         <div className="chip-header-brand">
-          <img
-            src={logoMonochromeSmall}
-            alt="Community Health Intelligence Platform logo"
-            className="chip-header-logo"
-          />
-          <span className="chip-header-wordmark">CHIP</span>
+          <span className="chip-header-logo-wrap">
+            <img
+              src={logoSrc}
+              alt="Community Health Intelligence Platform logo"
+              className="chip-header-logo"
+              onError={() => {
+                if (logoSrc !== logoFullColorSmall) {
+                  setLogoSrc(logoFullColorSmall);
+                }
+              }}
+            />
+          </span>
+          <span className="chip-header-wordmark">Community Health Intelligence Platform</span>
         </div>
 
         <button

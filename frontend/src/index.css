@@ -1,8 +1,8 @@
 :root {
   --chip-navy: #0f2d46;
   --chip-slate: #2c5f8a;
-  --chip-teal: #1fa3a3;
-  --chip-teal-hover: #178b8b;
+  --chip-teal: #178b8b;
+  --chip-teal-hover: #106f6f;
   --chip-bg: #f4f6f8;
   --chip-panel-border: #e3e8ed;
   --chip-panel-shadow: 0 6px 20px rgba(15, 45, 70, 0.12);
@@ -64,19 +64,37 @@ body {
 .chip-header-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chip-header-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: #ffffff;
+  border: 1px solid rgba(227, 232, 237, 0.85);
+  padding: 2px 5px;
+  box-shadow: 0 2px 8px rgba(15, 45, 70, 0.2);
+  flex: 0 0 auto;
 }
 
 .chip-header-logo {
-  height: 28px;
+  height: 26px;
   width: auto;
   display: block;
 }
 
 .chip-header-wordmark {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(48vw, 420px);
 }
 
 .chip-header-nav {
@@ -98,7 +116,7 @@ body {
 }
 
 .chip-header-link:hover {
-  background: rgba(31, 163, 163, 0.18);
+  background: rgba(23, 139, 139, 0.2);
   color: #ffffff;
 }
 
@@ -283,6 +301,7 @@ body {
 
 .measure-controls-panel select:focus-visible,
 .measure-controls-panel input:focus-visible,
+.measure-controls-panel textarea:focus-visible,
 .legend-panel select:focus-visible,
 .legend-panel button:focus-visible,
 .chip-header-link:focus-visible,
@@ -319,6 +338,11 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .chip-header-wordmark {
+    max-width: min(58vw, 320px);
+    font-size: 11px;
   }
 
   .chip-header-nav {
