@@ -99,7 +99,12 @@ function getCenterFromBounds(bounds) {
   };
 }
 
-export default function SearchBar({ apiBase, onCountySelected }) {
+export default function SearchBar({
+  apiBase,
+  onCountySelected,
+  compactLayout = false,
+  rightInset = 16,
+}) {
   const map = useMap();
   const rootRef = useRef(null);
   const cacheRef = useRef(new Map());
@@ -344,10 +349,10 @@ export default function SearchBar({ apiBase, onCountySelected }) {
       ref={rootRef}
       style={{
         position: "absolute",
-        left: "50%",
+        left: compactLayout ? 16 : 392,
+        right: compactLayout ? 16 : rightInset,
         bottom: 16,
-        transform: "translateX(-50%)",
-        width: "min(760px, calc(100% - 32px))",
+        width: "auto",
         zIndex: 2300,
       }}
     >

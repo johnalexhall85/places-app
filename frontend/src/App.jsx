@@ -340,61 +340,91 @@ function MapViewportWatcher({ onViewportChange, onMapReady }) {
   return null;
 }
 
-function MapToolbar({ defaultCenter, defaultZoom }) {
+function MapToolbar({
+  defaultCenter,
+  defaultZoom,
+  compactLayout = false,
+  rightInset = 16,
+  hasSelectedLocation = false,
+  onZoomToSelected,
+  onAnalyzeSelectedArea,
+  zoomToSelectedLabel = "Zoom to selected area",
+  zoomToSelectedRef,
+  profileGenerating = false,
+}) {
   const map = useMap();
+  const buttonStyle = {
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid #cbd5e1",
+    background: "white",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
 
   return (
     <div
       style={{
         position: "absolute",
-        top: 16,
-        left: 16,
-        zIndex: 2200,
-        display: "grid",
+        left: compactLayout ? 16 : 392,
+        right: compactLayout ? 16 : rightInset,
+        bottom: 86,
+        zIndex: 2300,
+        display: "flex",
+        justifyContent: "flex-start",
+        alignItems: "center",
         gap: 8,
       }}
     >
       <button
         type="button"
         onClick={() => map.setView(defaultCenter, defaultZoom)}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #cbd5e1",
-          background: "white",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
+        style={buttonStyle}
       >
         Home
       </button>
       <button
         type="button"
         onClick={() => map.zoomIn()}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #cbd5e1",
-          background: "white",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
+        style={buttonStyle}
       >
         Zoom In
       </button>
       <button
         type="button"
         onClick={() => map.zoomOut()}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #cbd5e1",
-          background: "white",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
+        style={buttonStyle}
       >
         Zoom Out
+      </button>
+      <button
+        type="button"
+        ref={zoomToSelectedRef}
+        onClick={onZoomToSelected}
+        disabled={!hasSelectedLocation}
+        style={{
+          ...buttonStyle,
+          border: "1px solid #1d4ed8",
+          background: hasSelectedLocation ? "#eff6ff" : "#f1f5f9",
+          color: hasSelectedLocation ? "#1e40af" : "#64748b",
+          cursor: hasSelectedLocation ? "pointer" : "not-allowed",
+        }}
+      >
+        {zoomToSelectedLabel}
+      </button>
+      <button
+        type="button"
+        onClick={onAnalyzeSelectedArea}
+        disabled={!hasSelectedLocation || profileGenerating}
+        style={{
+          ...buttonStyle,
+          border: "1px solid #1d4ed8",
+          background: (!hasSelectedLocation || profileGenerating) ? "#bfdbfe" : "#dbeafe",
+          color: "#1e3a8a",
+          cursor: (!hasSelectedLocation || profileGenerating) ? "not-allowed" : "pointer",
+        }}
+      >
+        {profileGenerating ? "Analyzing..." : "Analyze this area"}
       </button>
     </div>
   );
@@ -620,7 +650,7 @@ export default function App() {
   const [stateBoundaryOverlay, setStateBoundaryOverlay] = useState(null);
 
   const [selectedProps, setSelectedProps] = useState(null);
-  const [hoveredProps, setHoveredProps] = useState(null);
+  const [, setHoveredProps] = useState(null);
   const [isCountyLoading, setIsCountyLoading] = useState(false);
   const [isTractLoading, setIsTractLoading] = useState(false);
   const [isOutlineLoading, setIsOutlineLoading] = useState(false);
@@ -633,10 +663,20 @@ export default function App() {
   const [historyError, setHistoryError] = useState(null);
   const [highlightedGeoid, setHighlightedGeoid] = useState(null);
   const [highlightedLevel, setHighlightedLevel] = useState(null);
+  const [isMeasurePanelMinimized, setIsMeasurePanelMinimized] = useState(false);
+  const [isLegendPanelMinimized, setIsLegendPanelMinimized] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === "undefined" ? 1440 : window.innerWidth
+  );
+  const [viewportHeight, setViewportHeight] = useState(
+    typeof window === "undefined" ? 900 : window.innerHeight
+  );
+  const [measurePanelHeight, setMeasurePanelHeight] = useState(0);
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
   const zoomToSelectedButtonRef = useRef(null);
+  const measurePanelRef = useRef(null);
   const pendingCountySelectionRef = useRef(null);
   const pendingCountySelectionTimerRef = useRef(null);
   const pendingAssistantCountyZoomRef = useRef(false);
@@ -678,6 +718,41 @@ export default function App() {
         assistantStreamTimerRef.current = null;
       }
       assistantStreamRunIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return () => {};
+    }
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const node = measurePanelRef.current;
+    if (!node || typeof ResizeObserver === "undefined") {
+      return () => {};
+    }
+
+    const updateHeight = () => {
+      const nextHeight = Math.ceil(node.getBoundingClientRect().height);
+      setMeasurePanelHeight((currentHeight) => (
+        currentHeight === nextHeight ? currentHeight : nextHeight
+      ));
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
     };
   }, []);
 
@@ -2245,6 +2320,15 @@ export default function App() {
     const simplified = text.replace(/\s+among adults aged.*$/i, "").trim();
     return simplified || text;
   };
+  const normalizeCountyParishName = (value) => {
+    if (!hasText(value)) return "";
+    let text = String(value).trim();
+    if (text.includes(",")) {
+      text = text.split(",")[0].trim();
+    }
+    text = text.replace(/\b(county|parish)\b\.?$/i, "").trim();
+    return text;
+  };
   const selectedGeoLevel = String(
     firstDefined(selectedFeatureProps?.geo_level, tractsActive ? "tract" : "county")
   ).toLowerCase() === "tract"
@@ -2317,6 +2401,26 @@ export default function App() {
     selectedFeatureProps?.county_name,
     selectedFeatureProps?.name
   );
+  const selectedStateAbbr = String(
+    firstDefined(selectedFeatureProps?.state_abbr, "")
+  ).trim().toUpperCase();
+  const countySubdivisionLabel = selectedStateAbbr === "LA" ? "Parish" : "County";
+  const countyOrParishName = normalizeCountyParishName(
+    firstDefined(
+      selectedFeatureProps?.county_name,
+      selectedFeatureProps?.location_name,
+      selectedFeatureProps?.name
+    )
+  );
+  const countyOrParishLabel = countyOrParishName
+    ? `${countyOrParishName} ${countySubdivisionLabel}`
+    : `this ${countySubdivisionLabel.toLowerCase()}`;
+  const selectedAreaLabel = selectedGeoLevel === "county"
+    ? countyOrParishLabel
+    : `this ${selectedGeoLevel}`;
+  const acsAreaLabel = acsGeoLabel === "county"
+    ? countyOrParishLabel
+    : (hasText(acsLocationLabel) ? String(acsLocationLabel).trim() : `this ${acsGeoLabel}`);
   const censusProfileHref = hasText(selectedLocationIdForLink)
     ? `https://data.census.gov/profile/${String(selectedLocationIdForLink).trim()}`
     : hasText(selectedLocationNameForLink)
@@ -2420,141 +2524,194 @@ export default function App() {
     });
   }, [acsLegend, breaks, isAcsDataSource, tractsActive]);
 
+  const compactOverlayLayout = viewportWidth <= 1200;
+  const profilePanelWidth = profilePanelOpen
+    ? Math.min(460, Math.round(viewportWidth * 0.92))
+    : 0;
+  const rightOverlayInset = compactOverlayLayout
+    ? 16
+    : 16 + (profilePanelWidth > 0 ? profilePanelWidth + 12 : 0);
+  const legendTopOffset = compactOverlayLayout
+    ? 16 + measurePanelHeight + 12
+    : 16;
+  const legendMaxHeight = Math.max(180, viewportHeight - (legendTopOffset + 16));
+  const controlSelectStyle = {
+    width: "100%",
+    minWidth: 0,
+    padding: "6px 8px",
+    borderRadius: 6,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  };
+  const panelToggleButtonStyle = {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#334155",
+    fontWeight: 700,
+    cursor: "pointer",
+    lineHeight: "20px",
+    textAlign: "center",
+    padding: 0,
+  };
+
   return (
     <div
       className="app"
       style={{ position: "relative", height: "100vh", width: "100vw" }}
     >
       <div
+        ref={measurePanelRef}
+        className="measure-controls-panel"
         style={{
           position: "absolute",
           top: 16,
-          left: 150,
+          left: 16,
+          right: compactOverlayLayout ? 16 : "auto",
+          width: compactOverlayLayout ? "auto" : "min(460px, calc(100vw - 32px))",
           background: "white",
           padding: "12px 14px",
           borderRadius: 8,
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
-          minWidth: 260,
+          maxWidth: "min(560px, calc(100vw - 32px))",
           display: "grid",
           gap: 10,
-          zIndex: 2000,
+          zIndex: 2200,
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 13 }}>
+        <button
+          type="button"
+          aria-label={isMeasurePanelMinimized ? "Expand measure controls" : "Minimize measure controls"}
+          onClick={() => setIsMeasurePanelMinimized((current) => !current)}
+          style={panelToggleButtonStyle}
+        >
+          {isMeasurePanelMinimized ? "+" : "\u2212"}
+        </button>
+        <div style={{ fontWeight: 600, fontSize: 13, paddingRight: 30 }}>
           Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
         </div>
-        {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>Data source</span>
-          <select
-            value={selectedDataSource}
-            onChange={(event) => {
-              setSelectedDataSource(event.target.value);
-              setSelectedMeasureId("");
-            }}
-            style={{ padding: "6px 8px", borderRadius: 6 }}
-          >
-            <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
-            <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
-          </select>
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>Measure</span>
-          <select
-            value={selectedMeasureId}
-            onChange={(event) => setSelectedMeasureId(event.target.value)}
-            style={{ padding: "6px 8px", borderRadius: 6 }}
-          >
-            {measures.length === 0 ? (
-              <option value={selectedMeasureId}>Loading measures...</option>
-            ) : (
-              measures.map((measure) => {
-                const label = measure.measure ?? measure.short_question_text ?? "";
-                return (
-                  <option key={measure.measure_id} value={measure.measure_id}>
-                    {measure.measure_id}
-                    {label ? ` - ${label}` : ""}
-                  </option>
-                );
-              })
+        {!isMeasurePanelMinimized ? (
+          <>
+            {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>Data source</span>
+              <select
+                value={selectedDataSource}
+                onChange={(event) => {
+                  setSelectedDataSource(event.target.value);
+                  setSelectedMeasureId("");
+                }}
+                style={controlSelectStyle}
+              >
+                <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
+                <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>Measure</span>
+              <select
+                value={selectedMeasureId}
+                onChange={(event) => setSelectedMeasureId(event.target.value)}
+                style={controlSelectStyle}
+              >
+                {measures.length === 0 ? (
+                  <option value={selectedMeasureId}>Loading measures...</option>
+                ) : (
+                  measures.map((measure) => {
+                    const label = measure.measure ?? measure.short_question_text ?? "";
+                    return (
+                      <option key={measure.measure_id} value={measure.measure_id}>
+                        {measure.measure_id}
+                        {label ? ` - ${label}` : ""}
+                      </option>
+                    );
+                  })
+                )}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
+              <select
+                value={isAcsDataSource ? (selectedYearWindow ?? "") : (selectedYear ?? "")}
+                onChange={(event) => {
+                  if (isAcsDataSource) {
+                    const nextYearWindow = String(event.target.value ?? "").trim();
+                    setSelectedYearWindow(nextYearWindow || null);
+                  } else {
+                    setSelectedYear(Number(event.target.value));
+                  }
+                }}
+                disabled={
+                  isAcsDataSource
+                    ? acsYearWindows.length === 0
+                    : (isYearsLoading || years.length === 0)
+                }
+                style={controlSelectStyle}
+              >
+                {isAcsDataSource ? (
+                  acsYearWindows.length === 0 ? (
+                    <option value="">Loading year windows...</option>
+                  ) : (
+                    acsYearWindows.map((yearWindow) => (
+                      <option key={yearWindow} value={yearWindow}>
+                        {formatYearWindowDisplay(yearWindow)}
+                      </option>
+                    ))
+                  )
+                ) : isYearsLoading && years.length === 0 ? (
+                  <option value="">Loading years...</option>
+                ) : (
+                  years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))
+                )}
+              </select>
+              {!isAcsDataSource && yearsError ? (
+                <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
+              ) : null}
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>Data value type</span>
+              <select
+                value={selectedType}
+                onChange={(event) => setSelectedType(event.target.value)}
+                disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
+                style={controlSelectStyle}
+              >
+                {isAcsDataSource ? (
+                  acsDataValueTypeIds.length === 0 ? (
+                    <option value="">Loading types...</option>
+                  ) : (
+                    acsDataValueTypeIds.map((typeId) => (
+                      <option key={typeId} value={typeId}>
+                        {typeId}
+                      </option>
+                    ))
+                  )
+                ) : (
+                  <>
+                    <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
+                    <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
+                  </>
+                )}
+              </select>
+            </label>
+            {measures.length === 0 ? null : (
+              <div style={{ color: "#475569" }}>
+                {selectedMeasure?.measure ?? selectedMeasure?.short_question_text ?? ""}
+              </div>
             )}
-          </select>
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
-          <select
-            value={isAcsDataSource ? (selectedYearWindow ?? "") : (selectedYear ?? "")}
-            onChange={(event) => {
-              if (isAcsDataSource) {
-                const nextYearWindow = String(event.target.value ?? "").trim();
-                setSelectedYearWindow(nextYearWindow || null);
-              } else {
-                setSelectedYear(Number(event.target.value));
-              }
-            }}
-            disabled={
-              isAcsDataSource
-                ? acsYearWindows.length === 0
-                : (isYearsLoading || years.length === 0)
-            }
-            style={{ padding: "6px 8px", borderRadius: 6 }}
-          >
-            {isAcsDataSource ? (
-              acsYearWindows.length === 0 ? (
-                <option value="">Loading year windows...</option>
-              ) : (
-                acsYearWindows.map((yearWindow) => (
-                  <option key={yearWindow} value={yearWindow}>
-                    {formatYearWindowDisplay(yearWindow)}
-                  </option>
-                ))
-              )
-            ) : isYearsLoading && years.length === 0 ? (
-              <option value="">Loading years...</option>
-            ) : (
-              years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))
-            )}
-          </select>
-          {!isAcsDataSource && yearsError ? (
-            <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
-          ) : null}
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>Data value type</span>
-          <select
-            value={selectedType}
-            onChange={(event) => setSelectedType(event.target.value)}
-            disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
-            style={{ padding: "6px 8px", borderRadius: 6 }}
-          >
-            {isAcsDataSource ? (
-              acsDataValueTypeIds.length === 0 ? (
-                <option value="">Loading types...</option>
-              ) : (
-                acsDataValueTypeIds.map((typeId) => (
-                  <option key={typeId} value={typeId}>
-                    {typeId}
-                  </option>
-                ))
-              )
-            ) : (
-              <>
-                <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
-                <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
-              </>
-            )}
-          </select>
-        </label>
-        {measures.length === 0 ? null : (
-          <div style={{ color: "#475569" }}>
-            {selectedMeasure?.measure ?? selectedMeasure?.short_question_text ?? ""}
-          </div>
-        )}
+          </>
+        ) : null}
       </div>
 
       <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
@@ -2596,10 +2753,23 @@ export default function App() {
               }, VIEWPORT_DEBOUNCE_MS);
             }}
           />
-          <MapToolbar defaultCenter={DEFAULT_CENTER} defaultZoom={DEFAULT_ZOOM} />
+          <MapToolbar
+            defaultCenter={DEFAULT_CENTER}
+            defaultZoom={DEFAULT_ZOOM}
+            compactLayout={compactOverlayLayout}
+            rightInset={rightOverlayInset}
+            hasSelectedLocation={Boolean(selectedLocationId)}
+            onZoomToSelected={handleZoomToSelected}
+            onAnalyzeSelectedArea={handleAnalyzeSelectedArea}
+            zoomToSelectedLabel={zoomToSelectedLabel}
+            zoomToSelectedRef={zoomToSelectedButtonRef}
+            profileGenerating={profileGenerating}
+          />
           <SearchBar
             apiBase={API_BASE}
             onCountySelected={handleCountySearchSelection}
+            compactLayout={compactOverlayLayout}
+            rightInset={rightOverlayInset}
           />
 
           {activeGeojson ? (
@@ -2643,7 +2813,7 @@ export default function App() {
           style={{
             position: "absolute",
             top: 24,
-            right: 24,
+            right: rightOverlayInset + 8,
             background: "rgba(15, 23, 42, 0.85)",
             color: "white",
             padding: "10px 16px",
@@ -2659,24 +2829,37 @@ export default function App() {
       ) : null}
 
       <div
+        className="legend-panel"
         style={{
           position: "absolute",
-          top: 16,
-          right: 16,
+          top: legendTopOffset,
+          left: compactOverlayLayout ? 16 : "auto",
+          right: rightOverlayInset,
           background: "white",
           padding: "12px 14px",
           borderRadius: 8,
           boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
-          minWidth: 210,
-          maxHeight: "calc(100vh - 32px)",
+          width: compactOverlayLayout ? "auto" : "min(320px, calc(100vw - 32px))",
+          maxWidth: "min(520px, calc(100vw - 32px))",
+          maxHeight: legendMaxHeight,
           overflowY: "auto",
-          zIndex: 2000,
+          zIndex: 2100,
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+        <button
+          type="button"
+          aria-label={isLegendPanelMinimized ? "Expand legend" : "Minimize legend"}
+          onClick={() => setIsLegendPanelMinimized((current) => !current)}
+          style={panelToggleButtonStyle}
+        >
+          {isLegendPanelMinimized ? "+" : "\u2212"}
+        </button>
+        <div style={{ fontWeight: 600, marginBottom: 8, paddingRight: 30 }}>
           Legend ({selectedType}) - {tractsActive ? "Tracts" : "Counties"}
         </div>
+        {!isLegendPanelMinimized ? (
+          <>
         <div style={{ display: "grid", gap: 6 }}>
           {legendRows.length > 0
             ? legendRows.map((row) => {
@@ -2726,8 +2909,7 @@ export default function App() {
             <div className="legend-details">
               {isAcsDataSource ? (
                 <p>
-                  In this <strong>{acsGeoLabel}</strong>{" "}
-                  (<strong>{acsLocationLabel ?? "N/A"}</strong>),{" "}
+                  In <strong>{acsAreaLabel}</strong>,{" "}
                   <strong>{measureNameValue}</strong> is{" "}
                   <strong>{fmtPercent(acsValue)}</strong>
                   {acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`} for{" "}
@@ -2737,7 +2919,7 @@ export default function App() {
               ) : (
                 <>
                   <p>
-                    In this <strong>{selectedGeoLevel}</strong>, the estimated prevalence of{" "}
+                    In <strong>{selectedAreaLabel}</strong>, the estimated prevalence of{" "}
                     <strong>{measureNameValue}</strong> among adults aged 18 years and older
                     (%) was <strong>{fmt1(crudeValue)}</strong> with 95% CI (
                     <strong>{ciText(crudeLow, crudeHigh)}</strong>), and the age-adjusted
@@ -2747,8 +2929,8 @@ export default function App() {
                   </p>
                   <p>
                     According to the Census <strong>{yearValue ?? "N/A"}</strong> population
-                    estimates, <strong>{fmtPop(populationValue)}</strong> adults live in this{" "}
-                    <strong>{selectedGeoLevel}</strong>.
+                    estimates, <strong>{fmtPop(populationValue)}</strong> adults live in{" "}
+                    <strong>{selectedAreaLabel}</strong>.
                   </p>
                   <p>
                     For more demographic, social, and economic data, visit{" "}
@@ -2772,23 +2954,6 @@ export default function App() {
             gap: 6,
           }}
         >
-          <div style={{ fontWeight: 600 }}>Hovered {currentLayerLabel}</div>
-          {hoveredProps ? (
-            <>
-              <div>
-                {tractsActive
-                  ? (hoveredProps.location_name ?? hoveredProps.name ?? getFeatureId(hoveredProps))
-                  : getCountyName(hoveredProps)}
-              </div>
-              <div>State: {hoveredProps.state_abbr ?? "N/A"}</div>
-              <div>
-                Value: {getValueFromProperties(hoveredProps) ?? "No data"}
-              </div>
-            </>
-          ) : (
-            <div style={{ color: "#64748b" }}>Hover a {currentLayerLabel}.</div>
-          )}
-
           <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
           {selectedProps ? (
             <>
@@ -2821,42 +2986,6 @@ export default function App() {
                   Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
                 </div>
               ) : null}
-              <button
-                type="button"
-                ref={zoomToSelectedButtonRef}
-                onClick={handleZoomToSelected}
-                style={{
-                  marginTop: 4,
-                  width: "fit-content",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #1d4ed8",
-                  background: "#eff6ff",
-                  color: "#1e40af",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {zoomToSelectedLabel}
-              </button>
-              <button
-                type="button"
-                onClick={handleAnalyzeSelectedArea}
-                disabled={profileGenerating}
-                style={{
-                  marginTop: 4,
-                  width: "fit-content",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #1d4ed8",
-                  background: profileGenerating ? "#bfdbfe" : "#dbeafe",
-                  color: "#1e3a8a",
-                  fontWeight: 600,
-                  cursor: profileGenerating ? "wait" : "pointer",
-                }}
-              >
-                {profileGenerating ? "Analyzing..." : "Analyze this area"}
-              </button>
               {historySupported ? (
                 <button
                   type="button"
@@ -2932,6 +3061,8 @@ export default function App() {
             <div style={{ color: "#64748b" }}>Click a {currentLayerLabel}.</div>
           )}
         </div>
+          </>
+        ) : null}
       </div>
 
       <AskMapChat
@@ -2939,6 +3070,7 @@ export default function App() {
         assistantMessages={assistantMessages}
         assistantLoading={assistantLoading}
         scrollSignal={assistantScrollSignal}
+        compactLayout={compactOverlayLayout}
         onAssistantInputChange={setAssistantInput}
         onAssistantSubmit={handleAssistantSubmit}
         onOpenProfile={openProfilePanel}
@@ -2950,26 +3082,6 @@ export default function App() {
         open={profilePanelOpen}
         onClose={() => setProfilePanelOpen(false)}
       />
-
-      <div
-        style={{
-          position: "absolute",
-          right: 16,
-          bottom: 16,
-          background: "white",
-          padding: "10px 12px",
-          borderRadius: 8,
-          boxShadow: "0 4px 12px rgba(15, 23, 42, 0.12)",
-          fontSize: 12,
-          zIndex: 2000,
-        }}
-      >
-        source={selectedDataSource} - layer={tractsActive ? "tracts + county-lines" : "counties"} -
-        zoom={mapZoom.toFixed(2)} - measure_id={selectedMeasureId} -
-        year={selectedTemporalValue ?? "n/a"} - data_value_type_id={selectedType} -
-        tract_zoom={TRACT_ZOOM} - highlight_level={highlightedLevel ?? "none"} -
-        highlight_geoid={highlightedGeoid ?? "none"}
-      </div>
     </div>
   );
 }

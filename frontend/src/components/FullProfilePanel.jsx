@@ -101,6 +101,7 @@ export default function FullProfilePanel({
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [pdfTemplate, setPdfTemplate] = useState("full");
 
   useEffect(() => {
     if (!open || !profileId) {
@@ -137,6 +138,11 @@ export default function FullProfilePanel({
       controller.abort();
     };
   }, [apiBase, open, profileId]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPdfTemplate("full");
+  }, [open, profileId]);
 
   const chartEntries = useMemo(() => {
     const charts = profile?.charts;
@@ -182,6 +188,7 @@ export default function FullProfilePanel({
   }, [narrative]);
   const placesComparison = comparisons?.places ?? {};
   const acsPrimary = comparisons?.acs_primary ?? null;
+  const pdfHref = `${apiBase}/profiles/${profileId}.pdf${pdfTemplate === "brief" ? "?template=brief" : ""}`;
 
   if (!open) return null;
 
@@ -217,9 +224,25 @@ export default function FullProfilePanel({
             {location?.name ?? profileId} ({location?.state_abbr ?? "Not available"})
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select
+            value={pdfTemplate}
+            onChange={(event) => setPdfTemplate(event.target.value)}
+            style={{
+              padding: "8px 8px",
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#0f172a",
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+          >
+            <option value="full">Full Profile (PDF)</option>
+            <option value="brief">Policy Brief (PDF)</option>
+          </select>
           <a
-            href={`${apiBase}/profiles/${profileId}.pdf`}
+            href={pdfHref}
             target="_blank"
             rel="noreferrer"
             style={{
@@ -231,9 +254,10 @@ export default function FullProfilePanel({
               fontWeight: 600,
               fontSize: 12,
               textDecoration: "none",
+              whiteSpace: "nowrap",
             }}
           >
-            Download PDF
+            Download
           </a>
           <button
             type="button"

@@ -13,7 +13,12 @@ from sqlalchemy.orm import Session
 from app import models
 from app.services.profile_builder import ProfileBuildError, build_profile
 from app.services.profile_charts import generate_profile_charts
-from app.services.profile_pdf import render_profile_pdf
+from app.services.profile_pdf import (
+    pdf_asset_name,
+    pdf_storage_filename,
+    profile_pdf_url,
+    render_profile_pdf,
+)
 
 ADJACENCY_TABLE_CANDIDATES: tuple[tuple[str, str, str], ...] = (
     ("county_adjacency", "county_fips", "neighbor_county_fips"),
@@ -1283,8 +1288,10 @@ def export_profile_pdf(
     db: Session,
     *,
     profile_id: str,
+    template: str = "full",
 ) -> dict[str, Any]:
     normalized_profile_id = str(profile_id or "").strip()
+    normalized_template = str(template or "full").strip().lower()
     if not normalized_profile_id:
         return {
             "found": False,
@@ -1306,11 +1313,12 @@ def export_profile_pdf(
             "reason": "Profile not found.",
         }
 
+    selected_asset_name = pdf_asset_name(normalized_template)
     existing_pdf = (
         db.query(models.ProfileAsset)
         .filter(
             models.ProfileAsset.profile_id == normalized_profile_id,
-            models.ProfileAsset.asset_name == "profile_pdf",
+            models.ProfileAsset.asset_name == selected_asset_name,
             models.ProfileAsset.mime_type == "application/pdf",
         )
         .one_or_none()
@@ -1319,7 +1327,7 @@ def export_profile_pdf(
         return {
             "found": True,
             "profile_id": normalized_profile_id,
-            "pdf_url": f"/profiles/{normalized_profile_id}.pdf",
+            "pdf_url": profile_pdf_url(normalized_profile_id, normalized_template),
             "reason": None,
         }
 
@@ -1339,16 +1347,20 @@ def export_profile_pdf(
     payload_json = profile.payload_json if isinstance(profile.payload_json, dict) else {}
 
     try:
-        pdf_bytes = render_profile_pdf(profile_json=payload_json, chart_paths=chart_paths)
+        pdf_bytes = render_profile_pdf(
+            profile_json=payload_json,
+            chart_paths=chart_paths,
+            template=normalized_template,
+        )
         profile_dir = PROFILES_ROOT / normalized_profile_id
         profile_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = profile_dir / "profile.pdf"
+        pdf_path = profile_dir / pdf_storage_filename(normalized_template)
         pdf_path.write_bytes(pdf_bytes)
 
         _upsert_profile_asset(
             db,
             profile_id=normalized_profile_id,
-            asset_name="profile_pdf",
+            asset_name=selected_asset_name,
             mime_type="application/pdf",
             asset_path=str(pdf_path),
         )
@@ -1365,6 +1377,6 @@ def export_profile_pdf(
     return {
         "found": True,
         "profile_id": normalized_profile_id,
-        "pdf_url": f"/profiles/{normalized_profile_id}.pdf",
+        "pdf_url": profile_pdf_url(normalized_profile_id, normalized_template),
         "reason": None,
     }

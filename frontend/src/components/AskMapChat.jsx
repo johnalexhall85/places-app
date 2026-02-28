@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -190,11 +190,29 @@ export default function AskMapChat({
   assistantMessages,
   assistantLoading,
   scrollSignal,
+  compactLayout = false,
   onAssistantInputChange,
   onAssistantSubmit,
   onOpenProfile,
 }) {
   const messagesContainerRef = useRef(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const panelToggleButtonStyle = {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#334155",
+    fontWeight: 700,
+    cursor: "pointer",
+    lineHeight: "20px",
+    textAlign: "center",
+    padding: 0,
+  };
 
   useEffect(() => {
     if (!messagesContainerRef.current) return;
@@ -206,9 +224,10 @@ export default function AskMapChat({
       style={{
         position: "absolute",
         left: 16,
-        bottom: 16,
-        width: 360,
-        maxHeight: "46vh",
+        right: compactLayout ? 16 : "auto",
+        bottom: compactLayout ? 92 : 16,
+        width: compactLayout ? "auto" : 360,
+        maxHeight: isMinimized ? "none" : (compactLayout ? "34vh" : "46vh"),
         background: "white",
         borderRadius: 10,
         boxShadow: "0 8px 24px rgba(15, 23, 42, 0.16)",
@@ -218,7 +237,17 @@ export default function AskMapChat({
         zIndex: 2100,
       }}
     >
-      <div style={{ fontWeight: 700, fontSize: 13 }}>Ask the map</div>
+      <button
+        type="button"
+        aria-label={isMinimized ? "Expand Ask the map" : "Minimize Ask the map"}
+        onClick={() => setIsMinimized((current) => !current)}
+        style={panelToggleButtonStyle}
+      >
+        {isMinimized ? "+" : "\u2212"}
+      </button>
+      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30 }}>Ask the map</div>
+      {!isMinimized ? (
+        <>
       <div
         ref={messagesContainerRef}
         style={{
@@ -337,6 +366,8 @@ export default function AskMapChat({
           {assistantLoading ? "Asking..." : "Ask"}
         </button>
       </form>
+        </>
+      ) : null}
     </div>
   );
 }

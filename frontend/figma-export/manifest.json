@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-02-27T23:03:06.646Z",
+  "app_url": "http://127.0.0.1:4173/",
+  "output_dir": "/home/john/places-app/frontend/figma-export",
+  "requested_port": 4173,
+  "actual_port": 4173,
+  "screenshots": {
+    "desktop": [
+      "01-overview-desktop.png",
+      "02-search-desktop.png",
+      "03-selected-desktop.png"
+    ],
+    "mobile": [
+      "01-overview-mobile.png",
+      "02-search-mobile.png",
+      "03-selected-mobile.png"
+    ]
+  },
+  "note": "Use these images directly in Figma, or import the running app URL via html.to.design for editable layers."
+}

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -15,7 +15,13 @@ from app import models
 from app.db import get_db
 from app.services.profile_builder import ProfileBuildError, build_profile
 from app.services.profile_charts import generate_profile_charts
-from app.services.profile_pdf import render_profile_pdf
+from app.services.profile_pdf import (
+    PDFTemplate,
+    pdf_asset_name,
+    pdf_download_filename,
+    pdf_storage_filename,
+    render_profile_pdf,
+)
 
 router = APIRouter(tags=["profiles"])
 
@@ -263,16 +269,22 @@ def get_profile_chart(
 
 
 @router.get("/profiles/{profile_id}.pdf")
-def get_profile_pdf(profile_id: str, db: Session = Depends(get_db)) -> Response:
+def get_profile_pdf(
+    profile_id: str,
+    template: PDFTemplate = Query(default="full"),
+    db: Session = Depends(get_db),
+) -> Response:
     profile = db.query(models.Profile).filter(models.Profile.id == profile_id).one_or_none()
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found.")
 
+    selected_asset_name = pdf_asset_name(template)
+    download_filename = pdf_download_filename(profile_id, template)
     pdf_asset = (
         db.query(models.ProfileAsset)
         .filter(
             models.ProfileAsset.profile_id == profile_id,
-            models.ProfileAsset.asset_name == "profile_pdf",
+            models.ProfileAsset.asset_name == selected_asset_name,
             models.ProfileAsset.mime_type == "application/pdf",
         )
         .one_or_none()
@@ -283,7 +295,7 @@ def get_profile_pdf(profile_id: str, db: Session = Depends(get_db)) -> Response:
             return FileResponse(
                 path=pdf_path,
                 media_type="application/pdf",
-                filename=f"{profile_id}.pdf",
+                filename=download_filename,
             )
 
     image_assets = (
@@ -304,17 +316,18 @@ def get_profile_pdf(profile_id: str, db: Session = Depends(get_db)) -> Response:
     pdf_bytes = render_profile_pdf(
         profile_json=payload,
         chart_paths=chart_paths,
+        template=template,
     )
 
     profile_dir = PROFILES_ROOT / profile_id
     profile_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = profile_dir / "profile.pdf"
+    pdf_path = profile_dir / pdf_storage_filename(template)
     pdf_path.write_bytes(pdf_bytes)
 
     _upsert_asset(
         db,
         profile_id=profile_id,
-        asset_name="profile_pdf",
+        asset_name=selected_asset_name,
         mime_type="application/pdf",
         asset_path=str(pdf_path),
     )
@@ -323,7 +336,7 @@ def get_profile_pdf(profile_id: str, db: Session = Depends(get_db)) -> Response:
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{profile_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'},
     )
 
 
