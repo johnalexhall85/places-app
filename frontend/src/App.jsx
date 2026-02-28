@@ -10,12 +10,14 @@ import {
 import SearchBar from "./SearchBar";
 import AskMapChat from "./components/AskMapChat";
 import FullProfilePanel from "./components/FullProfilePanel";
+import Header from "./components/Header";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
   PLACES: "places",
   ACS_NMF: "acs_nmf",
 };
+const HEADER_HEIGHT = 56;
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
 const TRACT_ZOOM = 10;
@@ -208,6 +210,18 @@ function formatYearWindowDisplay(value) {
   return text.replace("-", "\u2013");
 }
 
+function formatDataValueTypeLabel(typeId) {
+  const normalized = String(typeId ?? "").trim();
+  if (!normalized) return "Data value";
+  if (normalized === "CrdPrv") return "Crude Prevalence";
+  if (normalized === "AgeAdjPrv") return "Age-Adjusted Prevalence";
+  if (normalized === "Percent") return "Percent";
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -353,14 +367,6 @@ function MapToolbar({
   profileGenerating = false,
 }) {
   const map = useMap();
-  const buttonStyle = {
-    padding: "8px 12px",
-    borderRadius: 8,
-    border: "1px solid #cbd5e1",
-    background: "white",
-    fontWeight: 600,
-    cursor: "pointer",
-  };
 
   return (
     <div
@@ -379,21 +385,21 @@ function MapToolbar({
       <button
         type="button"
         onClick={() => map.setView(defaultCenter, defaultZoom)}
-        style={buttonStyle}
+        className="chip-secondary-btn"
       >
         Home
       </button>
       <button
         type="button"
         onClick={() => map.zoomIn()}
-        style={buttonStyle}
+        className="chip-secondary-btn"
       >
         Zoom In
       </button>
       <button
         type="button"
         onClick={() => map.zoomOut()}
-        style={buttonStyle}
+        className="chip-secondary-btn"
       >
         Zoom Out
       </button>
@@ -402,13 +408,7 @@ function MapToolbar({
         ref={zoomToSelectedRef}
         onClick={onZoomToSelected}
         disabled={!hasSelectedLocation}
-        style={{
-          ...buttonStyle,
-          border: "1px solid #1d4ed8",
-          background: hasSelectedLocation ? "#eff6ff" : "#f1f5f9",
-          color: hasSelectedLocation ? "#1e40af" : "#64748b",
-          cursor: hasSelectedLocation ? "pointer" : "not-allowed",
-        }}
+        className={`chip-secondary-btn ${hasSelectedLocation ? "" : "is-disabled"}`}
       >
         {zoomToSelectedLabel}
       </button>
@@ -416,13 +416,7 @@ function MapToolbar({
         type="button"
         onClick={onAnalyzeSelectedArea}
         disabled={!hasSelectedLocation || profileGenerating}
-        style={{
-          ...buttonStyle,
-          border: "1px solid #1d4ed8",
-          background: (!hasSelectedLocation || profileGenerating) ? "#bfdbfe" : "#dbeafe",
-          color: "#1e3a8a",
-          cursor: (!hasSelectedLocation || profileGenerating) ? "not-allowed" : "pointer",
-        }}
+        className="chip-primary-btn"
       >
         {profileGenerating ? "Analyzing..." : "Analyze this area"}
       </button>
@@ -2522,9 +2516,10 @@ export default function App() {
         label: formatRange(start, end),
       };
     });
-  }, [acsLegend, breaks, isAcsDataSource, tractsActive]);
+  }, [acsLegend, breaks, isAcsDataSource]);
 
   const compactOverlayLayout = viewportWidth <= 1200;
+  const mapViewportHeight = Math.max(420, viewportHeight - HEADER_HEIGHT);
   const profilePanelWidth = profilePanelOpen
     ? Math.min(460, Math.round(viewportWidth * 0.92))
     : 0;
@@ -2534,12 +2529,25 @@ export default function App() {
   const legendTopOffset = compactOverlayLayout
     ? 16 + measurePanelHeight + 12
     : 16;
-  const legendMaxHeight = Math.max(180, viewportHeight - (legendTopOffset + 16));
+  const legendMaxHeight = Math.max(180, mapViewportHeight - (legendTopOffset + 16));
+  const legendTitle = `${formatDataValueTypeLabel(selectedType)} \u2013 ${
+    tractsActive ? "Census Tract Level" : "County Level"
+  }`;
+  const floatingPanelStyle = {
+    background: "#ffffff",
+    border: "1px solid #E3E8ED",
+    borderRadius: 10,
+    boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
+  };
   const controlSelectStyle = {
     width: "100%",
     minWidth: 0,
-    padding: "6px 8px",
+    padding: "7px 9px",
     borderRadius: 6,
+    border: "1px solid #C4D2E0",
+    background: "#ffffff",
+    color: "#0F2D46",
+    fontSize: 12,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -2551,9 +2559,9 @@ export default function App() {
     width: 24,
     height: 24,
     borderRadius: 6,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #C4D2E0",
     background: "#ffffff",
-    color: "#334155",
+    color: "#2C5F8A",
     fontWeight: 700,
     cursor: "pointer",
     lineHeight: "20px",
@@ -2562,30 +2570,34 @@ export default function App() {
   };
 
   return (
-    <div
-      className="app"
-      style={{ position: "relative", height: "100vh", width: "100vw" }}
-    >
+    <div className="app">
+      <Header />
       <div
-        ref={measurePanelRef}
-        className="measure-controls-panel"
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: compactOverlayLayout ? 16 : "auto",
-          width: compactOverlayLayout ? "auto" : "min(460px, calc(100vw - 32px))",
-          background: "white",
-          padding: "12px 14px",
-          borderRadius: 8,
-          boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
-          fontSize: 12,
-          maxWidth: "min(560px, calc(100vw - 32px))",
-          display: "grid",
-          gap: 10,
-          zIndex: 2200,
-        }}
+        className="app-content"
+        style={{ width: "100vw", height: mapViewportHeight }}
       >
+        <div className="chip-brand-line">
+          <span>Community Health Intelligence Platform (CHIP)</span>
+          <span>Local Data. Strategic Insight.</span>
+        </div>
+        <div
+          ref={measurePanelRef}
+          className="measure-controls-panel"
+          style={{
+            ...floatingPanelStyle,
+            position: "absolute",
+            top: 16,
+            left: 16,
+            right: compactOverlayLayout ? 16 : "auto",
+            width: compactOverlayLayout ? "auto" : "min(460px, calc(100vw - 32px))",
+            padding: "12px 14px",
+            fontSize: 12,
+            maxWidth: "min(560px, calc(100vw - 32px))",
+            display: "grid",
+            gap: 10,
+            zIndex: 2200,
+          }}
+        >
         <button
           type="button"
           aria-label={isMeasurePanelMinimized ? "Expand measure controls" : "Minimize measure controls"}
@@ -2594,7 +2606,7 @@ export default function App() {
         >
           {isMeasurePanelMinimized ? "+" : "\u2212"}
         </button>
-        <div style={{ fontWeight: 600, fontSize: 13, paddingRight: 30 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#0F2D46" }}>
           Measure controls {isCountyLoading || isTractLoading ? "- Loading..." : ""}
         </div>
         {!isMeasurePanelMinimized ? (
@@ -2693,14 +2705,14 @@ export default function App() {
                   ) : (
                     acsDataValueTypeIds.map((typeId) => (
                       <option key={typeId} value={typeId}>
-                        {typeId}
+                        {formatDataValueTypeLabel(typeId)}
                       </option>
                     ))
                   )
                 ) : (
                   <>
-                    <option value="CrdPrv">Crude prevalence (CrdPrv)</option>
-                    <option value="AgeAdjPrv">Age-adjusted prevalence (AgeAdjPrv)</option>
+                    <option value="CrdPrv">Crude Prevalence</option>
+                    <option value="AgeAdjPrv">Age-Adjusted Prevalence</option>
                   </>
                 )}
               </select>
@@ -2714,11 +2726,11 @@ export default function App() {
         ) : null}
       </div>
 
-      <div className="map-wrapper" style={{ height: "100%", width: "100%" }}>
+        <div className="map-wrapper" style={{ height: "100%", width: "100%", background: "#F4F6F8" }}>
           <MapContainer
             center={DEFAULT_CENTER}
             zoom={DEFAULT_ZOOM}
-            style={{ height: "100%" }}
+            style={{ height: "100%", width: "100%" }}
           >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -2814,13 +2826,15 @@ export default function App() {
             position: "absolute",
             top: 24,
             right: rightOverlayInset + 8,
-            background: "rgba(15, 23, 42, 0.85)",
-            color: "white",
+            background: "#ffffff",
+            color: "#0F2D46",
+            border: "1px solid #E3E8ED",
             padding: "10px 16px",
             borderRadius: 999,
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: 0.2,
+            boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
             zIndex: 2100,
           }}
         >
@@ -2831,14 +2845,12 @@ export default function App() {
       <div
         className="legend-panel"
         style={{
+          ...floatingPanelStyle,
           position: "absolute",
           top: legendTopOffset,
           left: compactOverlayLayout ? 16 : "auto",
           right: rightOverlayInset,
-          background: "white",
           padding: "12px 14px",
-          borderRadius: 8,
-          boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
           fontSize: 12,
           width: compactOverlayLayout ? "auto" : "min(320px, calc(100vw - 32px))",
           maxWidth: "min(520px, calc(100vw - 32px))",
@@ -2855,8 +2867,8 @@ export default function App() {
         >
           {isLegendPanelMinimized ? "+" : "\u2212"}
         </button>
-        <div style={{ fontWeight: 600, marginBottom: 8, paddingRight: 30 }}>
-          Legend ({selectedType}) - {tractsActive ? "Tracts" : "Counties"}
+        <div style={{ fontWeight: 700, marginBottom: 8, paddingRight: 30, color: "#0F2D46" }}>
+          {legendTitle}
         </div>
         {!isLegendPanelMinimized ? (
           <>
@@ -2875,7 +2887,7 @@ export default function App() {
                         height: 12,
                         background: color,
                         borderRadius: 2,
-                        border: "1px solid #cbd5f5",
+                        border: "1px solid #C4D2E0",
                       }}
                     />
                     <span>{row.label}</span>
@@ -2892,7 +2904,7 @@ export default function App() {
                 height: 12,
                 background: NO_DATA_COLOR,
                 borderRadius: 2,
-                border: "1px solid #cbd5f5",
+                border: "1px solid #C4D2E0",
               }}
             />
             <span>No data</span>
@@ -2979,7 +2991,9 @@ export default function App() {
                 Measure: {selectedProps.measure ?? selectedProps.measure_id ?? selectedMeasureId}
               </div>
               <div>
-                Data value type: {selectedProps.data_value_type_id ?? selectedType}
+                Data value type: {formatDataValueTypeLabel(
+                  selectedProps.data_value_type_id ?? selectedType
+                )}
               </div>
               {isAcsDataSource ? (
                 <div>
@@ -2990,17 +3004,8 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleToggleHistoryClick}
-                  style={{
-                    marginTop: 4,
-                    width: "fit-content",
-                    padding: "6px 10px",
-                    borderRadius: 6,
-                    border: "1px solid #cbd5e1",
-                    background: "#f8fafc",
-                    color: "#0f172a",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
+                  className="chip-secondary-btn"
+                  style={{ marginTop: 4, width: "fit-content" }}
                 >
                   {historyOpen ? "Hide history" : "Show history"}
                 </button>
@@ -3026,7 +3031,9 @@ export default function App() {
                       selectedMeasureId}
                   </div>
                   <div>
-                    Data value type: {historyMeta?.data_value_type ?? selectedType}
+                    Data value type: {formatDataValueTypeLabel(
+                      historyMeta?.data_value_type ?? selectedType
+                    )}
                   </div>
                   {isHistoryLoading ? (
                     <div style={{ color: "#64748b" }}>Loading history...</div>
@@ -3082,6 +3089,7 @@ export default function App() {
         open={profilePanelOpen}
         onClose={() => setProfilePanelOpen(false)}
       />
+      </div>
     </div>
   );
 }

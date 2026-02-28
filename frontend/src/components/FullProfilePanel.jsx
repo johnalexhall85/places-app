@@ -198,11 +198,11 @@ export default function FullProfilePanel({
         position: "absolute",
         top: 0,
         right: 0,
-        height: "100vh",
+        height: "100%",
         width: "min(460px, 92vw)",
         background: "#ffffff",
-        borderLeft: "1px solid #e2e8f0",
-        boxShadow: "-10px 0 24px rgba(15, 23, 42, 0.18)",
+        borderLeft: "1px solid #E3E8ED",
+        boxShadow: "-10px 0 20px rgba(15, 45, 70, 0.12)",
         zIndex: 2400,
         display: "grid",
         gridTemplateRows: "auto 1fr",
@@ -210,7 +210,7 @@ export default function FullProfilePanel({
     >
       <div
         style={{
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid #E3E8ED",
           padding: "14px 16px",
           display: "flex",
           alignItems: "center",
@@ -231,9 +231,9 @@ export default function FullProfilePanel({
             style={{
               padding: "8px 8px",
               borderRadius: 6,
-              border: "1px solid #cbd5e1",
+              border: "1px solid #C4D2E0",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#0F2D46",
               fontWeight: 600,
               fontSize: 12,
             }}
@@ -245,12 +245,10 @@ export default function FullProfilePanel({
             href={pdfHref}
             target="_blank"
             rel="noreferrer"
+            className="chip-primary-link"
             style={{
               padding: "8px 10px",
               borderRadius: 6,
-              border: "1px solid #1d4ed8",
-              background: "#eff6ff",
-              color: "#1e40af",
               fontWeight: 600,
               fontSize: 12,
               textDecoration: "none",
@@ -262,15 +260,12 @@ export default function FullProfilePanel({
           <button
             type="button"
             onClick={onClose}
+            className="chip-secondary-btn"
             style={{
               padding: "8px 10px",
               borderRadius: 6,
-              border: "1px solid #cbd5e1",
-              background: "#f8fafc",
-              color: "#0f172a",
               fontWeight: 600,
               fontSize: 12,
-              cursor: "pointer",
             }}
           >
             Close

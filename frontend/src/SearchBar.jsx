@@ -388,8 +388,8 @@ export default function SearchBar({
             bottom: 58,
             background: "white",
             borderRadius: 10,
-            border: "1px solid #cbd5e1",
-            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.2)",
+            border: "1px solid #E3E8ED",
+            boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
             overflow: "hidden",
           }}
         >
@@ -416,13 +416,13 @@ export default function SearchBar({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectSuggestion(suggestion)}
+                className="chip-search-suggestion"
                 style={{
                   width: "100%",
                   padding: "10px 14px",
                   textAlign: "left",
                   border: "none",
                   borderBottom: "1px solid #e2e8f0",
-                  background: "white",
                   cursor: "pointer",
                   display: "grid",
                   gap: 2,
@@ -454,16 +454,17 @@ export default function SearchBar({
 
       <form
         onSubmit={handleSubmit}
+        className="chip-search-form"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr auto auto",
           alignItems: "center",
           gap: 8,
           padding: 8,
-          borderRadius: 12,
-          border: "1px solid #94a3b8",
-          background: "rgba(255, 255, 255, 0.96)",
-          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.25)",
+          borderRadius: 10,
+          border: "1px solid #E3E8ED",
+          background: "#ffffff",
+          boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
         }}
       >
         <input
@@ -505,8 +506,8 @@ export default function SearchBar({
             aria-label="Clear search"
             style={{
               border: "none",
-              background: "#e2e8f0",
-              color: "#334155",
+              background: "rgba(44, 95, 138, 0.12)",
+              color: "#2C5F8A",
               width: 28,
               height: 28,
               borderRadius: 999,
@@ -525,15 +526,12 @@ export default function SearchBar({
 
         <button
           type="submit"
+          className="chip-primary-btn"
           style={{
-            border: "1px solid #1d4ed8",
-            background: "#2563eb",
-            color: "white",
             borderRadius: 8,
             padding: "8px 12px",
             fontSize: 13,
             fontWeight: 600,
-            cursor: "pointer",
             minWidth: 72,
             display: "flex",
             alignItems: "center",

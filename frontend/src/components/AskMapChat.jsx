@@ -204,9 +204,9 @@ export default function AskMapChat({
     width: 24,
     height: 24,
     borderRadius: 6,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #C4D2E0",
     background: "#ffffff",
-    color: "#334155",
+    color: "#2C5F8A",
     fontWeight: 700,
     cursor: "pointer",
     lineHeight: "20px",
@@ -230,7 +230,8 @@ export default function AskMapChat({
         maxHeight: isMinimized ? "none" : (compactLayout ? "34vh" : "46vh"),
         background: "white",
         borderRadius: 10,
-        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.16)",
+        border: "1px solid #E3E8ED",
+        boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
         padding: 12,
         display: "grid",
         gap: 8,
@@ -239,19 +240,25 @@ export default function AskMapChat({
     >
       <button
         type="button"
-        aria-label={isMinimized ? "Expand Ask the map" : "Minimize Ask the map"}
+        aria-label={
+          isMinimized
+            ? "Expand CHIP Intelligence Assistant"
+            : "Minimize CHIP Intelligence Assistant"
+        }
         onClick={() => setIsMinimized((current) => !current)}
         style={panelToggleButtonStyle}
       >
         {isMinimized ? "+" : "\u2212"}
       </button>
-      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30 }}>Ask the map</div>
+      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#0F2D46" }}>
+        CHIP Intelligence Assistant
+      </div>
       {!isMinimized ? (
         <>
       <div
         ref={messagesContainerRef}
         style={{
-          border: "1px solid #e2e8f0",
+          border: "1px solid #E3E8ED",
           borderRadius: 8,
           padding: 8,
           minHeight: 120,
@@ -259,12 +266,12 @@ export default function AskMapChat({
           overflowY: "auto",
           display: "grid",
           gap: 8,
-          background: "#f8fafc",
+          background: "#F8FBFC",
         }}
       >
         {assistantMessages.length === 0 ? (
           <div style={{ color: "#64748b", fontSize: 12 }}>
-            Ask for a county comparison and the map will move/highlight automatically.
+            Ask a plain-language question about a place. CHIP can highlight the area and summarize what the data means.
           </div>
         ) : (
           assistantMessages.map((message, index) => (
@@ -273,8 +280,8 @@ export default function AskMapChat({
               style={{
                 justifySelf: message.role === "user" ? "end" : "start",
                 maxWidth: "95%",
-                background: message.role === "user" ? "#dbeafe" : "white",
-                border: "1px solid #e2e8f0",
+                background: message.role === "user" ? "#E6F6F6" : "white",
+                border: "1px solid #E3E8ED",
                 borderRadius: 8,
                 padding: "8px 10px",
                 fontSize: 12,
@@ -297,16 +304,10 @@ export default function AskMapChat({
                           onOpenProfile(message.profileId);
                         }
                       }}
+                      className="chip-secondary-btn"
                       style={{
                         marginTop: 8,
-                        padding: "6px 8px",
-                        borderRadius: 6,
-                        border: "1px solid #1d4ed8",
-                        background: "#eff6ff",
-                        color: "#1e40af",
-                        fontWeight: 600,
                         fontSize: 11,
-                        cursor: "pointer",
                       }}
                     >
                       Open full profile
@@ -338,27 +339,24 @@ export default function AskMapChat({
       >
         <input
           type="text"
-          placeholder="e.g., What is arthritis in Fulton County GA?"
+          placeholder="e.g., What should local leaders focus on in Fulton County, GA?"
           value={assistantInput}
           onChange={(event) => onAssistantInputChange(event.target.value)}
           disabled={assistantLoading}
           style={{
             padding: "8px 10px",
             borderRadius: 8,
-            border: "1px solid #cbd5e1",
+            border: "1px solid #C4D2E0",
             fontSize: 12,
           }}
         />
         <button
           type="submit"
           disabled={assistantLoading || assistantInput.trim().length === 0}
+          className="chip-primary-btn"
           style={{
-            padding: "8px 10px",
             borderRadius: 8,
-            border: "1px solid #1d4ed8",
-            background: assistantLoading ? "#93c5fd" : "#2563eb",
-            color: "white",
-            cursor: assistantLoading ? "wait" : "pointer",
+            padding: "8px 10px",
             fontWeight: 700,
             fontSize: 12,
           }}
