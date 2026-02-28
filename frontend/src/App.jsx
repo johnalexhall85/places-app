@@ -11,6 +11,12 @@ import SearchBar from "./SearchBar";
 import AskMapChat from "./components/AskMapChat";
 import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
+import {
+  getSviBins,
+  getSviLabel,
+  getSviLevel,
+  sviMeasureGroups,
+} from "./sviCatalog";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
@@ -19,12 +25,6 @@ const DATA_SOURCES = {
   SVI: "svi",
 };
 const SVI_YEAR = 2022;
-const SVI_THEME_LABELS = {
-  RPL_THEME1: "Socioeconomic Status",
-  RPL_THEME2: "Household Characteristics",
-  RPL_THEME3: "Racial & Ethnic Minority Status",
-  RPL_THEME4: "Housing Type & Transportation",
-};
 const HEADER_HEIGHT = 56;
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
@@ -215,16 +215,6 @@ function formatValue(value) {
   return numericValue.toFixed(1);
 }
 
-function formatSviValue(value, valueType) {
-  const numericValue = toFiniteNumericValue(value);
-  if (numericValue == null) return "No data";
-  const normalizedValueType = String(valueType ?? "").trim().toLowerCase();
-  if (normalizedValueType === "percentile") {
-    return `${(numericValue * 100).toFixed(0)} percentile`;
-  }
-  return Number(numericValue).toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
 function formatYearWindowDisplay(value) {
   if (value == null) return "N/A";
   const text = String(value).trim();
@@ -249,13 +239,13 @@ function getMeasureDisplayName(measure) {
   return measure.name ?? measure.measure ?? measure.short_question_text ?? measure.measure_id ?? "";
 }
 
-function getSviThemeLabel(measureId, theme) {
-  const normalizedMeasureId = String(measureId ?? "").trim().toUpperCase();
-  if (normalizedMeasureId in SVI_THEME_LABELS) {
-    return SVI_THEME_LABELS[normalizedMeasureId];
-  }
-  const normalizedTheme = String(theme ?? "").trim();
-  return normalizedTheme || null;
+function formatSviLevelText(level) {
+  const normalized = String(level ?? "").trim().toLowerCase();
+  if (normalized === "low") return "low";
+  if (normalized === "low-medium") return "low-medium";
+  if (normalized === "medium-high") return "medium-high";
+  if (normalized === "high") return "high";
+  return "unknown";
 }
 
 function clamp(value, min, max) {
@@ -456,6 +446,73 @@ function MapToolbar({
       >
         {profileGenerating ? "Analyzing..." : "Analyze this area"}
       </button>
+    </div>
+  );
+}
+
+function SviRankBar({ value }) {
+  const numeric = toFiniteNumericValue(value);
+  const clamped = numeric == null ? null : clamp(numeric, 0, 1);
+  const dotLeftPercent = clamped == null ? null : clamped * 100;
+
+  return (
+    <div style={{ marginTop: 8, marginBottom: 6 }}>
+      <div
+        style={{
+          position: "relative",
+          height: 12,
+          borderRadius: 999,
+          background: "linear-gradient(90deg, #F2FBFB 0%, #42A6A8 65%, #0F2D46 100%)",
+          border: "1px solid #C4D2E0",
+        }}
+      >
+        {[0.25, 0.5, 0.75].map((tick) => (
+          <span
+            key={`svi-rank-tick-${tick}`}
+            style={{
+              position: "absolute",
+              top: -2,
+              left: `${tick * 100}%`,
+              width: 1,
+              height: 16,
+              background: "#64748b",
+              opacity: 0.75,
+            }}
+          />
+        ))}
+        {dotLeftPercent == null ? null : (
+          <span
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: `${dotLeftPercent}%`,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "#0F2D46",
+              border: "2px solid #ffffff",
+              boxShadow: "0 0 0 1px rgba(15, 45, 70, 0.3)",
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        )}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: 4,
+          color: "#64748b",
+          fontSize: 11,
+          lineHeight: 1.2,
+        }}
+      >
+        <span>0</span>
+        <span>0.25</span>
+        <span>0.50</span>
+        <span>0.75</span>
+        <span>1.0</span>
+      </div>
     </div>
   );
 }
@@ -805,6 +862,16 @@ export default function App() {
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
+  const sviMeasureById = useMemo(() => {
+    if (!isSviDataSource) return new Map();
+    const map = new Map();
+    for (const measure of measures ?? []) {
+      const normalizedId = String(measure?.measure_id ?? "").trim().toUpperCase();
+      if (!normalizedId) continue;
+      map.set(normalizedId, measure);
+    }
+    return map;
+  }, [isSviDataSource, measures]);
   const selectedMeasureSource = selectedMeasure?.source ?? null;
   const isAcsMeasureSelected = isAcsDataSource && selectedMeasureSource === "acs";
   const acsYearWindows = useMemo(() => {
@@ -873,8 +940,12 @@ export default function App() {
       activeFeatures.map((feature) => getValueFromProperties(feature.properties))
     );
   }, [activeFeatures]);
+  const sviBins = useMemo(() => getSviBins(), []);
 
   const breaks = useMemo(() => {
+    if (isSviDataSource) {
+      return [];
+    }
     if (!isAcsDataSource) {
       return computedBreaks;
     }
@@ -888,7 +959,7 @@ export default function App() {
     const numeric = values.filter((value) => Number.isFinite(value));
     if (numeric.length < 2) return [];
     return numeric;
-  }, [acsLegend, computedBreaks, isAcsDataSource, tractsActive]);
+  }, [acsLegend, computedBreaks, isAcsDataSource, isSviDataSource, tractsActive]);
   const legendBbox = acsGeography === "tract" ? bbox : null;
 
   useEffect(() => {
@@ -909,7 +980,13 @@ export default function App() {
 
     const applyMeasureDefaults = (nextMeasures) => {
       setSelectedMeasureId((currentId) => {
-        if (currentId && nextMeasures.some((measure) => measure.measure_id === currentId)) {
+        if (
+          currentId
+          && nextMeasures.some((measure) => (
+            measure.measure_id === currentId
+            && (source !== DATA_SOURCES.SVI || measure.svi_available !== false)
+          ))
+        ) {
           return currentId;
         }
         if (
@@ -920,9 +997,17 @@ export default function App() {
         }
         if (
           source === DATA_SOURCES.SVI
-          && nextMeasures.some((measure) => measure.measure_id === "RPL_THEMES")
+          && nextMeasures.some(
+            (measure) => measure.measure_id === "RPL_THEMES" && measure.svi_available !== false
+          )
         ) {
           return "RPL_THEMES";
+        }
+        if (source === DATA_SOURCES.SVI) {
+          const firstAvailable = nextMeasures.find((measure) => measure.svi_available !== false);
+          if (firstAvailable) {
+            return firstAvailable.measure_id;
+          }
         }
         return nextMeasures[0]?.measure_id ?? "";
       });
@@ -947,27 +1032,51 @@ export default function App() {
       .then((data) => {
         if (!isMounted) return;
         const list = Array.isArray(data) ? data : [];
-        const byId = new Map();
-        if (source === DATA_SOURCES.PLACES) {
+        let sorted = [];
+        if (source === DATA_SOURCES.SVI) {
+          const apiById = new Map();
           for (const measure of list) {
-            if (!byId.has(measure.measure_id)) {
+            const key = String(measure?.measure_id ?? "").trim().toUpperCase();
+            if (!key) continue;
+            apiById.set(key, measure);
+          }
+          sorted = sviMeasureGroups.flatMap((group) =>
+            group.options.map((option) => {
+              const normalizedId = String(option.measure_id).trim().toUpperCase();
+              const apiMeasure = apiById.get(normalizedId);
+              return {
+                ...apiMeasure,
+                measure_id: normalizedId,
+                name: option.label,
+                measure: option.label,
+                svi_label: option.label,
+                svi_group_id: group.id,
+                svi_group_label: group.label,
+                svi_available: Boolean(apiMeasure),
+                value_type: apiMeasure?.value_type ?? "percentile",
+              };
+            })
+          );
+        } else {
+          const byId = new Map();
+          if (source === DATA_SOURCES.PLACES) {
+            for (const measure of list) {
+              if (!byId.has(measure.measure_id)) {
+                byId.set(measure.measure_id, measure);
+              }
+            }
+          } else {
+            for (const measure of list) {
               byId.set(measure.measure_id, measure);
             }
           }
-        } else {
-          for (const measure of list) {
-            byId.set(measure.measure_id, measure);
-          }
-        }
-
-        const deduped = Array.from(byId.values());
-        const sorted = source === DATA_SOURCES.SVI
-          ? deduped
-          : deduped.sort((a, b) => {
+          const deduped = Array.from(byId.values());
+          sorted = deduped.sort((a, b) => {
             const labelA = getMeasureDisplayName(a).toLowerCase();
             const labelB = getMeasureDisplayName(b).toLowerCase();
             return labelA.localeCompare(labelB);
           });
+        }
 
         const taggedMeasures = tagMeasuresForSource(sorted, source);
         measuresCacheRef.current.set(sourceKey, taggedMeasures);
@@ -1650,7 +1759,14 @@ export default function App() {
   const choroplethStyle = useCallback(
     (feature) => {
       const value = getValueFromProperties(feature?.properties);
-      const fillColor = getColor(value, breaks);
+      let fillColor = getColor(value, breaks);
+      if (isSviDataSource) {
+        const level = getSviLevel(value);
+        const bin = sviBins.find((item) => item.level === level);
+        fillColor = level == null
+          ? NO_DATA_COLOR
+          : (COLORS[bin?.colorIndex ?? 0] ?? COLORS[COLORS.length - 1]);
+      }
       return {
         color: tractsActive ? "#334155" : "#555",
         weight: tractsActive ? 0.6 : 1,
@@ -1658,7 +1774,7 @@ export default function App() {
         fillOpacity: 0.72,
       };
     },
-    [breaks, tractsActive]
+    [breaks, isSviDataSource, sviBins, tractsActive]
   );
 
   const countyBoundaryLineStyle = useCallback(() => {
@@ -2435,7 +2551,9 @@ export default function App() {
     selectedFeatureProps?.age_adjusted_high_confidence_limit,
     selectedFeatureProps?.data_value_type_id === "AgeAdjPrv" ? selectedFeatureProps?.high : null
   );
-  const selectedMeasureDisplayName = getMeasureDisplayName(selectedMeasure);
+  const selectedMeasureDisplayName = isSviDataSource
+    ? getSviLabel(selectedMeasureId)
+    : getMeasureDisplayName(selectedMeasure);
   const measureNameValue = normalizeMeasureName(
     firstDefined(
       selectedFeatureProps?.measure_name,
@@ -2454,20 +2572,16 @@ export default function App() {
   const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const acsMoe = firstDefined(selectedFeatureProps?.moe);
   const sviValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
-  const sviValueType = firstDefined(selectedFeatureProps?.value_type, selectedMeasure?.value_type);
-  const sviMeasureId = firstDefined(selectedFeatureProps?.measure_id, selectedMeasureId);
-  const sviMeasureName = firstDefined(
-    selectedFeatureProps?.measure_name,
-    selectedFeatureProps?.measure,
-    selectedMeasure?.name,
-    selectedMeasure?.measure,
-    selectedMeasureId
-  );
-  const sviThemeLabel = getSviThemeLabel(
-    sviMeasureId,
-    firstDefined(selectedFeatureProps?.theme, selectedMeasure?.theme)
-  );
+  const sviMeasureId = String(
+    firstDefined(selectedFeatureProps?.measure_id, selectedMeasureId, "")
+  ).trim().toUpperCase();
+  const sviMeasureName = getSviLabel(sviMeasureId || selectedMeasureId);
+  const sviValueNumeric = toFiniteNumericValue(sviValue);
+  const sviRankValueText = sviValueNumeric == null ? "No data" : sviValueNumeric.toFixed(4);
+  const sviLevel = getSviLevel(sviValueNumeric);
+  const sviLevelText = formatSviLevelText(sviLevel);
   const isSviThemeMeasure = /^RPL_THEME[1-4]$/i.test(String(sviMeasureId ?? "").trim());
+  const sviThemeLabel = isSviThemeMeasure ? getSviLabel(sviMeasureId) : null;
   const acsGeoLabel = tractsActive ? "tract" : "county";
   const acsLocationLabel = firstDefined(
     selectedFeatureProps?.location_name,
@@ -2513,11 +2627,23 @@ export default function App() {
   const acsAreaLabel = acsGeoLabel === "county"
     ? countyOrParishLabel
     : (hasText(acsLocationLabel) ? String(acsLocationLabel).trim() : `this ${acsGeoLabel}`);
-  const sviAreaLabel = hasText(
-    firstDefined(selectedFeatureProps?.location_name, selectedFeatureProps?.name)
-  )
-    ? String(firstDefined(selectedFeatureProps?.location_name, selectedFeatureProps?.name)).trim()
-    : selectedAreaLabel;
+  const sviAreaName = String(
+    firstDefined(
+      selectedFeatureProps?.location_name,
+      selectedFeatureProps?.county_name,
+      selectedFeatureProps?.name,
+      getFeatureId(selectedFeatureProps),
+      selectedAreaLabel
+    )
+  ).trim();
+  const sviStateLabel = String(
+    firstDefined(selectedFeatureProps?.state_desc, selectedFeatureProps?.state_abbr, "")
+  ).trim();
+  const sviAreaTitle = (
+    sviStateLabel && !sviAreaName.toLowerCase().includes(sviStateLabel.toLowerCase())
+      ? `${sviAreaName}, ${sviStateLabel}`
+      : sviAreaName
+  );
   const censusProfileHref = hasText(selectedLocationIdForLink)
     ? `https://data.census.gov/profile/${String(selectedLocationIdForLink).trim()}`
     : hasText(selectedLocationNameForLink)
@@ -2600,6 +2726,13 @@ export default function App() {
   }, []);
 
   const legendRows = useMemo(() => {
+    if (isSviDataSource) {
+      return sviBins.map((bin) => ({
+        key: `svi-bin-${bin.key}`,
+        colorIndex: bin.colorIndex,
+        label: `${bin.label}: ${bin.rangeLabel}`,
+      }));
+    }
     if (isAcsDataSource) {
       const bins = Array.isArray(acsLegend?.bins) ? acsLegend.bins : [];
       return bins.map((bin, index) => ({
@@ -2619,7 +2752,7 @@ export default function App() {
         label: formatRange(start, end),
       };
     });
-  }, [acsLegend, breaks, isAcsDataSource]);
+  }, [acsLegend, breaks, isAcsDataSource, isSviDataSource, sviBins]);
 
   const compactOverlayLayout = viewportWidth <= 1200;
   const mapViewportHeight = Math.max(420, viewportHeight - HEADER_HEIGHT);
@@ -2634,10 +2767,11 @@ export default function App() {
     : 16;
   const legendMaxHeight = Math.max(180, mapViewportHeight - (legendTopOffset + 16));
   const legendTitle = isSviDataSource
-    ? `Social Vulnerability Index \u2014 ${selectedMeasureDisplayName || selectedMeasureId}`
+    ? (selectedMeasureDisplayName || selectedMeasureId)
     : `${formatDataValueTypeLabel(selectedType)} \u2013 ${
       tractsActive ? "Census Tract Level" : "County Level"
     }`;
+  const legendSubtitle = isSviDataSource ? "Levels of Vulnerability" : null;
   const floatingPanelStyle = {
     background: "#ffffff",
     border: "1px solid #E3E8ED",
@@ -2741,12 +2875,34 @@ export default function App() {
               >
                 {measures.length === 0 ? (
                   <option value={selectedMeasureId}>Loading measures...</option>
+                ) : isSviDataSource ? (
+                  sviMeasureGroups.map((group) => (
+                    <optgroup key={group.id} label={group.label}>
+                      {group.options.map((option) => {
+                        const normalizedId = String(option.measure_id).trim().toUpperCase();
+                        const measureMeta = sviMeasureById.get(normalizedId);
+                        const isAvailable = Boolean(
+                          measureMeta && measureMeta.svi_available !== false
+                        );
+                        const optionLabel = isAvailable
+                          ? option.label
+                          : `${option.label} (unavailable)`;
+                        return (
+                          <option
+                            key={normalizedId}
+                            value={normalizedId}
+                            disabled={!isAvailable}
+                          >
+                            {optionLabel}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))
                 ) : (
                   measures.map((measure) => {
                     const label = getMeasureDisplayName(measure);
-                    const optionLabel = isSviDataSource
-                      ? (label || measure.measure_id)
-                      : `${measure.measure_id}${label ? ` - ${label}` : ""}`;
+                    const optionLabel = `${measure.measure_id}${label ? ` - ${label}` : ""}`;
                     return (
                       <option key={measure.measure_id} value={measure.measure_id}>
                         {optionLabel}
@@ -2979,8 +3135,15 @@ export default function App() {
         >
           {isLegendPanelMinimized ? "+" : "\u2212"}
         </button>
-        <div style={{ fontWeight: 700, marginBottom: 8, paddingRight: 30, color: "#0F2D46" }}>
-          {legendTitle}
+        <div style={{ marginBottom: 8, paddingRight: 30, color: "#0F2D46" }}>
+          <div style={{ fontWeight: 700 }}>
+            {legendTitle}
+          </div>
+          {legendSubtitle ? (
+            <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+              {legendSubtitle}
+            </div>
+          ) : null}
         </div>
         {!isLegendPanelMinimized ? (
           <>
@@ -3042,12 +3205,33 @@ export default function App() {
                 </p>
               ) : isSviDataSource ? (
                 <>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+                    {sviAreaTitle}
+                  </div>
                   <p>
-                    In <strong>{sviAreaLabel}</strong>, Social Vulnerability Index is{" "}
-                    <strong>{formatSviValue(sviValue, sviValueType)}</strong>.
+                    {SVI_YEAR} National <strong>{sviMeasureName}</strong> SVI Rank:{" "}
+                    <strong>{sviRankValueText}</strong>
                   </p>
+                  <SviRankBar value={sviValueNumeric} />
                   <p>
-                    Measure: <strong>{sviMeasureName}</strong>
+                    Possible ranks range from 0 (lowest vulnerability) to 1 (highest
+                    vulnerability).
+                  </p>
+                  {sviValueNumeric == null ? (
+                    <p>No rank is available for this geography.</p>
+                  ) : (
+                    <p>
+                      A rank of <strong>{sviRankValueText}</strong> indicates a{" "}
+                      <strong>{sviLevelText}</strong> level of vulnerability.
+                    </p>
+                  )}
+                  <p>
+                    <a
+                      href="#"
+                      onClick={(event) => event.preventDefault()}
+                    >
+                      View County Map Series
+                    </a>
                   </p>
                   {isSviThemeMeasure && sviThemeLabel ? (
                     <p>
@@ -3105,7 +3289,7 @@ export default function App() {
               {isSviDataSource ? (
                 <>
                   <div>
-                    Social Vulnerability Index: {formatSviValue(sviValue, sviValueType)}
+                    {SVI_YEAR} National {sviMeasureName} SVI Rank: {sviRankValueText}
                   </div>
                   {isSviThemeMeasure && sviThemeLabel ? (
                     <div>Theme: {sviThemeLabel}</div>
