@@ -1,4 +1,6 @@
-from typing import Literal
+import math
+import numbers
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -74,6 +76,30 @@ SVI_MEASURE_ORDER = {
 }
 
 
+def json_safe(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, numbers.Real) and not isinstance(value, bool):
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return value
+        if not math.isfinite(numeric):
+            return None
+        return numeric
+    return value
+
+
+def deep_json_safe(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {key: deep_json_safe(value) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [deep_json_safe(value) for value in obj]
+    if isinstance(obj, tuple):
+        return [deep_json_safe(value) for value in obj]
+    return json_safe(obj)
+
+
 def _ensure_required_tables(db: Session, *table_names: str) -> None:
     for table_name in table_names:
         row = db.execute(
@@ -85,6 +111,64 @@ def _ensure_required_tables(db: Session, *table_names: str) -> None:
                 status_code=503,
                 detail=f"{table_name} is missing. Run migrations and ingest required data.",
             )
+
+
+def _available_years_for_table(db: Session, table_name: str) -> list[int]:
+    rows = db.execute(
+        text(
+            f"""
+            SELECT DISTINCT year
+            FROM {table_name}
+            WHERE year IS NOT NULL
+            ORDER BY year DESC
+            """
+        )
+    ).scalars().all()
+    return [int(year) for year in rows]
+
+
+def _available_years_for_measures(
+    db: Session,
+    geography_level: Literal["county", "tract"] | None = None,
+) -> list[int]:
+    sql = """
+        SELECT DISTINCT year
+        FROM svi_measures
+        WHERE year IS NOT NULL
+    """
+    params: dict[str, object] = {}
+    if geography_level:
+        sql += " AND geography_level = :geography_level"
+        params["geography_level"] = geography_level
+    sql += " ORDER BY year DESC"
+
+    rows = db.execute(text(sql), params).scalars().all()
+    return [int(year) for year in rows]
+
+
+def _resolve_year(
+    *,
+    available_years: list[int],
+    requested_year: int | None,
+    error_context: str,
+) -> int:
+    if not available_years:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No SVI years available for {error_context}.",
+        )
+    if requested_year is None:
+        return int(available_years[0])
+    requested = int(requested_year)
+    if requested not in available_years:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"SVI year {requested} is unavailable for {error_context}. "
+                f"Available years: {available_years}"
+            ),
+        )
+    return requested
 
 
 def _parse_bbox(
@@ -116,12 +200,21 @@ def _parse_bbox(
 @router.get("/svi/measures")
 def svi_measures(
     geography_level: Literal["county", "tract"] | None = Query(default=None),
-    year: int = Query(default=2022),
+    year: int | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     _ensure_required_tables(db, "svi_measures")
 
-    query = db.query(models.SviMeasure).filter(models.SviMeasure.year == year)
+    available_years = _available_years_for_measures(db, geography_level=geography_level)
+    resolved_year = _resolve_year(
+        available_years=available_years,
+        requested_year=year,
+        error_context=(
+            f"SVI measures ({geography_level})" if geography_level else "SVI measures"
+        ),
+    )
+
+    query = db.query(models.SviMeasure).filter(models.SviMeasure.year == resolved_year)
     if geography_level:
         query = query.filter(models.SviMeasure.geography_level == geography_level)
 
@@ -137,7 +230,7 @@ def svi_measures(
 
     rows = sorted(rows, key=sort_key)
 
-    return [
+    payload = [
         {
             "measure_id": row.measure_id,
             "name": row.name,
@@ -145,17 +238,43 @@ def svi_measures(
             "description": row.description,
             "theme": row.theme,
             "value_type": row.value_type,
-            "year": row.year,
+            "year": resolved_year,
             "geography_level": row.geography_level,
         }
         for row in rows
     ]
+    return deep_json_safe(payload)
+
+
+@router.get("/svi/years")
+def svi_years(
+    geography_level: Literal["county", "tract"] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    _ensure_required_tables(db, "svi_estimates_county", "svi_estimates_tract")
+
+    if geography_level == "county":
+        years = _available_years_for_table(db, "svi_estimates_county")
+    elif geography_level == "tract":
+        years = _available_years_for_table(db, "svi_estimates_tract")
+    else:
+        county_years = set(_available_years_for_table(db, "svi_estimates_county"))
+        tract_years = set(_available_years_for_table(db, "svi_estimates_tract"))
+        years = sorted(county_years | tract_years, reverse=True)
+
+    return deep_json_safe(
+        {
+            "geography_level": geography_level or "all",
+            "years": years,
+            "default_year": years[0] if years else None,
+        }
+    )
 
 
 @router.get("/svi/counties")
 def svi_counties_geojson(
     measure_id: str = Query(..., min_length=1),
-    year: int = Query(default=2022),
+    year: int | None = Query(default=None),
     bbox: str | None = Query(default=None),
     simplify: float | None = Query(default=0.02, gt=0, le=0.5),
     limit: int = Query(default=5000, ge=1, le=10000),
@@ -173,10 +292,17 @@ def svi_counties_geojson(
     if not safe_measure_id:
         raise HTTPException(status_code=400, detail="measure_id is required")
 
+    available_years = _available_years_for_table(db, "svi_estimates_county")
+    resolved_year = _resolve_year(
+        available_years=available_years,
+        requested_year=year,
+        error_context="SVI county estimates",
+    )
+
     bbox_params, bbox_cte, bbox_join, bbox_filter = _parse_bbox(bbox, geom_alias="b")
     params: dict[str, object] = {
         "measure_id": safe_measure_id,
-        "year": year,
+        "year": resolved_year,
         "limit": limit,
         "offset": offset,
     }
@@ -273,7 +399,7 @@ def svi_counties_geojson(
                     if row["total_pop_18_plus"] is not None
                     else row["total_population"]
                 ),
-                "year": year,
+                "year": resolved_year,
                 "measure_id": row["measure_id"],
                 "measure": row["measure_name"],
                 "measure_name": row["measure_name"],
@@ -289,13 +415,169 @@ def svi_counties_geojson(
         for row in rows
     ]
 
-    return {"type": "FeatureCollection", "features": features}
+    return deep_json_safe({"type": "FeatureCollection", "features": features})
+
+
+@router.get("/svi/table")
+def svi_table(
+    measure_id: str = Query(..., min_length=1),
+    geography_level: Literal["county", "tract"] = Query(default="county"),
+    year: int | None = Query(default=None),
+    bbox: str | None = Query(default=None, description="west,south,east,north"),
+    limit: int = Query(default=1000, ge=1, le=50000),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    _ensure_required_tables(
+        db,
+        "svi_estimates_county",
+        "svi_estimates_tract",
+        "dim_county_boundary",
+        "tract_shapes",
+    )
+
+    safe_measure_id = measure_id.strip()
+    if not safe_measure_id:
+        raise HTTPException(status_code=400, detail="measure_id is required")
+
+    if geography_level == "county":
+        available_years = _available_years_for_table(db, "svi_estimates_county")
+        resolved_year = _resolve_year(
+            available_years=available_years,
+            requested_year=year,
+            error_context="SVI county estimates",
+        )
+        bbox_params, bbox_cte, bbox_join, bbox_filter = _parse_bbox(bbox, geom_alias="b")
+        params: dict[str, object] = {
+            "measure_id": safe_measure_id,
+            "year": resolved_year,
+            "limit": limit,
+            "offset": offset,
+        }
+        params.update(bbox_params)
+
+        with_parts = []
+        if bbox_cte:
+            with_parts.append(bbox_cte)
+        with_clause = f"WITH {', '.join(with_parts)}" if with_parts else ""
+
+        rows = db.execute(
+            text(
+                f"""
+                {with_clause}
+                SELECT
+                    b.location_id,
+                    b.geoid,
+                    COALESCE(c.county_name, b.name) AS location_name,
+                    c.state_abbr,
+                    e.value
+                FROM dim_county_boundary AS b
+                {bbox_join}
+                LEFT JOIN dim_county AS c
+                    ON c.location_id = b.location_id
+                LEFT JOIN svi_estimates_county AS e
+                    ON e.geoid = b.geoid
+                    AND e.measure_id = :measure_id
+                    AND e.year = :year
+                WHERE b.geom IS NOT NULL
+                    {bbox_filter}
+                ORDER BY b.location_id
+                LIMIT :limit
+                OFFSET :offset
+                """
+            ),
+            params,
+        ).mappings().all()
+
+        payload_rows = [
+            {
+                "geography_level": "county",
+                "location_id": row["location_id"],
+                "geoid": row["geoid"],
+                "location_name": row["location_name"],
+                "state_abbr": row["state_abbr"],
+                "year": resolved_year,
+                "measure_id": safe_measure_id,
+                "value": row["value"],
+            }
+            for row in rows
+        ]
+    else:
+        available_years = _available_years_for_table(db, "svi_estimates_tract")
+        resolved_year = _resolve_year(
+            available_years=available_years,
+            requested_year=year,
+            error_context="SVI tract estimates",
+        )
+        bbox_params, bbox_cte, bbox_join, bbox_filter = _parse_bbox(bbox, geom_alias="s")
+        params = {
+            "measure_id": safe_measure_id,
+            "year": resolved_year,
+            "limit": limit,
+            "offset": offset,
+        }
+        params.update(bbox_params)
+
+        with_parts = []
+        if bbox_cte:
+            with_parts.append(bbox_cte)
+        with_clause = f"WITH {', '.join(with_parts)}" if with_parts else ""
+
+        rows = db.execute(
+            text(
+                f"""
+                {with_clause}
+                SELECT
+                    s.geoid11 AS geoid,
+                    COALESCE(s.name, s.geoid11) AS location_name,
+                    s.statefp,
+                    s.countyfp,
+                    e.value
+                FROM tract_shapes AS s
+                {bbox_join}
+                LEFT JOIN svi_estimates_tract AS e
+                    ON e.geoid = s.geoid11
+                    AND e.measure_id = :measure_id
+                    AND e.year = :year
+                WHERE s.geom IS NOT NULL
+                    {bbox_filter}
+                ORDER BY s.geoid11
+                LIMIT :limit
+                OFFSET :offset
+                """
+            ),
+            params,
+        ).mappings().all()
+
+        payload_rows = [
+            {
+                "geography_level": "tract",
+                "location_id": row["geoid"],
+                "geoid": row["geoid"],
+                "location_name": row["location_name"],
+                "state_abbr": STATE_FIPS_TO_ABBR.get(row["statefp"]),
+                "county_fips": f"{row['statefp']}{row['countyfp']}",
+                "year": resolved_year,
+                "measure_id": safe_measure_id,
+                "value": row["value"],
+            }
+            for row in rows
+        ]
+
+    return deep_json_safe(
+        {
+            "geography_level": geography_level,
+            "year": resolved_year,
+            "measure_id": safe_measure_id,
+            "rows": payload_rows,
+        }
+    )
 
 
 @router.get("/svi/tracts")
 def svi_tracts_geojson(
     measure_id: str = Query(..., min_length=1),
-    year: int = Query(default=2022),
+    year: int | None = Query(default=None),
     bbox: str | None = Query(default=None, description="west,south,east,north"),
     simplify: float | None = Query(default=0.001, gt=0, le=0.1),
     limit: int = Query(default=25000, ge=1, le=50000),
@@ -313,10 +595,17 @@ def svi_tracts_geojson(
     if not safe_measure_id:
         raise HTTPException(status_code=400, detail="measure_id is required")
 
+    available_years = _available_years_for_table(db, "svi_estimates_tract")
+    resolved_year = _resolve_year(
+        available_years=available_years,
+        requested_year=year,
+        error_context="SVI tract estimates",
+    )
+
     bbox_params, bbox_cte, bbox_join, bbox_filter = _parse_bbox(bbox, geom_alias="s")
     params: dict[str, object] = {
         "measure_id": safe_measure_id,
-        "year": year,
+        "year": resolved_year,
         "limit": limit,
         "offset": offset,
     }
@@ -399,7 +688,7 @@ def svi_tracts_geojson(
                     "countyfp": row["countyfp"],
                     "county_fips": f"{row['statefp']}{row['countyfp']}",
                     "state_abbr": state_abbr,
-                    "year": year,
+                    "year": resolved_year,
                     "measure_id": row["measure_id"],
                     "measure": row["measure_name"],
                     "measure_name": row["measure_name"],
@@ -414,4 +703,4 @@ def svi_tracts_geojson(
             }
         )
 
-    return {"type": "FeatureCollection", "features": features}
+    return deep_json_safe({"type": "FeatureCollection", "features": features})

@@ -111,3 +111,13 @@ Also clear cached chart PNGs (forces chart restyling on regeneration):
 cd backend
 python -m app.scripts.clear_report_cache --include-charts
 ```
+
+## Ingest SVI time series (2018, 2020, 2022)
+
+Use the multi-year ingester:
+
+```bash
+python backend/scripts/ingest_svi_years.py --years 2018 2020 --level both
+```
+
+See `backend/scripts/README.md` for additional options.

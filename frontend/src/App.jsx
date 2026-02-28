@@ -24,7 +24,8 @@ const DATA_SOURCES = {
   ACS_NMF: "acs_nmf",
   SVI: "svi",
 };
-const SVI_YEAR = 2022;
+const DEFAULT_SVI_YEAR = 2022;
+const SVI_FALLBACK_YEARS = [2022, 2020, 2018];
 const HEADER_HEIGHT = 56;
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
@@ -721,10 +722,14 @@ export default function App() {
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
+  const [sviYears, setSviYears] = useState(SVI_FALLBACK_YEARS);
+  const [selectedSviYear, setSelectedSviYear] = useState(DEFAULT_SVI_YEAR);
   const [selectedYearWindow, setSelectedYearWindow] = useState(null);
   const [selectedType, setSelectedType] = useState("CrdPrv");
   const [isYearsLoading, setIsYearsLoading] = useState(true);
   const [yearsError, setYearsError] = useState(null);
+  const [isSviYearsLoading, setIsSviYearsLoading] = useState(false);
+  const [sviYearsError, setSviYearsError] = useState(null);
   const [acsLegend, setAcsLegend] = useState(null);
   const [isLegendLoading, setIsLegendLoading] = useState(false);
 
@@ -857,7 +862,7 @@ export default function App() {
   const selectedTemporalValue = isAcsDataSource
     ? selectedYearWindow
     : isSviDataSource
-      ? SVI_YEAR
+      ? selectedSviYear
       : selectedYear;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
@@ -968,14 +973,14 @@ export default function App() {
     const sourceKey = source === DATA_SOURCES.ACS_NMF
       ? `acs_nmf:${acsGeography}`
       : source === DATA_SOURCES.SVI
-        ? `svi:${activeGeography}`
+        ? `svi:${activeGeography}:${selectedSviYear}`
         : DATA_SOURCES.PLACES;
     const cachedMeasures = measuresCacheRef.current.get(sourceKey);
     let endpoint = "/measures";
     if (source === DATA_SOURCES.ACS_NMF) {
       endpoint = acsGeography === "tract" ? "/acs-nmf/tracts/measures" : "/acs-nmf/measures";
     } else if (source === DATA_SOURCES.SVI) {
-      endpoint = `/svi/measures?geography_level=${activeGeography}&year=${SVI_YEAR}`;
+      endpoint = `/svi/measures?geography_level=${activeGeography}&year=${selectedSviYear}`;
     }
 
     const applyMeasureDefaults = (nextMeasures) => {
@@ -1091,17 +1096,75 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [acsGeography, activeGeography, selectedDataSource]);
+  }, [acsGeography, activeGeography, selectedDataSource, selectedSviYear]);
 
   useEffect(() => {
-    if (selectedDataSource === DATA_SOURCES.ACS_NMF || selectedDataSource === DATA_SOURCES.SVI) {
+    if (selectedDataSource === DATA_SOURCES.SVI) {
+      let isMounted = true;
       setIsYearsLoading(false);
       setYearsError(null);
+      setIsSviYearsLoading(true);
+      setSviYearsError(null);
+
+      fetch(`${API_BASE}/svi/years?geography_level=${activeGeography}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to load SVI years.");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (!isMounted) return;
+          const fetchedYears = Array.isArray(data?.years)
+            ? data.years.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+            : [];
+          const uniqueSortedYears = Array.from(new Set(fetchedYears)).sort((a, b) => b - a);
+          const nextYears = uniqueSortedYears.length > 0 ? uniqueSortedYears : SVI_FALLBACK_YEARS;
+          setSviYears(nextYears);
+          setSelectedSviYear((currentYear) => {
+            if (currentYear != null && nextYears.includes(currentYear)) {
+              return currentYear;
+            }
+            if (nextYears.includes(DEFAULT_SVI_YEAR)) {
+              return DEFAULT_SVI_YEAR;
+            }
+            return nextYears[0];
+          });
+          setSviYearsError(null);
+        })
+        .catch((sviYearsFetchError) => {
+          if (!isMounted) return;
+          console.error("Failed to load SVI years:", sviYearsFetchError);
+          setSviYears(SVI_FALLBACK_YEARS);
+          setSelectedSviYear((currentYear) => (
+            currentYear != null && SVI_FALLBACK_YEARS.includes(currentYear)
+              ? currentYear
+              : DEFAULT_SVI_YEAR
+          ));
+          setSviYearsError("Could not load SVI years from API. Falling back to 2022/2020/2018.");
+        })
+        .finally(() => {
+          if (!isMounted) return;
+          setIsSviYearsLoading(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (selectedDataSource === DATA_SOURCES.ACS_NMF) {
+      setIsYearsLoading(false);
+      setYearsError(null);
+      setIsSviYearsLoading(false);
+      setSviYearsError(null);
       return;
     }
 
     let isMounted = true;
     setIsYearsLoading(true);
+    setIsSviYearsLoading(false);
+    setSviYearsError(null);
     const yearsGeography = tractsActive ? "tract" : "county";
 
     fetch(`${API_BASE}/meta/years?geography=${yearsGeography}`)
@@ -1150,7 +1213,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [selectedDataSource, tractsActive]);
+  }, [selectedDataSource, tractsActive, activeGeography]);
 
   useEffect(() => {
     if (!isAcsDataSource) return;
@@ -1206,7 +1269,7 @@ export default function App() {
           url.searchParams.set("year_window", String(selectedYearWindow));
         }
       } else if (isSviDataSource) {
-        url.searchParams.set("year", String(SVI_YEAR));
+        url.searchParams.set("year", String(selectedSviYear));
       } else {
         url.searchParams.set("year", String(selectedYear));
       }
@@ -1236,6 +1299,7 @@ export default function App() {
       isSviDataSource,
       isAcsMeasureSelected,
       selectedMeasureId,
+      selectedSviYear,
       selectedYear,
       selectedYearWindow,
       selectedType,
@@ -1381,7 +1445,7 @@ export default function App() {
           url.searchParams.set("year_window", String(selectedYearWindow));
         }
       } else if (isSviDataSource) {
-        url.searchParams.set("year", String(SVI_YEAR));
+        url.searchParams.set("year", String(selectedSviYear));
       } else {
         url.searchParams.set("year", String(selectedYear));
       }
@@ -1403,6 +1467,7 @@ export default function App() {
       isSviDataSource,
       isAcsMeasureSelected,
       selectedMeasureId,
+      selectedSviYear,
       selectedYear,
       selectedType,
       selectedYearWindow,
@@ -2567,7 +2632,7 @@ export default function App() {
   const yearValue = isAcsDataSource
     ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
     : isSviDataSource
-      ? firstDefined(selectedFeatureProps?.year, SVI_YEAR)
+      ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
       : firstDefined(selectedFeatureProps?.year, selectedYear);
   const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const acsMoe = firstDefined(selectedFeatureProps?.moe);
@@ -2912,7 +2977,35 @@ export default function App() {
                 )}
               </select>
             </label>
-            {!isSviDataSource ? (
+            {isSviDataSource ? (
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>Year</span>
+                <select
+                  value={selectedSviYear ?? ""}
+                  onChange={(event) => {
+                    const nextYear = Number(event.target.value);
+                    if (Number.isFinite(nextYear)) {
+                      setSelectedSviYear(nextYear);
+                    }
+                  }}
+                  disabled={isSviYearsLoading || sviYears.length === 0}
+                  style={controlSelectStyle}
+                >
+                  {isSviYearsLoading && sviYears.length === 0 ? (
+                    <option value="">Loading years...</option>
+                  ) : (
+                    sviYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {sviYearsError ? (
+                  <span style={{ color: "#b91c1c", fontSize: 11 }}>{sviYearsError}</span>
+                ) : null}
+              </label>
+            ) : (
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
                 <select
@@ -2956,7 +3049,7 @@ export default function App() {
                   <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
                 ) : null}
               </label>
-            ) : null}
+            )}
             {!isSviDataSource ? (
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 600 }}>Data value type</span>
@@ -3209,7 +3302,7 @@ export default function App() {
                     {sviAreaTitle}
                   </div>
                   <p>
-                    {SVI_YEAR} National <strong>{sviMeasureName}</strong> SVI Rank:{" "}
+                    {yearValue ?? selectedSviYear} National <strong>{sviMeasureName}</strong> SVI Rank:{" "}
                     <strong>{sviRankValueText}</strong>
                   </p>
                   <SviRankBar value={sviValueNumeric} />
@@ -3289,7 +3382,7 @@ export default function App() {
               {isSviDataSource ? (
                 <>
                   <div>
-                    {SVI_YEAR} National {sviMeasureName} SVI Rank: {sviRankValueText}
+                    {yearValue ?? selectedSviYear} National {sviMeasureName} SVI Rank: {sviRankValueText}
                   </div>
                   {isSviThemeMeasure && sviThemeLabel ? (
                     <div>Theme: {sviThemeLabel}</div>

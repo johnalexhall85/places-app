@@ -218,6 +218,63 @@ class AcsNmfTractEstimate(Base):
     )
 
 
+class SviMeasure(Base):
+    __tablename__ = "svi_measures"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    measure_id = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    theme = Column(String, nullable=True)
+    value_type = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
+    geography_level = Column(String, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "measure_id",
+            "year",
+            "geography_level",
+            name="uq_svi_measure",
+        ),
+        Index("idx_svi_measures_year_geo", "year", "geography_level"),
+    )
+
+
+class SviEstimateCounty(Base):
+    __tablename__ = "svi_estimates_county"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geoid = Column(String(5), nullable=False)
+    measure_id = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
+    value = Column(Float, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("geoid", "measure_id", "year", name="uq_svi_county_estimate"),
+        Index("idx_svi_county_year_measure", "year", "measure_id"),
+        Index("idx_svi_county_geoid", "geoid"),
+        Index("idx_svi_county_year_geoid", "year", "geoid"),
+    )
+
+
+class SviEstimateTract(Base):
+    __tablename__ = "svi_estimates_tract"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geoid = Column(String(11), nullable=False)
+    measure_id = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
+    value = Column(Float, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("geoid", "measure_id", "year", name="uq_svi_tract_estimate"),
+        Index("idx_svi_tract_year_measure", "year", "measure_id"),
+        Index("idx_svi_tract_geoid", "geoid"),
+        Index("idx_svi_tract_year_geoid", "year", "geoid"),
+    )
+
+
 class Profile(Base):
     __tablename__ = "profiles"
 
