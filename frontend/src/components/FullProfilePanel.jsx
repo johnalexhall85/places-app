@@ -17,6 +17,18 @@ function formatValue(value, suffix = "") {
   return `${parsed.toFixed(1)}${suffix}`;
 }
 
+function formatPercent(value) {
+  const parsed = asNumber(value);
+  if (parsed == null) return "Not available";
+  return `${parsed.toFixed(3)}%`;
+}
+
+function formatInt(value) {
+  const parsed = asNumber(value);
+  if (parsed == null) return "Not available";
+  return Math.round(parsed).toLocaleString();
+}
+
 function ordinal(value) {
   const parsed = asNumber(value);
   if (parsed == null) return "Not available";
@@ -165,6 +177,19 @@ export default function FullProfilePanel({
   const comparisons = profile?.comparisons ?? {};
   const narrative = profile?.narrative ?? {};
   const summary = narrative?.summary_paragraph ?? narrative?.summary_text ?? "";
+  const hpsa = profile?.hpsa && typeof profile.hpsa === "object" ? profile.hpsa : null;
+  const hpsaMethodologyFromProfile = profile?.methodology?.hpsa;
+  const hpsaMethodologyFromNarrative = narrative?.methodology?.hpsa;
+  const hpsaMethodology = (
+    hpsaMethodologyFromProfile && typeof hpsaMethodologyFromProfile === "object"
+      ? hpsaMethodologyFromProfile
+      : hpsaMethodologyFromNarrative && typeof hpsaMethodologyFromNarrative === "object"
+        ? hpsaMethodologyFromNarrative
+        : null
+  );
+  const hpsaCaveat = Array.isArray(hpsaMethodology?.caveats) && hpsaMethodology.caveats.length > 0
+    ? hpsaMethodology.caveats[0]
+    : null;
   const sections = useMemo(() => {
     const sourceSections = Array.isArray(narrative?.plain_language_sections)
       ? narrative.plain_language_sections
@@ -357,6 +382,80 @@ export default function FullProfilePanel({
                 </tbody>
               </table>
             </div>
+
+            {hpsa ? (
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                  HPSA coverage
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                        Type
+                      </th>
+                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                        Coverage
+                      </th>
+                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                        Population covered
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Primary Care</td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatPercent(hpsa?.primary_care?.coverage_pct)}
+                      </td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatInt(hpsa?.primary_care?.population_covered)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Mental Health</td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatPercent(hpsa?.mental_health?.coverage_pct)}
+                      </td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatInt(hpsa?.mental_health?.population_covered)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Dental</td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatPercent(hpsa?.dental?.coverage_pct)}
+                      </td>
+                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                        {formatInt(hpsa?.dental?.population_covered)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {hpsaMethodology ? (
+              <details>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                  Data Notes
+                </summary>
+                <div
+                  style={{
+                    marginTop: 6,
+                    display: "grid",
+                    gap: 4,
+                    color: "#334155",
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <div>Source: {hpsaMethodology.source ?? "HRSA HPSA Data Mart"}</div>
+                  <div>As-of date: {hpsaMethodology.as_of_date ?? "Not available"}</div>
+                  <div>{hpsaCaveat ?? "Coverage is computed conservatively; overlapping designations may exist."}</div>
+                </div>
+              </details>
+            ) : null}
 
             {sections.map((section, index) => (
               <div key={`profile-section-${index}`} style={{ display: "grid", gap: 6 }}>

@@ -3,6 +3,9 @@ from sqlalchemy import (
     Integer,
     String,
     Float,
+    Boolean,
+    Date,
+    Numeric,
     Text,
     ForeignKey,
     UniqueConstraint,
@@ -272,6 +275,106 @@ class SviEstimateTract(Base):
         Index("idx_svi_tract_year_measure", "year", "measure_id"),
         Index("idx_svi_tract_geoid", "geoid"),
         Index("idx_svi_tract_year_geoid", "year", "geoid"),
+    )
+
+
+class HpsaDesignationRaw(Base):
+    __tablename__ = "hpsa_designations_raw"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    designation_type = Column(String, nullable=False)  # pc | mh | dh
+    load_batch_id = Column(UUID(as_uuid=False), nullable=False)
+    source_file = Column(Text, nullable=True)
+    row_hash = Column(String, nullable=False)
+    county_fips = Column(String(5), nullable=True)
+    state_fips = Column(String(2), nullable=True)
+    hpsa_score = Column(Integer, nullable=True)
+    designation_status = Column(Text, nullable=True)
+    designated_population = Column(Integer, nullable=True)
+    geo_description = Column(Text, nullable=True)
+    data = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("load_batch_id", "row_hash", name="uq_hpsa_raw_batch_rowhash"),
+        Index("idx_hpsa_raw_county_type", "county_fips", "designation_type"),
+        Index("idx_hpsa_raw_status", "designation_status"),
+    )
+
+
+class CountyHpsaSummary(Base):
+    __tablename__ = "county_hpsa_summary"
+
+    county_fips = Column(String(5), primary_key=True)
+    state_fips = Column(String(2), nullable=True)
+
+    pc_designated = Column(Boolean, nullable=False, server_default=text("false"))
+    pc_hpsa_score_max = Column(Integer, nullable=True)
+    pc_population_covered = Column(Integer, nullable=True)
+    pc_coverage_pct = Column(Numeric(6, 3), nullable=True)
+
+    mh_designated = Column(Boolean, nullable=False, server_default=text("false"))
+    mh_hpsa_score_max = Column(Integer, nullable=True)
+    mh_population_covered = Column(Integer, nullable=True)
+    mh_coverage_pct = Column(Numeric(6, 3), nullable=True)
+
+    dh_designated = Column(Boolean, nullable=False, server_default=text("false"))
+    dh_hpsa_score_max = Column(Integer, nullable=True)
+    dh_population_covered = Column(Integer, nullable=True)
+    dh_coverage_pct = Column(Numeric(6, 3), nullable=True)
+
+    population_denominator_type = Column(String(16), nullable=True)  # adult_18p | total
+    population_denominator = Column(Integer, nullable=True)
+    population_denominator_source = Column(Text, nullable=True)
+    coverage_population_aggregation_method = Column(
+        String(16),
+        nullable=False,
+        server_default=text("'MAX'"),
+    )
+    coverage_overlap_caveat = Column(
+        Text,
+        nullable=False,
+        server_default=text(
+            "'HPSA designated populations may overlap across partial-county, population-group, and facility designations. Population covered is aggregated conservatively using MAX to reduce double counting; coverage_pct should be interpreted as an approximate upper-bound proxy for coverage within the county.'"
+        ),
+    )
+    coverage_pct_definition = Column(
+        Text,
+        nullable=False,
+        server_default=text(
+            "'coverage_pct = (population_covered / population_denominator) * 100, clamped to 0-100; population_denominator uses adult 18+ when available, otherwise total population.'"
+        ),
+    )
+    pc_coverage_method = Column(
+        Text,
+        nullable=False,
+        server_default=text(
+            "'MAX designated population among active designations in county (conservative; overlaps possible)'"
+        ),
+    )
+    mh_coverage_method = Column(
+        Text,
+        nullable=False,
+        server_default=text(
+            "'MAX designated population among active designations in county (conservative; overlaps possible)'"
+        ),
+    )
+    dh_coverage_method = Column(
+        Text,
+        nullable=False,
+        server_default=text(
+            "'MAX designated population among active designations in county (conservative; overlaps possible)'"
+        ),
+    )
+    raw_rows_in_county_pc = Column(Integer, nullable=True)
+    raw_rows_in_county_mh = Column(Integer, nullable=True)
+    raw_rows_in_county_dh = Column(Integer, nullable=True)
+
+    as_of_date = Column(Date, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("idx_county_hpsa_summary_state_fips", "state_fips"),
     )
 
 

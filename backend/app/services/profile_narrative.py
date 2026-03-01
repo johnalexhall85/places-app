@@ -134,6 +134,16 @@ def build_profile_narrative(
         else {}
     )
     acs_nmf = profile_json.get("acs_nmf") if isinstance(profile_json.get("acs_nmf"), dict) else {}
+    methodology = (
+        profile_json.get("methodology")
+        if isinstance(profile_json.get("methodology"), dict)
+        else {}
+    )
+    hpsa_methodology = (
+        methodology.get("hpsa")
+        if isinstance(methodology.get("hpsa"), dict)
+        else None
+    )
     methods_caveats = [
         _clean_text(item, fallback="") for item in (profile_json.get("methods_caveats") or [])
     ]
@@ -211,13 +221,16 @@ def build_profile_narrative(
     summary_paragraph = " ".join(summary_parts)
 
     if not include_full_narrative:
-        return {
+        response_payload = {
             "summary_text": summary_paragraph,
             "summary_paragraph": summary_paragraph,
             "plain_language_sections": [],
             "technical_methods_section": {},
             "sections": [],
         }
+        if isinstance(hpsa_methodology, dict):
+            response_payload["methodology"] = {"hpsa": hpsa_methodology}
+        return response_payload
 
     what_you_are_looking_at = {
         "section_id": "what_you_are_looking_at",
@@ -463,6 +476,18 @@ def build_profile_narrative(
     for caveat in methods_caveats:
         if caveat not in technical_methods_bullets:
             technical_methods_bullets.append(caveat)
+    if isinstance(hpsa_methodology, dict):
+        calculation = _clean_text(hpsa_methodology.get("calculation"), fallback="")
+        if calculation and calculation != MISSING_TEXT and calculation not in technical_methods_bullets:
+            technical_methods_bullets.append(calculation)
+        for caveat in hpsa_methodology.get("caveats") or []:
+            cleaned_caveat = _clean_text(caveat, fallback="")
+            if (
+                cleaned_caveat
+                and cleaned_caveat != MISSING_TEXT
+                and cleaned_caveat not in technical_methods_bullets
+            ):
+                technical_methods_bullets.append(cleaned_caveat)
     technical_methods_section = {
         "section_id": "technical_methods",
         "title": "Technical methods",
@@ -484,10 +509,13 @@ def build_profile_narrative(
 
     ordered_sections = [*plain_language_sections, technical_methods_section]
 
-    return {
+    response_payload = {
         "summary_text": summary_paragraph,
         "summary_paragraph": summary_paragraph,
         "plain_language_sections": plain_language_sections,
         "technical_methods_section": technical_methods_section,
         "sections": ordered_sections,
     }
+    if isinstance(hpsa_methodology, dict):
+        response_payload["methodology"] = {"hpsa": hpsa_methodology}
+    return response_payload

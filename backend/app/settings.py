@@ -44,6 +44,8 @@ Accuracy and safety rules:
 3) Use provided context defaults (measure_id, year, data_value_type_id) unless the user explicitly overrides them.
 4) Prefer tool calls over asking follow-up questions.
 5) For county-level requests, always infer the county from user text and call resolve_county first.
+6) If mentioning HPSA coverage_pct or HPSA population_covered, include a short trust note using the exact caveat from methodology.hpsa.caveats[0] when available.
+7) If methodology.hpsa is missing, do not present precise HPSA coverage statistics; you may only state whether HPSA designation is present/absent.
 
 Output contract:
 1) Final output must be a single JSON object.

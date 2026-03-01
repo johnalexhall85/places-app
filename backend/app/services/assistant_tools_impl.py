@@ -19,6 +19,11 @@ from app.services.profile_pdf import (
     profile_pdf_url,
     render_profile_pdf,
 )
+from app.services.hpsa_summary import (
+    build_hpsa_response,
+    fetch_county_hpsa_row,
+    normalize_county_fips,
+)
 
 ADJACENCY_TABLE_CANDIDATES: tuple[tuple[str, str, str], ...] = (
     ("county_adjacency", "county_fips", "neighbor_county_fips"),
@@ -993,6 +998,50 @@ def get_estimates_for_counties(
     return {
         "found": any(item["found"] for item in counties),
         "counties": counties,
+        "reason": None,
+    }
+
+
+def get_hpsa_county_summary(
+    db: Session,
+    *,
+    county_fips: str,
+) -> dict[str, Any]:
+    normalized_fips = normalize_county_fips(county_fips)
+    if normalized_fips is None:
+        return {
+            "found": False,
+            "county_fips": None,
+            "state_fips": None,
+            "hpsa": None,
+            "methodology": None,
+            "reason": "county_fips must be a valid 5-digit FIPS.",
+        }
+
+    row = fetch_county_hpsa_row(db, normalized_fips)
+    if row is None:
+        return {
+            "found": False,
+            "county_fips": normalized_fips,
+            "state_fips": None,
+            "hpsa": None,
+            "methodology": None,
+            "reason": f"No HPSA summary found for county {normalized_fips}.",
+        }
+
+    structured = build_hpsa_response(row, include_legacy=False)
+    # Assistant tool outputs are serialized back into tool messages; normalize to JSON-safe scalars.
+    safe_structured = json.loads(json.dumps(structured, default=str))
+    return {
+        "found": True,
+        "county_fips": safe_structured.get("county_fips"),
+        "state_fips": safe_structured.get("state_fips"),
+        "hpsa": {
+            "primary_care": safe_structured.get("primary_care"),
+            "mental_health": safe_structured.get("mental_health"),
+            "dental": safe_structured.get("dental"),
+        },
+        "methodology": safe_structured.get("methodology"),
         "reason": None,
     }
 

@@ -199,10 +199,29 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "get_hpsa_county_summary",
+            "description": (
+                "Fetch county-level HRSA HPSA summary including a structured methodology "
+                "trust object sourced from county_hpsa_summary metadata."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "county_fips": {"type": "string"},
+                },
+                "required": ["county_fips"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_full_profile",
             "description": (
-                "Generate or reuse a cached full profile for a county/tract using only "
-                "internal PLACES and ACS NMF data. Returns profile_id and summary text."
+                "Generate or reuse a cached full profile for a county/tract using internal "
+                "PLACES and ACS NMF data, plus HPSA methodology context when available. "
+                "Returns profile_id and summary text."
             ),
             "parameters": {
                 "type": "object",
@@ -241,7 +260,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_profile",
-            "description": "Fetch stored full profile JSON by profile_id.",
+            "description": (
+                "Fetch stored full profile JSON by profile_id. "
+                "profile_json may include methodology.hpsa when available."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {

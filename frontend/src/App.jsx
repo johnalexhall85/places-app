@@ -186,6 +186,15 @@ function getCountyName(properties) {
   return properties.county_name ?? properties.name ?? getFeatureId(properties);
 }
 
+function normalizeCountyFips(value) {
+  if (value == null) return null;
+  const digits = String(value).replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  if (digits.length === 5) return digits;
+  if (digits.length < 5) return digits.padStart(5, "0");
+  return null;
+}
+
 function getColor(value, breaks) {
   if (value == null || !Array.isArray(breaks) || breaks.length < 2) {
     return NO_DATA_COLOR;
@@ -742,6 +751,9 @@ export default function App() {
   const [stateBoundaryOverlay, setStateBoundaryOverlay] = useState(null);
 
   const [selectedProps, setSelectedProps] = useState(null);
+  const [hpsaSummary, setHpsaSummary] = useState(null);
+  const [isHpsaLoading, setIsHpsaLoading] = useState(false);
+  const [hpsaError, setHpsaError] = useState(null);
   const [, setHoveredProps] = useState(null);
   const [isCountyLoading, setIsCountyLoading] = useState(false);
   const [isTractLoading, setIsTractLoading] = useState(false);
@@ -2716,6 +2728,122 @@ export default function App() {
         String(selectedLocationNameForLink).trim()
       )}`
       : "https://data.census.gov/";
+  const selectedCountyFipsForHpsa = selectedGeoLevel === "county"
+    ? normalizeCountyFips(
+      firstDefined(
+        selectedFeatureProps?.county_fips,
+        selectedFeatureProps?.location_id,
+        selectedFeatureProps?.locationid,
+        selectedFeatureProps?.geoid
+      )
+    )
+    : null;
+  const hpsaPcCoverageText = (() => {
+    const value = toFiniteNumericValue(hpsaSummary?.pc_coverage_pct);
+    return value == null ? "No data" : `${value.toFixed(3)}%`;
+  })();
+  const hpsaMhCoverageText = (() => {
+    const value = toFiniteNumericValue(hpsaSummary?.mh_coverage_pct);
+    return value == null ? "No data" : `${value.toFixed(3)}%`;
+  })();
+  const hpsaDhCoverageText = (() => {
+    const value = toFiniteNumericValue(hpsaSummary?.dh_coverage_pct);
+    return value == null ? "No data" : `${value.toFixed(3)}%`;
+  })();
+  const hpsaMethodology = hpsaSummary?.methodology && typeof hpsaSummary.methodology === "object"
+    ? hpsaSummary.methodology
+    : null;
+  const hpsaDenominatorValueText = hpsaSummary?.population_denominator == null
+    ? "No data"
+    : Number(hpsaSummary.population_denominator).toLocaleString();
+  const hpsaDenominatorTypeText = hpsaSummary?.population_denominator_type === "adult_18p"
+    ? "Adult population (18+)"
+    : hpsaSummary?.population_denominator_type === "total"
+      ? "Total population"
+      : "Unknown denominator";
+  const hpsaDataNoteSource = firstDefined(
+    hpsaMethodology?.source,
+    hpsaSummary?.population_denominator_source
+      ? `HRSA HPSA Data Mart; denominator: ${hpsaSummary.population_denominator_source}`
+      : null,
+    "HRSA HPSA Data Mart"
+  );
+  const hpsaDataNoteAsOf = firstDefined(hpsaMethodology?.as_of_date, hpsaSummary?.as_of_date);
+  const hpsaDataNoteCaveat = firstDefined(
+    Array.isArray(hpsaMethodology?.caveats) && hpsaMethodology.caveats.length > 0
+      ? hpsaMethodology.caveats[0]
+      : null,
+    hpsaSummary?.coverage_overlap_caveat,
+    "Designation populations may overlap; coverage should be treated as approximate."
+  );
+  const hpsaAggregationMethodText = firstDefined(
+    hpsaSummary?.coverage_population_aggregation_method,
+    "MAX"
+  );
+
+  useEffect(() => {
+    if (!selectedCountyFipsForHpsa) {
+      setHpsaSummary(null);
+      setHpsaError(null);
+      setIsHpsaLoading(false);
+      return () => {};
+    }
+
+    const controller = new AbortController();
+    const cacheKey = `hpsa|county|${selectedCountyFipsForHpsa}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      setHpsaSummary(cached);
+      setHpsaError(null);
+      setIsHpsaLoading(false);
+      return () => {
+        controller.abort();
+      };
+    }
+
+    setIsHpsaLoading(true);
+    setHpsaError(null);
+
+    fetchWithDedupe(cacheKey, async () => {
+      const response = await fetch(
+        `${API_BASE}/hpsa/counties/${selectedCountyFipsForHpsa}`,
+        { signal: controller.signal }
+      );
+      if (response.status === 404) {
+        return null;
+      }
+      if (!response.ok) {
+        const body = await parseErrorBody(response);
+        throw new Error(`HPSA request failed (${response.status}) - ${body}`);
+      }
+      return response.json();
+    })
+      .then((payload) => {
+        if (controller.signal.aborted) return;
+        setHpsaSummary(payload);
+        if (payload) {
+          setCached(cacheKey, payload);
+        }
+      })
+      .catch((fetchError) => {
+        if (controller.signal.aborted) return;
+        const isNetworkFetchError = fetchError instanceof TypeError;
+        setHpsaSummary(null);
+        setHpsaError(
+          isNetworkFetchError
+            ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
+            : (fetchError.message ?? "Failed to load HPSA county summary.")
+        );
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        setIsHpsaLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedCountyFipsForHpsa, getCached, setCached, fetchWithDedupe]);
 
   const handleAnalyzeSelectedArea = useCallback(() => {
     if (!selectedLocationId) return;
@@ -3416,6 +3544,49 @@ export default function App() {
               {isAcsDataSource ? (
                 <div>
                   Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
+                </div>
+              ) : null}
+              {selectedGeoLevel === "county" ? (
+                <div
+                  style={{
+                    marginTop: 6,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>HPSA county coverage</div>
+                  {isHpsaLoading ? (
+                    <div style={{ color: "#64748b" }}>Loading HPSA summary...</div>
+                  ) : hpsaError ? (
+                    <div style={{ color: "#b91c1c" }}>{hpsaError}</div>
+                  ) : hpsaSummary ? (
+                    <>
+                      <div>Primary Care coverage: {hpsaPcCoverageText}</div>
+                      <div>Mental Health coverage: {hpsaMhCoverageText}</div>
+                      <div>Dental Health coverage: {hpsaDhCoverageText}</div>
+                      <details>
+                        <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                          Data Notes
+                        </summary>
+                        <div style={{ marginTop: 4, color: "#334155", display: "grid", gap: 4 }}>
+                          <div>Source: {hpsaDataNoteSource}</div>
+                          <div>As-of date: {hasText(hpsaDataNoteAsOf) ? String(hpsaDataNoteAsOf) : "Unknown"}</div>
+                          <div>
+                            Denominator: {hpsaDenominatorTypeText} ({hpsaDenominatorValueText})
+                          </div>
+                          <div>
+                            Population covered aggregation:{" "}
+                            {hpsaAggregationMethodText} (conservative)
+                          </div>
+                          <div>{hpsaDataNoteCaveat}</div>
+                        </div>
+                      </details>
+                    </>
+                  ) : (
+                    <div style={{ color: "#64748b" }}>No HPSA summary available for this county.</div>
+                  )}
                 </div>
               ) : null}
               {historySupported ? (

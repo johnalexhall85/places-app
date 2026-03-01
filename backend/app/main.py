@@ -17,6 +17,7 @@ from app.routers.assistant import router as assistant_router
 from app.routers.acs_nmf import router as acs_nmf_router
 from app.routers.profiles import router as profiles_router
 from app.routers.svi import router as svi_router
+from app.routers.hpsa import router as hpsa_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -47,3 +48,4 @@ app.include_router(assistant_router)
 app.include_router(acs_nmf_router)
 app.include_router(profiles_router)
 app.include_router(svi_router)
+app.include_router(hpsa_router)

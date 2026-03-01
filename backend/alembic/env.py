@@ -40,6 +40,8 @@ TARGET_TABLES = {
     "svi_measures",
     "svi_estimates_county",
     "svi_estimates_tract",
+    "hpsa_designations_raw",
+    "county_hpsa_summary",
     "profiles",
     "profile_assets",
     "alembic_version",

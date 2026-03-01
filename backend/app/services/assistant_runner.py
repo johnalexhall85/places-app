@@ -14,6 +14,7 @@ from app.services.assistant_tools_impl import (
     generate_full_profile,
     get_estimate_county,
     get_estimate_nation,
+    get_hpsa_county_summary,
     get_profile,
     get_estimate_state,
     get_estimates_for_counties,
@@ -842,6 +843,21 @@ def _run_tool(
         runtime_state["neighbor_estimates"] = result.get("counties") or []
         return result
 
+    if name == "get_hpsa_county_summary":
+        resolved_county = runtime_state.get("resolved_county")
+        fallback_fips = (
+            str(resolved_county.get("county_fips")).strip()
+            if isinstance(resolved_county, dict) and resolved_county.get("county_fips")
+            else ""
+        )
+        county_fips = str(args.get("county_fips") or fallback_fips).strip()
+        result = get_hpsa_county_summary(
+            db,
+            county_fips=county_fips,
+        )
+        runtime_state["hpsa_summary"] = result
+        return result
+
     if name == "generate_full_profile":
         resolved_county = runtime_state.get("resolved_county")
         fallback_location_id = (
@@ -932,6 +948,7 @@ def run_assistant(
         "nation_estimate": None,
         "neighbor_counties": [],
         "neighbor_estimates": [],
+        "hpsa_summary": None,
         "generated_profile_id": None,
         "generated_profile_summary": None,
     }

@@ -121,3 +121,17 @@ python backend/scripts/ingest_svi_years.py --years 2018 2020 --level both
 ```
 
 See `backend/scripts/README.md` for additional options.
+
+## Ingest HRSA HPSA county summary
+
+```bash
+python backend/scripts/ingest_hpsa.py \
+  --pc /mnt/data/BCD_HPSA_FCT_DET_PC.csv \
+  --mh /mnt/data/BCD_HPSA_FCT_DET_MH.csv \
+  --dh /mnt/data/BCD_HPSA_FCT_DET_DH.csv \
+  --rebuild-summary
+```
+
+See `backend/scripts/README.md` for optional flags.
+
+The rebuilt `county_hpsa_summary` includes `pc/mh/dh_coverage_pct` fields using county population from `v_county_population` (`adult_18p` preferred, fallback `total`), plus transparent methodology metadata (`population_denominator_source`, aggregation method, caveat/definition text, and raw row contribution counts).

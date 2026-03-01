@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import date, datetime, UTC
 import math
 import re
 from statistics import mean
@@ -12,6 +12,11 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
 from app.services.profile_narrative import build_profile_narrative
+from app.services.hpsa_summary import (
+    build_hpsa_response,
+    fetch_county_hpsa_row,
+    normalize_county_fips,
+)
 
 FINITE_FLOAT_SQL = (
     "NOT IN ('NaN'::double precision, 'Infinity'::double precision, '-Infinity'::double precision)"
@@ -71,6 +76,8 @@ def _sanitize_for_json(value: Any) -> Any:
         return [_sanitize_for_json(item) for item in value]
     if isinstance(value, tuple):
         return [_sanitize_for_json(item) for item in value]
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
     if isinstance(value, float):
         if not math.isfinite(value):
             return None
@@ -140,6 +147,58 @@ def _year_window_sort_key(value: str) -> tuple[int, int, str]:
     start = int(matched.group(1))
     end = int(matched.group(2))
     return (end, start, str(value))
+
+
+def _resolve_hpsa_county_fips(*, geography: str, location_id: str) -> str | None:
+    normalized_geography = str(geography or "").strip().lower()
+    normalized_location_id = str(location_id or "").strip()
+    if not normalized_location_id:
+        return None
+    if normalized_geography == "county":
+        return normalize_county_fips(normalized_location_id)
+    if normalized_geography != "tract":
+        return None
+    digits = re.sub(r"[^0-9]", "", normalized_location_id)
+    if len(digits) < 5:
+        return None
+    return normalize_county_fips(digits[:5])
+
+
+def inject_hpsa_context(profile_json: dict[str, Any], hpsa_payload: dict[str, Any] | None) -> None:
+    if not isinstance(profile_json, dict):
+        return
+    if not isinstance(hpsa_payload, dict):
+        return
+
+    profile_json["hpsa"] = {
+        "county_fips": hpsa_payload.get("county_fips"),
+        "state_fips": hpsa_payload.get("state_fips"),
+        "primary_care": hpsa_payload.get("primary_care"),
+        "mental_health": hpsa_payload.get("mental_health"),
+        "dental": hpsa_payload.get("dental"),
+    }
+
+    methodology = (
+        profile_json.get("methodology")
+        if isinstance(profile_json.get("methodology"), dict)
+        else {}
+    )
+    hpsa_methodology = hpsa_payload.get("methodology")
+    if isinstance(hpsa_methodology, dict):
+        methodology["hpsa"] = hpsa_methodology
+        profile_json["methodology"] = methodology
+
+        caveats = hpsa_methodology.get("caveats")
+        first_caveat = caveats[0] if isinstance(caveats, list) and caveats else None
+        if first_caveat:
+            methods_caveats = (
+                profile_json.get("methods_caveats")
+                if isinstance(profile_json.get("methods_caveats"), list)
+                else []
+            )
+            if first_caveat not in methods_caveats:
+                methods_caveats.append(str(first_caveat))
+            profile_json["methods_caveats"] = methods_caveats
 
 
 def _table_exists(db: Session, table_name: str) -> bool:
@@ -943,7 +1002,7 @@ def build_profile(
         }
 
     profile_json: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "generated_at": datetime.now(UTC).isoformat(),
         "geography": normalized_geography,
         "location": {
@@ -1001,6 +1060,16 @@ def build_profile(
             "Values can be missing due to source suppression or unavailable estimates.",
         ],
     }
+
+    hpsa_county_fips = _resolve_hpsa_county_fips(
+        geography=normalized_geography,
+        location_id=normalized_location_id,
+    )
+    if hpsa_county_fips:
+        hpsa_row = fetch_county_hpsa_row(db, hpsa_county_fips)
+        if hpsa_row is not None:
+            hpsa_payload = build_hpsa_response(hpsa_row, include_legacy=False)
+            inject_hpsa_context(profile_json, hpsa_payload)
 
     narrative = build_narrative(
         profile_json,

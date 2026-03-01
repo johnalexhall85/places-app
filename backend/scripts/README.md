@@ -38,3 +38,32 @@ python backend/scripts/ingest_svi_years.py \
   --data-dir /data \
   --db-url "$DATABASE_URL"
 ```
+
+## Ingest HRSA HPSA (PC/MH/DH) + rebuild county summary
+
+Load designation-level files and rebuild `county_hpsa_summary`:
+
+```bash
+python backend/scripts/ingest_hpsa.py \
+  --pc /mnt/data/BCD_HPSA_FCT_DET_PC.csv \
+  --mh /mnt/data/BCD_HPSA_FCT_DET_MH.csv \
+  --dh /mnt/data/BCD_HPSA_FCT_DET_DH.csv \
+  --rebuild-summary
+```
+
+Optional flags:
+
+```bash
+# clear existing raw staging table before loading
+python backend/scripts/ingest_hpsa.py ... --truncate-staging
+
+# skip summary rebuild
+python backend/scripts/ingest_hpsa.py ... --no-rebuild-summary
+```
+
+`county_hpsa_summary` includes coverage percentages (`*_coverage_pct`) computed as:
+- denominator: county adult 18+ population when available, otherwise total population
+- source: `v_county_population` view (from `dim_county`)
+- formula: `(population_covered / denominator) * 100`, rounded to 3 decimals, clamped to `[0, 100]`
+- aggregation method: `MAX` designated population per county/type (conservative for overlap risk)
+- method metadata fields: denominator source/type, overlap caveat, pct definition, and per-type method text
