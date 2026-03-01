@@ -327,6 +327,23 @@ def _resolve_context(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _county_fips_from_map_context(map_context: dict[str, Any] | None) -> str | None:
+    if not isinstance(map_context, dict):
+        return None
+    selected_area = map_context.get("selectedArea")
+    if not isinstance(selected_area, dict):
+        return None
+
+    county_fips = str(selected_area.get("countyFips") or "").strip()
+    if county_fips:
+        return county_fips
+
+    tract_geoid = str(selected_area.get("tractGeoid") or "").strip()
+    if len(tract_geoid) >= 5 and tract_geoid[:5].isdigit():
+        return tract_geoid[:5]
+    return None
+
+
 def _resolve_effective_context(
     db: Session,
     *,
@@ -930,10 +947,11 @@ def run_assistant(
     *,
     user_text: str,
     context: dict[str, Any],
+    map_context: dict[str, Any] | None,
     db: Session,
 ) -> dict[str, Any]:
     stripped_user_text = (user_text or "").strip()
-    requested_context = _resolve_context(context)
+    requested_context = _resolve_context(context or {})
     effective_context, context_overrides = _resolve_effective_context(
         db,
         user_text=stripped_user_text,
@@ -958,25 +976,61 @@ def run_assistant(
         "effective_context": effective_context,
         "context_overrides": context_overrides,
     }
-    allowed_numbers: set[float] = {float(effective_context["year"]), 95.0}
+    if isinstance(map_context, dict):
+        debug_summary["map_context"] = map_context
 
-    initial_resolution = resolve_county(db, query=stripped_user_text)
-    runtime_state["county_resolution"] = initial_resolution
-    if initial_resolution.get("found") and isinstance(initial_resolution.get("match"), dict):
-        resolved_match = initial_resolution["match"]
-        runtime_state["resolved_county"] = resolved_match
+    allowed_numbers: set[float] = {95.0}
+    if _to_int(effective_context.get("year"), 0) > 0:
+        allowed_numbers.add(float(effective_context["year"]))
+
+    resolved_from_map_context = False
+    map_context_county_fips = _county_fips_from_map_context(map_context)
+    if map_context_county_fips:
+        map_resolution = resolve_county(db, query=map_context_county_fips)
+        debug_summary["map_context_county_resolution"] = {
+            "found": bool(map_resolution.get("found")),
+            "county_fips": (
+                map_resolution.get("match", {}).get("county_fips")
+                if isinstance(map_resolution.get("match"), dict)
+                else None
+            ),
+        }
+        if map_resolution.get("found") and isinstance(map_resolution.get("match"), dict):
+            runtime_state["county_resolution"] = map_resolution
+            runtime_state["resolved_county"] = map_resolution["match"]
+            resolved_from_map_context = True
+
+    if not resolved_from_map_context:
+        initial_resolution = resolve_county(db, query=stripped_user_text)
+        runtime_state["county_resolution"] = initial_resolution
+        if initial_resolution.get("found") and isinstance(initial_resolution.get("match"), dict):
+            resolved_match = initial_resolution["match"]
+            runtime_state["resolved_county"] = resolved_match
+            debug_summary["initial_county_resolution"] = {
+                "found": True,
+                "county_fips": resolved_match.get("county_fips"),
+                "state_abbr": resolved_match.get("state_abbr"),
+                "used_best_guess": bool(initial_resolution.get("alternatives")),
+            }
+        else:
+            debug_summary["initial_county_resolution"] = {"found": False}
+    else:
         debug_summary["initial_county_resolution"] = {
             "found": True,
-            "county_fips": resolved_match.get("county_fips"),
-            "state_abbr": resolved_match.get("state_abbr"),
-            "used_best_guess": bool(initial_resolution.get("alternatives")),
+            "source": "map_context",
         }
-    else:
-        debug_summary["initial_county_resolution"] = {"found": False}
 
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "developer", "content": build_developer_context(effective_context)},
+        {
+            "role": "developer",
+            "content": build_developer_context(
+                {
+                    "assistant_context": effective_context,
+                    "map_context": map_context,
+                }
+            ),
+        },
         {"role": "user", "content": stripped_user_text},
     ]
     client = OpenRouterClient()

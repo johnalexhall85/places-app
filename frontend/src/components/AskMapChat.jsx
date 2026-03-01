@@ -190,6 +190,7 @@ export default function AskMapChat({
   assistantMessages,
   assistantLoading,
   scrollSignal,
+  openSignal = 0,
   compactLayout = false,
   onAssistantInputChange,
   onAssistantSubmit,
@@ -218,6 +219,10 @@ export default function AskMapChat({
     if (!messagesContainerRef.current) return;
     messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
   }, [assistantMessages, assistantLoading, scrollSignal]);
+
+  useEffect(() => {
+    setIsMinimized(false);
+  }, [openSignal]);
 
   return (
     <div
@@ -292,10 +297,86 @@ export default function AskMapChat({
               </div>
               {message.role === "assistant" ? (
                 <>
-                  <div
-                    style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}
-                    dangerouslySetInnerHTML={{ __html: markdownToHtml(message.text) }}
-                  />
+                  {message.contextSummary && typeof message.contextSummary === "object" ? (
+                    <div style={{ display: "grid", gap: 6, marginBottom: message.text ? 8 : 0 }}>
+                      {message.contextSummary.context_chip ? (
+                        <div
+                          style={{
+                            justifySelf: "start",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "#EDF7F8",
+                            border: "1px solid #BFDDE2",
+                            color: "#0F2D46",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            lineHeight: 1.2,
+                            padding: "3px 10px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Context: {String(message.contextSummary.context_chip)}
+                        </div>
+                      ) : null}
+
+                      {message.contextSummary.title ? (
+                        <div style={{ fontWeight: 700, color: "#0F2D46" }}>
+                          {String(message.contextSummary.title)}
+                        </div>
+                      ) : null}
+
+                      {Array.isArray(message.contextSummary.stats) && message.contextSummary.stats.length > 0 ? (
+                        <div style={{ display: "grid", gap: 2 }}>
+                          {message.contextSummary.stats.map((entry, statIndex) => (
+                            <div key={`summary-stat-${index}-${statIndex}`} style={{ color: "#1f2937" }}>
+                              <strong>{String(entry?.label ?? "Stat")}:</strong>{" "}
+                              {String(entry?.value ?? "Not available")}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {Array.isArray(message.contextSummary.bullets) && message.contextSummary.bullets.length > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
+                          {message.contextSummary.bullets.map((entry, bulletIndex) => (
+                            <li key={`summary-bullet-${index}-${bulletIndex}`}>
+                              {String(entry)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+
+                      {message.contextSummary.methodology ? (
+                        <div style={{ color: "#475569", fontSize: 11 }}>
+                          Methodology: {String(message.contextSummary.methodology)}
+                        </div>
+                      ) : null}
+
+                      {Array.isArray(message.contextSummary.suggestedQuestions)
+                      && message.contextSummary.suggestedQuestions.length > 0 ? (
+                        <div style={{ display: "grid", gap: 4 }}>
+                          <div style={{ fontWeight: 600, color: "#334155" }}>
+                            Suggested follow-ups
+                          </div>
+                          <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
+                            {message.contextSummary.suggestedQuestions.slice(0, 3).map((entry, followupIndex) => (
+                              <li key={`summary-followup-${index}-${followupIndex}`}>
+                                {String(entry)}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {String(message.text ?? "").trim() ? (
+                    <div
+                      style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(message.text) }}
+                    />
+                  ) : null}
                   {message.profileId ? (
                     <button
                       type="button"

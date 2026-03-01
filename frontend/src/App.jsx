@@ -25,6 +25,7 @@ import {
   formatTierRanges,
   getSeverityLabel,
 } from "./content/hpsaLegendCopy";
+import { buildMapContext } from "./mapContext";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
@@ -78,6 +79,16 @@ const ASSISTANT_POST_CONTEXT_ACTION_DELAY_MS = 200;
 const ASSISTANT_STREAM_CHUNK_CHARS = 4;
 const ASSISTANT_STREAM_INTERVAL_MS = 18;
 const ANALYSIS_PROMPT_PATTERN = /\b(analy[sz]e|analysis|full profile|profile)\b/i;
+
+function parseYearFromToken(value) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const directYear = text.match(/\b(19\d{2}|20\d{2})\b/);
+  if (!directYear) return null;
+  const parsed = Number(directYear[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function quantile(sortedValues, q) {
   if (sortedValues.length === 0) return null;
@@ -329,6 +340,18 @@ function parseErrorBody(response) {
     .text()
     .then((body) => body || "No body")
     .catch(() => "No body");
+}
+
+function isAbortLikeError(error, signal) {
+  if (signal?.aborted) return true;
+  if (!error) return false;
+  const name = String(error?.name ?? "");
+  const message = String(error?.message ?? "");
+  return (
+    name === "AbortError"
+    || /aborted without reason/i.test(message)
+    || /operation was aborted/i.test(message)
+  );
 }
 
 function toLeafletBounds(value) {
@@ -750,6 +773,9 @@ export default function App() {
   const [assistantMessages, setAssistantMessages] = useState([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantScrollSignal, setAssistantScrollSignal] = useState(0);
+  const [assistantOpenSignal, setAssistantOpenSignal] = useState(0);
+  const [assistantMapContext, setAssistantMapContext] = useState(null);
+  const [analyzeGenerating, setAnalyzeGenerating] = useState(false);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const [activeProfileId, setActiveProfileId] = useState(null);
   const [profileGenerating, setProfileGenerating] = useState(false);
@@ -1336,65 +1362,26 @@ export default function App() {
     if (!isHpsaDataSource) {
       setIsHpsaChoroplethLoading(false);
       setHpsaChoroplethError(null);
+      setHpsaChoropleth(null);
       return;
     }
+  }, [isHpsaDataSource]);
 
-    const cacheKey = `hpsa|choropleth|${selectedHpsaDomain}`;
-    const cachedPayload = getCached(cacheKey);
-    if (cachedPayload) {
-      setHpsaChoropleth(cachedPayload);
-      setHpsaChoroplethError(null);
-      setIsHpsaChoroplethLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    setIsHpsaChoroplethLoading(true);
-    setHpsaChoroplethError(null);
-
-    fetchWithDedupe(cacheKey, async () => {
-      const response = await fetch(
-        `${API_BASE}/hpsa/choropleth/counties?domain=${encodeURIComponent(selectedHpsaDomain)}`
-      );
-      if (!response.ok) {
-        const body = await parseErrorBody(response);
-        throw new Error(`HPSA choropleth request failed (${response.status}): ${body}`);
-      }
-      return response.json();
-    })
-      .then((payload) => {
-        if (!isMounted) return;
-        setCached(cacheKey, payload);
-        setHpsaChoropleth(payload);
-        setHpsaChoroplethError(null);
-      })
-      .catch((fetchError) => {
-        if (!isMounted) return;
-        const isNetworkFetchError =
-          fetchError instanceof TypeError
-          && /failed to fetch/i.test(fetchError.message ?? "");
-        setHpsaChoropleth(null);
-        setHpsaChoroplethError(
-          isNetworkFetchError
-            ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
-            : (fetchError.message ?? "Failed to load HPSA choropleth.")
-        );
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsHpsaChoroplethLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    fetchWithDedupe,
-    getCached,
-    isHpsaDataSource,
-    selectedHpsaDomain,
-    setCached,
-  ]);
+  const syncHpsaMetadataFromCountyPayload = useCallback((payload) => {
+    const metadata = payload?.metadata && typeof payload.metadata === "object"
+      ? payload.metadata
+      : null;
+    const quartiles = metadata?.quartiles && typeof metadata.quartiles === "object"
+      ? metadata.quartiles
+      : null;
+    const domain = typeof metadata?.domain === "string"
+      ? metadata.domain
+      : selectedHpsaDomain;
+    setHpsaChoropleth({
+      domain,
+      quartiles,
+    });
+  }, [selectedHpsaDomain]);
 
   const fetchCountyChoropleth = useCallback(
     async (bboxValue) => {
@@ -1410,56 +1397,42 @@ export default function App() {
       countyAbortRef.current = controller;
 
       if (isHpsaDataSource) {
-        const boundariesUrl = new URL(`${API_BASE}/counties/boundaries/geojson`);
-        boundariesUrl.searchParams.set("simplify", "0.02");
-        boundariesUrl.searchParams.set("limit", "5000");
+        const hpsaUrl = new URL(`${API_BASE}/hpsa/counties`);
+        hpsaUrl.searchParams.set("domain", selectedHpsaDomain);
+        hpsaUrl.searchParams.set("simplify", "0.02");
+        hpsaUrl.searchParams.set("limit", "5000");
         if (bboxValue) {
-          boundariesUrl.searchParams.set("bbox", bboxValue);
+          hpsaUrl.searchParams.set("bbox", bboxValue);
         }
 
-        const boundariesResponse = await fetch(boundariesUrl, { signal: controller.signal });
-        if (!boundariesResponse.ok) {
-          const body = await parseErrorBody(boundariesResponse);
-          throw new Error(`County boundary request failed (${boundariesResponse.status}): ${body}`);
+        setIsHpsaChoroplethLoading(true);
+        setHpsaChoroplethError(null);
+        try {
+          const hpsaResponse = await fetch(hpsaUrl, { signal: controller.signal });
+          if (!hpsaResponse.ok) {
+            const body = await parseErrorBody(hpsaResponse);
+            throw new Error(`HPSA county request failed (${hpsaResponse.status}): ${body}`);
+          }
+          const payload = await hpsaResponse.json();
+          syncHpsaMetadataFromCountyPayload(payload);
+          return payload;
+        } catch (fetchError) {
+          if (isAbortLikeError(fetchError, controller.signal)) {
+            throw fetchError;
+          }
+          const isNetworkFetchError =
+            fetchError instanceof TypeError
+            && /failed to fetch/i.test(fetchError.message ?? "");
+          setHpsaChoropleth(null);
+          setHpsaChoroplethError(
+            isNetworkFetchError
+              ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
+              : (fetchError.message ?? "Failed to load HPSA county map.")
+          );
+          throw fetchError;
+        } finally {
+          setIsHpsaChoroplethLoading(false);
         }
-        const boundariesGeojson = await boundariesResponse.json();
-        const choroplethFeatures = Array.isArray(hpsaChoropleth?.features)
-          ? hpsaChoropleth.features
-          : [];
-        const byFips = new Map();
-        choroplethFeatures.forEach((feature) => {
-          const normalizedFips = normalizeCountyFips(feature?.county_fips);
-          if (!normalizedFips) return;
-          byFips.set(normalizedFips, feature);
-        });
-
-        const mergedFeatures = Array.isArray(boundariesGeojson?.features)
-          ? boundariesGeojson.features.map((feature) => {
-            const properties = feature?.properties ?? {};
-            const countyFips = normalizeCountyFips(
-              properties.county_fips
-              ?? properties.location_id
-              ?? properties.geoid
-            );
-            const hpsaFeature = countyFips ? byFips.get(countyFips) : null;
-            return {
-              ...feature,
-              properties: {
-                ...properties,
-                county_fips: countyFips,
-                value: hpsaFeature?.value ?? null,
-                designated: Boolean(hpsaFeature?.designated),
-                tier: hpsaFeature?.tier ?? null,
-                hpsa_domain: selectedHpsaDomain,
-              },
-            };
-          })
-          : [];
-
-        return {
-          type: "FeatureCollection",
-          features: mergedFeatures,
-        };
       }
 
       const url = isAcsDataSource
@@ -1496,7 +1469,7 @@ export default function App() {
       isSviDataSource,
       isHpsaDataSource,
       isAcsMeasureSelected,
-      hpsaChoropleth,
+      syncHpsaMetadataFromCountyPayload,
       selectedHpsaDomain,
       selectedMeasureId,
       selectedSviYear,
@@ -1597,6 +1570,9 @@ export default function App() {
         setCached(legendKey, data);
         setAcsLegend(data);
       } catch (legendError) {
+        if (isAbortLikeError(legendError)) {
+          return;
+        }
         console.error("ACS legend fetch failed:", legendError);
         setAcsLegend(null);
       } finally {
@@ -1689,6 +1665,9 @@ export default function App() {
     setCountyBoundaryOverlay(null);
     setStateBoundaryOverlay(null);
     setAcsLegend(null);
+    setHpsaChoropleth(null);
+    setHpsaChoroplethError(null);
+    setIsHpsaChoroplethLoading(false);
     setHistoryOpen(false);
     // Keep selection across measure/year/type changes; only clear transient hover state.
     setHoveredProps(null);
@@ -1748,6 +1727,9 @@ export default function App() {
         const data = await fetchTractsForBbox(bbox);
         setCached(key, data);
       } catch (prefetchError) {
+        if (isAbortLikeError(prefetchError)) {
+          return;
+        }
         console.warn("Tract prefetch failed:", prefetchError);
       }
     }).catch(() => {
@@ -1794,6 +1776,9 @@ export default function App() {
         }
       } catch (err) {
         if (latestStateReqRef.current === stateReqId) {
+          if (isAbortLikeError(err)) {
+            return;
+          }
           console.error("State boundary fetch failed:", err);
         }
       }
@@ -1812,13 +1797,6 @@ export default function App() {
       || missingMeasureContext
       || missingTypeContext
     ) {
-      return;
-    }
-    if (isHpsaDataSource && isHpsaChoroplethLoading) {
-      return;
-    }
-    if (isHpsaDataSource && !hpsaChoropleth) {
-      setCountyGeojson(null);
       return;
     }
     if (isAcsDataSource && !isAcsMeasureSelected) {
@@ -1858,6 +1836,9 @@ export default function App() {
               }
             } catch (err) {
               if (latestTractReqRef.current === tractReqId) {
+                if (isAbortLikeError(err)) {
+                  return;
+                }
                 console.error("Tract background refresh failed:", err);
               }
             }
@@ -1878,6 +1859,9 @@ export default function App() {
               }
             } catch (err) {
               if (latestTractReqRef.current === tractReqId) {
+                if (isAbortLikeError(err)) {
+                  return;
+                }
                 console.error(err);
                 setError(err.message ?? "Failed to load tract map data.");
               }
@@ -1919,6 +1903,9 @@ export default function App() {
               }
             } catch (err) {
               if (latestOutlineReqRef.current === outlineReqId) {
+                if (isAbortLikeError(err)) {
+                  return;
+                }
                 console.error("Outline background refresh failed:", err);
               }
             }
@@ -1938,6 +1925,9 @@ export default function App() {
               }
             } catch (err) {
               if (latestOutlineReqRef.current === outlineReqId) {
+                if (isAbortLikeError(err)) {
+                  return;
+                }
                 console.error(err);
                 // Don't set error for overlay; it's secondary
               }
@@ -1969,6 +1959,11 @@ export default function App() {
       if (cachedCountyData) {
         setCountyGeojson(cachedCountyData);
         setCountyBoundaryOverlay(null);
+        if (isHpsaDataSource) {
+          syncHpsaMetadataFromCountyPayload(cachedCountyData);
+          setHpsaChoroplethError(null);
+          setIsHpsaChoroplethLoading(false);
+        }
         // Background refresh
         fetchWithDedupe(countyKey, async () => {
           try {
@@ -1979,6 +1974,9 @@ export default function App() {
             }
           } catch (err) {
             if (latestCountyReqRef.current === countyReqId) {
+              if (isAbortLikeError(err)) {
+                return;
+              }
               console.error("County background refresh failed:", err);
             }
           }
@@ -2000,6 +1998,9 @@ export default function App() {
             }
           } catch (err) {
             if (latestCountyReqRef.current === countyReqId) {
+              if (isAbortLikeError(err)) {
+                return;
+              }
               console.error(err);
               setError(err.message ?? "Failed to load county map data.");
               // Don't clear county geojson—keep it visible
@@ -2026,8 +2027,7 @@ export default function App() {
     isAcsDataSource,
     isSviDataSource,
     isHpsaDataSource,
-    hpsaChoropleth,
-    isHpsaChoroplethLoading,
+    syncHpsaMetadataFromCountyPayload,
     isAcsMeasureSelected,
     selectedMeasureId,
     selectedTemporalValue,
@@ -2480,7 +2480,30 @@ export default function App() {
     async () => {
       if (assistantLoading) return;
       const trimmedInput = assistantInput.trim();
-      if (!trimmedInput || selectedYear == null) return;
+      if (!trimmedInput) return;
+
+      const mapContext = assistantMapContext ?? null;
+      const requestYear = isAcsDataSource
+        ? (parseYearFromToken(selectedYearWindow) ?? 0)
+        : isSviDataSource
+          ? (parseYearFromToken(selectedSviYear) ?? 0)
+          : isHpsaDataSource
+            ? 0
+            : (parseYearFromToken(selectedYear) ?? 0);
+      const requestMeasureId = isAcsDataSource
+        ? (selectedMeasureId || "ACS")
+        : isSviDataSource
+          ? (selectedMeasureId || "RPL_THEMES")
+          : isHpsaDataSource
+            ? "HPSA"
+            : (selectedMeasureId || "PLACES");
+      const requestValueType = isAcsDataSource
+        ? (selectedType || "Percent")
+        : isSviDataSource
+          ? "Rank"
+          : isHpsaDataSource
+            ? (selectedHpsaDomain || "pc")
+            : (selectedType || "CrdPrv");
 
       setAssistantScrollSignal((value) => value + 1);
       setAssistantMessages((current) => [
@@ -2498,13 +2521,14 @@ export default function App() {
           body: JSON.stringify({
             text: trimmedInput,
             context: {
-              measure_id: selectedMeasureId,
-              year: selectedYear,
-              data_value_type_id: selectedType,
+              measure_id: requestMeasureId,
+              year: requestYear,
+              data_value_type_id: requestValueType,
               zoom: mapZoom,
               bbox,
               active_layer: tractsActive ? "tract" : "county",
             },
+            map_context: mapContext ?? undefined,
           }),
         });
 
@@ -2519,10 +2543,27 @@ export default function App() {
         const actions = Array.isArray(resp?.actions) ? resp.actions : [];
         executeAssistantActions(actions);
 
-        const answerMarkdown = typeof resp?.answer_markdown === "string"
-          ? resp.answer_markdown
-          : "";
-        await streamAssistantAnswer(answerMarkdown);
+        const contextSummary = (
+          resp?.context_summary && typeof resp.context_summary === "object"
+        )
+          ? resp.context_summary
+          : null;
+        if (contextSummary) {
+          setAssistantMessages((current) => [
+            ...current,
+            {
+              role: "assistant",
+              text: "",
+              contextSummary,
+            },
+          ]);
+          setAssistantScrollSignal((value) => value + 1);
+        } else {
+          const answerMarkdown = typeof resp?.answer_markdown === "string"
+            ? resp.answer_markdown
+            : "";
+          await streamAssistantAnswer(answerMarkdown);
+        }
 
         if (ANALYSIS_PROMPT_PATTERN.test(trimmedInput)) {
           let target = null;
@@ -2580,16 +2621,23 @@ export default function App() {
     },
     [
       assistantInput,
+      assistantMapContext,
       assistantLoading,
       bbox,
       cancelAssistantStream,
       executeAssistantActions,
       generateProfileForArea,
+      isAcsDataSource,
+      isHpsaDataSource,
+      isSviDataSource,
       mapZoom,
-      selectedMeasureId,
       selectedLocationId,
+      selectedMeasureId,
+      selectedHpsaDomain,
+      selectedSviYear,
       selectedType,
       selectedYear,
+      selectedYearWindow,
       streamAssistantAnswer,
       tractsActive,
     ]
@@ -2733,7 +2781,7 @@ export default function App() {
         setHistoryError(null);
       })
       .catch((historyFetchError) => {
-        if (controller.signal.aborted) return;
+        if (isAbortLikeError(historyFetchError, controller.signal)) return;
         console.error("History fetch failed:", historyFetchError);
         const isNetworkFetchError =
           historyFetchError instanceof TypeError
@@ -3085,6 +3133,144 @@ export default function App() {
   const hpsaCountyStateLine = selectedStateAbbr
     ? `${hpsaCountyDisplayLabel}, ${selectedStateAbbr}`
     : hpsaCountyDisplayLabel;
+  const selectedCountyFipsForContext = normalizeCountyFips(
+    firstDefined(
+      selectedFeatureProps?.county_fips,
+      selectedFeatureProps?.location_id,
+      selectedFeatureProps?.locationid,
+      selectedFeatureProps?.geoid,
+      selectedGeoLevel === "tract" && selectedLocationId
+        ? String(selectedLocationId).slice(0, 5)
+        : null
+    )
+  );
+  const selectedAreaNameForContext = String(
+    firstDefined(
+      selectedFeatureProps?.location_name,
+      selectedFeatureProps?.county_name,
+      selectedFeatureProps?.name,
+      selectedGeoLevel === "county" ? countyOrParishLabel : selectedAreaLabel,
+      selectedLocationId
+    ) ?? ""
+  ).trim();
+  const selectedAsOfDateForContext = isHpsaDataSource
+    ? (hpsaAsOfText != null ? String(hpsaAsOfText) : undefined)
+    : isAcsDataSource
+      ? (selectedYearWindow != null ? String(selectedYearWindow) : undefined)
+      : isSviDataSource
+        ? (selectedSviYear != null ? String(selectedSviYear) : undefined)
+        : (selectedYear != null ? String(selectedYear) : undefined);
+
+  const buildAssistantLegacyContext = useCallback(() => {
+    const defaultYear = isAcsDataSource
+      ? parseYearFromToken(selectedYearWindow)
+      : isSviDataSource
+        ? parseYearFromToken(selectedSviYear)
+        : isHpsaDataSource
+          ? parseYearFromToken(selectedAsOfDateForContext)
+          : parseYearFromToken(selectedYear);
+    const resolvedYear = defaultYear ?? 0;
+    const resolvedMeasureId = isAcsDataSource
+      ? (selectedMeasureId || "ACS")
+      : isSviDataSource
+        ? (selectedMeasureId || "RPL_THEMES")
+        : isHpsaDataSource
+          ? "HPSA"
+          : (selectedMeasureId || "PLACES");
+    const resolvedType = isAcsDataSource
+      ? (selectedType || "Percent")
+      : isSviDataSource
+        ? "Rank"
+        : isHpsaDataSource
+          ? (selectedHpsaDomain || "pc")
+          : (selectedType || "CrdPrv");
+
+    return {
+      measure_id: resolvedMeasureId,
+      year: resolvedYear,
+      data_value_type_id: resolvedType,
+      zoom: mapZoom,
+      bbox,
+      active_layer: tractsActive ? "tract" : "county",
+    };
+  }, [
+    bbox,
+    isAcsDataSource,
+    isHpsaDataSource,
+    isSviDataSource,
+    mapZoom,
+    selectedAsOfDateForContext,
+    selectedHpsaDomain,
+    selectedMeasureId,
+    selectedSviYear,
+    selectedType,
+    selectedYear,
+    selectedYearWindow,
+    tractsActive,
+  ]);
+
+  const buildCurrentMapContext = useCallback(() => {
+    if (!selectedLocationId) return null;
+
+    const selection = isHpsaDataSource
+      ? {
+        hpsaDomain: selectedHpsaDomain,
+      }
+      : isAcsDataSource
+        ? {
+          acsVariable: selectedMeasureId,
+          acsYearWindow: selectedYearWindow,
+          acsDataValueTypeId: selectedType || "Percent",
+        }
+        : isSviDataSource
+          ? {
+            sviTheme: sviThemeLabel || null,
+            sviMeasureId: selectedMeasureId,
+            sviYear: selectedSviYear,
+          }
+          : {
+            placesMeasureId: selectedMeasureId,
+            placesYear: parseYearFromToken(selectedYear),
+            placesValueTypeId: selectedType,
+          };
+
+    return buildMapContext({
+      dataSource: selectedDataSource,
+      geoLevel: selectedGeoLevel,
+      selectedArea: {
+        countyFips: selectedCountyFipsForContext,
+        tractGeoid: selectedGeoLevel === "tract" ? selectedLocationId : null,
+        name: selectedAreaNameForContext || null,
+        stateAbbr: selectedStateAbbr || null,
+      },
+      selection,
+      mapState: {
+        zoom: mapZoom,
+        bbox,
+      },
+      asOfDate: selectedAsOfDateForContext,
+    });
+  }, [
+    bbox,
+    isAcsDataSource,
+    isHpsaDataSource,
+    isSviDataSource,
+    mapZoom,
+    selectedAreaNameForContext,
+    selectedAsOfDateForContext,
+    selectedCountyFipsForContext,
+    selectedDataSource,
+    selectedGeoLevel,
+    selectedHpsaDomain,
+    selectedLocationId,
+    selectedMeasureId,
+    selectedStateAbbr,
+    selectedSviYear,
+    selectedType,
+    selectedYear,
+    selectedYearWindow,
+    sviThemeLabel,
+  ]);
 
   useEffect(() => {
     if (!selectedCountyFipsForHpsa) {
@@ -3221,14 +3407,108 @@ export default function App() {
     setCached,
   ]);
 
-  const handleAnalyzeSelectedArea = useCallback(() => {
-    if (!selectedLocationId) return;
-    generateProfileForArea({
-      geography: selectedGeoLevel === "tract" ? "tract" : "county",
-      locationId: selectedLocationId,
-      openPanel: false,
-    });
-  }, [generateProfileForArea, selectedGeoLevel, selectedLocationId]);
+  const handleAnalyzeSelectedArea = useCallback(
+    async () => {
+      if (!selectedLocationId || assistantLoading || analyzeGenerating) return;
+
+      const mapContext = buildCurrentMapContext();
+      if (!mapContext) {
+        await generateProfileForArea({
+          geography: selectedGeoLevel === "tract" ? "tract" : "county",
+          locationId: selectedLocationId,
+          openPanel: false,
+        });
+        return;
+      }
+
+      setAssistantOpenSignal((value) => value + 1);
+      setAssistantMapContext(mapContext);
+      setAssistantScrollSignal((value) => value + 1);
+      setAssistantMessages((current) => [
+        ...current,
+        { role: "user", text: "Analyze this area" },
+      ]);
+      setAssistantLoading(true);
+      setAnalyzeGenerating(true);
+      cancelAssistantStream();
+
+      try {
+        const response = await fetch(`${API_BASE}/assistant/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: "Analyze this area",
+            analyze: true,
+            context: buildAssistantLegacyContext(),
+            map_context: mapContext,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await parseErrorBody(response);
+          throw new Error(`Analyze request failed (${response.status}): ${body}`);
+        }
+
+        const resp = await response.json();
+        const actions = Array.isArray(resp?.actions) ? resp.actions : [];
+        executeAssistantActions(actions);
+
+        const contextSummary = (
+          resp?.context_summary && typeof resp.context_summary === "object"
+        )
+          ? resp.context_summary
+          : null;
+        if (contextSummary) {
+          setAssistantMessages((current) => [
+            ...current,
+            {
+              role: "assistant",
+              text: "",
+              contextSummary,
+            },
+          ]);
+          setAssistantScrollSignal((value) => value + 1);
+          return;
+        }
+
+        const answerMarkdown = typeof resp?.answer_markdown === "string"
+          ? resp.answer_markdown
+          : "";
+        if (answerMarkdown.trim()) {
+          await streamAssistantAnswer(answerMarkdown);
+          return;
+        }
+
+        await generateProfileForArea({
+          geography: selectedGeoLevel === "tract" ? "tract" : "county",
+          locationId: selectedLocationId,
+          openPanel: false,
+        });
+      } catch (analyzeError) {
+        console.error("analyze selected area failed:", analyzeError);
+        await generateProfileForArea({
+          geography: selectedGeoLevel === "tract" ? "tract" : "county",
+          locationId: selectedLocationId,
+          openPanel: false,
+        });
+      } finally {
+        setAnalyzeGenerating(false);
+        setAssistantLoading(false);
+      }
+    },
+    [
+      analyzeGenerating,
+      assistantLoading,
+      buildAssistantLegacyContext,
+      buildCurrentMapContext,
+      cancelAssistantStream,
+      executeAssistantActions,
+      generateProfileForArea,
+      selectedGeoLevel,
+      selectedLocationId,
+      streamAssistantAnswer,
+    ]
+  );
 
   const handleZoomToSelected = useCallback(() => {
     const map = mapRef.current;
@@ -3694,7 +3974,7 @@ export default function App() {
             onAnalyzeSelectedArea={handleAnalyzeSelectedArea}
             zoomToSelectedLabel={zoomToSelectedLabel}
             zoomToSelectedRef={zoomToSelectedButtonRef}
-            profileGenerating={profileGenerating}
+            profileGenerating={profileGenerating || analyzeGenerating || assistantLoading}
           />
           <SearchBar
             apiBase={API_BASE}
@@ -4194,6 +4474,7 @@ export default function App() {
         assistantMessages={assistantMessages}
         assistantLoading={assistantLoading}
         scrollSignal={assistantScrollSignal}
+        openSignal={assistantOpenSignal}
         compactLayout={compactOverlayLayout}
         onAssistantInputChange={setAssistantInput}
         onAssistantSubmit={handleAssistantSubmit}

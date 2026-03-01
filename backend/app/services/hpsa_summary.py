@@ -316,6 +316,87 @@ def fetch_hpsa_county_rows_for_domain(
     return db.execute(query).mappings().all()
 
 
+def fetch_hpsa_county_geojson_rows(
+    db: Session,
+    *,
+    domain: HPSADomain,
+    bbox_bounds: tuple[float, float, float, float] | None = None,
+    simplify: float | None = 0.02,
+    limit: int = 5000,
+    offset: int = 0,
+) -> list[Mapping[str, Any]]:
+    fields = HPSA_DOMAIN_FIELDS[domain]
+
+    bbox_cte = ""
+    bbox_join = ""
+    bbox_filter = ""
+    params: dict[str, Any] = {
+        "limit": limit,
+        "offset": offset,
+    }
+    if bbox_bounds is not None:
+        minx, miny, maxx, maxy = bbox_bounds
+        bbox_cte = (
+            "WITH bbox AS ("
+            "SELECT ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326) AS geom"
+            ")"
+        )
+        bbox_join = "CROSS JOIN bbox"
+        bbox_filter = (
+            "AND b.geom && bbox.geom "
+            "AND ST_Intersects(b.geom, bbox.geom)"
+        )
+        params.update(
+            {
+                "minx": minx,
+                "miny": miny,
+                "maxx": maxx,
+                "maxy": maxy,
+            }
+        )
+
+    geometry_expr = "ST_AsGeoJSON(b.geom)::json"
+    if simplify is not None:
+        geometry_expr = (
+            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+        )
+        params["simplify"] = simplify
+
+    rows = db.execute(
+        text(
+            f"""
+            {bbox_cte}
+            SELECT
+                b.location_id,
+                b.geoid,
+                b.name,
+                b.statefp,
+                b.countyfp,
+                c.state_abbr,
+                c.state_desc,
+                c.county_name,
+                h.county_fips,
+                {fields['designated']} AS designated,
+                {fields['score']} AS value,
+                {geometry_expr} AS geometry
+            FROM dim_county_boundary AS b
+            {bbox_join}
+            LEFT JOIN dim_county AS c
+                ON c.location_id = b.location_id
+            LEFT JOIN county_hpsa_summary AS h
+                ON h.county_fips = b.geoid
+            WHERE b.geom IS NOT NULL
+                {bbox_filter}
+            ORDER BY b.location_id
+            LIMIT :limit
+            OFFSET :offset
+            """
+        ),
+        params,
+    ).mappings().all()
+    return rows
+
+
 def _read_ratio_fields_from_rows(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
     hpsa_formal_ratio: str | None = None
     provider_ratio_goal: str | None = None
@@ -482,6 +563,65 @@ def build_hpsa_choropleth_response(
         features=features,
     )
     return payload.model_dump(mode="python")
+
+
+def build_hpsa_counties_geojson_response(
+    *,
+    domain: HPSADomain,
+    quartile_row: Mapping[str, Any] | None,
+    county_rows: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    quartiles = _build_domain_quartiles_payload(quartile_row)
+    features: list[dict[str, Any]] = []
+    for row in county_rows:
+        designated = _safe_bool(row.get("designated"))
+        score_value = _safe_float(row.get("value"))
+        tier = assign_hpsa_tier(
+            designated=designated,
+            value=score_value,
+            q25=quartiles.get("q25"),
+            q50=quartiles.get("q50"),
+            q75=quartiles.get("q75"),
+        )
+        county_fips = (
+            normalize_county_fips(row.get("county_fips") or row.get("geoid"))
+            or str(row.get("geoid") or "")
+        )
+        county_name = row.get("county_name") or row.get("name")
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": row.get("geometry"),
+                "properties": {
+                    "location_id": row.get("location_id"),
+                    "locationid": row.get("location_id"),
+                    "geoid": row.get("geoid"),
+                    "name": row.get("name"),
+                    "statefp": row.get("statefp"),
+                    "countyfp": row.get("countyfp"),
+                    "county_fips": county_fips,
+                    "state_abbr": row.get("state_abbr"),
+                    "state_desc": row.get("state_desc"),
+                    "county_name": county_name,
+                    "location_name": county_name,
+                    "value": score_value,
+                    "data_value": score_value,
+                    "designated": bool(designated),
+                    "tier": tier,
+                    "hpsa_domain": domain,
+                    "dataset": "hpsa",
+                    "geo_level": "county",
+                },
+            }
+        )
+    return {
+        "type": "FeatureCollection",
+        "metadata": {
+            "domain": domain,
+            "quartiles": quartiles,
+        },
+        "features": features,
+    }
 
 
 def build_hpsa_county_domain_detail(

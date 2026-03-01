@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.routers.health import router as health_router
 from app.routers.counties import router as counties_router
@@ -20,6 +21,11 @@ from app.routers.svi import router as svi_router
 from app.routers.hpsa import router as hpsa_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
+
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=2048,
+)
 
 app.add_middleware(
     CORSMiddleware,
