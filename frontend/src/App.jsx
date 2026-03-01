@@ -26,6 +26,7 @@ import {
   getSeverityLabel,
 } from "./content/hpsaLegendCopy";
 import { buildMapContext } from "./mapContext";
+import useSelectedAreaProfileTarget from "./hooks/useSelectedAreaProfileTarget";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
@@ -457,8 +458,14 @@ function MapToolbar({
   zoomToSelectedLabel = "Zoom to selected area",
   zoomToSelectedRef,
   profileGenerating = false,
+  profileTarget,
+  onOpenProfile,
 }) {
   const map = useMap();
+  const profileEnabled = Boolean(profileTarget?.enabled && profileTarget?.href);
+  const profileTooltip = profileEnabled
+    ? "Open County/Tract Profile"
+    : "Select a county or tract first";
 
   return (
     <div
@@ -468,50 +475,81 @@ function MapToolbar({
         right: compactLayout ? 16 : rightInset,
         bottom: 86,
         zIndex: 2300,
-        display: "flex",
+        display: "grid",
+        gap: 6,
         justifyContent: "flex-start",
-        alignItems: "center",
-        gap: 8,
+        alignItems: "stretch",
       }}
     >
-      <button
-        type="button"
-        onClick={() => map.setView(defaultCenter, defaultZoom)}
-        className="chip-secondary-btn"
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.3,
+          color: "#0F2D46",
+          textTransform: "uppercase",
+        }}
       >
-        Home
-      </button>
-      <button
-        type="button"
-        onClick={() => map.zoomIn()}
-        className="chip-secondary-btn"
-      >
-        Zoom In
-      </button>
-      <button
-        type="button"
-        onClick={() => map.zoomOut()}
-        className="chip-secondary-btn"
-      >
-        Zoom Out
-      </button>
-      <button
-        type="button"
-        ref={zoomToSelectedRef}
-        onClick={onZoomToSelected}
-        disabled={!hasSelectedLocation}
-        className={`chip-secondary-btn ${hasSelectedLocation ? "" : "is-disabled"}`}
-      >
-        {zoomToSelectedLabel}
-      </button>
-      <button
-        type="button"
-        onClick={onAnalyzeSelectedArea}
-        disabled={!hasSelectedLocation || profileGenerating}
-        className="chip-primary-btn"
-      >
-        {profileGenerating ? "Analyzing..." : "Analyze this area"}
-      </button>
+        Map Tools
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => map.setView(defaultCenter, defaultZoom)}
+          className="chip-secondary-btn"
+        >
+          Home
+        </button>
+        <button
+          type="button"
+          onClick={() => map.zoomIn()}
+          className="chip-secondary-btn"
+        >
+          Zoom In
+        </button>
+        <button
+          type="button"
+          onClick={() => map.zoomOut()}
+          className="chip-secondary-btn"
+        >
+          Zoom Out
+        </button>
+        <button
+          type="button"
+          ref={zoomToSelectedRef}
+          onClick={onZoomToSelected}
+          disabled={!hasSelectedLocation}
+          className={`chip-secondary-btn ${hasSelectedLocation ? "" : "is-disabled"}`}
+        >
+          {zoomToSelectedLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onAnalyzeSelectedArea}
+          disabled={!hasSelectedLocation || profileGenerating}
+          className="chip-primary-btn"
+        >
+          {profileGenerating ? "Analyzing..." : "Analyze this area"}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          disabled={!profileEnabled}
+          aria-disabled={!profileEnabled}
+          title={profileTooltip}
+          className={`chip-secondary-btn ${profileEnabled ? "" : "is-disabled"}`}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <path
+                d="M3 1.5h6.5L13.5 5v9a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5zm6 .8V5h2.7L9 2.3zM5 7h6v1H5V7zm0 2.5h6v1H5v-1zm0 2.5h4v1H5v-1z"
+                fill="currentColor"
+              />
+            </svg>
+            Open County/Tract Profile
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -929,6 +967,7 @@ export default function App() {
   const isAcsDataSource = selectedDataSource === DATA_SOURCES.ACS_NMF;
   const isSviDataSource = selectedDataSource === DATA_SOURCES.SVI;
   const isHpsaDataSource = selectedDataSource === DATA_SOURCES.HPSA;
+  const isPlacesDataSource = selectedDataSource === DATA_SOURCES.PLACES;
   const datasetCachePrefix = isAcsDataSource
     ? "acs-nmf"
     : isSviDataSource
@@ -960,6 +999,27 @@ export default function App() {
     }
     return map;
   }, [isSviDataSource, measures]);
+  const placesMeasureGroups = useMemo(() => {
+    if (!isPlacesDataSource) return [];
+    const grouped = new Map();
+    for (const measure of measures ?? []) {
+      const categoryName = String(measure?.category ?? "Other").trim() || "Other";
+      if (!grouped.has(categoryName)) {
+        grouped.set(categoryName, []);
+      }
+      grouped.get(categoryName).push(measure);
+    }
+    return Array.from(grouped.entries())
+      .sort((left, right) => String(left[0]).localeCompare(String(right[0])))
+      .map(([category, groupMeasures]) => ({
+        category,
+        measures: [...groupMeasures].sort((left, right) => {
+          const leftLabel = getMeasureDisplayName(left);
+          const rightLabel = getMeasureDisplayName(right);
+          return String(leftLabel).localeCompare(String(rightLabel));
+        }),
+      }));
+  }, [isPlacesDataSource, measures]);
   const selectedMeasureSource = selectedMeasure?.source ?? null;
   const isAcsMeasureSelected = isAcsDataSource && selectedMeasureSource === "acs";
   const acsYearWindows = useMemo(() => {
@@ -2825,6 +2885,14 @@ export default function App() {
     : "Zoom to Selected County";
   const selectedFeature = selectedProps ? { properties: selectedProps } : null;
   const selectedFeatureProps = selectedFeature?.properties ?? null;
+  const selectedProfileTarget = useSelectedAreaProfileTarget({
+    selectedFeatureProps,
+    tractsActive,
+  });
+  const handleOpenSelectedProfile = useCallback(() => {
+    if (!selectedProfileTarget?.enabled || !selectedProfileTarget?.href) return;
+    window.open(selectedProfileTarget.href, "_blank", "noopener,noreferrer");
+  }, [selectedProfileTarget]);
   const firstDefined = (...values) => {
     for (const value of values) {
       if (value !== null && value !== undefined) {
@@ -3800,6 +3868,20 @@ export default function App() {
                       })}
                     </optgroup>
                   ))
+                ) : isPlacesDataSource ? (
+                  placesMeasureGroups.map((group) => (
+                    <optgroup key={`places-${group.category}`} label={group.category}>
+                      {group.measures.map((measure) => {
+                        const label = getMeasureDisplayName(measure);
+                        const optionLabel = `${measure.measure_id}${label ? ` - ${label}` : ""}`;
+                        return (
+                          <option key={measure.measure_id} value={measure.measure_id}>
+                            {optionLabel}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))
                 ) : (
                   measures.map((measure) => {
                     const label = getMeasureDisplayName(measure);
@@ -3975,6 +4057,8 @@ export default function App() {
             zoomToSelectedLabel={zoomToSelectedLabel}
             zoomToSelectedRef={zoomToSelectedButtonRef}
             profileGenerating={profileGenerating || analyzeGenerating || assistantLoading}
+            profileTarget={selectedProfileTarget}
+            onOpenProfile={handleOpenSelectedProfile}
           />
           <SearchBar
             apiBase={API_BASE}

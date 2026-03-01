@@ -215,6 +215,16 @@ body {
   background: #f8fafc;
 }
 
+.measure-controls-panel select optgroup {
+  font-weight: 700;
+  color: var(--chip-navy);
+}
+
+.measure-controls-panel select optgroup option {
+  font-weight: 400;
+  color: var(--chip-navy);
+}
+
 .chip-nav-modal-backdrop {
   position: fixed;
   inset: 0;
