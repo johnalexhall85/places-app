@@ -3944,9 +3944,6 @@ export default function App() {
             gap: 6,
           }}
         >
-          {!isHpsaDataSource ? (
-            <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
-          ) : null}
           {selectedProps ? (
             <>
               {isHpsaDataSource ? (
@@ -4076,56 +4073,6 @@ export default function App() {
                     </div>
                   )}
                 </>
-              ) : isSviDataSource ? (
-                <>
-                  <div>
-                    {tractsActive
-                      ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
-                      : getCountyName(selectedProps)}
-                  </div>
-                  <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
-                  <div>
-                    {yearValue ?? selectedSviYear} National {sviMeasureName} SVI Rank: {sviRankValueText}
-                  </div>
-                  {isSviThemeMeasure && sviThemeLabel ? (
-                    <div>Theme: {sviThemeLabel}</div>
-                  ) : null}
-                  <div>Measure: {sviMeasureName}</div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    {tractsActive
-                      ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
-                      : getCountyName(selectedProps)}
-                  </div>
-                  <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
-                  <div>
-                    Value: {isAcsDataSource
-                      ? `${fmtPercent(acsValue)}${acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`}`
-                      : (getValueFromProperties(selectedProps) ?? "No data")}
-                  </div>
-                  <div>
-                    {isAcsDataSource
-                      ? `Year window: ${formatYearWindowDisplay(
-                        selectedProps.year_window ?? selectedYearWindow
-                      )}`
-                      : `Year: ${selectedProps.year ?? selectedYear}`}
-                  </div>
-                  <div>
-                    Measure: {selectedProps.measure ?? selectedProps.measure_id ?? selectedMeasureId}
-                  </div>
-                  <div>
-                    Data value type: {formatDataValueTypeLabel(
-                      selectedProps.data_value_type_id ?? selectedType
-                    )}
-                  </div>
-                </>
-              )}
-              {isAcsDataSource ? (
-                <div>
-                  Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
-                </div>
               ) : null}
               {selectedGeoLevel === "county" && !isHpsaDataSource ? (
                 <div
