@@ -17,12 +17,21 @@ import {
   getSviLevel,
   sviMeasureGroups,
 } from "./sviCatalog";
+import {
+  buildInterpretationLines,
+  formatNumberWithCommas,
+  formatPercent,
+  formatRatio,
+  formatTierRanges,
+  getSeverityLabel,
+} from "./content/hpsaLegendCopy";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
   PLACES: "places",
   ACS_NMF: "acs_nmf",
   SVI: "svi",
+  HPSA: "hpsa",
 };
 const DEFAULT_SVI_YEAR = 2022;
 const SVI_FALLBACK_YEARS = [2022, 2020, 2018];
@@ -35,6 +44,30 @@ const BBOX_PRECISION = 4;
 const BIN_COUNT = 5;
 const COLORS = ["#F2FBFB", "#AADDDD", "#7FCACB", "#42A6A8", "#0F2D46"];
 const NO_DATA_COLOR = "#DDE5EB";
+const HPSA_TIER_COLORS = {
+  1: COLORS[0],
+  2: COLORS[1],
+  3: COLORS[2],
+  4: COLORS[4],
+};
+const HPSA_SEVERITY_BADGE_STYLES = {
+  1: { background: "#2E7D32", border: "#1B5E20", color: "#FFFFFF" },
+  2: { background: "#FACC15", border: "#CA8A04", color: "#111827" },
+  3: { background: "#EA580C", border: "#C2410C", color: "#FFFFFF" },
+  4: { background: "#B91C1C", border: "#991B1B", color: "#FFFFFF" },
+  designatedNoScore: { background: "#B8C2CC", border: "#94A3B8", color: "#0F172A" },
+};
+const HPSA_NOT_DESIGNATED_COLOR = "#D1D5DB";
+const HPSA_DESIGNATED_NO_SCORE_COLOR = "#B8C2CC";
+const HPSA_DOMAIN_OPTIONS = [
+  { value: "pc", label: "Primary Care" },
+  { value: "mh", label: "Mental Health" },
+  { value: "dh", label: "Dental" },
+];
+const HPSA_DOMAIN_LABELS = HPSA_DOMAIN_OPTIONS.reduce((acc, option) => {
+  acc[option.value] = option.label;
+  return acc;
+}, {});
 const STATE_BORDER_COLOR = "#4c1d95";
 const FALLBACK_YEARS = [2023];
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -727,6 +760,7 @@ export default function App() {
   });
 
   const [selectedDataSource, setSelectedDataSource] = useState(DATA_SOURCES.PLACES);
+  const [selectedHpsaDomain, setSelectedHpsaDomain] = useState("pc");
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
@@ -741,6 +775,9 @@ export default function App() {
   const [sviYearsError, setSviYearsError] = useState(null);
   const [acsLegend, setAcsLegend] = useState(null);
   const [isLegendLoading, setIsLegendLoading] = useState(false);
+  const [hpsaChoropleth, setHpsaChoropleth] = useState(null);
+  const [isHpsaChoroplethLoading, setIsHpsaChoroplethLoading] = useState(false);
+  const [hpsaChoroplethError, setHpsaChoroplethError] = useState(null);
 
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [bbox, setBbox] = useState(null);
@@ -754,6 +791,9 @@ export default function App() {
   const [hpsaSummary, setHpsaSummary] = useState(null);
   const [isHpsaLoading, setIsHpsaLoading] = useState(false);
   const [hpsaError, setHpsaError] = useState(null);
+  const [hpsaDomainDetails, setHpsaDomainDetails] = useState(null);
+  const [isHpsaDomainDetailsLoading, setIsHpsaDomainDetailsLoading] = useState(false);
+  const [hpsaDomainDetailsError, setHpsaDomainDetailsError] = useState(null);
   const [, setHoveredProps] = useState(null);
   const [isCountyLoading, setIsCountyLoading] = useState(false);
   const [isTractLoading, setIsTractLoading] = useState(false);
@@ -862,20 +902,25 @@ export default function App() {
 
   const isAcsDataSource = selectedDataSource === DATA_SOURCES.ACS_NMF;
   const isSviDataSource = selectedDataSource === DATA_SOURCES.SVI;
+  const isHpsaDataSource = selectedDataSource === DATA_SOURCES.HPSA;
   const datasetCachePrefix = isAcsDataSource
     ? "acs-nmf"
     : isSviDataSource
       ? "svi"
-      : "places";
+      : isHpsaDataSource
+        ? "hpsa"
+        : "places";
   const historySupported = selectedDataSource === DATA_SOURCES.PLACES;
-  const tractsActive = mapZoom >= TRACT_ZOOM;
+  const tractsActive = !isHpsaDataSource && mapZoom >= TRACT_ZOOM;
   const activeGeography = tractsActive ? "tract" : "county";
   const acsGeography = isAcsDataSource && tractsActive ? "tract" : "county";
-  const selectedTemporalValue = isAcsDataSource
-    ? selectedYearWindow
-    : isSviDataSource
-      ? selectedSviYear
-      : selectedYear;
+  const selectedTemporalValue = isHpsaDataSource
+    ? selectedHpsaDomain
+    : isAcsDataSource
+      ? selectedYearWindow
+      : isSviDataSource
+        ? selectedSviYear
+        : selectedYear;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
   );
@@ -903,7 +948,7 @@ export default function App() {
   }, [isAcsDataSource, selectedMeasure]);
 
   useEffect(() => {
-    if (isAcsDataSource || isSviDataSource) return;
+    if (isAcsDataSource || isSviDataSource || isHpsaDataSource) return;
     if (!selectedMeasureId) return;
     if (selectedYear == null || !Number.isFinite(Number(selectedYear))) return;
     if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") return;
@@ -912,7 +957,14 @@ export default function App() {
       measureId: selectedMeasureId,
       dataValueTypeId: selectedType,
     });
-  }, [isAcsDataSource, isSviDataSource, selectedMeasureId, selectedType, selectedYear]);
+  }, [
+    isAcsDataSource,
+    isSviDataSource,
+    isHpsaDataSource,
+    selectedMeasureId,
+    selectedType,
+    selectedYear,
+  ]);
 
   const activeGeojson = tractsActive ? tractGeojson : countyGeojson;
   const activeFeatures = activeGeojson?.features ?? [];
@@ -982,6 +1034,14 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
     const source = selectedDataSource;
+    if (source === DATA_SOURCES.HPSA) {
+      setMeasures([]);
+      setError(null);
+      return () => {
+        isMounted = false;
+      };
+    }
+
     const sourceKey = source === DATA_SOURCES.ACS_NMF
       ? `acs_nmf:${acsGeography}`
       : source === DATA_SOURCES.SVI
@@ -1111,6 +1171,14 @@ export default function App() {
   }, [acsGeography, activeGeography, selectedDataSource, selectedSviYear]);
 
   useEffect(() => {
+    if (selectedDataSource === DATA_SOURCES.HPSA) {
+      setIsYearsLoading(false);
+      setYearsError(null);
+      setIsSviYearsLoading(false);
+      setSviYearsError(null);
+      return;
+    }
+
     if (selectedDataSource === DATA_SOURCES.SVI) {
       let isMounted = true;
       setIsYearsLoading(false);
@@ -1264,10 +1332,134 @@ export default function App() {
     });
   }, [acsDataValueTypeIds, isAcsDataSource, selectedType]);
 
+  useEffect(() => {
+    if (!isHpsaDataSource) {
+      setIsHpsaChoroplethLoading(false);
+      setHpsaChoroplethError(null);
+      return;
+    }
+
+    const cacheKey = `hpsa|choropleth|${selectedHpsaDomain}`;
+    const cachedPayload = getCached(cacheKey);
+    if (cachedPayload) {
+      setHpsaChoropleth(cachedPayload);
+      setHpsaChoroplethError(null);
+      setIsHpsaChoroplethLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsHpsaChoroplethLoading(true);
+    setHpsaChoroplethError(null);
+
+    fetchWithDedupe(cacheKey, async () => {
+      const response = await fetch(
+        `${API_BASE}/hpsa/choropleth/counties?domain=${encodeURIComponent(selectedHpsaDomain)}`
+      );
+      if (!response.ok) {
+        const body = await parseErrorBody(response);
+        throw new Error(`HPSA choropleth request failed (${response.status}): ${body}`);
+      }
+      return response.json();
+    })
+      .then((payload) => {
+        if (!isMounted) return;
+        setCached(cacheKey, payload);
+        setHpsaChoropleth(payload);
+        setHpsaChoroplethError(null);
+      })
+      .catch((fetchError) => {
+        if (!isMounted) return;
+        const isNetworkFetchError =
+          fetchError instanceof TypeError
+          && /failed to fetch/i.test(fetchError.message ?? "");
+        setHpsaChoropleth(null);
+        setHpsaChoroplethError(
+          isNetworkFetchError
+            ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
+            : (fetchError.message ?? "Failed to load HPSA choropleth.")
+        );
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsHpsaChoroplethLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    fetchWithDedupe,
+    getCached,
+    isHpsaDataSource,
+    selectedHpsaDomain,
+    setCached,
+  ]);
+
   const fetchCountyChoropleth = useCallback(
     async (bboxValue) => {
       if (isAcsDataSource && !isAcsMeasureSelected) {
         return { type: "FeatureCollection", features: [] };
+      }
+
+      // Abort previous request if any
+      if (countyAbortRef.current) {
+        countyAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      countyAbortRef.current = controller;
+
+      if (isHpsaDataSource) {
+        const boundariesUrl = new URL(`${API_BASE}/counties/boundaries/geojson`);
+        boundariesUrl.searchParams.set("simplify", "0.02");
+        boundariesUrl.searchParams.set("limit", "5000");
+        if (bboxValue) {
+          boundariesUrl.searchParams.set("bbox", bboxValue);
+        }
+
+        const boundariesResponse = await fetch(boundariesUrl, { signal: controller.signal });
+        if (!boundariesResponse.ok) {
+          const body = await parseErrorBody(boundariesResponse);
+          throw new Error(`County boundary request failed (${boundariesResponse.status}): ${body}`);
+        }
+        const boundariesGeojson = await boundariesResponse.json();
+        const choroplethFeatures = Array.isArray(hpsaChoropleth?.features)
+          ? hpsaChoropleth.features
+          : [];
+        const byFips = new Map();
+        choroplethFeatures.forEach((feature) => {
+          const normalizedFips = normalizeCountyFips(feature?.county_fips);
+          if (!normalizedFips) return;
+          byFips.set(normalizedFips, feature);
+        });
+
+        const mergedFeatures = Array.isArray(boundariesGeojson?.features)
+          ? boundariesGeojson.features.map((feature) => {
+            const properties = feature?.properties ?? {};
+            const countyFips = normalizeCountyFips(
+              properties.county_fips
+              ?? properties.location_id
+              ?? properties.geoid
+            );
+            const hpsaFeature = countyFips ? byFips.get(countyFips) : null;
+            return {
+              ...feature,
+              properties: {
+                ...properties,
+                county_fips: countyFips,
+                value: hpsaFeature?.value ?? null,
+                designated: Boolean(hpsaFeature?.designated),
+                tier: hpsaFeature?.tier ?? null,
+                hpsa_domain: selectedHpsaDomain,
+              },
+            };
+          })
+          : [];
+
+        return {
+          type: "FeatureCollection",
+          features: mergedFeatures,
+        };
       }
 
       const url = isAcsDataSource
@@ -1292,13 +1484,6 @@ export default function App() {
         url.searchParams.set("bbox", bboxValue);
       }
 
-      // Abort previous request if any
-      if (countyAbortRef.current) {
-        countyAbortRef.current.abort();
-      }
-      const controller = new AbortController();
-      countyAbortRef.current = controller;
-
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
         const body = await parseErrorBody(response);
@@ -1309,7 +1494,10 @@ export default function App() {
     [
       isAcsDataSource,
       isSviDataSource,
+      isHpsaDataSource,
       isAcsMeasureSelected,
+      hpsaChoropleth,
+      selectedHpsaDomain,
       selectedMeasureId,
       selectedSviYear,
       selectedYear,
@@ -1540,6 +1728,9 @@ export default function App() {
     if (!bbox || selectedTemporalValue == null || mapZoom !== TRACT_ZOOM - 1) {
       return;
     }
+    if (isHpsaDataSource) {
+      return;
+    }
     if (isAcsDataSource && !isAcsMeasureSelected) {
       return;
     }
@@ -1567,6 +1758,7 @@ export default function App() {
     datasetCachePrefix,
     fetchTractsForBbox,
     fetchWithDedupe,
+    isHpsaDataSource,
     isAcsDataSource,
     isAcsMeasureSelected,
     mapZoom,
@@ -1612,12 +1804,21 @@ export default function App() {
 
   // Main data-fetching effect with caching, deduping, and stale-while-revalidate
   useEffect(() => {
+    const missingMeasureContext = !isHpsaDataSource && !selectedMeasureId;
+    const missingTypeContext = !isSviDataSource && !isHpsaDataSource && !selectedType;
     if (
       !bbox
       || selectedTemporalValue == null
-      || !selectedMeasureId
-      || (!isSviDataSource && !selectedType)
+      || missingMeasureContext
+      || missingTypeContext
     ) {
+      return;
+    }
+    if (isHpsaDataSource && isHpsaChoroplethLoading) {
+      return;
+    }
+    if (isHpsaDataSource && !hpsaChoropleth) {
+      setCountyGeojson(null);
       return;
     }
     if (isAcsDataSource && !isAcsMeasureSelected) {
@@ -1824,6 +2025,9 @@ export default function App() {
     datasetCachePrefix,
     isAcsDataSource,
     isSviDataSource,
+    isHpsaDataSource,
+    hpsaChoropleth,
+    isHpsaChoroplethLoading,
     isAcsMeasureSelected,
     selectedMeasureId,
     selectedTemporalValue,
@@ -1837,7 +2041,17 @@ export default function App() {
     (feature) => {
       const value = getValueFromProperties(feature?.properties);
       let fillColor = getColor(value, breaks);
-      if (isSviDataSource) {
+      if (isHpsaDataSource) {
+        const tier = Number(feature?.properties?.tier);
+        const designated = Boolean(feature?.properties?.designated);
+        if ([1, 2, 3, 4].includes(tier)) {
+          fillColor = HPSA_TIER_COLORS[tier] ?? HPSA_TIER_COLORS[4];
+        } else {
+          fillColor = designated
+            ? HPSA_DESIGNATED_NO_SCORE_COLOR
+            : HPSA_NOT_DESIGNATED_COLOR;
+        }
+      } else if (isSviDataSource) {
         const level = getSviLevel(value);
         const bin = sviBins.find((item) => item.level === level);
         fillColor = level == null
@@ -1848,10 +2062,10 @@ export default function App() {
         color: tractsActive ? "#334155" : "#555",
         weight: tractsActive ? 0.6 : 1,
         fillColor,
-        fillOpacity: 0.72,
+        fillOpacity: isHpsaDataSource ? 0.78 : 0.72,
       };
     },
-    [breaks, isSviDataSource, sviBins, tractsActive]
+    [breaks, isHpsaDataSource, isSviDataSource, sviBins, tractsActive]
   );
 
   const countyBoundaryLineStyle = useCallback(() => {
@@ -2628,9 +2842,11 @@ export default function App() {
     selectedFeatureProps?.age_adjusted_high_confidence_limit,
     selectedFeatureProps?.data_value_type_id === "AgeAdjPrv" ? selectedFeatureProps?.high : null
   );
-  const selectedMeasureDisplayName = isSviDataSource
-    ? getSviLabel(selectedMeasureId)
-    : getMeasureDisplayName(selectedMeasure);
+  const selectedMeasureDisplayName = isHpsaDataSource
+    ? `${HPSA_DOMAIN_LABELS[selectedHpsaDomain] ?? "Primary Care"} HPSA score`
+    : isSviDataSource
+      ? getSviLabel(selectedMeasureId)
+      : getMeasureDisplayName(selectedMeasure);
   const measureNameValue = normalizeMeasureName(
     firstDefined(
       selectedFeatureProps?.measure_name,
@@ -2641,11 +2857,16 @@ export default function App() {
       selectedMeasure?.measure
     )
   );
-  const yearValue = isAcsDataSource
-    ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
-    : isSviDataSource
-      ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
-      : firstDefined(selectedFeatureProps?.year, selectedYear);
+  const yearValue = isHpsaDataSource
+    ? firstDefined(
+      hpsaDomainDetails?.methodology?.as_of_date,
+      hpsaChoropleth?.quartiles?.as_of_date
+    )
+    : isAcsDataSource
+      ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
+      : isSviDataSource
+        ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
+        : firstDefined(selectedFeatureProps?.year, selectedYear);
   const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const acsMoe = firstDefined(selectedFeatureProps?.moe);
   const sviValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
@@ -2738,6 +2959,18 @@ export default function App() {
       )
     )
     : null;
+  const hpsaDomainLabel = HPSA_DOMAIN_LABELS[selectedHpsaDomain] ?? "Primary Care";
+  const hpsaQuartiles = hpsaChoropleth?.quartiles ?? null;
+  const selectedHpsaTier = firstDefined(selectedFeatureProps?.tier, hpsaDomainDetails?.tier);
+  const selectedHpsaScore = firstDefined(selectedFeatureProps?.value, hpsaDomainDetails?.score_max);
+  const selectedHpsaScoreNumeric = toFiniteNumericValue(selectedHpsaScore);
+  const hpsaSelectedScoreText = selectedHpsaScoreNumeric == null
+    ? "Not available"
+    : selectedHpsaScoreNumeric.toFixed(1);
+  const selectedHpsaCoveragePct = firstDefined(
+    hpsaDomainDetails?.coverage_pct,
+    selectedFeatureProps?.coverage_pct
+  );
   const hpsaPcCoverageText = (() => {
     const value = toFiniteNumericValue(hpsaSummary?.pc_coverage_pct);
     return value == null ? "No data" : `${value.toFixed(3)}%`;
@@ -2780,6 +3013,78 @@ export default function App() {
     hpsaSummary?.coverage_population_aggregation_method,
     "MAX"
   );
+  const hpsaDomainMethodology = (
+    hpsaDomainDetails?.methodology && typeof hpsaDomainDetails.methodology === "object"
+      ? hpsaDomainDetails.methodology
+      : null
+  );
+  const hpsaSelectedFteText = (() => {
+    const value = toFiniteNumericValue(hpsaDomainDetails?.fte);
+    return value == null ? "Not available" : value.toFixed(2);
+  })();
+  const hpsaTierValue = Number(selectedHpsaTier);
+  const hpsaHasTier = [1, 2, 3, 4].includes(hpsaTierValue);
+  const hpsaIsDesignated = Boolean(firstDefined(hpsaDomainDetails?.designated, selectedFeatureProps?.designated));
+  const hpsaSeverityLabel = getSeverityLabel(selectedHpsaTier);
+  const hpsaSeverityBadgeLabel = hpsaHasTier
+    ? hpsaSeverityLabel
+    : hpsaIsDesignated
+      ? "Score unavailable"
+      : null;
+  const hpsaSeverityLine = hpsaHasTier
+    ? (
+      hpsaTierValue === 4
+        ? `${hpsaSeverityLabel} Shortage Severity (Highest quartile)`
+        : `${hpsaSeverityLabel} Shortage Severity`
+    )
+    : hpsaIsDesignated
+      ? "Severity unavailable"
+      : "Not designated";
+  const hpsaWhatThisMeansLines = buildInterpretationLines({
+    designated: hpsaIsDesignated,
+    domainLabel: hpsaDomainLabel,
+  });
+  const hpsaProviderRatioText = formatRatio(hpsaDomainDetails?.hpsa_formal_ratio);
+  const hpsaProviderGoalText = formatRatio(hpsaDomainDetails?.provider_ratio_goal);
+  const hpsaPopulationCoveredText = formatNumberWithCommas(hpsaDomainDetails?.population_covered);
+  const hpsaCoveragePercentText = formatPercent(selectedHpsaCoveragePct, 1);
+  const hpsaCoveragePercentNumeric = toFiniteNumericValue(selectedHpsaCoveragePct);
+  const hpsaCoverageInterpretationLine = hpsaCoveragePercentNumeric == null
+    ? null
+    : hpsaCoveragePercentNumeric === 100
+      ? "This suggests the entire county falls within a designated shortage area."
+      : "This suggests part of the county population falls within a designated shortage area.";
+  const hpsaHasProviderSection = hpsaIsDesignated && (
+    hpsaDomainDetails?.hpsa_formal_ratio
+    || hpsaDomainDetails?.provider_ratio_goal
+    || toFiniteNumericValue(hpsaDomainDetails?.fte) != null
+  );
+  const hpsaHasPopulationSection = hpsaIsDesignated && (
+    toFiniteNumericValue(hpsaDomainDetails?.population_covered) != null
+    || hpsaCoveragePercentNumeric != null
+  );
+  const hpsaSeverityBadgeStyle = hpsaHasTier
+    ? HPSA_SEVERITY_BADGE_STYLES[hpsaTierValue]
+    : hpsaIsDesignated
+      ? HPSA_SEVERITY_BADGE_STYLES.designatedNoScore
+      : null;
+  const hpsaAsOfText = firstDefined(
+    hpsaDomainMethodology?.as_of_date,
+    hpsaDataNoteAsOf,
+    hpsaQuartiles?.as_of_date
+  );
+  const hpsaDataNoteCalculation = firstDefined(
+    hpsaDomainMethodology?.calculation,
+    hpsaMethodology?.calculation,
+    "Tiering uses county score quartiles among designated counties."
+  );
+  const hpsaDenominatorSourceText = hpsaSummary?.population_denominator_source ?? "Unknown";
+  const hpsaCountyDisplayLabel = hasText(countyOrParishLabel)
+    ? countyOrParishLabel
+    : getCountyName(selectedFeatureProps);
+  const hpsaCountyStateLine = selectedStateAbbr
+    ? `${hpsaCountyDisplayLabel}, ${selectedStateAbbr}`
+    : hpsaCountyDisplayLabel;
 
   useEffect(() => {
     if (!selectedCountyFipsForHpsa) {
@@ -2843,7 +3148,78 @@ export default function App() {
     return () => {
       controller.abort();
     };
-  }, [selectedCountyFipsForHpsa, getCached, setCached, fetchWithDedupe]);
+  }, [isHpsaDataSource, selectedCountyFipsForHpsa, getCached, setCached, fetchWithDedupe]);
+
+  useEffect(() => {
+    if (!isHpsaDataSource || !selectedCountyFipsForHpsa) {
+      setHpsaDomainDetails(null);
+      setHpsaDomainDetailsError(null);
+      setIsHpsaDomainDetailsLoading(false);
+      return () => {};
+    }
+
+    const controller = new AbortController();
+    const cacheKey = `hpsa|county|${selectedCountyFipsForHpsa}|domain:${selectedHpsaDomain}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      setHpsaDomainDetails(cached);
+      setHpsaDomainDetailsError(null);
+      setIsHpsaDomainDetailsLoading(false);
+      return () => {
+        controller.abort();
+      };
+    }
+
+    setIsHpsaDomainDetailsLoading(true);
+    setHpsaDomainDetailsError(null);
+
+    fetchWithDedupe(cacheKey, async () => {
+      const response = await fetch(
+        `${API_BASE}/hpsa/counties/${selectedCountyFipsForHpsa}?domain=${encodeURIComponent(selectedHpsaDomain)}`,
+        { signal: controller.signal }
+      );
+      if (response.status === 404) {
+        return null;
+      }
+      if (!response.ok) {
+        const body = await parseErrorBody(response);
+        throw new Error(`HPSA detail request failed (${response.status}) - ${body}`);
+      }
+      return response.json();
+    })
+      .then((payload) => {
+        if (controller.signal.aborted) return;
+        setHpsaDomainDetails(payload);
+        if (payload) {
+          setCached(cacheKey, payload);
+        }
+      })
+      .catch((fetchError) => {
+        if (controller.signal.aborted) return;
+        const isNetworkFetchError = fetchError instanceof TypeError;
+        setHpsaDomainDetails(null);
+        setHpsaDomainDetailsError(
+          isNetworkFetchError
+            ? `Could not reach API at ${API_BASE}. Start/restart backend on port 8000.`
+            : (fetchError.message ?? "Failed to load HPSA county details.")
+        );
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        setIsHpsaDomainDetailsLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    fetchWithDedupe,
+    getCached,
+    isHpsaDataSource,
+    selectedCountyFipsForHpsa,
+    selectedHpsaDomain,
+    setCached,
+  ]);
 
   const handleAnalyzeSelectedArea = useCallback(() => {
     if (!selectedLocationId) return;
@@ -2918,7 +3294,29 @@ export default function App() {
     setHistoryOpen((current) => !current);
   }, []);
 
+  const hpsaTierRanges = useMemo(() => formatTierRanges(hpsaQuartiles), [hpsaQuartiles]);
+
   const legendRows = useMemo(() => {
+    if (isHpsaDataSource) {
+      return [
+        ...hpsaTierRanges.map((tierRange) => ({
+          key: `hpsa-tier-${tierRange.tier}`,
+          color: HPSA_TIER_COLORS[tierRange.tier],
+          label: tierRange.severityLabel,
+          subLabel: `${tierRange.rangeLabel} • ${tierRange.tierMeta}`,
+        })),
+        {
+          key: "hpsa-not-designated",
+          color: HPSA_NOT_DESIGNATED_COLOR,
+          label: "Not designated",
+        },
+        {
+          key: "hpsa-designated-no-score",
+          color: HPSA_DESIGNATED_NO_SCORE_COLOR,
+          label: "Designated (score unavailable)",
+        },
+      ];
+    }
     if (isSviDataSource) {
       return sviBins.map((bin) => ({
         key: `svi-bin-${bin.key}`,
@@ -2945,7 +3343,7 @@ export default function App() {
         label: formatRange(start, end),
       };
     });
-  }, [acsLegend, breaks, isAcsDataSource, isSviDataSource, sviBins]);
+  }, [acsLegend, breaks, hpsaTierRanges, isAcsDataSource, isHpsaDataSource, isSviDataSource, sviBins]);
 
   const compactOverlayLayout = viewportWidth <= 1200;
   const mapViewportHeight = Math.max(420, viewportHeight - HEADER_HEIGHT);
@@ -2959,12 +3357,18 @@ export default function App() {
     ? 16 + measurePanelHeight + 12
     : 16;
   const legendMaxHeight = Math.max(180, mapViewportHeight - (legendTopOffset + 16));
-  const legendTitle = isSviDataSource
-    ? (selectedMeasureDisplayName || selectedMeasureId)
-    : `${formatDataValueTypeLabel(selectedType)} \u2013 ${
-      tractsActive ? "Census Tract Level" : "County Level"
-    }`;
-  const legendSubtitle = isSviDataSource ? "Levels of Vulnerability" : null;
+  const legendTitle = isHpsaDataSource
+    ? `Healthcare Access — ${hpsaDomainLabel}`
+    : isSviDataSource
+      ? (selectedMeasureDisplayName || selectedMeasureId)
+      : `${formatDataValueTypeLabel(selectedType)} \u2013 ${
+        tractsActive ? "Census Tract Level" : "County Level"
+      }`;
+  const legendSubtitle = isHpsaDataSource
+    ? "County-only HPSA choropleth"
+    : isSviDataSource
+      ? "Levels of Vulnerability"
+      : null;
   const floatingPanelStyle = {
     background: "#ffffff",
     border: "1px solid #E3E8ED",
@@ -3057,8 +3461,32 @@ export default function App() {
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
                 <option value={DATA_SOURCES.SVI}>Social Vulnerability Index</option>
+                <option value={DATA_SOURCES.HPSA}>HRSA HPSA</option>
               </select>
             </label>
+            {isHpsaDataSource ? (
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>HPSA domain</span>
+                <select
+                  value={selectedHpsaDomain}
+                  onChange={(event) => setSelectedHpsaDomain(event.target.value)}
+                  style={controlSelectStyle}
+                >
+                  {HPSA_DOMAIN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ color: "#475569", fontSize: 11 }}>
+                  County-only quartile tiers by designated-county score distribution.
+                </span>
+                {hpsaChoroplethError ? (
+                  <span style={{ color: "#b91c1c", fontSize: 11 }}>{hpsaChoroplethError}</span>
+                ) : null}
+              </label>
+            ) : (
+              <>
             <label style={{ display: "grid", gap: 6 }}>
               <span style={{ fontWeight: 600 }}>Measure</span>
               <select
@@ -3211,6 +3639,8 @@ export default function App() {
                 {selectedMeasureDisplayName}
               </div>
             )}
+              </>
+            )}
           </>
         ) : null}
       </div>
@@ -3309,7 +3739,7 @@ export default function App() {
         </MapContainer>
       </div>
 
-      {isCountyLoading || isTractLoading ? (
+      {isCountyLoading || isTractLoading || isHpsaChoroplethLoading ? (
         <div
           style={{
             position: "absolute",
@@ -3371,7 +3801,7 @@ export default function App() {
         <div style={{ display: "grid", gap: 6 }}>
           {legendRows.length > 0
             ? legendRows.map((row) => {
-                const color = COLORS[row.colorIndex] ?? COLORS[COLORS.length - 1];
+                const color = row.color ?? COLORS[row.colorIndex] ?? COLORS[COLORS.length - 1];
                 return (
                   <div
                     key={row.key}
@@ -3386,32 +3816,48 @@ export default function App() {
                         border: "1px solid #C4D2E0",
                       }}
                     />
-                    <span>{row.label}</span>
+                    <span>
+                      <div>{row.label}</div>
+                      {row.subLabel ? (
+                        <div style={{ color: "#64748b", fontSize: 11 }}>{row.subLabel}</div>
+                      ) : null}
+                    </span>
                   </div>
                 );
               })
-            : isCountyLoading || isTractLoading || (isAcsDataSource && isLegendLoading)
+            : isCountyLoading
+              || isTractLoading
+              || isHpsaChoroplethLoading
+              || (isAcsDataSource && isLegendLoading)
               ? "Loading..."
               : "Legend unavailable."}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                width: 12,
-                height: 12,
-                background: NO_DATA_COLOR,
-                borderRadius: 2,
-                border: "1px solid #C4D2E0",
-              }}
-            />
-            <span>No data</span>
-          </div>
+          {!isHpsaDataSource ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  background: NO_DATA_COLOR,
+                  borderRadius: 2,
+                  border: "1px solid #C4D2E0",
+                }}
+              />
+              <span>No data</span>
+            </div>
+          ) : null}
           {isAcsDataSource && acsLegend ? (
             <div style={{ color: "#64748b" }}>
               n={acsLegend.n ?? 0}, no data={acsLegend.noDataCount ?? 0}
             </div>
           ) : null}
+          {isHpsaDataSource && hpsaQuartiles ? (
+            <div style={{ color: "#64748b" }}>
+              designated counties n={hpsaQuartiles.n_counties ?? 0}
+              {hpsaQuartiles.as_of_date ? `, as-of ${hpsaQuartiles.as_of_date}` : ""}
+            </div>
+          ) : null}
         </div>
-        {selectedFeature ? (
+        {selectedFeature && !isHpsaDataSource ? (
           <>
             <hr />
             <div className="legend-details">
@@ -3498,17 +3944,146 @@ export default function App() {
             gap: 6,
           }}
         >
-          <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
+          {!isHpsaDataSource ? (
+            <div style={{ fontWeight: 600 }}>Selected {currentLayerLabel}</div>
+          ) : null}
           {selectedProps ? (
             <>
-              <div>
-                {tractsActive
-                  ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
-                  : getCountyName(selectedProps)}
-              </div>
-              <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
-              {isSviDataSource ? (
+              {isHpsaDataSource ? (
                 <>
+                  {selectedGeoLevel !== "county" ? (
+                    <div style={{ color: "#64748b" }}>Select a county to view HPSA details.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>
+                        Healthcare Access — {hpsaDomainLabel}
+                      </div>
+                      <div style={{ color: "#475569" }}>{hpsaCountyStateLine}</div>
+
+                      {isHpsaDomainDetailsLoading ? (
+                        <div style={{ color: "#64748b" }}>Loading county details...</div>
+                      ) : hpsaDomainDetailsError ? (
+                        <div style={{ color: "#b91c1c" }}>{hpsaDomainDetailsError}</div>
+                      ) : (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            {hpsaSeverityBadgeLabel ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "2px 10px",
+                                  borderRadius: 999,
+                                  background: hpsaSeverityBadgeStyle?.background ?? "#B8C2CC",
+                                  border: `1px solid ${hpsaSeverityBadgeStyle?.border ?? "#94A3B8"}`,
+                                  fontWeight: 700,
+                                  color: hpsaSeverityBadgeStyle?.color ?? "#0F172A",
+                                  fontSize: 11,
+                                }}
+                              >
+                                {hpsaSeverityBadgeLabel}
+                              </span>
+                            ) : null}
+                            <span style={{ fontWeight: 700 }}>
+                              {hpsaSeverityLine}
+                            </span>
+                          </div>
+                          <div style={{ color: "#475569" }}>
+                            Federally designated HPSA: {hpsaIsDesignated ? "Yes" : "No"}
+                            {!hpsaIsDesignated ? " (Not designated)" : ""}
+                          </div>
+                          {hpsaIsDesignated ? (
+                            <div style={{ color: "#475569" }}>HPSA score: {hpsaSelectedScoreText}</div>
+                          ) : null}
+
+                          {hpsaIsDesignated ? (
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 600 }}>What this means</div>
+                              <ul style={{ margin: 0, paddingLeft: 18, color: "#334155" }}>
+                                {hpsaWhatThisMeansLines.map((line) => (
+                                  <li key={line}>{line}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <div style={{ color: "#334155" }}>{hpsaWhatThisMeansLines[0]}</div>
+                          )}
+
+                          {hpsaHasProviderSection ? (
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 600 }}>Provider availability</div>
+                              {hpsaDomainDetails?.hpsa_formal_ratio ? (
+                                <div>
+                                  Population-to-provider ratio: {hpsaProviderRatioText}
+                                </div>
+                              ) : null}
+                              {hpsaDomainDetails?.provider_ratio_goal ? (
+                                <div>
+                                  Federal goal: {hpsaProviderGoalText}
+                                </div>
+                              ) : null}
+                              {toFiniteNumericValue(hpsaDomainDetails?.fte) != null ? (
+                                <div>Provider FTE: {hpsaSelectedFteText}</div>
+                              ) : null}
+                              <div style={{ color: "#64748b" }}>
+                                A higher ratio generally means fewer providers relative to the population.
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {hpsaHasPopulationSection ? (
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 600 }}>Population impact</div>
+                              <div>Population covered: {hpsaPopulationCoveredText}</div>
+                              <div>Coverage: {hpsaCoveragePercentText} of county population</div>
+                              {hpsaCoverageInterpretationLine ? (
+                                <div style={{ color: "#64748b" }}>{hpsaCoverageInterpretationLine}</div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          <div style={{ display: "grid", gap: 4, color: "#64748b", fontSize: 11 }}>
+                            <div style={{ fontWeight: 600, color: "#475569" }}>How severity is defined</div>
+                            <div>Quartiles among designated counties (n={hpsaQuartiles?.n_counties ?? 0}).</div>
+                            {hpsaTierRanges.map((tierRange) => (
+                              <div key={`hpsa-tier-definition-${tierRange.tier}`}>
+                                {tierRange.tierMeta}: {tierRange.rangeLabel}
+                              </div>
+                            ))}
+                            <div>As of: {hpsaAsOfText ? String(hpsaAsOfText) : "Unknown"}</div>
+                          </div>
+
+                          <div style={{ color: "#64748b", fontSize: 11 }}>
+                            Data Notes: how these values are calculated
+                          </div>
+                          <details>
+                            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                              Data Notes
+                            </summary>
+                            <div style={{ marginTop: 4, color: "#334155", display: "grid", gap: 4 }}>
+                              <div>Source: {hpsaDataNoteSource}</div>
+                              <div>As-of date: {hpsaAsOfText ? String(hpsaAsOfText) : "Unknown"}</div>
+                              <div>Denominator type: {hpsaDenominatorTypeText}</div>
+                              <div>Denominator value: {hpsaDenominatorValueText}</div>
+                              <div>Denominator source: {hpsaDenominatorSourceText}</div>
+                              <div>Calculation: {hpsaDataNoteCalculation}</div>
+                              <div>{hpsaDataNoteCaveat}</div>
+                            </div>
+                          </details>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : isSviDataSource ? (
+                <>
+                  <div>
+                    {tractsActive
+                      ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
+                      : getCountyName(selectedProps)}
+                  </div>
+                  <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
                   <div>
                     {yearValue ?? selectedSviYear} National {sviMeasureName} SVI Rank: {sviRankValueText}
                   </div>
@@ -3519,6 +4094,12 @@ export default function App() {
                 </>
               ) : (
                 <>
+                  <div>
+                    {tractsActive
+                      ? (selectedProps.location_name ?? selectedProps.name ?? getFeatureId(selectedProps))
+                      : getCountyName(selectedProps)}
+                  </div>
+                  <div>State: {selectedProps.state_abbr ?? "N/A"}</div>
                   <div>
                     Value: {isAcsDataSource
                       ? `${fmtPercent(acsValue)}${acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`}`
@@ -3546,7 +4127,7 @@ export default function App() {
                   Population: {fmtPop(firstDefined(selectedProps.population, selectedProps.total_population))}
                 </div>
               ) : null}
-              {selectedGeoLevel === "county" ? (
+              {selectedGeoLevel === "county" && !isHpsaDataSource ? (
                 <div
                   style={{
                     marginTop: 6,

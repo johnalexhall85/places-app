@@ -378,6 +378,18 @@ class CountyHpsaSummary(Base):
     )
 
 
+class HpsaDomainQuartile(Base):
+    __tablename__ = "hpsa_domain_quartiles"
+
+    domain = Column(String(2), primary_key=True)  # pc | mh | dh
+    q25 = Column(Numeric(8, 3), nullable=True)
+    q50 = Column(Numeric(8, 3), nullable=True)
+    q75 = Column(Numeric(8, 3), nullable=True)
+    n_counties = Column(Integer, nullable=False)
+    as_of_date = Column(Date, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
 class Profile(Base):
     __tablename__ = "profiles"
 

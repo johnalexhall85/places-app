@@ -36,6 +36,9 @@ fi
 
 source .venv/bin/activate
 
+echo "▶️  Applying database migrations (alembic upgrade head)"
+alembic upgrade head
+
 echo "▶️  Starting uvicorn (http://localhost:8000)"
 uvicorn app.main:app --reload &
 BACKEND_PID=$!

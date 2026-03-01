@@ -67,3 +67,7 @@ python backend/scripts/ingest_hpsa.py ... --no-rebuild-summary
 - formula: `(population_covered / denominator) * 100`, rounded to 3 decimals, clamped to `[0, 100]`
 - aggregation method: `MAX` designated population per county/type (conservative for overlap risk)
 - method metadata fields: denominator source/type, overlap caveat, pct definition, and per-type method text
+
+`hpsa_domain_quartiles` is also rebuilt for `pc`, `mh`, and `dh` using only designated
+counties with non-null `*_hpsa_score_max`, storing `q25`, `q50`, `q75`, `n_counties`,
+and `as_of_date` for deterministic choropleth tiering.

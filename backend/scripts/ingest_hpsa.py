@@ -231,6 +231,7 @@ def ensure_required_tables(engine) -> None:
         for table_name in (
             "hpsa_designations_raw",
             "county_hpsa_summary",
+            "hpsa_domain_quartiles",
             "v_county_population",
         ):
             exists = conn.execute(
@@ -611,6 +612,84 @@ def rebuild_summary(engine, *, load_batch_id: str) -> None:
                 "coverage_method_text": COVERAGE_METHOD_TEXT,
             },
         )
+        conn.execute(
+            text(
+                """
+                WITH domains AS (
+                    SELECT 'pc'::text AS domain
+                    UNION ALL SELECT 'mh'::text
+                    UNION ALL SELECT 'dh'::text
+                ),
+                scored AS (
+                    SELECT
+                        d.domain,
+                        CASE d.domain
+                            WHEN 'pc' THEN s.pc_designated
+                            WHEN 'mh' THEN s.mh_designated
+                            WHEN 'dh' THEN s.dh_designated
+                            ELSE FALSE
+                        END AS designated,
+                        CASE d.domain
+                            WHEN 'pc' THEN s.pc_hpsa_score_max::numeric
+                            WHEN 'mh' THEN s.mh_hpsa_score_max::numeric
+                            WHEN 'dh' THEN s.dh_hpsa_score_max::numeric
+                            ELSE NULL
+                        END AS score
+                    FROM county_hpsa_summary AS s
+                    CROSS JOIN domains AS d
+                ),
+                eligible AS (
+                    SELECT domain, score
+                    FROM scored
+                    WHERE designated IS TRUE
+                      AND score IS NOT NULL
+                ),
+                quartiles AS (
+                    SELECT
+                        d.domain,
+                        percentile_cont(0.25) WITHIN GROUP (ORDER BY e.score) AS q25,
+                        percentile_cont(0.50) WITHIN GROUP (ORDER BY e.score) AS q50,
+                        percentile_cont(0.75) WITHIN GROUP (ORDER BY e.score) AS q75,
+                        COUNT(e.score)::integer AS n_counties
+                    FROM domains AS d
+                    LEFT JOIN eligible AS e
+                        ON e.domain = d.domain
+                    GROUP BY d.domain
+                ),
+                summary_as_of AS (
+                    SELECT COALESCE(MAX(as_of_date), CURRENT_DATE) AS as_of_date
+                    FROM county_hpsa_summary
+                )
+                INSERT INTO hpsa_domain_quartiles (
+                    domain,
+                    q25,
+                    q50,
+                    q75,
+                    n_counties,
+                    as_of_date,
+                    updated_at
+                )
+                SELECT
+                    q.domain,
+                    q.q25,
+                    q.q50,
+                    q.q75,
+                    q.n_counties,
+                    a.as_of_date,
+                    now() AS updated_at
+                FROM quartiles AS q
+                CROSS JOIN summary_as_of AS a
+                ON CONFLICT (domain) DO UPDATE
+                SET
+                    q25 = EXCLUDED.q25,
+                    q50 = EXCLUDED.q50,
+                    q75 = EXCLUDED.q75,
+                    n_counties = EXCLUDED.n_counties,
+                    as_of_date = EXCLUDED.as_of_date,
+                    updated_at = EXCLUDED.updated_at
+                """
+            )
+        )
 
 
 def print_verification(engine, load_batch_id: str) -> None:
@@ -724,6 +803,22 @@ def print_verification(engine, load_batch_id: str) -> None:
             )
         ).mappings().one()
 
+        quartiles = conn.execute(
+            text(
+                """
+                SELECT
+                    domain,
+                    q25,
+                    q50,
+                    q75,
+                    n_counties,
+                    as_of_date
+                FROM hpsa_domain_quartiles
+                ORDER BY domain
+                """
+            )
+        ).mappings().all()
+
         samples = conn.execute(
             text(
                 """
@@ -819,6 +914,15 @@ def print_verification(engine, load_batch_id: str) -> None:
         f"{raw_rows_stats['dh_min_raw_rows']} / "
         f"{raw_rows_stats['dh_median_raw_rows']} / {raw_rows_stats['dh_max_raw_rows']}"
     )
+
+    print("\n[verify] quartiles by domain")
+    if not quartiles:
+        print("  none")
+    for row in quartiles:
+        print(
+            f"  {row['domain']}: q25={row['q25']} q50={row['q50']} "
+            f"q75={row['q75']} n={row['n_counties']} as_of={row['as_of_date']}"
+        )
 
     print("\n[verify] sample top 10 by pc_coverage_pct")
     for row in samples:

@@ -2,19 +2,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from fastapi.testclient import TestClient
-
-from app.db import get_db
-from app.main import app
 from app.routers import hpsa as hpsa_router
 
 
 class _DummySession:
     pass
-
-
-def _override_db():
-    yield _DummySession()
 
 
 def test_hpsa_endpoint_includes_structured_methodology(monkeypatch):
@@ -58,17 +50,63 @@ def test_hpsa_endpoint_includes_structured_methodology(monkeypatch):
     }
 
     monkeypatch.setattr(hpsa_router, "fetch_county_hpsa_row", lambda _db, _fips: row)
-    app.dependency_overrides[get_db] = _override_db
-    client = TestClient(app)
+    payload = hpsa_router.get_county_hpsa_summary("01001", db=_DummySession())
+    assert payload["county_fips"] == "01001"
+    assert payload["primary_care"]["coverage_pct"] == 77.125
+    assert payload["methodology"]["source"] == "HRSA HPSA Data Mart; denominator: acs_5yr_adult_18p"
+    assert payload["methodology"]["caveats"]
+    assert payload["methodology"]["caveats"][0].startswith("HPSA designated populations may overlap")
 
-    try:
-        response = client.get("/hpsa/counties/01001")
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["county_fips"] == "01001"
-        assert payload["primary_care"]["coverage_pct"] == 77.125
-        assert payload["methodology"]["source"] == "HRSA HPSA Data Mart; denominator: acs_5yr_adult_18p"
-        assert payload["methodology"]["caveats"]
-        assert payload["methodology"]["caveats"][0].startswith("HPSA designated populations may overlap")
-    finally:
-        app.dependency_overrides.clear()
+
+def test_hpsa_endpoint_domain_detail_includes_tier_and_ratio_fields(monkeypatch):
+    row = {
+        "county_fips": "01001",
+        "state_fips": "01",
+        "pc_designated": True,
+        "pc_hpsa_score_max": 15,
+        "pc_population_covered": 50000,
+        "pc_coverage_pct": 77.125,
+        "mh_designated": False,
+        "mh_hpsa_score_max": None,
+        "mh_population_covered": None,
+        "mh_coverage_pct": None,
+        "dh_designated": False,
+        "dh_hpsa_score_max": None,
+        "dh_population_covered": None,
+        "dh_coverage_pct": None,
+        "population_denominator_source": "dim_county_total_pop_18_plus",
+        "coverage_overlap_caveat": "Coverage may overlap across designations.",
+        "coverage_pct_definition": "coverage_pct = (population_covered / population_denominator) * 100",
+        "as_of_date": date(2026, 3, 1),
+    }
+
+    monkeypatch.setattr(hpsa_router, "fetch_county_hpsa_row", lambda _db, _fips: row)
+    monkeypatch.setattr(
+        hpsa_router,
+        "fetch_hpsa_domain_quartiles",
+        lambda _db, _domain: {
+            "q25": 10,
+            "q50": 15,
+            "q75": 20,
+            "n_counties": 100,
+            "as_of_date": date(2026, 3, 1),
+        },
+    )
+    monkeypatch.setattr(
+        hpsa_router,
+        "fetch_hpsa_domain_ratio_fields",
+        lambda _db, county_fips, domain: {
+            "hpsa_formal_ratio": "3500:1",
+            "provider_ratio_goal": "3000:1",
+            "fte": 2.5,
+        },
+    )
+    payload = hpsa_router.get_county_hpsa_summary("01001", domain="pc", db=_DummySession())
+    assert payload["county_fips"] == "01001"
+    assert payload["domain"] == "pc"
+    assert payload["score_max"] == 15
+    assert payload["tier"] == 2
+    assert payload["hpsa_formal_ratio"] == "3500:1"
+    assert payload["provider_ratio_goal"] == "3000:1"
+    assert payload["fte"] == 2.5
+    assert payload["methodology"]["source"].startswith("HRSA HPSA Data Mart")
