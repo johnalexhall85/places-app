@@ -1,80 +1,99 @@
 # Places App
 
-## Load county boundary polygons
+This repository contains a local health mapping app with:
+- Frontend: React + Vite on `http://localhost:5173`
+- Backend: FastAPI on `http://localhost:8000`
+- Database: PostGIS/Postgres (Docker)
 
-Run the offline loader after applying migrations and configuring `DATABASE_URL`:
+The setup below is aimed at first run after cloning or downloading from GitHub.
+
+## Prerequisites
+
+- `git`
+- `docker` and `docker compose`
+- `python` 3.10+
+- `node` 18+ and `npm`
+- Optional: `psql` (used by one SQL helper step)
+
+## Quickstart (from fresh clone)
+
+### 1) Start PostGIS
+
+From repo root:
 
 ```bash
-psql "$DATABASE_URL" -f backend/scripts/create_dim_county_boundary.sql
-python backend/scripts/load_county_boundaries.py --db-url "$DATABASE_URL"
+docker compose -f infra/docker-compose.yml up -d
 ```
 
-## Load census tract data
+### 2) Set up and run backend
 
-1. Apply migrations (creates `tract_shapes` and `tract_estimates`):
+In terminal 1:
 
 ```bash
 cd backend
-source ../venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-2. Download TIGER/Line 2020 tract ZIPs (single-state test run):
+### 3) Set up and run frontend
+
+In terminal 2:
 
 ```bash
-python backend/scripts/download_tiger_tracts.py --state 01
+cd frontend
+npm install
+npm run dev
 ```
 
-3. Import TIGER tract shapes into PostGIS:
+## Verify it works
+
+In terminal 3:
 
 ```bash
-python backend/scripts/import_tract_shapes.py --state 01
+curl http://localhost:8000/health
 ```
 
-4. Ingest PLACES 2025 tract estimates CSV:
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+Then open `http://localhost:5173` in your browser.
+
+## Optional: one-command startup (`dev-start.sh`)
+
+If you prefer:
 
 ```bash
-python backend/scripts/ingest_tract_estimates.py
+./dev-start.sh
 ```
 
-For full national TIGER download/import, omit `--state` on both scripts.
+Important constraints:
+- `backend/.venv` must already exist (the script exits if it does not).
+- The script checks for `docker-compose.yml` at repo root; this repo's compose file is at `infra/docker-compose.yml`.
+- Run `docker compose -f infra/docker-compose.yml up -d` manually first for reliable DB startup.
 
-## Preflight county CSV (2024 release)
+## Optional: assistant (OpenRouter) setup
 
-Run read-only validation (no DB writes):
+The app can run without assistant config. Assistant features are optional.
 
-```bash
-python backend/scripts/preflight_places_county_2024.py
-```
-
-Run preflight + write ingestion (uses same mapping/codepath):
-
-```bash
-python backend/scripts/preflight_places_county_2024.py --write
-```
-
-## Ask the map assistant (OpenRouter)
-
-Set assistant config in `config/llm_settings.json` (this repo already gitignores `config/`):
+Create `config/llm_settings.json` (this path is gitignored) with your OpenRouter key and optional overrides:
 
 ```json
 {
   "openrouter_api_key": "your_openrouter_api_key",
   "openrouter_model": "openai/gpt-5.2",
   "openrouter_base_url": "https://openrouter.ai/api/v1",
-  "openrouter_timeout_seconds": 60.0,
   "openrouter_http_referer": "http://localhost:5173",
-  "openrouter_x_title": "PLACES Next App",
-  "openrouter_temperature": 0.0,
-  "openrouter_max_tokens": 1400,
-  "openrouter_tool_choice": "auto",
-  "assistant_max_steps": 8,
-  "assistant_format_retry_limit": 1,
-  "assistant_system_prompt": ""
+  "openrouter_x_title": "PLACES App"
 }
 ```
 
-Then call:
+Minimal test request:
 
 ```bash
 curl -sS -X POST "http://localhost:8000/assistant/query" \
@@ -84,54 +103,89 @@ curl -sS -X POST "http://localhost:8000/assistant/query" \
     "context": {
       "measure_id": "ARTHRITIS",
       "year": 2023,
-      "data_value_type_id": "CrdPrv",
-      "zoom": 6,
-      "bbox": [-85, 33, -84, 34],
-      "active_layer": "county"
+      "data_value_type_id": "CrdPrv"
     }
   }'
 ```
 
-## Report branding assets and cache
+## Appendix: optional data loading (for non-empty map and richer results)
 
-CHIP report branding assets are stored in:
-- `backend/app/assets/brand/` (logos used by PDF rendering)
-- `backend/app/assets/fonts/` (optional Inter / Source Sans 3 files for PDF typography)
-
-Clear generated report caches:
+Set DB URL for ingestion scripts:
 
 ```bash
-cd backend
-python -m app.scripts.clear_report_cache
+export DATABASE_URL=postgresql+psycopg://places:places@localhost:5432/places
 ```
 
-Also clear cached chart PNGs (forces chart restyling on regeneration):
+### County boundaries
 
 ```bash
-cd backend
-python -m app.scripts.clear_report_cache --include-charts
+psql "$DATABASE_URL" -f backend/scripts/create_dim_county_boundary.sql
+python backend/scripts/load_county_boundaries.py --db-url "$DATABASE_URL"
 ```
 
-## Ingest SVI time series (2018, 2020, 2022)
-
-Use the multi-year ingester:
+### County PLACES preload (2024)
 
 ```bash
-python backend/scripts/ingest_svi_years.py --years 2018 2020 --level both
+python backend/scripts/preflight_places_county_2024.py --write
 ```
 
-See `backend/scripts/README.md` for additional options.
+### Advanced ingestion shortcuts
 
-## Ingest HRSA HPSA county summary
+Tract shapes + tract estimates:
+
+```bash
+python backend/scripts/download_tiger_tracts.py --state 01
+python backend/scripts/import_tract_shapes.py --state 01
+python backend/scripts/ingest_tract_estimates.py --db-url "$DATABASE_URL"
+```
+
+SVI time series:
+
+```bash
+python backend/scripts/ingest_svi_years.py --years 2018 2020 2022 --level both
+```
+
+HPSA county summary:
 
 ```bash
 python backend/scripts/ingest_hpsa.py \
-  --pc /mnt/data/BCD_HPSA_FCT_DET_PC.csv \
-  --mh /mnt/data/BCD_HPSA_FCT_DET_MH.csv \
-  --dh /mnt/data/BCD_HPSA_FCT_DET_DH.csv \
+  --pc data/BCD_HPSA_FCT_DET_PC.csv \
+  --mh data/BCD_HPSA_FCT_DET_MH.csv \
+  --dh data/BCD_HPSA_FCT_DET_DH.csv \
   --rebuild-summary
 ```
 
-See `backend/scripts/README.md` for optional flags.
+For full script options and expected input files, see `backend/scripts/README.md`.
 
-The rebuilt `county_hpsa_summary` includes `pc/mh/dh_coverage_pct` fields using county population from `v_county_population` (`adult_18p` preferred, fallback `total`), plus transparent methodology metadata (`population_denominator_source`, aggregation method, caveat/definition text, and raw row contribution counts).
+## Troubleshooting
+
+- DB connection errors:
+  - Verify Docker DB is running: `docker ps`
+  - Verify `DATABASE_URL` if you overrode defaults.
+- Backend dependency errors:
+  - Activate `backend/.venv` and rerun `pip install -r backend/requirements.txt`.
+- Frontend cannot reach API:
+  - Confirm backend is running on port `8000` and frontend on `5173`.
+- Map loads but looks empty:
+  - Ingest optional data from the appendix sections above.
+
+## Validation checklist (README accuracy)
+
+1. Fresh-clone simulation:
+   - Follow quickstart steps on a clean checkout and verify both services start.
+2. Health check validation:
+   - Confirm `GET /health` returns 200 with `{"status":"ok"}`.
+3. Frontend integration:
+   - Confirm app loads at `http://localhost:5173` and successfully calls backend at `http://localhost:8000`.
+4. Optional script validation:
+   - Confirm `dev-start.sh` behavior matches caveats above (`backend/.venv` required; compose file path caveat).
+5. Optional data validation:
+   - Run county boundary + county preload commands and verify data-backed endpoints return populated results.
+
+## Assumptions and defaults
+
+1. This README targets macOS/Linux shell usage. Windows users should use WSL or adapt commands.
+2. Manual startup commands are canonical for first run and troubleshooting.
+3. Assistant setup is optional and not required for core app startup.
+4. Advanced ingestion details are retained in this README as appendix material.
+5. Default local DB URL is `postgresql+psycopg://places:places@localhost:5432/places`.
