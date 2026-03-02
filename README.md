@@ -116,6 +116,22 @@ Set DB URL for ingestion scripts:
 export DATABASE_URL=postgresql+psycopg://places:places@localhost:5432/places
 ```
 
+Optional schema mapping overrides (defaults preserve current behavior):
+
+```bash
+export PLACES_SCHEMA=public
+export ACS_SCHEMA=public
+export SVI_SCHEMA=public
+export HRSA_SCHEMA=public
+export CMS_SCHEMA=cms
+```
+
+Quick schema mapping verification:
+
+```bash
+python backend/scripts/verify_schema_mapping.py
+```
+
 ### County boundaries
 
 ```bash
@@ -153,6 +169,34 @@ python backend/scripts/ingest_hpsa.py \
   --mh data/BCD_HPSA_FCT_DET_MH.csv \
   --dh data/BCD_HPSA_FCT_DET_DH.csv \
   --rebuild-summary
+```
+
+CMS ingests (tables are isolated in schema `cms`):
+
+```bash
+python backend/scripts/ingest_cms_gv.py \
+  --path "./data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
+
+python backend/scripts/ingest_cms_ssp.py \
+  --path "./data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+
+python backend/scripts/verify_cms_tables.py
+```
+
+Equivalent module entrypoints:
+
+```bash
+cd backend
+python -m app.cms.ingest.gv_ingest --path "../data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
+python -m app.cms.ingest.ssp_ingest --path "../data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+```
+
+Verify CMS endpoints:
+
+```bash
+curl "http://localhost:8000/cms/gv/geo?level=county&year=2023&age_level=All&measure_id=BENES_TOTAL_CNT"
+curl "http://localhost:8000/cms/gv/county/01001?year=2023&age_level=All&measure_ids=BENES_TOTAL_CNT,BENES_FFS_CNT"
+curl "http://localhost:8000/cms/ssp/county/01001?year=2024&enrollment_type=agdu&assign_window=offset&measure_ids=PER_CAPITA_EXP,AVG_RISK_SCORE"
 ```
 
 For full script options and expected input files, see `backend/scripts/README.md`.

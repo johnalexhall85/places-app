@@ -8,6 +8,8 @@ from urllib.parse import unquote, urlparse
 
 from sqlalchemy import create_engine, text
 
+from _schema_imports import places_table
+
 
 TIGER_YEAR = 2020
 ZIP_PATTERN = re.compile(r"^tl_2020_(\d{2})_tract\.zip$")
@@ -102,7 +104,8 @@ def ensure_target_table_exists(db_url: str) -> None:
     engine = create_engine(db_url, future=True)
     with engine.connect() as connection:
         exists = connection.execute(
-            text("SELECT to_regclass('public.tract_shapes') AS exists")
+            text("SELECT to_regclass(:table_name) AS exists"),
+            {"table_name": places_table("tract_shapes")},
         ).mappings().one()["exists"]
     if exists is None:
         raise RuntimeError(
@@ -163,7 +166,7 @@ def stage_row_count(engine, stage_table: str) -> int:
     with engine.connect() as connection:
         table_exists = connection.execute(
             text("SELECT to_regclass(:table_name) AS exists"),
-            {"table_name": f"public.{stage_table}"},
+            {"table_name": places_table(stage_table)},
         ).mappings().one()["exists"]
         if table_exists is None:
             return 0

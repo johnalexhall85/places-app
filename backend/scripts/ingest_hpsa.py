@@ -24,6 +24,8 @@ from typing import Any, Iterable
 
 from sqlalchemy import create_engine, text
 
+from _schema_imports import hrsa_table
+
 DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
 DEFAULT_PC_PATH = "/mnt/data/BCD_HPSA_FCT_DET_PC.csv"
 DEFAULT_MH_PATH = "/mnt/data/BCD_HPSA_FCT_DET_MH.csv"
@@ -236,7 +238,7 @@ def ensure_required_tables(engine) -> None:
         ):
             exists = conn.execute(
                 text("SELECT to_regclass(:name)"),
-                {"name": f"public.{table_name}"},
+                {"name": hrsa_table(table_name)},
             ).scalar()
             if exists is None:
                 raise RuntimeError(

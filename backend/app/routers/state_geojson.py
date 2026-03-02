@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.db_fqtn import places_table
 
 router = APIRouter(tags=["state-boundaries"])
 
@@ -14,7 +15,8 @@ def states_boundary_geojson(
     db: Session = Depends(get_db),
 ):
     boundary_table_exists = db.execute(
-        text("SELECT to_regclass('public.dim_county_boundary') AS exists")
+        text("SELECT to_regclass(:table_name) AS exists"),
+        {"table_name": places_table("dim_county_boundary")},
     ).mappings().one()
     if boundary_table_exists["exists"] is None:
         raise HTTPException(

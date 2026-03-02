@@ -13,6 +13,9 @@
  *   placesMeasureId?: string,
  *   placesYear?: number,
  *   placesValueTypeId?: string,
+ *   cmsMeasureId?: string,
+ *   cmsYear?: number,
+ *   cmsAgeLevel?: string,
  *   acsVariable?: string,
  *   acsYearWindow?: string,
  *   acsDataValueTypeId?: string,
@@ -37,6 +40,7 @@ function normalizeDataSource(value) {
   if (token === "acs_nmf" || token === "acs-nmf" || token === "acs") return "ACS";
   if (token === "svi") return "SVI";
   if (token === "hpsa") return "HPSA";
+  if (token === "cms") return "CMS";
   return String(value ?? "").trim().toUpperCase() || "UNKNOWN";
 }
 
@@ -87,6 +91,9 @@ function removeUndefined(value) {
  *     placesMeasureId?: string | null,
  *     placesYear?: number | null,
  *     placesValueTypeId?: string | null,
+ *     cmsMeasureId?: string | null,
+ *     cmsYear?: number | null,
+ *     cmsAgeLevel?: string | null,
  *     acsVariable?: string | null,
  *     acsYearWindow?: string | null,
  *     acsDataValueTypeId?: string | null,
@@ -138,6 +145,15 @@ export function buildMapContext(input) {
       : undefined,
     placesValueTypeId: hasText(input?.selection?.placesValueTypeId)
       ? String(input.selection.placesValueTypeId).trim()
+      : undefined,
+    cmsMeasureId: hasText(input?.selection?.cmsMeasureId)
+      ? String(input.selection.cmsMeasureId).trim()
+      : undefined,
+    cmsYear: Number.isFinite(Number(input?.selection?.cmsYear))
+      ? Number(input.selection.cmsYear)
+      : undefined,
+    cmsAgeLevel: hasText(input?.selection?.cmsAgeLevel)
+      ? String(input.selection.cmsAgeLevel).trim()
       : undefined,
     acsVariable: hasText(input?.selection?.acsVariable)
       ? String(input.selection.acsVariable).trim()

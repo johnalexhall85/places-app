@@ -1,5 +1,52 @@
 # Backend Script Notes
 
+## Schema Mapping Env Vars
+
+Defaults:
+- `PLACES_SCHEMA=public`
+- `ACS_SCHEMA=public`
+- `SVI_SCHEMA=public`
+- `HRSA_SCHEMA=public`
+- `CMS_SCHEMA=cms`
+
+Verify resolved mapping and table access:
+
+```bash
+python backend/scripts/verify_schema_mapping.py
+```
+
+## CMS Ingestion (Schema `cms`)
+
+CMS tables are isolated in schema `cms` (controlled by `CMS_SCHEMA`, default `cms`).
+
+Ingest Geographic Variation PUF:
+
+```bash
+python backend/scripts/ingest_cms_gv.py \
+  --path "./data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
+```
+
+Ingest SSP County FFS PUF:
+
+```bash
+python backend/scripts/ingest_cms_ssp.py \
+  --path "./data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+```
+
+Verify CMS tables exist:
+
+```bash
+python backend/scripts/verify_cms_tables.py
+```
+
+Equivalent module entrypoints:
+
+```bash
+cd backend
+python -m app.cms.ingest.gv_ingest --path "../data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
+python -m app.cms.ingest.ssp_ingest --path "../data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+```
+
 ## Ingest SVI Multiple Years (2018, 2020, 2022)
 
 `ingest_svi_years.py` loads county and tract SVI CSVs into:

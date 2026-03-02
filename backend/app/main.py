@@ -20,6 +20,7 @@ from app.routers.profiles import router as profiles_router
 from app.routers.profile_reports import router as profile_reports_router
 from app.routers.svi import router as svi_router
 from app.routers.hpsa import router as hpsa_router
+from app.cms.router import router as cms_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -57,3 +58,4 @@ app.include_router(profiles_router)
 app.include_router(profile_reports_router)
 app.include_router(svi_router)
 app.include_router(hpsa_router)
+app.include_router(cms_router)

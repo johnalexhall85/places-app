@@ -27,6 +27,11 @@ import {
 } from "./content/hpsaLegendCopy";
 import { buildMapContext } from "./mapContext";
 import useSelectedAreaProfileTarget from "./hooks/useSelectedAreaProfileTarget";
+import {
+  fetchCmsGvCountyGeo,
+  fetchCmsMeasures,
+  fetchCmsYears,
+} from "./api/cms";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
@@ -34,6 +39,7 @@ const DATA_SOURCES = {
   ACS_NMF: "acs_nmf",
   SVI: "svi",
   HPSA: "hpsa",
+  CMS: "cms",
 };
 const DEFAULT_SVI_YEAR = 2022;
 const SVI_FALLBACK_YEARS = [2022, 2020, 2018];
@@ -70,6 +76,58 @@ const HPSA_DOMAIN_LABELS = HPSA_DOMAIN_OPTIONS.reduce((acc, option) => {
   acc[option.value] = option.label;
   return acc;
 }, {});
+const COUNTY_HOVER_TOOLTIP_OPTIONS = {
+  sticky: true,
+  direction: "top",
+  opacity: 0.95,
+  interactive: false,
+};
+const CMS_AGE_OPTIONS = [
+  { value: "all", label: "All", apiValue: "All" },
+  { value: "65_plus", label: "65 and older", apiValue: "65+" },
+  { value: "under_65", label: "Under 65", apiValue: "<65" },
+];
+const CMS_CURATED_MEASURES = [
+  {
+    key: "spending_standardized",
+    label: "Medicare spending per person (standardized)",
+    unitType: "usd",
+    candidateMeasureIds: [
+      "TOT_MDCR_STDZD_PYMT_PC",
+      "TOT_MDCR_PYMT_PC",
+      "TOT_MDCR_STDZD_PYMT_AMT",
+      "TOT_MDCR_PYMT_AMT",
+    ],
+  },
+  {
+    key: "er_visits_per_1000",
+    label: "Emergency room visits (per 1,000 beneficiaries)",
+    unitType: "per_1000",
+    candidateMeasureIds: [
+      "ER_VISITS_PER_1000_BENES",
+      "ER_VISITS_PER_1000",
+      "BENES_ER_VISITS_PCT",
+    ],
+  },
+  {
+    key: "readmission_30_day",
+    label: "Hospital readmissions (30-day, %)",
+    unitType: "percent",
+    candidateMeasureIds: [
+      "READMIT_RATE_30D",
+      "ACUTE_HOSP_READMSN_PCT",
+    ],
+  },
+  {
+    key: "average_risk_score",
+    label: "Average risk score (HCC)",
+    unitType: "risk",
+    candidateMeasureIds: [
+      "AVG_RISK_SCORE",
+      "BENE_AVG_RISK_SCRE",
+    ],
+  },
+];
 const STATE_BORDER_COLOR = "#4c1d95";
 const FALLBACK_YEARS = [2023];
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -89,6 +147,68 @@ function parseYearFromToken(value) {
   if (!directYear) return null;
   const parsed = Number(directYear[1]);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function pickFirstDefined(...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function findCmsMeasureId(availableIds, preferredIds) {
+  for (const preferredId of preferredIds) {
+    if (availableIds.has(preferredId)) {
+      return preferredId;
+    }
+  }
+  return null;
+}
+
+function buildCmsCuratedMeasures(apiMeasures) {
+  const list = Array.isArray(apiMeasures) ? apiMeasures : [];
+  const byId = new Map();
+  list.forEach((measure) => {
+    const measureId = String(measure?.measure_id ?? "").trim();
+    if (!measureId) return;
+    byId.set(measureId, measure);
+  });
+
+  const availableIds = new Set(byId.keys());
+  const curatedFromApi = CMS_CURATED_MEASURES
+    .map((config) => {
+      const resolvedId = findCmsMeasureId(availableIds, config.candidateMeasureIds);
+      if (!resolvedId) return null;
+      const sourceMeasure = byId.get(resolvedId) ?? {};
+      return {
+        measure_id: resolvedId,
+        name: config.label,
+        measure: config.label,
+        label: config.label,
+        unit: sourceMeasure?.unit ?? null,
+        domain: sourceMeasure?.domain ?? null,
+        cms_unit_type: config.unitType,
+        source: "cms",
+      };
+    })
+    .filter(Boolean);
+
+  if (curatedFromApi.length > 0) {
+    return curatedFromApi;
+  }
+
+  return CMS_CURATED_MEASURES.map((config) => ({
+    measure_id: config.candidateMeasureIds[0],
+    name: config.label,
+    measure: config.label,
+    label: config.label,
+    unit: null,
+    domain: null,
+    cms_unit_type: config.unitType,
+    source: "cms",
+  }));
 }
 
 function quantile(sortedValues, q) {
@@ -147,11 +267,30 @@ function computeBreaks(values, bins = BIN_COUNT) {
   return deduped;
 }
 
+function computeFixedQuantileBreaks(values, bins = BIN_COUNT) {
+  const numeric = values
+    .map((value) => toFiniteNumericValue(value))
+    .filter((value) => value != null)
+    .sort((a, b) => a - b);
+
+  if (numeric.length === 0) {
+    return [];
+  }
+
+  const breaks = [];
+  for (let i = 0; i <= bins; i += 1) {
+    breaks.push(quantile(numeric, i / bins));
+  }
+  return breaks;
+}
+
 function tagMeasuresForSource(measuresList, source) {
   const sourceTag = source === DATA_SOURCES.ACS_NMF
     ? "acs"
     : source === DATA_SOURCES.SVI
       ? "svi"
+      : source === DATA_SOURCES.CMS
+        ? "cms"
       : "places";
   return (measuresList ?? []).map((measure) => ({
     ...measure,
@@ -238,6 +377,204 @@ function normalizeCountyFips(value) {
   if (digits.length === 5) return digits;
   if (digits.length < 5) return digits.padStart(5, "0");
   return null;
+}
+
+function getCountyFipsFromProperties(properties) {
+  if (!properties) return null;
+  return normalizeCountyFips(
+    properties.county_fips
+    ?? properties.location_id
+    ?? properties.locationid
+    ?? properties.geoid
+    ?? (
+      properties.statefp != null && properties.countyfp != null
+        ? `${properties.statefp}${properties.countyfp}`
+        : null
+    )
+  );
+}
+
+function getCmsAgeOption(value) {
+  return CMS_AGE_OPTIONS.find((option) => option.value === value) ?? CMS_AGE_OPTIONS[0];
+}
+
+function getCmsUnitType(measure) {
+  const explicit = String(measure?.cms_unit_type ?? "").trim().toLowerCase();
+  if (["usd", "per_1000", "percent", "risk"].includes(explicit)) {
+    return explicit;
+  }
+  const measureId = String(measure?.measure_id ?? "").trim().toUpperCase();
+  if (
+    measureId.includes("PYMT")
+    || measureId.endsWith("_AMT")
+    || measureId.endsWith("_PC")
+  ) {
+    return "usd";
+  }
+  if (measureId.includes("PER_1000")) {
+    return "per_1000";
+  }
+  if (measureId.endsWith("_PCT") || measureId.endsWith("_RATE")) {
+    return "percent";
+  }
+  if (measureId.includes("RISK")) {
+    return "risk";
+  }
+  return "number";
+}
+
+function formatCmsValue(value, unitType, { includeUnits = false } = {}) {
+  const numericValue = toFiniteNumericValue(value);
+  if (numericValue == null) return "Not shown";
+
+  if (unitType === "usd") {
+    const formatted = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(numericValue);
+    return includeUnits ? `${formatted} per person` : formatted;
+  }
+  if (unitType === "per_1000") {
+    const formatted = numericValue.toLocaleString("en-US", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+    return includeUnits ? `${formatted} per 1,000` : formatted;
+  }
+  if (unitType === "percent") {
+    return `${numericValue.toFixed(1)}%`;
+  }
+  if (unitType === "risk") {
+    const formatted = numericValue.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return includeUnits ? `${formatted} risk score` : formatted;
+  }
+  return numericValue.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+function formatCmsRange(min, max, unitType) {
+  const minValue = toFiniteNumericValue(min);
+  const maxValue = toFiniteNumericValue(max);
+  if (minValue == null || maxValue == null) return "Not shown";
+  return `${formatCmsValue(minValue, unitType, { includeUnits: true })} - ${
+    formatCmsValue(maxValue, unitType, { includeUnits: true })
+  }`;
+}
+
+function getCmsUnitsLabel(unitType) {
+  if (unitType === "usd") return "USD per person";
+  if (unitType === "per_1000") return "per 1,000 beneficiaries";
+  if (unitType === "percent") return "%";
+  if (unitType === "risk") return "risk score";
+  return "reported value";
+}
+
+function shortenMeasureLabelForTooltip(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "Measure";
+
+  const cleaned = text
+    .replace(/\s+among adults aged.*$/i, "")
+    .replace(/\s+for adults aged.*$/i, "")
+    .replace(/\s+for adults\b.*$/i, "")
+    .replace(/\s*\(.*adults.*\)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (!cleaned) return "Measure";
+  if (cleaned.length <= 68) return cleaned;
+  return `${cleaned.slice(0, 65).trimEnd()}...`;
+}
+
+function inferTooltipUnitType({ measureId, measureLabel, dataValueTypeId, source, explicitUnitType }) {
+  const explicit = String(explicitUnitType ?? "").trim().toLowerCase();
+  if (["percent", "usd", "per_1000", "risk", "number"].includes(explicit)) {
+    return explicit;
+  }
+
+  if (source === DATA_SOURCES.PLACES) {
+    return "percent";
+  }
+
+  const typeId = String(dataValueTypeId ?? "").trim().toLowerCase();
+  if (typeId === "percent" || typeId === "crdprv" || typeId === "ageadjprv") {
+    return "percent";
+  }
+
+  const id = String(measureId ?? "").trim().toUpperCase();
+  const label = String(measureLabel ?? "").trim().toLowerCase();
+  if (id.includes("PER_1000") || /per\s*1,?000/.test(label)) return "per_1000";
+  if (
+    id.includes("PYMT")
+    || id.endsWith("_AMT")
+    || /\b(dollar|cost|payment|spending|income|usd)\b/.test(label)
+  ) {
+    return "usd";
+  }
+  if (id.endsWith("_PCT") || id.endsWith("_RATE") || /percent|prevalence|rate/.test(label)) {
+    return "percent";
+  }
+  if (id.includes("RISK")) return "risk";
+  return "number";
+}
+
+function formatTooltipValue(value, unitType, { noDataLabel = "No data" } = {}) {
+  const numeric = toFiniteNumericValue(value);
+  if (numeric == null) return noDataLabel;
+
+  if (unitType === "percent") {
+    return `${numeric.toFixed(1)}%`;
+  }
+  if (unitType === "per_1000") {
+    return `${numeric.toLocaleString("en-US", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} per 1,000`;
+  }
+  if (unitType === "usd") {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(numeric);
+  }
+  if (unitType === "risk") {
+    return numeric.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  return numeric.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
+}
+
+function formatTooltipMetaLine(valueText, periodText) {
+  const safeValue = String(valueText ?? "").trim() || "No data";
+  const safePeriod = String(periodText ?? "").trim();
+  if (!safePeriod) return safeValue;
+  return `${safeValue} • ${safePeriod}`;
+}
+
+function toHpsaStatus(designatedValue, coveragePctValue) {
+  const hasDesignated = designatedValue !== null && designatedValue !== undefined;
+  if (!hasDesignated) return "No data";
+
+  const designated = Boolean(designatedValue);
+  if (!designated) return "No";
+
+  const coveragePct = toFiniteNumericValue(coveragePctValue);
+  if (coveragePct != null && coveragePct > 0 && coveragePct < 100) {
+    return "Partial";
+  }
+  return "Yes";
 }
 
 function getColor(value, breaks) {
@@ -825,6 +1162,7 @@ export default function App() {
 
   const [selectedDataSource, setSelectedDataSource] = useState(DATA_SOURCES.PLACES);
   const [selectedHpsaDomain, setSelectedHpsaDomain] = useState("pc");
+  const [selectedCmsAgeGroup, setSelectedCmsAgeGroup] = useState(CMS_AGE_OPTIONS[0].value);
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
@@ -880,6 +1218,7 @@ export default function App() {
     typeof window === "undefined" ? 900 : window.innerHeight
   );
   const [measurePanelHeight, setMeasurePanelHeight] = useState(0);
+  const [cmsBreaks, setCmsBreaks] = useState([]);
 
   const geoJsonRef = useRef(null);
   const selectedLayerRef = useRef(null);
@@ -911,6 +1250,8 @@ export default function App() {
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
   const inflightRef = useRef(new Map()); // { key: Promise }
   const measuresCacheRef = useRef(new Map()); // { source: measures[] }
+  const cmsSelectionCacheRef = useRef(new Map()); // { `${year}|${age}|${measure}`: { rowsByCounty, breaks } }
+  const cmsSelectionInflightRef = useRef(new Map()); // { `${year}|${age}|${measure}`: Promise }
   
   // Viewport debouncing
   const viewportDebounceRef = useRef(null);
@@ -967,16 +1308,22 @@ export default function App() {
   const isAcsDataSource = selectedDataSource === DATA_SOURCES.ACS_NMF;
   const isSviDataSource = selectedDataSource === DATA_SOURCES.SVI;
   const isHpsaDataSource = selectedDataSource === DATA_SOURCES.HPSA;
+  const isCmsDataSource = selectedDataSource === DATA_SOURCES.CMS;
   const isPlacesDataSource = selectedDataSource === DATA_SOURCES.PLACES;
+  const selectedCmsAgeOption = getCmsAgeOption(selectedCmsAgeGroup);
+  const selectedCmsAgeLevel = selectedCmsAgeOption.apiValue;
+  const selectedCmsAgeLabel = selectedCmsAgeOption.label;
   const datasetCachePrefix = isAcsDataSource
     ? "acs-nmf"
     : isSviDataSource
       ? "svi"
       : isHpsaDataSource
         ? "hpsa"
+        : isCmsDataSource
+          ? "cms"
         : "places";
   const historySupported = selectedDataSource === DATA_SOURCES.PLACES;
-  const tractsActive = !isHpsaDataSource && mapZoom >= TRACT_ZOOM;
+  const tractsActive = !isHpsaDataSource && !isCmsDataSource && mapZoom >= TRACT_ZOOM;
   const activeGeography = tractsActive ? "tract" : "county";
   const acsGeography = isAcsDataSource && tractsActive ? "tract" : "county";
   const selectedTemporalValue = isHpsaDataSource
@@ -985,6 +1332,12 @@ export default function App() {
       ? selectedYearWindow
       : isSviDataSource
         ? selectedSviYear
+        : isCmsDataSource
+          ? (
+            selectedYear == null
+              ? null
+              : `${selectedYear}|${selectedCmsAgeLevel}`
+          )
         : selectedYear;
   const selectedMeasure = measures.find(
     (measure) => measure.measure_id === selectedMeasureId
@@ -1034,7 +1387,7 @@ export default function App() {
   }, [isAcsDataSource, selectedMeasure]);
 
   useEffect(() => {
-    if (isAcsDataSource || isSviDataSource || isHpsaDataSource) return;
+    if (isAcsDataSource || isSviDataSource || isHpsaDataSource || isCmsDataSource) return;
     if (!selectedMeasureId) return;
     if (selectedYear == null || !Number.isFinite(Number(selectedYear))) return;
     if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") return;
@@ -1047,6 +1400,7 @@ export default function App() {
     isAcsDataSource,
     isSviDataSource,
     isHpsaDataSource,
+    isCmsDataSource,
     selectedMeasureId,
     selectedType,
     selectedYear,
@@ -1090,6 +1444,65 @@ export default function App() {
     return promise;
   }, []);
 
+  const loadCmsSelectionData = useCallback(
+    async ({ year, ageLevel, measureId, signal }) => {
+      const key = `${year}|${ageLevel}|${measureId}`;
+      const cached = cmsSelectionCacheRef.current.get(key);
+      if (cached) {
+        return cached;
+      }
+
+      if (cmsSelectionInflightRef.current.has(key)) {
+        return cmsSelectionInflightRef.current.get(key);
+      }
+
+      const promise = (async () => {
+        const rows = await fetchCmsGvCountyGeo({
+          apiBase: API_BASE,
+          year,
+          age_level: ageLevel,
+          measure_id: measureId,
+          signal,
+        });
+        const rowsByCounty = new Map();
+        const eligibleValues = [];
+
+        for (const row of Array.isArray(rows) ? rows : []) {
+          const countyFips = normalizeCountyFips(row?.county_fips ?? row?.geo_code);
+          if (!countyFips) continue;
+          const numericValue = toFiniteNumericValue(row?.value);
+          const isSuppressed = Boolean(row?.is_suppressed);
+          const effectiveValue = isSuppressed ? null : numericValue;
+          if (effectiveValue != null) {
+            eligibleValues.push(effectiveValue);
+          }
+          rowsByCounty.set(countyFips, {
+            county_fips: countyFips,
+            geo_name: row?.geo_name ?? null,
+            year: Number(row?.year ?? year),
+            age_level: row?.age_level ?? ageLevel,
+            measure_id: row?.measure_id ?? measureId,
+            value: effectiveValue,
+            is_suppressed: isSuppressed,
+          });
+        }
+
+        const payload = {
+          rowsByCounty,
+          breaks: computeFixedQuantileBreaks(eligibleValues, BIN_COUNT),
+        };
+        cmsSelectionCacheRef.current.set(key, payload);
+        return payload;
+      })().finally(() => {
+        cmsSelectionInflightRef.current.delete(key);
+      });
+
+      cmsSelectionInflightRef.current.set(key, promise);
+      return promise;
+    },
+    []
+  );
+
   const computedBreaks = useMemo(() => {
     return computeBreaks(
       activeFeatures.map((feature) => getValueFromProperties(feature.properties))
@@ -1100,6 +1513,9 @@ export default function App() {
   const breaks = useMemo(() => {
     if (isSviDataSource) {
       return [];
+    }
+    if (isCmsDataSource) {
+      return cmsBreaks;
     }
     if (!isAcsDataSource) {
       return computedBreaks;
@@ -1114,8 +1530,36 @@ export default function App() {
     const numeric = values.filter((value) => Number.isFinite(value));
     if (numeric.length < 2) return [];
     return numeric;
-  }, [acsLegend, computedBreaks, isAcsDataSource, isSviDataSource, tractsActive]);
+  }, [acsLegend, cmsBreaks, computedBreaks, isAcsDataSource, isCmsDataSource, isSviDataSource, tractsActive]);
   const legendBbox = acsGeography === "tract" ? bbox : null;
+
+  useEffect(() => {
+    if (!isCmsDataSource || selectedYear == null || !selectedMeasureId) {
+      setCmsBreaks([]);
+      return;
+    }
+
+    let isMounted = true;
+    loadCmsSelectionData({
+      year: Number(selectedYear),
+      ageLevel: selectedCmsAgeLevel,
+      measureId: selectedMeasureId,
+    })
+      .then((payload) => {
+        if (!isMounted) return;
+        setCmsBreaks(Array.isArray(payload?.breaks) ? payload.breaks : []);
+      })
+      .catch((cmsLoadError) => {
+        if (!isMounted) return;
+        if (isAbortLikeError(cmsLoadError)) return;
+        console.error("CMS selection load failed:", cmsLoadError);
+        setCmsBreaks([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isCmsDataSource, loadCmsSelectionData, selectedCmsAgeLevel, selectedMeasureId, selectedYear]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1132,6 +1576,8 @@ export default function App() {
       ? `acs_nmf:${acsGeography}`
       : source === DATA_SOURCES.SVI
         ? `svi:${activeGeography}:${selectedSviYear}`
+        : source === DATA_SOURCES.CMS
+          ? DATA_SOURCES.CMS
         : DATA_SOURCES.PLACES;
     const cachedMeasures = measuresCacheRef.current.get(sourceKey);
     let endpoint = "/measures";
@@ -1157,6 +1603,12 @@ export default function App() {
           && nextMeasures.some((measure) => measure.measure_id === "CASTHMA")
         ) {
           return "CASTHMA";
+        }
+        if (
+          source === DATA_SOURCES.CMS
+          && nextMeasures.some((measure) => measure.measure_id === "TOT_MDCR_STDZD_PYMT_PC")
+        ) {
+          return "TOT_MDCR_STDZD_PYMT_PC";
         }
         if (
           source === DATA_SOURCES.SVI
@@ -1185,18 +1637,24 @@ export default function App() {
       };
     }
 
-    fetch(`${API_BASE}${endpoint}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load measures.");
-        }
-        return response.json();
-      })
+    const fetchMeasuresPromise = source === DATA_SOURCES.CMS
+      ? fetchCmsMeasures({ apiBase: API_BASE })
+      : fetch(`${API_BASE}${endpoint}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to load measures.");
+          }
+          return response.json();
+        });
+
+    fetchMeasuresPromise
       .then((data) => {
         if (!isMounted) return;
         const list = Array.isArray(data) ? data : [];
         let sorted = [];
-        if (source === DATA_SOURCES.SVI) {
+        if (source === DATA_SOURCES.CMS) {
+          sorted = buildCmsCuratedMeasures(list);
+        } else if (source === DATA_SOURCES.SVI) {
           const apiById = new Map();
           for (const measure of list) {
             const key = String(measure?.measure_id ?? "").trim().toUpperCase();
@@ -1248,6 +1706,12 @@ export default function App() {
       })
       .catch((errorResponse) => {
         if (!isMounted) return;
+        if (source === DATA_SOURCES.CMS) {
+          const fallbackCmsMeasures = tagMeasuresForSource(buildCmsCuratedMeasures([]), source);
+          measuresCacheRef.current.set(sourceKey, fallbackCmsMeasures);
+          setMeasures(fallbackCmsMeasures);
+          applyMeasureDefaults(fallbackCmsMeasures);
+        }
         setError(errorResponse.message ?? "Failed to load measures.");
       });
 
@@ -1263,6 +1727,51 @@ export default function App() {
       setIsSviYearsLoading(false);
       setSviYearsError(null);
       return;
+    }
+
+    if (selectedDataSource === DATA_SOURCES.CMS) {
+      let isMounted = true;
+      setIsYearsLoading(true);
+      setYearsError(null);
+      setIsSviYearsLoading(false);
+      setSviYearsError(null);
+
+      fetchCmsYears({ apiBase: API_BASE })
+        .then((fetchedYears) => {
+          if (!isMounted) return;
+          const uniqueSortedYears = Array.from(new Set(fetchedYears)).sort((a, b) => b - a);
+          const nextYears = uniqueSortedYears.length > 0 ? uniqueSortedYears : FALLBACK_YEARS;
+          setYears(nextYears);
+          setSelectedYear((currentYear) => {
+            if (currentYear != null && nextYears.includes(currentYear)) {
+              return currentYear;
+            }
+            if (nextYears.includes(2023)) {
+              return 2023;
+            }
+            return nextYears[0];
+          });
+          setYearsError(null);
+        })
+        .catch((cmsYearsFetchError) => {
+          if (!isMounted) return;
+          console.error("Failed to load CMS years:", cmsYearsFetchError);
+          setYears(FALLBACK_YEARS);
+          setSelectedYear((currentYear) => (
+            currentYear != null && FALLBACK_YEARS.includes(currentYear)
+              ? currentYear
+              : FALLBACK_YEARS[0]
+          ));
+          setYearsError("Could not load CMS years from API. Falling back to 2023.");
+        })
+        .finally(() => {
+          if (!isMounted) return;
+          setIsYearsLoading(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
     }
 
     if (selectedDataSource === DATA_SOURCES.SVI) {
@@ -1495,6 +2004,63 @@ export default function App() {
         }
       }
 
+      if (isCmsDataSource) {
+        const boundaryUrl = new URL(`${API_BASE}/counties/boundaries/geojson`);
+        boundaryUrl.searchParams.set("simplify", "0.02");
+        boundaryUrl.searchParams.set("limit", "5000");
+        if (bboxValue) {
+          boundaryUrl.searchParams.set("bbox", bboxValue);
+        }
+
+        const [boundaryResponse, cmsSelectionData] = await Promise.all([
+          fetch(boundaryUrl, { signal: controller.signal }),
+          loadCmsSelectionData({
+            year: Number(selectedYear),
+            ageLevel: selectedCmsAgeLevel,
+            measureId: selectedMeasureId,
+            signal: controller.signal,
+          }),
+        ]);
+
+        if (!boundaryResponse.ok) {
+          const body = await parseErrorBody(boundaryResponse);
+          throw new Error(`County request failed (${boundaryResponse.status}): ${body}`);
+        }
+
+        const boundaryGeojson = await boundaryResponse.json();
+        const rowsByCounty = cmsSelectionData?.rowsByCounty ?? new Map();
+        const mergedFeatures = (boundaryGeojson?.features ?? []).map((feature) => {
+          const baseProperties = feature?.properties ?? {};
+          const countyFips = getCountyFipsFromProperties(baseProperties);
+          const cmsRow = countyFips ? rowsByCounty.get(countyFips) : null;
+          const cmsValue = cmsRow?.value ?? null;
+          const cmsIsSuppressed = Boolean(cmsRow?.is_suppressed);
+          return {
+            ...feature,
+            properties: {
+              ...baseProperties,
+              county_fips: countyFips ?? baseProperties.county_fips ?? null,
+              county_name: baseProperties.county_name ?? baseProperties.name ?? cmsRow?.geo_name ?? null,
+              cms_value: cmsValue,
+              cms_is_suppressed: cmsIsSuppressed,
+              cms_measure_id: selectedMeasureId,
+              year: cmsRow?.year ?? Number(selectedYear),
+              age_level: cmsRow?.age_level ?? selectedCmsAgeLevel,
+              measure_id: selectedMeasureId,
+              value: cmsIsSuppressed ? null : cmsValue,
+              data_value: cmsIsSuppressed ? null : cmsValue,
+            },
+          };
+        });
+
+        setCmsBreaks(Array.isArray(cmsSelectionData?.breaks) ? cmsSelectionData.breaks : []);
+        return {
+          ...(boundaryGeojson ?? {}),
+          type: "FeatureCollection",
+          features: mergedFeatures,
+        };
+      }
+
       const url = isAcsDataSource
         ? new URL(`${API_BASE}/acs-nmf/counties`)
         : isSviDataSource
@@ -1528,9 +2094,12 @@ export default function App() {
       isAcsDataSource,
       isSviDataSource,
       isHpsaDataSource,
+      isCmsDataSource,
       isAcsMeasureSelected,
+      loadCmsSelectionData,
       syncHpsaMetadataFromCountyPayload,
       selectedHpsaDomain,
+      selectedCmsAgeLevel,
       selectedMeasureId,
       selectedSviYear,
       selectedYear,
@@ -1770,6 +2339,9 @@ export default function App() {
     if (isHpsaDataSource) {
       return;
     }
+    if (isCmsDataSource) {
+      return;
+    }
     if (isAcsDataSource && !isAcsMeasureSelected) {
       return;
     }
@@ -1801,6 +2373,7 @@ export default function App() {
     fetchTractsForBbox,
     fetchWithDedupe,
     isHpsaDataSource,
+    isCmsDataSource,
     isAcsDataSource,
     isAcsMeasureSelected,
     mapZoom,
@@ -1850,7 +2423,12 @@ export default function App() {
   // Main data-fetching effect with caching, deduping, and stale-while-revalidate
   useEffect(() => {
     const missingMeasureContext = !isHpsaDataSource && !selectedMeasureId;
-    const missingTypeContext = !isSviDataSource && !isHpsaDataSource && !selectedType;
+    const missingTypeContext = (
+      !isSviDataSource
+      && !isHpsaDataSource
+      && !isCmsDataSource
+      && !selectedType
+    );
     if (
       !bbox
       || selectedTemporalValue == null
@@ -2087,6 +2665,7 @@ export default function App() {
     isAcsDataSource,
     isSviDataSource,
     isHpsaDataSource,
+    isCmsDataSource,
     syncHpsaMetadataFromCountyPayload,
     isAcsMeasureSelected,
     selectedMeasureId,
@@ -2192,15 +2771,148 @@ export default function App() {
     [applySelectedStyle, historySupported]
   );
 
+  const buildCountyHoverTooltipHtml = useCallback(
+    (featureProps) => {
+      if (!featureProps || tractsActive) {
+        return null;
+      }
+
+      // Keep mobile behavior stable by skipping hover tooltips on coarse pointers.
+      if (
+        typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(pointer: coarse)").matches
+      ) {
+        return null;
+      }
+
+      const countyName = getCountyName(featureProps);
+      const stateAbbr = String(featureProps?.state_abbr ?? "").trim();
+      const countyLine = stateAbbr ? `${countyName}, ${stateAbbr}` : countyName;
+
+      if (isCmsDataSource) {
+        const cmsUnitType = getCmsUnitType(selectedMeasure);
+        const cmsValueText = Boolean(featureProps?.cms_is_suppressed)
+          ? "Not shown"
+          : formatCmsValue(featureProps?.cms_value, cmsUnitType, { includeUnits: true });
+        const cmsYearText = String(featureProps?.year ?? selectedYear ?? "").trim() || "N/A";
+        return `${countyLine}<br/>${cmsValueText}<br/>Medicare Fee-for-Service • ${cmsYearText}`;
+      }
+
+      if (isHpsaDataSource) {
+        const domain = String(featureProps?.hpsa_domain ?? selectedHpsaDomain ?? "").trim().toLowerCase();
+        const currentDesignated = featureProps?.designated;
+        const currentCoveragePct = featureProps?.coverage_pct;
+        const pcStatus = toHpsaStatus(
+          featureProps?.pc_designated ?? (domain === "pc" ? currentDesignated : undefined),
+          featureProps?.pc_coverage_pct ?? (domain === "pc" ? currentCoveragePct : undefined)
+        );
+        const mhStatus = toHpsaStatus(
+          featureProps?.mh_designated ?? (domain === "mh" ? currentDesignated : undefined),
+          featureProps?.mh_coverage_pct ?? (domain === "mh" ? currentCoveragePct : undefined)
+        );
+        const dhStatus = toHpsaStatus(
+          featureProps?.dh_designated ?? (domain === "dh" ? currentDesignated : undefined),
+          featureProps?.dh_coverage_pct ?? (domain === "dh" ? currentCoveragePct : undefined)
+        );
+        const statusLine = `Primary: ${pcStatus} • Dental: ${dhStatus} • Mental: ${mhStatus}`;
+        return `${countyLine}<br/>HPSA coverage<br/>${statusLine}`;
+      }
+
+      if (isSviDataSource) {
+        const sviLabel = shortenMeasureLabelForTooltip(
+          pickFirstDefined(
+            featureProps?.measure_name,
+            featureProps?.measure,
+            getSviLabel(featureProps?.measure_id ?? selectedMeasureId),
+            getMeasureDisplayName(selectedMeasure),
+            selectedMeasureId
+          )
+        );
+        const sviValue = toFiniteNumericValue(featureProps?.value ?? featureProps?.data_value);
+        const percentileText = sviValue == null
+          ? "No data"
+          : `Percentile: ${sviValue.toFixed(sviValue <= 1 ? 2 : 1)}`;
+        const sviYearText = String(featureProps?.year ?? selectedSviYear ?? "").trim();
+        return `${countyLine}<br/>${sviLabel}<br/>${formatTooltipMetaLine(percentileText, sviYearText)}`;
+      }
+
+      if (isAcsDataSource) {
+        const acsLabel = shortenMeasureLabelForTooltip(
+          pickFirstDefined(
+            featureProps?.measure,
+            featureProps?.measure_name,
+            getMeasureDisplayName(selectedMeasure),
+            selectedMeasureId
+          )
+        );
+        const acsUnitType = inferTooltipUnitType({
+          source: DATA_SOURCES.ACS_NMF,
+          measureId: featureProps?.measure_id ?? selectedMeasureId,
+          measureLabel: acsLabel,
+          dataValueTypeId: featureProps?.data_value_type_id ?? selectedType,
+        });
+        const acsValueText = formatTooltipValue(
+          featureProps?.value ?? featureProps?.data_value,
+          acsUnitType
+        );
+        const acsPeriod = formatYearWindowDisplay(
+          featureProps?.year_window ?? selectedYearWindow ?? featureProps?.year ?? ""
+        );
+        return `${countyLine}<br/>${acsLabel}<br/>${formatTooltipMetaLine(acsValueText, acsPeriod)}`;
+      }
+
+      const placesLabelBase = shortenMeasureLabelForTooltip(
+        pickFirstDefined(
+          featureProps?.measure_name,
+          featureProps?.measure,
+          featureProps?.short_question_text,
+          getMeasureDisplayName(selectedMeasure),
+          selectedMeasureId
+        )
+      );
+      const placesTypeLabel = formatDataValueTypeLabel(featureProps?.data_value_type_id ?? selectedType);
+      const placesLabel = placesTypeLabel
+        ? `${placesLabelBase} (${placesTypeLabel})`
+        : placesLabelBase;
+      const placesValueText = formatTooltipValue(
+        featureProps?.value ?? featureProps?.data_value,
+        "percent"
+      );
+      const placesYear = String(featureProps?.year ?? selectedYear ?? "").trim();
+      return `${countyLine}<br/>${placesLabel}<br/>${formatTooltipMetaLine(placesValueText, placesYear)}`;
+    },
+    [
+      isAcsDataSource,
+      isCmsDataSource,
+      isHpsaDataSource,
+      isSviDataSource,
+      selectedHpsaDomain,
+      selectedMeasure,
+      selectedMeasureId,
+      selectedSviYear,
+      selectedType,
+      selectedYear,
+      selectedYearWindow,
+      tractsActive,
+    ]
+  );
+
   const handleEachFeature = useCallback(
     (feature, layer) => {
+      const featureProps = feature?.properties ?? {};
       layer.on("click", () => {
         handleFeatureClick(feature, layer, { openHistory: true });
       });
       layer.on("mouseover", () => {
-        setHoveredProps(feature.properties);
+        setHoveredProps(featureProps);
         if (selectedLayerRef.current !== layer) {
           layer.setStyle({ weight: tractsActive ? 1.2 : 2, color: "#0f172a" });
+        }
+        const tooltipHtml = buildCountyHoverTooltipHtml(featureProps);
+        if (tooltipHtml) {
+          layer.bindTooltip(tooltipHtml, COUNTY_HOVER_TOOLTIP_OPTIONS);
+          layer.openTooltip();
         }
       });
       layer.on("mouseout", () => {
@@ -2210,9 +2922,13 @@ export default function App() {
         } else if (geoJsonRef.current) {
           geoJsonRef.current.resetStyle(layer);
         }
+        if (typeof layer.getTooltip === "function" && layer.getTooltip()) {
+          layer.closeTooltip();
+          layer.unbindTooltip();
+        }
       });
     },
-    [handleFeatureClick, applySelectedStyle, tractsActive]
+    [applySelectedStyle, buildCountyHoverTooltipHtml, handleFeatureClick, tractsActive]
   );
 
   const selectActiveFeatureByLocationId = useCallback(
@@ -2563,6 +3279,8 @@ export default function App() {
           ? "Rank"
           : isHpsaDataSource
             ? (selectedHpsaDomain || "pc")
+            : isCmsDataSource
+              ? selectedCmsAgeLevel
             : (selectedType || "CrdPrv");
 
       setAssistantScrollSignal((value) => value + 1);
@@ -2688,12 +3406,14 @@ export default function App() {
       executeAssistantActions,
       generateProfileForArea,
       isAcsDataSource,
+      isCmsDataSource,
       isHpsaDataSource,
       isSviDataSource,
       mapZoom,
       selectedLocationId,
       selectedMeasureId,
       selectedHpsaDomain,
+      selectedCmsAgeLevel,
       selectedSviYear,
       selectedType,
       selectedYear,
@@ -2963,6 +3683,8 @@ export default function App() {
     : isSviDataSource
       ? getSviLabel(selectedMeasureId)
       : getMeasureDisplayName(selectedMeasure);
+  const cmsUnitType = getCmsUnitType(selectedMeasure);
+  const cmsUnitLabel = getCmsUnitsLabel(cmsUnitType);
   const measureNameValue = normalizeMeasureName(
     firstDefined(
       selectedFeatureProps?.measure_name,
@@ -2982,7 +3704,23 @@ export default function App() {
       ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
       : isSviDataSource
         ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
+        : isCmsDataSource
+          ? firstDefined(selectedFeatureProps?.year, selectedYear)
         : firstDefined(selectedFeatureProps?.year, selectedYear);
+  const cmsValue = firstDefined(
+    selectedFeatureProps?.cms_value,
+    selectedFeatureProps?.value,
+    selectedFeatureProps?.data_value
+  );
+  const cmsIsSuppressed = Boolean(firstDefined(selectedFeatureProps?.cms_is_suppressed, false));
+  const cmsValueNumeric = cmsIsSuppressed ? null : toFiniteNumericValue(cmsValue);
+  const cmsCountyName = normalizeCountyParishName(
+    firstDefined(
+      selectedFeatureProps?.county_name,
+      selectedFeatureProps?.location_name,
+      selectedFeatureProps?.name
+    )
+  );
   const acsValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const acsMoe = firstDefined(selectedFeatureProps?.moe);
   const sviValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
@@ -3032,6 +3770,10 @@ export default function App() {
       selectedFeatureProps?.name
     )
   );
+  const cmsCountyDisplayName = cmsCountyName || countyOrParishName || getCountyName(selectedFeatureProps);
+  const cmsCountyStateLine = selectedStateAbbr
+    ? `${cmsCountyDisplayName}, ${selectedStateAbbr}`
+    : cmsCountyDisplayName;
   const countyOrParishLabel = countyOrParishName
     ? `${countyOrParishName} ${countySubdivisionLabel}`
     : `this ${countySubdivisionLabel.toLowerCase()}`;
@@ -3251,6 +3993,8 @@ export default function App() {
         ? "Rank"
         : isHpsaDataSource
           ? (selectedHpsaDomain || "pc")
+          : isCmsDataSource
+            ? selectedCmsAgeLevel
           : (selectedType || "CrdPrv");
 
     return {
@@ -3264,9 +4008,11 @@ export default function App() {
   }, [
     bbox,
     isAcsDataSource,
+    isCmsDataSource,
     isHpsaDataSource,
     isSviDataSource,
     mapZoom,
+    selectedCmsAgeLevel,
     selectedAsOfDateForContext,
     selectedHpsaDomain,
     selectedMeasureId,
@@ -3280,27 +4026,33 @@ export default function App() {
   const buildCurrentMapContext = useCallback(() => {
     if (!selectedLocationId) return null;
 
-    const selection = isHpsaDataSource
-      ? {
-        hpsaDomain: selectedHpsaDomain,
-      }
-      : isAcsDataSource
+	    const selection = isHpsaDataSource
+	      ? {
+	        hpsaDomain: selectedHpsaDomain,
+	      }
+	      : isAcsDataSource
         ? {
           acsVariable: selectedMeasureId,
           acsYearWindow: selectedYearWindow,
           acsDataValueTypeId: selectedType || "Percent",
         }
         : isSviDataSource
-          ? {
-            sviTheme: sviThemeLabel || null,
-            sviMeasureId: selectedMeasureId,
-            sviYear: selectedSviYear,
-          }
-          : {
-            placesMeasureId: selectedMeasureId,
-            placesYear: parseYearFromToken(selectedYear),
-            placesValueTypeId: selectedType,
-          };
+	          ? {
+	            sviTheme: sviThemeLabel || null,
+	            sviMeasureId: selectedMeasureId,
+	            sviYear: selectedSviYear,
+	          }
+	          : isCmsDataSource
+	            ? {
+	              cmsMeasureId: selectedMeasureId,
+	              cmsYear: parseYearFromToken(selectedYear),
+	              cmsAgeLevel: selectedCmsAgeLevel,
+	            }
+	          : {
+	            placesMeasureId: selectedMeasureId,
+	            placesYear: parseYearFromToken(selectedYear),
+	            placesValueTypeId: selectedType,
+	          };
 
     return buildMapContext({
       dataSource: selectedDataSource,
@@ -3318,14 +4070,16 @@ export default function App() {
       },
       asOfDate: selectedAsOfDateForContext,
     });
-  }, [
-    bbox,
-    isAcsDataSource,
-    isHpsaDataSource,
-    isSviDataSource,
-    mapZoom,
-    selectedAreaNameForContext,
-    selectedAsOfDateForContext,
+	  }, [
+	    bbox,
+	    isAcsDataSource,
+	    isCmsDataSource,
+	    isHpsaDataSource,
+	    isSviDataSource,
+	    mapZoom,
+	    selectedCmsAgeLevel,
+	    selectedAreaNameForContext,
+	    selectedAsOfDateForContext,
     selectedCountyFipsForContext,
     selectedDataSource,
     selectedGeoLevel,
@@ -3341,7 +4095,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (!selectedCountyFipsForHpsa) {
+    if (isCmsDataSource || !selectedCountyFipsForHpsa) {
       setHpsaSummary(null);
       setHpsaError(null);
       setIsHpsaLoading(false);
@@ -3402,7 +4156,14 @@ export default function App() {
     return () => {
       controller.abort();
     };
-  }, [isHpsaDataSource, selectedCountyFipsForHpsa, getCached, setCached, fetchWithDedupe]);
+  }, [
+    fetchWithDedupe,
+    getCached,
+    isCmsDataSource,
+    isHpsaDataSource,
+    selectedCountyFipsForHpsa,
+    setCached,
+  ]);
 
   useEffect(() => {
     if (!isHpsaDataSource || !selectedCountyFipsForHpsa) {
@@ -3682,6 +4443,16 @@ export default function App() {
         label: String(bin?.label ?? formatRange(bin?.min, bin?.max)),
       }));
     }
+    if (isCmsDataSource) {
+      return breaks.slice(0, -1).map((start, index) => {
+        const end = breaks[index + 1];
+        return {
+          key: `${start}-${end}-${index}`,
+          colorIndex: index,
+          label: formatCmsRange(start, end, cmsUnitType),
+        };
+      });
+    }
 
     return breaks.slice(0, -1).map((start, index) => {
       const end = breaks[index + 1];
@@ -3691,7 +4462,17 @@ export default function App() {
         label: formatRange(start, end),
       };
     });
-  }, [acsLegend, breaks, hpsaTierRanges, isAcsDataSource, isHpsaDataSource, isSviDataSource, sviBins]);
+  }, [
+    acsLegend,
+    breaks,
+    cmsUnitType,
+    hpsaTierRanges,
+    isAcsDataSource,
+    isCmsDataSource,
+    isHpsaDataSource,
+    isSviDataSource,
+    sviBins,
+  ]);
 
   const compactOverlayLayout = viewportWidth <= 1200;
   const mapViewportHeight = Math.max(420, viewportHeight - HEADER_HEIGHT);
@@ -3709,6 +4490,8 @@ export default function App() {
     ? `Healthcare Access — ${hpsaDomainLabel}`
     : isSviDataSource
       ? (selectedMeasureDisplayName || selectedMeasureId)
+      : isCmsDataSource
+        ? (selectedMeasureDisplayName || selectedMeasureId)
       : `${formatDataValueTypeLabel(selectedType)} \u2013 ${
         tractsActive ? "Census Tract Level" : "County Level"
       }`;
@@ -3716,6 +4499,8 @@ export default function App() {
     ? "County-only HPSA choropleth"
     : isSviDataSource
       ? "Levels of Vulnerability"
+      : isCmsDataSource
+        ? `County-level • Medicare Fee-for-Service • ${selectedYear ?? "N/A"} • ${selectedCmsAgeLabel}`
       : null;
   const floatingPanelStyle = {
     background: "#ffffff",
@@ -3807,6 +4592,7 @@ export default function App() {
                 style={controlSelectStyle}
               >
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
+                <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
                 <option value={DATA_SOURCES.SVI}>Social Vulnerability Index</option>
                 <option value={DATA_SOURCES.HPSA}>HRSA HPSA</option>
@@ -3881,6 +4667,12 @@ export default function App() {
                         );
                       })}
                     </optgroup>
+                  ))
+                ) : isCmsDataSource ? (
+                  measures.map((measure) => (
+                    <option key={measure.measure_id} value={measure.measure_id}>
+                      {getMeasureDisplayName(measure)}
+                    </option>
                   ))
                 ) : (
                   measures.map((measure) => {
@@ -3967,35 +4759,61 @@ export default function App() {
                   <span style={{ color: "#b91c1c", fontSize: 11 }}>{yearsError}</span>
                 ) : null}
               </label>
-            )}
-            {!isSviDataSource ? (
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 600 }}>Data value type</span>
-                <select
-                  value={selectedType}
-                  onChange={(event) => setSelectedType(event.target.value)}
-                  disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
-                  style={controlSelectStyle}
-                >
-                  {isAcsDataSource ? (
-                    acsDataValueTypeIds.length === 0 ? (
-                      <option value="">Loading types...</option>
-                    ) : (
-                      acsDataValueTypeIds.map((typeId) => (
-                        <option key={typeId} value={typeId}>
-                          {formatDataValueTypeLabel(typeId)}
-                        </option>
-                      ))
-                    )
-                  ) : (
-                    <>
-                      <option value="CrdPrv">Crude Prevalence</option>
-                      <option value="AgeAdjPrv">Age-Adjusted Prevalence</option>
-                    </>
-                  )}
-                </select>
-              </label>
-            ) : null}
+	            )}
+	            {isCmsDataSource ? (
+	              <label style={{ display: "grid", gap: 6 }}>
+	                <span style={{ fontWeight: 600 }}>Age group</span>
+	                <select
+	                  value={selectedCmsAgeGroup}
+	                  onChange={(event) => setSelectedCmsAgeGroup(event.target.value)}
+	                  style={controlSelectStyle}
+	                >
+	                  {CMS_AGE_OPTIONS.map((option) => (
+	                    <option key={option.value} value={option.value}>
+	                      {option.label}
+	                    </option>
+	                  ))}
+	                </select>
+	              </label>
+	            ) : null}
+	            {!isSviDataSource ? (
+	              isCmsDataSource ? (
+	                <div style={{ display: "grid", gap: 4 }}>
+	                  <div style={{ fontWeight: 600 }}>Data type</div>
+	                  <div>Medicare Fee-for-Service reported value</div>
+	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                    County-level only (no tracts).
+	                  </div>
+	                </div>
+	              ) : (
+	                <label style={{ display: "grid", gap: 6 }}>
+	                  <span style={{ fontWeight: 600 }}>Data value type</span>
+	                  <select
+	                    value={selectedType}
+	                    onChange={(event) => setSelectedType(event.target.value)}
+	                    disabled={isAcsDataSource && acsDataValueTypeIds.length === 0}
+	                    style={controlSelectStyle}
+	                  >
+	                    {isAcsDataSource ? (
+	                      acsDataValueTypeIds.length === 0 ? (
+	                        <option value="">Loading types...</option>
+	                      ) : (
+	                        acsDataValueTypeIds.map((typeId) => (
+	                          <option key={typeId} value={typeId}>
+	                            {formatDataValueTypeLabel(typeId)}
+	                          </option>
+	                        ))
+	                      )
+	                    ) : (
+	                      <>
+	                        <option value="CrdPrv">Crude Prevalence</option>
+	                        <option value="AgeAdjPrv">Age-Adjusted Prevalence</option>
+	                      </>
+	                    )}
+	                  </select>
+	                </label>
+	              )
+	            ) : null}
             {measures.length === 0 ? null : (
               <div style={{ color: "#475569" }}>
                 {selectedMeasureDisplayName}
@@ -4195,8 +5013,8 @@ export default function App() {
               || (isAcsDataSource && isLegendLoading)
               ? "Loading..."
               : "Legend unavailable."}
-          {!isHpsaDataSource ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+	          {!isHpsaDataSource ? (
+	            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span
                 style={{
                   width: 12,
@@ -4206,28 +5024,75 @@ export default function App() {
                   border: "1px solid #C4D2E0",
                 }}
               />
-              <span>No data</span>
-            </div>
-          ) : null}
+	              <span>{isCmsDataSource ? "Not shown" : "No data"}</span>
+	            </div>
+	          ) : null}
           {isAcsDataSource && acsLegend ? (
             <div style={{ color: "#64748b" }}>
               n={acsLegend.n ?? 0}, no data={acsLegend.noDataCount ?? 0}
             </div>
           ) : null}
-          {isHpsaDataSource && hpsaQuartiles ? (
-            <div style={{ color: "#64748b" }}>
-              designated counties n={hpsaQuartiles.n_counties ?? 0}
-              {hpsaQuartiles.as_of_date ? `, as-of ${hpsaQuartiles.as_of_date}` : ""}
-            </div>
-          ) : null}
-        </div>
+	          {isHpsaDataSource && hpsaQuartiles ? (
+	            <div style={{ color: "#64748b" }}>
+	              designated counties n={hpsaQuartiles.n_counties ?? 0}
+	              {hpsaQuartiles.as_of_date ? `, as-of ${hpsaQuartiles.as_of_date}` : ""}
+	            </div>
+	          ) : null}
+	          {isCmsDataSource ? (
+	            <div
+	              style={{
+	                marginTop: 6,
+	                paddingTop: 8,
+	                borderTop: "1px solid #e2e8f0",
+	                display: "grid",
+	                gap: 8,
+	                color: "#334155",
+	              }}
+	            >
+	              <div style={{ display: "grid", gap: 2 }}>
+	                <div style={{ fontWeight: 700 }}>What this means</div>
+	                <div>
+	                  These values describe people enrolled in traditional Medicare
+	                  (fee-for-service). They do not include Medicare Advantage enrollees
+	                  and do not represent all residents.
+	                </div>
+	              </div>
+	              <div style={{ display: "grid", gap: 2 }}>
+	                <div style={{ fontWeight: 700 }}>Why this may differ from PLACES</div>
+	                <div>
+	                  PLACES estimates reflect all adults aged 18+. CMS reflects Medicare
+	                  fee-for-service beneficiaries (mostly age 65+).
+	                </div>
+	              </div>
+	            </div>
+	          ) : null}
+	        </div>
         {selectedFeature && !isHpsaDataSource ? (
           <>
             <hr />
             <div className="legend-details">
-              {isAcsDataSource ? (
-                <p>
-                  In <strong>{acsAreaLabel}</strong>,{" "}
+	              {isCmsDataSource ? (
+	                <>
+	                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+	                    In {cmsCountyStateLine}:
+	                  </div>
+	                  {cmsValueNumeric == null ? (
+	                    <p>Data not shown for this county (suppressed or unavailable).</p>
+	                  ) : (
+	                    <>
+	                      <p>
+	                        In <strong>{yearValue ?? selectedYear ?? "N/A"}</strong>, Medicare
+	                        fee-for-service beneficiaries had{" "}
+	                        <strong>{formatCmsValue(cmsValueNumeric, cmsUnitType)}</strong>{" "}
+	                        ({cmsUnitLabel}).
+	                      </p>
+	                      <p>This reflects traditional Medicare (not Medicare Advantage).</p>
+	                    </>
+	                  )}
+	                </>
+	              ) : isAcsDataSource ? (
+	                <p>
+	                  In <strong>{acsAreaLabel}</strong>,{" "}
                   <strong>{measureNameValue}</strong> is{" "}
                   <strong>{fmtPercent(acsValue)}</strong>
                   {acsMoe == null ? "" : ` (MOE \u00b1${fmt1(acsMoe)})`} for{" "}
@@ -4438,7 +5303,7 @@ export default function App() {
                   )}
                 </>
               ) : null}
-              {selectedGeoLevel === "county" && !isHpsaDataSource ? (
+              {selectedGeoLevel === "county" && !isHpsaDataSource && !isCmsDataSource ? (
                 <div
                   style={{
                     marginTop: 6,

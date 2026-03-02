@@ -26,6 +26,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from app.db import Base
 from app import models  # noqa: F401
+from app.cms import models as cms_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -44,6 +45,11 @@ TARGET_TABLES = {
     "county_hpsa_summary",
     "profiles",
     "profile_assets",
+    "geo_dim",
+    "gv_measure_dim",
+    "gv_fact",
+    "ssp_measure_dim",
+    "ssp_fact",
     "alembic_version",
 }
 

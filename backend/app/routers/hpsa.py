@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.db_fqtn import hrsa_table, places_table
 from app.schemas.hpsa import HPSAChoroplethCountiesResponse
 from app.services.hpsa_summary import (
     build_hpsa_counties_geojson_response,
@@ -25,13 +26,19 @@ router = APIRouter(tags=["hpsa"])
 
 def _ensure_hpsa_county_geojson_tables(db: Session) -> None:
     required = {
-        "dim_county_boundary": "County boundaries not loaded. Run boundary ingest first.",
-        "county_hpsa_summary": "HPSA county summary table not loaded. Run HPSA summary ingest first.",
+        "dim_county_boundary": (
+            "County boundaries not loaded. Run boundary ingest first.",
+            places_table("dim_county_boundary"),
+        ),
+        "county_hpsa_summary": (
+            "HPSA county summary table not loaded. Run HPSA summary ingest first.",
+            hrsa_table("county_hpsa_summary"),
+        ),
     }
-    for table_name, detail in required.items():
+    for detail, table_name in required.values():
         exists = db.execute(
             text("SELECT to_regclass(:table_name) AS exists"),
-            {"table_name": f"public.{table_name}"},
+            {"table_name": table_name},
         ).mappings().one()["exists"]
         if exists is None:
             raise HTTPException(status_code=503, detail=detail)

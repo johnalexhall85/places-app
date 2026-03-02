@@ -11,6 +11,7 @@ from sqlalchemy import String, bindparam, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
+from app.db_fqtn import acs_table, places_table
 from app.services.profile_narrative import build_profile_narrative
 from app.services.hpsa_summary import (
     build_hpsa_response,
@@ -202,9 +203,14 @@ def inject_hpsa_context(profile_json: dict[str, Any], hpsa_payload: dict[str, An
 
 
 def _table_exists(db: Session, table_name: str) -> bool:
+    fq_table_name = (
+        acs_table(table_name)
+        if str(table_name).startswith("acs_nmf_")
+        else places_table(table_name)
+    )
     row = db.execute(
         text("SELECT to_regclass(:table_name) AS table_name"),
-        {"table_name": f"public.{table_name}"},
+        {"table_name": fq_table_name},
     ).mappings().one()
     return row["table_name"] is not None
 

@@ -12,6 +12,8 @@ from geoalchemy2 import Geometry, WKTElement
 from sqlalchemy import BigInteger, Column, Float, Integer, MetaData, String, Table, Text, create_engine, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from _schema_imports import PLACES_SCHEMA
+
 
 MAX_CHUNK_SIZE = 1000
 DEFAULT_DICT_PATH = "../data/PLACES_and_500_Cities__Data_Dictionary_20260215.csv"
@@ -589,7 +591,7 @@ def upsert_tract_estimates(
 
     tract_estimates = Table(
         "tract_estimates",
-        MetaData(schema="public"),
+        MetaData(schema=PLACES_SCHEMA),
         Column("year", Integer, primary_key=True),
         Column("locationid", String, primary_key=True),
         Column("measure_id", String, primary_key=True),
@@ -612,7 +614,7 @@ def upsert_tract_estimates(
         Column("total_pop_18_plus", BigInteger),
         Column("short_question_text", Text),
         Column("geolocation", Geometry(geometry_type="POINT", srid=4326)),
-        schema="public",
+        schema=PLACES_SCHEMA,
     )
     insert_stmt = pg_insert(tract_estimates)
     upsert_stmt = insert_stmt.on_conflict_do_update(

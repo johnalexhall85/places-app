@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.db import get_db
+from app.db_fqtn import svi_table
 
 router = APIRouter(tags=["svi"])
 
@@ -104,7 +105,7 @@ def _ensure_required_tables(db: Session, *table_names: str) -> None:
     for table_name in table_names:
         row = db.execute(
             text("SELECT to_regclass(:name) AS exists"),
-            {"name": f"public.{table_name}"},
+            {"name": svi_table(table_name)},
         ).mappings().one()
         if row["exists"] is None:
             raise HTTPException(

@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.db_fqtn import hrsa_table
 from app.schemas.hpsa import (
     HPSAChoroplethCountiesResponse,
     HPSACountyDomainDetailResponse,
@@ -254,7 +255,8 @@ def fetch_county_hpsa_row(db: Session, county_fips: str) -> Mapping[str, Any] | 
 
 def fetch_hpsa_domain_quartiles(db: Session, domain: HPSADomain) -> Mapping[str, Any] | None:
     quartile_table_exists = db.execute(
-        text("SELECT to_regclass('public.hpsa_domain_quartiles') IS NOT NULL AS exists")
+        text("SELECT to_regclass(:table_name) IS NOT NULL AS exists"),
+        {"table_name": hrsa_table("hpsa_domain_quartiles")},
     ).mappings().one()["exists"]
 
     if quartile_table_exists:

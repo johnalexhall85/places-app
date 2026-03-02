@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.db_fqtn import places_table
 
 router = APIRouter(tags=["tracts"])
 
@@ -78,7 +79,8 @@ def tracts_geojson(
     db: Session = Depends(get_db),
 ):
     shape_table_exists = db.execute(
-        text("SELECT to_regclass('public.tract_shapes') AS exists")
+        text("SELECT to_regclass(:table_name) AS exists"),
+        {"table_name": places_table("tract_shapes")},
     ).mappings().one()
     if shape_table_exists["exists"] is None:
         raise HTTPException(
@@ -87,7 +89,8 @@ def tracts_geojson(
         )
 
     estimate_table_exists = db.execute(
-        text("SELECT to_regclass('public.tract_estimates') AS exists")
+        text("SELECT to_regclass(:table_name) AS exists"),
+        {"table_name": places_table("tract_estimates")},
     ).mappings().one()
     if estimate_table_exists["exists"] is None:
         raise HTTPException(

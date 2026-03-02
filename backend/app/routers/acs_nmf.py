@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.db_fqtn import acs_table
 
 router = APIRouter(tags=["acs-nmf"])
 
@@ -100,7 +101,7 @@ def _ensure_required_tables(db: Session, *table_names: str) -> None:
     for table_name in table_names:
         row = db.execute(
             text("SELECT to_regclass(:name) AS exists"),
-            {"name": f"public.{table_name}"},
+            {"name": acs_table(table_name)},
         ).mappings().one()
         if row["exists"] is None:
             raise HTTPException(

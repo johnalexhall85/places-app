@@ -11,6 +11,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app import models
+from app.db_fqtn import places_table
 from app.services.profile_builder import ProfileBuildError, build_profile
 from app.services.profile_charts import generate_profile_charts
 from app.services.profile_pdf import (
@@ -64,7 +65,7 @@ def _to_int(value: Any, fallback: int) -> int:
 def _table_exists(db: Session, table_name: str) -> bool:
     row = db.execute(
         text("SELECT to_regclass(:table_name) AS regclass_name"),
-        {"table_name": f"public.{table_name}"},
+        {"table_name": places_table(table_name)},
     ).mappings().one()
     return row["regclass_name"] is not None
 

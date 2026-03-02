@@ -21,6 +21,8 @@ from typing import Iterable
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+from _schema_imports import svi_table
+
 DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
 DEFAULT_CHUNKSIZE = 5000
 DEFAULT_YEARS = [2018, 2020]
@@ -235,7 +237,10 @@ def _build_measure_rows(
 def _ensure_tables_exist(connection) -> None:
     for table_name in ("svi_measures", "svi_estimates_county", "svi_estimates_tract"):
         row = (
-            connection.execute(text(f"SELECT to_regclass('public.{table_name}') AS exists"))
+            connection.execute(
+                text("SELECT to_regclass(:table_name) AS exists"),
+                {"table_name": svi_table(table_name)},
+            )
             .mappings()
             .one()
         )

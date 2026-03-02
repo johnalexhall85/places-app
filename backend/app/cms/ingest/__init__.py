@@ -1,0 +1,1 @@
+"""CMS ingestion entrypoints."""

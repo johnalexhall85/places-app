@@ -8,6 +8,8 @@ from typing import Iterator
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+from _schema_imports import acs_table
+
 DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
 
 # Safe vs Postgres 65,535 parameter limit
@@ -201,7 +203,10 @@ def iter_csv_chunks(csv_path: Path, chunksize: int) -> Iterator[pd.DataFrame]:
 
 def ensure_target_table_exists(connection) -> None:
     row = (
-        connection.execute(text("SELECT to_regclass('public.acs_nmf_county_estimates') AS exists"))
+        connection.execute(
+            text("SELECT to_regclass(:table_name) AS exists"),
+            {"table_name": acs_table("acs_nmf_county_estimates")},
+        )
         .mappings()
         .one()
     )

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.db_fqtn import places_table
 
 router = APIRouter(tags=["search"])
 
@@ -62,7 +63,8 @@ def search_counties(
         return []
 
     boundary_table_exists = db.execute(
-        text("SELECT to_regclass('public.dim_county_boundary') AS exists")
+        text("SELECT to_regclass(:table_name) AS exists"),
+        {"table_name": places_table("dim_county_boundary")},
     ).mappings().one()["exists"] is not None
     join_clause = (
         "LEFT JOIN dim_county_boundary AS b ON b.location_id = c.location_id"
