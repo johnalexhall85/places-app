@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.db import get_db
-from app.db_fqtn import svi_table
+from app.db_fqtn import svi_table as svi_fqtn
 
 router = APIRouter(tags=["svi"])
 
@@ -105,7 +105,7 @@ def _ensure_required_tables(db: Session, *table_names: str) -> None:
     for table_name in table_names:
         row = db.execute(
             text("SELECT to_regclass(:name) AS exists"),
-            {"name": svi_table(table_name)},
+            {"name": svi_fqtn(table_name)},
         ).mappings().one()
         if row["exists"] is None:
             raise HTTPException(
@@ -420,7 +420,7 @@ def svi_counties_geojson(
 
 
 @router.get("/svi/table")
-def svi_table(
+def svi_table_rows(
     measure_id: str = Query(..., min_length=1),
     geography_level: Literal["county", "tract"] = Query(default="county"),
     year: int | None = Query(default=None),

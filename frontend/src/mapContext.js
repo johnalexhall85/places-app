@@ -19,6 +19,7 @@
  *   acsVariable?: string,
  *   acsYearWindow?: string,
  *   acsDataValueTypeId?: string,
+ *   usdaField?: string,
  *   sviTheme?: string,
  *   sviMeasureId?: string,
  *   sviYear?: number
@@ -41,6 +42,15 @@ function normalizeDataSource(value) {
   if (token === "svi") return "SVI";
   if (token === "hpsa") return "HPSA";
   if (token === "cms") return "CMS";
+  if (
+    token === "usda_food_environment"
+    || token === "usda-food-environment"
+    || token === "usda_food_access"
+    || token === "usda-food-access"
+    || token === "usda"
+  ) {
+    return "USDA";
+  }
   return String(value ?? "").trim().toUpperCase() || "UNKNOWN";
 }
 
@@ -97,6 +107,7 @@ function removeUndefined(value) {
  *     acsVariable?: string | null,
  *     acsYearWindow?: string | null,
  *     acsDataValueTypeId?: string | null,
+ *     usdaField?: string | null,
  *     sviTheme?: string | null,
  *     sviMeasureId?: string | null,
  *     sviYear?: number | null
@@ -163,6 +174,9 @@ export function buildMapContext(input) {
       : undefined,
     acsDataValueTypeId: hasText(input?.selection?.acsDataValueTypeId)
       ? String(input.selection.acsDataValueTypeId).trim()
+      : undefined,
+    usdaField: hasText(input?.selection?.usdaField)
+      ? String(input.selection.usdaField).trim()
       : undefined,
     sviTheme: hasText(input?.selection?.sviTheme)
       ? String(input.selection.sviTheme).trim()

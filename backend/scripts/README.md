@@ -8,6 +8,8 @@ Defaults:
 - `SVI_SCHEMA=public`
 - `HRSA_SCHEMA=public`
 - `CMS_SCHEMA=cms`
+- `USDA_FOOD_ACCESS_SCHEMA=usda_food_access`
+- `USDA_FOOD_ENV_SCHEMA=usda_food_env`
 
 Verify resolved mapping and table access:
 
@@ -45,6 +47,12 @@ Equivalent module entrypoints:
 cd backend
 python -m app.cms.ingest.gv_ingest --path "../data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
 python -m app.cms.ingest.ssp_ingest --path "../data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+
+# USDA Food Access Research Atlas ingest (tract-level)
+python -m app.usda_food_access.ingest
+
+# USDA Food Environment Atlas ingest (county/state, July 2025)
+python -m app.usda_food_env.ingest
 ```
 
 ## Ingest SVI Multiple Years (2018, 2020, 2022)

@@ -21,12 +21,14 @@ from app.routers.profile_reports import router as profile_reports_router
 from app.routers.svi import router as svi_router
 from app.routers.hpsa import router as hpsa_router
 from app.cms.router import router as cms_router
+from app.usda_food_access.router import router as usda_food_access_router
+from app.usda_food_env.router import router as usda_food_env_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
 app.add_middleware(
     GZipMiddleware,
-    minimum_size=2048,
+    minimum_size=1000,
 )
 
 app.add_middleware(
@@ -59,3 +61,5 @@ app.include_router(profile_reports_router)
 app.include_router(svi_router)
 app.include_router(hpsa_router)
 app.include_router(cms_router)
+app.include_router(usda_food_access_router)
+app.include_router(usda_food_env_router)

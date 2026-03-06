@@ -27,6 +27,8 @@ if config.config_file_name is not None:
 from app.db import Base
 from app import models  # noqa: F401
 from app.cms import models as cms_models  # noqa: F401
+from app.usda_food_access import models as usda_food_access_models  # noqa: F401
+from app.usda_food_env import models as usda_food_env_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -50,6 +52,11 @@ TARGET_TABLES = {
     "gv_fact",
     "ssp_measure_dim",
     "ssp_fact",
+    "tract_atlas",
+    "variable_lookup",
+    "dataset_meta",
+    "county_values",
+    "state_values",
     "alembic_version",
 }
 

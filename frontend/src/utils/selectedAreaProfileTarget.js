@@ -43,14 +43,25 @@ export function resolveSelectedAreaProfileTarget({ selectedFeatureProps, tractsA
     };
   }
 
-  const inferredLevel = asTrimmedText(
-    firstDefined(selected.geo_level, tractsActive ? "tract" : "county")
-  ).toLowerCase();
+  const explicitLevel = asTrimmedText(firstDefined(selected.geo_level, selected.level)).toLowerCase();
+  let inferredLevel = explicitLevel;
+  if (!inferredLevel) {
+    if (tractsActive) {
+      inferredLevel = "tract";
+    } else {
+      const fallbackIdDigits = asTrimmedText(firstDefined(selected.state_fips, selected.id)).replace(/[^0-9]/g, "");
+      const hasCountySignals = Boolean(
+        firstDefined(selected.county_fips, selected.location_id, selected.locationid, selected.geoid)
+      );
+      inferredLevel = !hasCountySignals && fallbackIdDigits.length === 2 ? "state" : "county";
+    }
+  }
   const isTract = inferredLevel === "tract";
+  const isState = inferredLevel === "state";
 
   if (isTract) {
     const tractGeoid = normalizeTractGeoid(
-      firstDefined(selected.locationid, selected.location_id, selected.geoid)
+      firstDefined(selected.locationid, selected.location_id, selected.geoid, selected.id)
     );
     if (!tractGeoid) {
       return {
@@ -70,8 +81,18 @@ export function resolveSelectedAreaProfileTarget({ selectedFeatureProps, tractsA
     };
   }
 
+  if (isState) {
+    return {
+      enabled: false,
+      reason: "Zoom in to select a county or tract",
+      geography: null,
+      id: null,
+      href: null,
+    };
+  }
+
   const countyFips = normalizeCountyFips(
-    firstDefined(selected.county_fips, selected.location_id, selected.locationid, selected.geoid)
+    firstDefined(selected.county_fips, selected.location_id, selected.locationid, selected.geoid, selected.id)
   );
   if (!countyFips) {
     return {

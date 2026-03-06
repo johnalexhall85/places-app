@@ -7,6 +7,8 @@ from app.db_schemas import (
     PLACES_SCHEMA,
     SCHEMA_BY_SOURCE,
     SVI_SCHEMA,
+    USDA_FOOD_ACCESS_SCHEMA,
+    USDA_FOOD_ENV_SCHEMA,
 )
 
 IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -43,6 +45,14 @@ def hrsa_table(name: str) -> str:
 
 def cms_table(name: str) -> str:
     return fqtn(CMS_SCHEMA, name)
+
+
+def usda_food_access_table(name: str) -> str:
+    return fqtn(USDA_FOOD_ACCESS_SCHEMA, name)
+
+
+def usda_food_env_table(name: str) -> str:
+    return fqtn(USDA_FOOD_ENV_SCHEMA, name)
 
 
 def source_table(source: str, table: str) -> str:

@@ -124,6 +124,8 @@ export ACS_SCHEMA=public
 export SVI_SCHEMA=public
 export HRSA_SCHEMA=public
 export CMS_SCHEMA=cms
+export USDA_FOOD_ACCESS_SCHEMA=usda_food_access
+export USDA_FOOD_ENV_SCHEMA=usda_food_env
 ```
 
 Quick schema mapping verification:
@@ -189,7 +191,18 @@ Equivalent module entrypoints:
 cd backend
 python -m app.cms.ingest.gv_ingest --path "../data/2014-2023 Medicare Fee-for-Service Geographic Variation Public Use File.csv"
 python -m app.cms.ingest.ssp_ingest --path "../data/County_Level_FFS_Data_for_Shared_Savings_Program_Benchmark_PUF_2024_01_01_Offset_Assignables_2025 Starters.csv"
+
+# USDA Food Access (tract-level atlas)
+python -m app.usda_food_access.ingest
+
+# USDA Food Environment Atlas 2025 (county/state map dataset)
+python -m app.usda_food_env.ingest
 ```
+
+USDA Food Environment map rendering behavior:
+- County choropleth by default (`/api/usda/food-environment/map`)
+- Automatic state overlay for state-level variables marked `*` in USDA metadata
+- Legend endpoint: `/api/usda/food-environment/legend`
 
 Verify CMS endpoints:
 

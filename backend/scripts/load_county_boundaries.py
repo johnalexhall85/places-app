@@ -91,9 +91,60 @@ def load_boundaries(db_url: str, source_url: str) -> None:
                 geom = EXCLUDED.geom
             """
         )
+        ensure_state_table_sql = text(
+            """
+            CREATE TABLE IF NOT EXISTS dim_state_boundary (
+                state_fips VARCHAR(2) PRIMARY KEY,
+                state_abbr VARCHAR(2) NOT NULL,
+                state_name TEXT NOT NULL,
+                geom geometry(MULTIPOLYGON, 4326) NOT NULL
+            )
+            """
+        )
+        upsert_state_sql = text(
+            """
+            INSERT INTO dim_state_boundary (
+                state_fips,
+                state_abbr,
+                state_name,
+                geom
+            )
+            SELECT
+                b.statefp AS state_fips,
+                COALESCE(MAX(c.state_abbr), b.statefp) AS state_abbr,
+                COALESCE(MAX(c.state_desc), b.statefp) AS state_name,
+                ST_Multi(ST_UnaryUnion(ST_Collect(b.geom)))::geometry(MULTIPOLYGON, 4326) AS geom
+            FROM dim_county_boundary AS b
+            LEFT JOIN dim_county AS c
+              ON c.location_id = b.location_id
+            WHERE b.geom IS NOT NULL
+            GROUP BY b.statefp
+            ON CONFLICT (state_fips) DO UPDATE
+            SET state_abbr = EXCLUDED.state_abbr,
+                state_name = EXCLUDED.state_name,
+                geom = EXCLUDED.geom
+            """
+        )
+        ensure_state_geom_idx_sql = text(
+            """
+            CREATE INDEX IF NOT EXISTS dim_state_boundary_geom_gist_idx
+              ON dim_state_boundary
+              USING GIST (geom)
+            """
+        )
+        ensure_state_abbr_idx_sql = text(
+            """
+            CREATE INDEX IF NOT EXISTS dim_state_boundary_state_abbr_idx
+              ON dim_state_boundary (state_abbr)
+            """
+        )
 
         with engine.begin() as connection:
             connection.execute(upsert_sql)
+            connection.execute(ensure_state_table_sql)
+            connection.execute(upsert_state_sql)
+            connection.execute(ensure_state_geom_idx_sql)
+            connection.execute(ensure_state_abbr_idx_sql)
             connection.execute(text(f"DROP TABLE IF EXISTS {temp_table}"))
 
 

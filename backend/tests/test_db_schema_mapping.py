@@ -7,7 +7,18 @@ from app.db_schemas import SCHEMA_BY_SOURCE
 
 
 def test_schema_registry_has_expected_sources() -> None:
-    assert set(SCHEMA_BY_SOURCE) == {"places", "acs", "svi", "hrsa", "cms"}
+    expected_sources = {
+        "places",
+        "acs",
+        "svi",
+        "hrsa",
+        "cms",
+        "usda",
+        "usda_food_access",
+        "usda_food_environment",
+        "usda_food_env",
+    }
+    assert set(SCHEMA_BY_SOURCE) == expected_sources
     for schema in SCHEMA_BY_SOURCE.values():
         assert isinstance(schema, str)
         assert schema.strip()
