@@ -13,9 +13,12 @@ from sqlalchemy.orm import Session
 from app.db_fqtn import cdc_funding_table, places_table
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
+PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
 SUBAWARD_TABLE = cdc_funding_table("subawards")
 PRIME_STATE_SUMMARY_TABLE = cdc_funding_table("prime_state_summary")
 PRIME_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_county_summary")
+PRIME_TX_STATE_SUMMARY_TABLE = cdc_funding_table("prime_transaction_state_summary")
+PRIME_TX_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_transaction_county_summary")
 SUBAWARD_STATE_SUMMARY_TABLE = cdc_funding_table("subaward_state_summary")
 SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
 COUNTY_BOUNDARY_TABLE = places_table("dim_county_boundary")
@@ -25,42 +28,37 @@ STATE_BOUNDARY_TABLE = places_table("dim_state_boundary")
 VALID_BASIS = {"prime", "subaward", "all"}
 VALID_GEOGRAPHY = {"state", "county"}
 VALID_METRICS = {
-    "total_funding",
-    "total_obligated",
-    "total_outlayed",
-    "award_count",
+    "fy_obligated",
+    "fy_outlayed_estimated",
+    "transaction_count",
+    "distinct_award_count",
     "total_subaward",
     "subaward_count",
 }
 
 PRIME_METRICS = {
-    "total_funding": "total_funding_amount",
-    "total_obligated": "total_obligated_amount",
-    "total_outlayed": "total_outlayed_amount",
-    "award_count": "award_count",
+    "fy_obligated": "fy_obligated_amount",
+    "fy_outlayed_estimated": "fy_outlayed_amount_estimated",
+    "transaction_count": "transaction_count",
+    "distinct_award_count": "distinct_award_count",
 }
 
 SUBAWARD_METRICS = {
-    "total_funding": "total_funding_amount",
-    "total_obligated": "total_obligated_amount",
-    "total_outlayed": "total_outlayed_amount",
-    "award_count": "award_count",
     "total_subaward": "total_subaward_amount",
     "subaward_count": "subaward_count",
 }
 
 DOLLAR_METRICS = {
-    "total_funding",
-    "total_obligated",
-    "total_outlayed",
+    "fy_obligated",
+    "fy_outlayed_estimated",
     "total_subaward",
 }
 
 METRIC_LABELS = {
-    "total_funding": "Total Funding",
-    "total_obligated": "Total Obligated",
-    "total_outlayed": "Total Outlayed",
-    "award_count": "Award Count",
+    "fy_obligated": "Fiscal Year Obligated",
+    "fy_outlayed_estimated": "Estimated Fiscal Year Outlayed",
+    "transaction_count": "Transaction Count",
+    "distinct_award_count": "Distinct Awards",
     "total_subaward": "Total Subaward Amount",
     "subaward_count": "Subaward Count",
 }
@@ -75,7 +73,7 @@ def _table_exists(db: Session, table_name: str) -> bool:
 
 
 def _ensure_award_tables(db: Session) -> None:
-    required = [PRIME_TABLE, SUBAWARD_TABLE]
+    required = [PRIME_TABLE, PRIME_TX_TABLE, SUBAWARD_TABLE]
     for table_name in required:
         if not _table_exists(db, table_name):
             raise HTTPException(
@@ -87,13 +85,12 @@ def _ensure_award_tables(db: Session) -> None:
             )
 
 
-def _ensure_required_tables(db: Session, *, geography: str) -> None:
-    required = [
-        PRIME_STATE_SUMMARY_TABLE,
-        PRIME_COUNTY_SUMMARY_TABLE,
-        SUBAWARD_STATE_SUMMARY_TABLE,
-        SUBAWARD_COUNTY_SUMMARY_TABLE,
-    ]
+def _ensure_required_tables(db: Session, *, basis: str, geography: str) -> None:
+    required = (
+        [PRIME_TX_STATE_SUMMARY_TABLE, PRIME_TX_COUNTY_SUMMARY_TABLE]
+        if basis == "prime"
+        else [SUBAWARD_STATE_SUMMARY_TABLE, SUBAWARD_COUNTY_SUMMARY_TABLE]
+    )
     _ensure_award_tables(db)
     if geography == "county":
         required.extend([COUNTY_BOUNDARY_TABLE, COUNTY_DIM_TABLE])
@@ -158,20 +155,29 @@ def _normalize_geography(value: str | None) -> str:
 
 
 def _normalize_metric(value: str | None, *, basis: str) -> str:
-    token = str(value or "total_funding").strip().lower()
+    default_metric = "fy_obligated" if basis == "prime" else "total_subaward"
+    token = str(value or default_metric).strip().lower()
     if token not in VALID_METRICS:
         raise HTTPException(
             status_code=400,
             detail=(
-                "metric must be one of total_funding, total_obligated, total_outlayed, "
-                "award_count, total_subaward, or subaward_count"
+                "metric must be one of fy_obligated, fy_outlayed_estimated, transaction_count, "
+                "distinct_award_count, total_subaward, or subaward_count"
             ),
         )
 
-    if basis == "prime" and token in {"total_subaward", "subaward_count"}:
+    if basis == "prime" and token not in PRIME_METRICS:
         raise HTTPException(
             status_code=400,
-            detail="total_subaward and subaward_count are only valid for basis=subaward",
+            detail=(
+                "For basis=prime, metric must be one of fy_obligated, fy_outlayed_estimated, "
+                "transaction_count, or distinct_award_count"
+            ),
+        )
+    if basis == "subaward" and token not in SUBAWARD_METRICS:
+        raise HTTPException(
+            status_code=400,
+            detail="For basis=subaward, metric must be one of total_subaward or subaward_count",
         )
     return token
 
@@ -183,6 +189,28 @@ def _normalize_state_code(value: str | None) -> str | None:
     if len(letters) != 2:
         raise HTTPException(status_code=400, detail="state must be a 2-letter state code")
     return letters
+
+
+def _normalize_county_fips(value: str | None) -> str | None:
+    token = str(value or "").strip()
+    if not token:
+        return None
+    digits = re.sub(r"[^0-9]", "", token)
+    if not digits:
+        raise HTTPException(status_code=400, detail="selected_county_fips must contain 5 digits")
+    if len(digits) > 5:
+        raise HTTPException(status_code=400, detail="selected_county_fips must contain 5 digits")
+    digits = digits.zfill(5)
+    if len(digits) != 5:
+        raise HTTPException(status_code=400, detail="selected_county_fips must contain 5 digits")
+    return digits
+
+
+def _normalize_name_filter(value: str | None) -> str | None:
+    token = " ".join(str(value or "").strip().split())
+    if not token:
+        return None
+    return token.lower()
 
 
 def _parse_bbox(bbox: str | None) -> dict[str, float] | None:
@@ -204,6 +232,25 @@ def _parse_bbox(bbox: str | None) -> dict[str, float] | None:
     }
 
 
+def _latest_prime_transaction_fiscal_year(db: Session) -> int | None:
+    row = db.execute(
+        text(
+            f"""
+            SELECT MAX(action_date_fiscal_year) AS fiscal_year
+            FROM {PRIME_TX_TABLE}
+            WHERE action_date_fiscal_year IS NOT NULL
+            """
+        )
+    ).mappings().one()
+    value = row.get("fiscal_year")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _metric_column(basis: str, metric: str) -> str:
     if basis == "prime":
         return PRIME_METRICS[metric]
@@ -212,7 +259,7 @@ def _metric_column(basis: str, metric: str) -> str:
 
 def _summary_table(*, basis: str, geography: str) -> str:
     if basis == "prime":
-        return PRIME_STATE_SUMMARY_TABLE if geography == "state" else PRIME_COUNTY_SUMMARY_TABLE
+        return PRIME_TX_STATE_SUMMARY_TABLE if geography == "state" else PRIME_TX_COUNTY_SUMMARY_TABLE
     return SUBAWARD_STATE_SUMMARY_TABLE if geography == "state" else SUBAWARD_COUNTY_SUMMARY_TABLE
 
 
@@ -271,10 +318,14 @@ def _summary_aggregate_sql(*, basis: str, metric_column: str, table_name: str, w
             "SELECT "
             "  s.geography_id,"
             f"  SUM(s.{metric_column}) AS metric_value,"
-            "  SUM(s.total_funding_amount) AS total_funding_amount,"
-            "  SUM(s.total_obligated_amount) AS total_obligated_amount,"
-            "  SUM(s.total_outlayed_amount) AS total_outlayed_amount,"
-            "  SUM(s.award_count) AS award_count,"
+            "  SUM(s.fy_obligated_amount) AS fy_obligated_amount,"
+            "  SUM(s.fy_outlayed_amount_estimated) AS fy_outlayed_amount_estimated,"
+            "  SUM(s.transaction_count) AS transaction_count,"
+            "  SUM(s.distinct_award_count) AS distinct_award_count,"
+            "  SUM(s.fy_obligated_amount) AS total_funding_amount,"
+            "  SUM(s.fy_obligated_amount) AS total_obligated_amount,"
+            "  SUM(s.fy_outlayed_amount_estimated) AS total_outlayed_amount,"
+            "  SUM(s.distinct_award_count) AS award_count,"
             "  0::numeric AS total_subaward_amount,"
             "  0::numeric AS subaward_count "
             f"FROM {table_name} AS s "
@@ -287,6 +338,10 @@ def _summary_aggregate_sql(*, basis: str, metric_column: str, table_name: str, w
         "SELECT "
         "  s.geography_id,"
         f"  SUM(s.{metric_column}) AS metric_value,"
+        "  0::numeric AS fy_obligated_amount,"
+        "  0::numeric AS fy_outlayed_amount_estimated,"
+        "  0::numeric AS transaction_count,"
+        "  0::numeric AS distinct_award_count,"
         "  SUM(s.total_funding_amount) AS total_funding_amount,"
         "  SUM(s.total_obligated_amount) AS total_obligated_amount,"
         "  SUM(s.total_outlayed_amount) AS total_outlayed_amount,"
@@ -398,28 +453,32 @@ def list_filter_options(
         return [str(row["value"]).strip() for row in rows if row.get("value") is not None]
 
     if normalized_basis == "prime":
-        table_name = PRIME_TABLE
+        table_name = PRIME_TX_TABLE
         years = [
             int(value)
-            for value in _distinct(PRIME_TABLE, "award_latest_action_date_fiscal_year")
+            for value in _distinct(PRIME_TX_TABLE, "action_date_fiscal_year")
             if str(value).isdigit()
         ]
         metric_options = [
             {"value": key, "label": METRIC_LABELS[key]}
-            for key in ["total_funding", "total_obligated", "total_outlayed", "award_count"]
+            for key in ["fy_obligated", "fy_outlayed_estimated", "distinct_award_count", "transaction_count"]
         ]
         states = db.execute(
             text(
                 f"""
-                SELECT recipient_state_code AS code, MAX(recipient_state_name) AS name
-                FROM {PRIME_TABLE}
-                WHERE recipient_state_code IS NOT NULL
-                GROUP BY recipient_state_code
-                ORDER BY recipient_state_code
+                SELECT
+                    COALESCE(t.recipient_state_code, p.recipient_state_code) AS code,
+                    MAX(COALESCE(NULLIF(t.recipient_state_name, ''), p.recipient_state_name)) AS name
+                FROM {PRIME_TX_TABLE} AS t
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = t.assistance_award_unique_key
+                WHERE COALESCE(t.recipient_state_code, p.recipient_state_code) IS NOT NULL
+                GROUP BY COALESCE(t.recipient_state_code, p.recipient_state_code)
+                ORDER BY COALESCE(t.recipient_state_code, p.recipient_state_code)
                 """
             )
         ).mappings().all()
-        assistance_types = _distinct(PRIME_TABLE, "assistance_type_description")
+        assistance_types = _distinct(PRIME_TX_TABLE, "assistance_type_description")
     elif normalized_basis == "subaward":
         table_name = SUBAWARD_TABLE
         years = [
@@ -448,7 +507,7 @@ def list_filter_options(
         years_rows = db.execute(
             text(
                 f"""
-                SELECT award_latest_action_date_fiscal_year::text AS fiscal_year FROM {PRIME_TABLE}
+                SELECT action_date_fiscal_year::text AS fiscal_year FROM {PRIME_TX_TABLE}
                 UNION
                 SELECT subaward_action_date_fiscal_year::text AS fiscal_year FROM {SUBAWARD_TABLE}
                 """
@@ -464,15 +523,19 @@ def list_filter_options(
         )
         metric_options = [
             {"value": key, "label": METRIC_LABELS[key]}
-            for key in ["total_funding", "total_obligated", "total_outlayed", "award_count"]
+            for key in ["fy_obligated", "fy_outlayed_estimated", "distinct_award_count", "transaction_count"]
         ]
         states = db.execute(
             text(
                 f"""
-                SELECT recipient_state_code AS code, MAX(recipient_state_name) AS name
-                FROM {PRIME_TABLE}
-                WHERE recipient_state_code IS NOT NULL
-                GROUP BY recipient_state_code
+                SELECT
+                    COALESCE(t.recipient_state_code, p.recipient_state_code) AS code,
+                    MAX(COALESCE(NULLIF(t.recipient_state_name, ''), p.recipient_state_name)) AS name
+                FROM {PRIME_TX_TABLE} AS t
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = t.assistance_award_unique_key
+                WHERE COALESCE(t.recipient_state_code, p.recipient_state_code) IS NOT NULL
+                GROUP BY COALESCE(t.recipient_state_code, p.recipient_state_code)
                 UNION
                 SELECT subawardee_state_code AS code, MAX(subawardee_state_name) AS name
                 FROM {SUBAWARD_TABLE}
@@ -482,15 +545,15 @@ def list_filter_options(
                 """
             )
         ).mappings().all()
-        assistance_types = _distinct(PRIME_TABLE, "assistance_type_description")
+        assistance_types = _distinct(PRIME_TX_TABLE, "assistance_type_description")
 
     if normalized_basis == "prime":
-        awarding_offices = _distinct(PRIME_TABLE, "awarding_office_name")
-        funding_offices = _distinct(PRIME_TABLE, "funding_office_name")
+        awarding_offices = _distinct(PRIME_TX_TABLE, "awarding_office_name")
+        funding_offices = _distinct(PRIME_TX_TABLE, "funding_office_name")
         centers = _union_distinct(
-            PRIME_TABLE,
+            PRIME_TX_TABLE,
             "awarding_sub_agency_name",
-            PRIME_TABLE,
+            PRIME_TX_TABLE,
             "funding_sub_agency_name",
         )
     elif normalized_basis == "subaward":
@@ -504,19 +567,19 @@ def list_filter_options(
         )
     else:
         awarding_offices = _union_distinct(
-            PRIME_TABLE,
+            PRIME_TX_TABLE,
             "awarding_office_name",
             SUBAWARD_TABLE,
             "prime_award_awarding_office_name",
         )
         funding_offices = _union_distinct(
-            PRIME_TABLE,
+            PRIME_TX_TABLE,
             "funding_office_name",
             SUBAWARD_TABLE,
             "prime_award_funding_office_name",
         )
         centers = _union_distinct(
-            PRIME_TABLE,
+            PRIME_TX_TABLE,
             "awarding_sub_agency_name",
             SUBAWARD_TABLE,
             "prime_award_awarding_sub_agency_name",
@@ -562,7 +625,11 @@ def fetch_map_geojson(
     normalized_basis = _normalize_basis(basis)
     normalized_geography = _normalize_geography(geography)
     normalized_metric = _normalize_metric(metric, basis=normalized_basis)
-    _ensure_required_tables(db, geography=normalized_geography)
+    _ensure_required_tables(db, basis=normalized_basis, geography=normalized_geography)
+
+    effective_fiscal_year = fiscal_year
+    if normalized_basis == "prime" and effective_fiscal_year is None:
+        effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
 
     metric_column = _metric_column(normalized_basis, normalized_metric)
     summary_table = _summary_table(basis=normalized_basis, geography=normalized_geography)
@@ -570,7 +637,7 @@ def fetch_map_geojson(
         basis=normalized_basis,
         geography=normalized_geography,
         assistance_type=assistance_type,
-        fiscal_year=fiscal_year,
+        fiscal_year=effective_fiscal_year,
         awarding_office=awarding_office,
         funding_office=funding_office,
         center=center,
@@ -624,6 +691,10 @@ def fetch_map_geojson(
                     c.state_abbr AS state_code,
                     c.state_desc AS state_name,
                     summary.metric_value AS value,
+                    summary.fy_obligated_amount,
+                    summary.fy_outlayed_amount_estimated,
+                    summary.transaction_count,
+                    summary.distinct_award_count,
                     summary.total_funding_amount,
                     summary.total_obligated_amount,
                     summary.total_outlayed_amount,
@@ -667,6 +738,10 @@ def fetch_map_geojson(
                     sb.state_abbr AS state_code,
                     COALESCE(sb.state_name, sb.state_abbr) AS state_name,
                     summary.metric_value AS value,
+                    summary.fy_obligated_amount,
+                    summary.fy_outlayed_amount_estimated,
+                    summary.transaction_count,
+                    summary.distinct_award_count,
                     summary.total_funding_amount,
                     summary.total_obligated_amount,
                     summary.total_outlayed_amount,
@@ -706,6 +781,11 @@ def fetch_map_geojson(
                     "metric_label": METRIC_LABELS.get(normalized_metric, normalized_metric),
                     "basis": normalized_basis,
                     "geo_level": normalized_geography,
+                    "fiscal_year": effective_fiscal_year,
+                    "fy_obligated_amount": _json_number(row["fy_obligated_amount"]),
+                    "fy_outlayed_amount_estimated": _json_number(row["fy_outlayed_amount_estimated"]),
+                    "transaction_count": int(row["transaction_count"] or 0),
+                    "distinct_award_count": int(row["distinct_award_count"] or 0),
                     "total_funding_amount": _json_number(row["total_funding_amount"]),
                     "total_obligated_amount": _json_number(row["total_obligated_amount"]),
                     "total_outlayed_amount": _json_number(row["total_outlayed_amount"]),
@@ -716,11 +796,16 @@ def fetch_map_geojson(
             }
         )
 
-    note = (
-        "Funds awarded to recipients located in this geography"
-        if normalized_basis == "prime"
-        else "Subawards reported to entities in this geography"
-    )
+    if normalized_basis == "prime":
+        if effective_fiscal_year is not None:
+            note = (
+                f"Prime award fiscal year {effective_fiscal_year} values are based on transaction records. "
+                "Obligated amounts reflect transaction activity in that fiscal year."
+            )
+        else:
+            note = "Prime award values are based on transaction records."
+    else:
+        note = "Subawards reported to entities in this geography"
 
     return {
         "type": "FeatureCollection",
@@ -731,6 +816,7 @@ def fetch_map_geojson(
         "meta": {
             "note": note,
             "metric_label": METRIC_LABELS.get(normalized_metric, normalized_metric),
+            "fiscal_year": effective_fiscal_year,
             "geojson_precision": 6,
             "simplify_tolerance_degrees": simplify_degrees,
         },
@@ -754,7 +840,11 @@ def fetch_legend_stats(
     normalized_basis = _normalize_basis(basis)
     normalized_geography = _normalize_geography(geography)
     normalized_metric = _normalize_metric(metric, basis=normalized_basis)
-    _ensure_required_tables(db, geography=normalized_geography)
+    _ensure_required_tables(db, basis=normalized_basis, geography=normalized_geography)
+
+    effective_fiscal_year = fiscal_year
+    if normalized_basis == "prime" and effective_fiscal_year is None:
+        effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
 
     metric_column = _metric_column(normalized_basis, normalized_metric)
     summary_table = _summary_table(basis=normalized_basis, geography=normalized_geography)
@@ -762,7 +852,7 @@ def fetch_legend_stats(
         basis=normalized_basis,
         geography=normalized_geography,
         assistance_type=assistance_type,
-        fiscal_year=fiscal_year,
+        fiscal_year=effective_fiscal_year,
         awarding_office=awarding_office,
         funding_office=funding_office,
         center=center,
@@ -798,6 +888,10 @@ def fetch_legend_stats(
                 SELECT
                     summary.geography_id,
                     summary.metric_value,
+                    summary.fy_obligated_amount,
+                    summary.fy_outlayed_amount_estimated,
+                    summary.transaction_count,
+                    summary.distinct_award_count,
                     summary.total_funding_amount,
                     summary.total_obligated_amount,
                     summary.total_outlayed_amount,
@@ -829,6 +923,10 @@ def fetch_legend_stats(
                 SELECT
                     summary.geography_id,
                     summary.metric_value,
+                    summary.fy_obligated_amount,
+                    summary.fy_outlayed_amount_estimated,
+                    summary.transaction_count,
+                    summary.distinct_award_count,
                     summary.total_funding_amount,
                     summary.total_obligated_amount,
                     summary.total_outlayed_amount,
@@ -861,7 +959,7 @@ def fetch_legend_stats(
 
     if normalized_basis == "prime":
         total_visible_awards = int(
-            sum(int(row.get("award_count") or 0) for row in rows)
+            sum(int(row.get("distinct_award_count") or 0) for row in rows)
         )
     else:
         total_visible_awards = int(
@@ -885,6 +983,7 @@ def fetch_legend_stats(
         "noDataCount": 0,
         "total_visible_dollars": total_visible_dollars,
         "total_visible_awards": total_visible_awards,
+        "fiscal_year": effective_fiscal_year,
     }
 
 
@@ -895,12 +994,23 @@ def search_awards(
     basis: str,
     assistance_type: str | None,
     fiscal_year: int | None,
-    state: str | None,
+    awarding_office: str | None = None,
+    funding_office: str | None = None,
+    center: str | None = None,
+    state: str | None = None,
+    selected_state_code: str | None = None,
+    selected_state_name: str | None = None,
+    selected_county_fips: str | None = None,
+    selected_county_name: str | None = None,
     page: int,
     page_size: int,
 ) -> dict[str, Any]:
     normalized_basis = _normalize_basis(basis, allow_all=True)
-    normalized_state = _normalize_state_code(state)
+    normalized_state_filter = _normalize_state_code(state)
+    normalized_selected_state_code = _normalize_state_code(selected_state_code)
+    normalized_selected_state_name = _normalize_name_filter(selected_state_name)
+    normalized_selected_county_fips = _normalize_county_fips(selected_county_fips)
+    normalized_selected_county_name = _normalize_name_filter(selected_county_name)
     query_token = str(q or "").strip()
     _ensure_award_tables(db)
 
@@ -931,13 +1041,73 @@ def search_awards(
 
     if fiscal_year is not None:
         params["fiscal_year"] = int(fiscal_year)
-        prime_filters.append("p.award_latest_action_date_fiscal_year = :fiscal_year")
+        prime_filters.append(
+            "EXISTS ("
+            f"SELECT 1 FROM {PRIME_TX_TABLE} AS tx "
+            "WHERE tx.assistance_award_unique_key = p.unique_key "
+            "AND tx.action_date_fiscal_year = :fiscal_year"
+            ")"
+        )
         sub_filters.append("s.subaward_action_date_fiscal_year = :fiscal_year")
 
-    if normalized_state:
-        params["state_code"] = normalized_state
-        prime_filters.append("p.recipient_state_code = :state_code")
-        sub_filters.append("s.subawardee_state_code = :state_code")
+    awarding_office = _strip_optional(awarding_office)
+    if awarding_office:
+        params["awarding_office"] = awarding_office
+        prime_filters.append("p.awarding_office_name = :awarding_office")
+        sub_filters.append("s.prime_award_awarding_office_name = :awarding_office")
+
+    funding_office = _strip_optional(funding_office)
+    if funding_office:
+        params["funding_office"] = funding_office
+        prime_filters.append("p.funding_office_name = :funding_office")
+        sub_filters.append("s.prime_award_funding_office_name = :funding_office")
+
+    center = _strip_optional(center)
+    if center:
+        params["center"] = center
+        prime_filters.append("(p.awarding_sub_agency_name = :center OR p.funding_sub_agency_name = :center)")
+        sub_filters.append(
+            "(s.prime_award_awarding_sub_agency_name = :center OR s.prime_award_funding_sub_agency_name = :center)"
+        )
+
+    if normalized_state_filter:
+        params["state_filter_code"] = normalized_state_filter
+        prime_filters.append("p.recipient_state_code = :state_filter_code")
+        sub_filters.append("s.subawardee_state_code = :state_filter_code")
+
+    # County scope takes precedence over selected state scope.
+    if normalized_selected_county_fips:
+        params["selected_county_fips"] = normalized_selected_county_fips
+        prime_filters.append("p.recipient_county_fips = :selected_county_fips")
+        sub_filters.append("s.subawardee_county_fips = :selected_county_fips")
+        if normalized_selected_county_name:
+            params["selected_county_name"] = normalized_selected_county_name
+            prime_filters.append("LOWER(TRIM(COALESCE(p.recipient_county_name, ''))) = :selected_county_name")
+            sub_filters.append(
+                "EXISTS ("
+                f"SELECT 1 FROM {COUNTY_DIM_TABLE} AS county "
+                "WHERE county.location_id = s.subawardee_county_fips "
+                "AND LOWER(TRIM(COALESCE(county.county_name, ''))) = :selected_county_name"
+                ")"
+            )
+    elif normalized_selected_state_code:
+        params["selected_state_code"] = normalized_selected_state_code
+        prime_filters.append("p.recipient_state_code = :selected_state_code")
+        sub_filters.append("s.subawardee_state_code = :selected_state_code")
+    elif normalized_selected_state_name:
+        params["selected_state_name"] = normalized_selected_state_name
+        prime_filters.append("LOWER(TRIM(COALESCE(p.recipient_state_name, ''))) = :selected_state_name")
+        sub_filters.append("LOWER(TRIM(COALESCE(s.subawardee_state_name, ''))) = :selected_state_name")
+    elif normalized_selected_county_name:
+        params["selected_county_name"] = normalized_selected_county_name
+        prime_filters.append("LOWER(TRIM(COALESCE(p.recipient_county_name, ''))) = :selected_county_name")
+        sub_filters.append(
+            "EXISTS ("
+            f"SELECT 1 FROM {COUNTY_DIM_TABLE} AS county "
+            "WHERE county.location_id = s.subawardee_county_fips "
+            "AND LOWER(TRIM(COALESCE(county.county_name, ''))) = :selected_county_name"
+            ")"
+        )
 
     prime_where = ""
     if prime_filters:
@@ -982,7 +1152,7 @@ def search_awards(
             s.subawardee_state_code AS state_code,
             s.subawardee_state_name AS state_name,
             s.subawardee_county_fips AS county_fips,
-            NULL::text AS county_name,
+            county.county_name AS county_name,
             COALESCE(s.subaward_description, s.prime_award_base_transaction_description) AS description,
             s.usaspending_permalink,
             s.subaward_action_date_fiscal_year AS fiscal_year,
@@ -990,6 +1160,8 @@ def search_awards(
             s.prime_award_awarding_office_name AS awarding_office_name,
             s.prime_award_funding_office_name AS funding_office_name
         FROM {SUBAWARD_TABLE} AS s
+        LEFT JOIN {COUNTY_DIM_TABLE} AS county
+            ON county.location_id = s.subawardee_county_fips
         {sub_where}
     """
 
@@ -1044,6 +1216,16 @@ def search_awards(
     return {
         "basis": normalized_basis,
         "q": query_token,
+        "assistance_type": assistance_type,
+        "fiscal_year": int(fiscal_year) if fiscal_year is not None else None,
+        "awarding_office": awarding_office,
+        "funding_office": funding_office,
+        "center": center,
+        "state": normalized_state_filter,
+        "selected_state_code": normalized_selected_state_code,
+        "selected_state_name": normalized_selected_state_name,
+        "selected_county_fips": normalized_selected_county_fips,
+        "selected_county_name": normalized_selected_county_name,
         "page": page,
         "page_size": page_size,
         "total": int(total_count or 0),
@@ -1056,6 +1238,7 @@ def fetch_detail(
     *,
     prime_unique_key: str | None = None,
     subaward_id: int | None = None,
+    fiscal_year: int | None = None,
 ) -> dict[str, Any] | None:
     _ensure_award_tables(db)
     if bool(prime_unique_key) == bool(subaward_id):
@@ -1065,14 +1248,130 @@ def fetch_detail(
         )
 
     if prime_unique_key:
+        unique_key = str(prime_unique_key).strip()
         row = db.execute(
             text(f"SELECT * FROM {PRIME_TABLE} WHERE unique_key = :unique_key"),
-            {"unique_key": str(prime_unique_key).strip()},
+            {"unique_key": unique_key},
         ).mappings().one_or_none()
         if row is None:
             return None
         payload = {key: _serialize_value(value) for key, value in row.items()}
         payload["record_type"] = "prime_award"
+        effective_fiscal_year = fiscal_year
+        if effective_fiscal_year is None:
+            effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
+        if effective_fiscal_year is not None:
+            params = {
+                "unique_key": unique_key,
+                "fiscal_year": int(effective_fiscal_year),
+            }
+            fy_summary = db.execute(
+                text(
+                    f"""
+                    WITH tx_ordered AS (
+                        SELECT
+                            tx.*,
+                            LAG(tx.total_outlayed_amount_for_overall_award) OVER (
+                                PARTITION BY COALESCE(
+                                    tx.assistance_award_unique_key,
+                                    tx.assistance_transaction_unique_key
+                                )
+                                ORDER BY
+                                    tx.action_date NULLS FIRST,
+                                    COALESCE(tx.modification_number, ''),
+                                    tx.assistance_transaction_unique_key
+                            ) AS prior_total_outlayed_amount_for_overall_award
+                        FROM {PRIME_TX_TABLE} AS tx
+                        WHERE tx.assistance_award_unique_key = :unique_key
+                    ),
+                    tx_year AS (
+                        SELECT
+                            tx_ordered.assistance_award_unique_key,
+                            tx_ordered.federal_action_obligation,
+                            CASE
+                                WHEN tx_ordered.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                                WHEN tx_ordered.prior_total_outlayed_amount_for_overall_award IS NULL
+                                    THEN tx_ordered.total_outlayed_amount_for_overall_award
+                                ELSE tx_ordered.total_outlayed_amount_for_overall_award
+                                    - tx_ordered.prior_total_outlayed_amount_for_overall_award
+                            END AS estimated_outlay_delta
+                        FROM tx_ordered
+                        WHERE tx_ordered.action_date_fiscal_year = :fiscal_year
+                    )
+                    SELECT
+                        COALESCE(SUM(tx_year.federal_action_obligation), 0) AS fy_obligated_amount,
+                        COALESCE(SUM(tx_year.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                        COUNT(*)::integer AS transaction_count,
+                        COUNT(DISTINCT tx_year.assistance_award_unique_key)::integer AS distinct_award_count
+                    FROM tx_year
+                    """
+                ),
+                params,
+            ).mappings().one()
+
+            fy_transactions = db.execute(
+                text(
+                    f"""
+                    WITH tx_ordered AS (
+                        SELECT
+                            tx.*,
+                            LAG(tx.total_outlayed_amount_for_overall_award) OVER (
+                                PARTITION BY COALESCE(
+                                    tx.assistance_award_unique_key,
+                                    tx.assistance_transaction_unique_key
+                                )
+                                ORDER BY
+                                    tx.action_date NULLS FIRST,
+                                    COALESCE(tx.modification_number, ''),
+                                    tx.assistance_transaction_unique_key
+                            ) AS prior_total_outlayed_amount_for_overall_award
+                        FROM {PRIME_TX_TABLE} AS tx
+                        WHERE tx.assistance_award_unique_key = :unique_key
+                    )
+                    SELECT
+                        tx_ordered.assistance_transaction_unique_key,
+                        tx_ordered.modification_number,
+                        tx_ordered.action_date,
+                        tx_ordered.action_date_fiscal_year,
+                        tx_ordered.federal_action_obligation,
+                        tx_ordered.total_outlayed_amount_for_overall_award,
+                        CASE
+                            WHEN tx_ordered.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                            WHEN tx_ordered.prior_total_outlayed_amount_for_overall_award IS NULL
+                                THEN tx_ordered.total_outlayed_amount_for_overall_award
+                            ELSE tx_ordered.total_outlayed_amount_for_overall_award
+                                - tx_ordered.prior_total_outlayed_amount_for_overall_award
+                        END AS estimated_outlay_delta,
+                        tx_ordered.transaction_description,
+                        tx_ordered.awarding_office_name,
+                        tx_ordered.funding_office_name,
+                        tx_ordered.recipient_state_code,
+                        tx_ordered.prime_award_transaction_recipient_county_fips_code,
+                        tx_ordered.usaspending_permalink
+                    FROM tx_ordered
+                    WHERE tx_ordered.action_date_fiscal_year = :fiscal_year
+                    ORDER BY
+                        tx_ordered.action_date DESC NULLS LAST,
+                        COALESCE(tx_ordered.modification_number, '') DESC,
+                        tx_ordered.assistance_transaction_unique_key DESC
+                    """
+                ),
+                params,
+            ).mappings().all()
+
+            payload["selected_fiscal_year"] = int(effective_fiscal_year)
+            payload["fy_transaction_summary"] = {
+                "fy_obligated_amount": _json_number(fy_summary.get("fy_obligated_amount")),
+                "fy_outlayed_amount_estimated": _json_number(
+                    fy_summary.get("fy_outlayed_amount_estimated")
+                ),
+                "transaction_count": int(fy_summary.get("transaction_count") or 0),
+                "distinct_award_count": int(fy_summary.get("distinct_award_count") or 0),
+            }
+            payload["fy_transactions"] = [
+                {key: _serialize_value(value) for key, value in tx_row.items()}
+                for tx_row in fy_transactions
+            ]
         return payload
 
     row = db.execute(
@@ -1123,56 +1422,111 @@ def fetch_top_awards(
     }
 
     if normalized_basis == "prime":
+        effective_fiscal_year = fiscal_year
+        if effective_fiscal_year is None:
+            effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
+        if effective_fiscal_year is not None:
+            params["fiscal_year"] = int(effective_fiscal_year)
+
         filters = [
-            "p.recipient_state_code = :geography_id"
+            "tx.resolved_state_code = :geography_id"
             if normalized_geography == "state"
-            else "p.recipient_county_fips = :geography_id"
+            else "tx.resolved_county_fips = :geography_id"
         ]
+        filters.append("tx.assistance_award_unique_key IS NOT NULL")
 
         assistance_type = _strip_optional(assistance_type)
         if assistance_type:
-            filters.append("p.assistance_type_description = :assistance_type")
+            filters.append("tx.assistance_type_description = :assistance_type")
             params["assistance_type"] = assistance_type
-        if fiscal_year is not None:
-            filters.append("p.award_latest_action_date_fiscal_year = :fiscal_year")
-            params["fiscal_year"] = int(fiscal_year)
+        if effective_fiscal_year is not None:
+            filters.append("tx.action_date_fiscal_year = :fiscal_year")
         if awarding_office:
-            filters.append("p.awarding_office_name = :awarding_office")
+            filters.append("tx.awarding_office_name = :awarding_office")
             params["awarding_office"] = awarding_office
         if funding_office:
-            filters.append("p.funding_office_name = :funding_office")
+            filters.append("tx.funding_office_name = :funding_office")
             params["funding_office"] = funding_office
         if center:
-            filters.append("(p.awarding_sub_agency_name = :center OR p.funding_sub_agency_name = :center)")
+            filters.append("(tx.awarding_sub_agency_name = :center OR tx.funding_sub_agency_name = :center)")
             params["center"] = center
 
         order_column = {
-            "total_funding": "p.total_funding_amount",
-            "total_obligated": "p.total_obligated_amount",
-            "total_outlayed": "p.total_outlayed_amount",
-            "award_count": "p.total_funding_amount",
-        }.get(normalized_metric, "p.total_funding_amount")
+            "fy_obligated": "fy_obligated_amount",
+            "fy_outlayed_estimated": "fy_outlayed_amount_estimated",
+            "transaction_count": "transaction_count",
+            "distinct_award_count": "distinct_award_count",
+        }.get(normalized_metric, "fy_obligated_amount")
 
         rows = db.execute(
             text(
                 f"""
+                WITH tx_ordered AS (
+                    SELECT
+                        t.*,
+                        COALESCE(t.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
+                        COALESCE(NULLIF(t.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
+                        COALESCE(
+                            t.prime_award_transaction_recipient_county_fips_code,
+                            p.recipient_county_fips
+                        ) AS resolved_county_fips,
+                        COALESCE(NULLIF(t.recipient_county_name, ''), p.recipient_county_name) AS resolved_county_name,
+                        LAG(t.total_outlayed_amount_for_overall_award) OVER (
+                            PARTITION BY COALESCE(
+                                t.assistance_award_unique_key,
+                                t.assistance_transaction_unique_key
+                            )
+                            ORDER BY
+                                t.action_date NULLS FIRST,
+                                COALESCE(t.modification_number, ''),
+                                t.assistance_transaction_unique_key
+                        ) AS prior_total_outlayed_amount_for_overall_award
+                    FROM {PRIME_TX_TABLE} AS t
+                    LEFT JOIN {PRIME_TABLE} AS p
+                        ON p.unique_key = t.assistance_award_unique_key
+                ),
+                tx_filtered AS (
+                    SELECT
+                        tx.*,
+                        CASE
+                            WHEN tx.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                            WHEN tx.prior_total_outlayed_amount_for_overall_award IS NULL
+                                THEN tx.total_outlayed_amount_for_overall_award
+                            ELSE tx.total_outlayed_amount_for_overall_award
+                                - tx.prior_total_outlayed_amount_for_overall_award
+                        END AS estimated_outlay_delta
+                    FROM tx_ordered AS tx
+                    WHERE {' AND '.join(filters)}
+                )
                 SELECT
-                    p.unique_key AS record_id,
+                    tx_filtered.assistance_award_unique_key AS record_id,
                     'prime_award'::text AS record_type,
-                    p.fain,
-                    p.recipient_name AS entity_name,
-                    p.assistance_type_description,
-                    p.total_funding_amount AS amount,
-                    p.award_latest_action_date AS latest_action_date,
-                    p.recipient_state_code AS state_code,
-                    p.recipient_state_name AS state_name,
-                    p.recipient_county_fips AS county_fips,
-                    p.recipient_county_name AS county_name,
-                    p.prime_award_base_transaction_description AS description,
-                    p.usaspending_permalink
-                FROM {PRIME_TABLE} AS p
-                WHERE {' AND '.join(filters)}
-                ORDER BY {order_column} DESC NULLS LAST, p.award_latest_action_date DESC NULLS LAST
+                    MAX(COALESCE(p.fain, tx_filtered.award_id_fain)) AS fain,
+                    MAX(COALESCE(p.recipient_name, tx_filtered.recipient_name)) AS entity_name,
+                    MAX(tx_filtered.assistance_type_description) AS assistance_type_description,
+                    COALESCE(SUM(tx_filtered.federal_action_obligation), 0) AS fy_obligated_amount,
+                    COALESCE(SUM(tx_filtered.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                    COUNT(*)::integer AS transaction_count,
+                    COUNT(DISTINCT tx_filtered.assistance_award_unique_key)::integer AS distinct_award_count,
+                    MAX(p.total_funding_amount) AS lifetime_total_funding_amount,
+                    MAX(tx_filtered.action_date) AS latest_action_date,
+                    MAX(tx_filtered.resolved_state_code) AS state_code,
+                    MAX(tx_filtered.resolved_state_name) AS state_name,
+                    MAX(tx_filtered.resolved_county_fips) AS county_fips,
+                    MAX(tx_filtered.resolved_county_name) AS county_name,
+                    MAX(
+                        COALESCE(
+                            tx_filtered.transaction_description,
+                            tx_filtered.prime_award_base_transaction_description,
+                            p.prime_award_base_transaction_description
+                        )
+                    ) AS description,
+                    MAX(COALESCE(tx_filtered.usaspending_permalink, p.usaspending_permalink)) AS usaspending_permalink
+                FROM tx_filtered
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = tx_filtered.assistance_award_unique_key
+                GROUP BY tx_filtered.assistance_award_unique_key
+                ORDER BY {order_column} DESC NULLS LAST, MAX(tx_filtered.action_date) DESC NULLS LAST
                 LIMIT :limit
                 """
             ),
@@ -1226,17 +1580,21 @@ def fetch_top_awards(
             params,
         ).mappings().all()
 
-    note = (
-        "Funds awarded to recipients located in this geography"
-        if normalized_basis == "prime"
-        else "Subawards reported to entities in this geography"
-    )
+    if normalized_basis == "prime":
+        note = (
+            f"Top awards ranked by fiscal year {params.get('fiscal_year')} transaction activity."
+            if params.get("fiscal_year") is not None
+            else "Top awards ranked by transaction activity."
+        )
+    else:
+        note = "Subawards reported to entities in this geography"
 
     return {
         "basis": normalized_basis,
         "geography": normalized_geography,
         "geography_id": normalized_geo_id,
         "metric": normalized_metric,
+        "fiscal_year": params.get("fiscal_year"),
         "note": note,
         "rows": [
             {
@@ -1245,7 +1603,22 @@ def fetch_top_awards(
                 "fain": row["fain"],
                 "entity_name": row["entity_name"],
                 "assistance_type_description": row["assistance_type_description"],
-                "amount": _json_number(row["amount"]),
+                "amount": _json_number(
+                    row["fy_obligated_amount"]
+                    if normalized_basis == "prime" and normalized_metric == "fy_obligated"
+                    else row["fy_outlayed_amount_estimated"]
+                    if normalized_basis == "prime" and normalized_metric == "fy_outlayed_estimated"
+                    else row["transaction_count"]
+                    if normalized_basis == "prime" and normalized_metric == "transaction_count"
+                    else row["distinct_award_count"]
+                    if normalized_basis == "prime"
+                    else row["amount"]
+                ),
+                "fy_obligated_amount": _json_number(row.get("fy_obligated_amount")),
+                "fy_outlayed_amount_estimated": _json_number(row.get("fy_outlayed_amount_estimated")),
+                "transaction_count": int(row.get("transaction_count") or 0),
+                "distinct_award_count": int(row.get("distinct_award_count") or 0),
+                "lifetime_total_funding_amount": _json_number(row.get("lifetime_total_funding_amount")),
                 "latest_action_date": row["latest_action_date"].isoformat() if row["latest_action_date"] else None,
                 "state_code": row["state_code"],
                 "state_name": row["state_name"],

@@ -12,6 +12,9 @@ def test_cdc_funding_schema_default() -> None:
 def test_cdc_funding_model_tables_use_schema() -> None:
     assert cdc_models.CdcPrimeAward.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcSubaward.__table__.schema == CDC_FUNDING_SCHEMA
+    assert cdc_models.CdcPrimeTransaction.__table__.schema == CDC_FUNDING_SCHEMA
+    assert cdc_models.CdcPrimeTransactionStateSummary.__table__.schema == CDC_FUNDING_SCHEMA
+    assert cdc_models.CdcPrimeTransactionCountySummary.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcPrimeStateSummary.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcPrimeCountySummary.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcSubawardStateSummary.__table__.schema == CDC_FUNDING_SCHEMA

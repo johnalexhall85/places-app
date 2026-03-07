@@ -69,12 +69,8 @@ const CDC_BASIS_OPTIONS = [
   { value: "prime", label: "Prime Awards" },
   { value: "subaward", label: "Subawards" },
 ];
-const CDC_GEOGRAPHY_OPTIONS = [
-  { value: "county", label: "County" },
-  { value: "state", label: "State" },
-];
 const CDC_DEFAULT_METRIC_BY_BASIS = {
-  prime: "total_funding",
+  prime: "fy_obligated",
   subaward: "total_subaward",
 };
 const USDA_DEFAULT_VARIABLE = "PCT_LACCESS_POP19";
@@ -175,6 +171,7 @@ const BASE_MAP_OPTIONS = [
 const DEFAULT_BASE_MAP_ID = BASE_MAP_OPTIONS[0].id;
 const TRACT_ZOOM = 10;
 const USDA_TRACT_ZOOM = 10;
+const USDA_STATE_LAYER_MAX_ZOOM = 5;
 const COUNTY_RELOAD_ZOOM = 8;
 const BBOX_PRECISION = 4;
 const BIN_COUNT = 5;
@@ -537,6 +534,11 @@ function normalizeCountyFips(value) {
   if (digits.length === 5) return digits;
   if (digits.length < 5) return digits.padStart(5, "0");
   return null;
+}
+
+function normalizeStateAbbreviation(value) {
+  const letters = String(value ?? "").replace(/[^A-Za-z]/g, "").toUpperCase();
+  return letters.length === 2 ? letters : "";
 }
 
 function getCountyFipsFromProperties(properties) {
@@ -2048,7 +2050,7 @@ function MapToolbar({
         left: compactLayout ? 16 : 392,
         right: compactLayout ? 16 : rightInset,
         bottom: 86,
-        zIndex: 2300,
+        zIndex: 2000,
         display: "grid",
         gap: 6,
         justifyContent: "flex-start",
@@ -2418,7 +2420,6 @@ export default function App() {
   const [selectedHpsaDomain, setSelectedHpsaDomain] = useState("pc");
   const [selectedCmsAgeGroup, setSelectedCmsAgeGroup] = useState(CMS_AGE_OPTIONS[0].value);
   const [cdcBasis, setCdcBasis] = useState("prime");
-  const [cdcGeography, setCdcGeography] = useState("county");
   const [cdcAssistanceType, setCdcAssistanceType] = useState("");
   const [cdcFiscalYear, setCdcFiscalYear] = useState("");
   const [cdcAwardingOffice, setCdcAwardingOffice] = useState("");
@@ -2749,7 +2750,7 @@ export default function App() {
   ).trim().toLowerCase() === "state"
     ? "state"
     : "county";
-  const usdaLowZoomStateFallback = isUsdaDataSource && mapZoom <= 5;
+  const usdaLowZoomStateFallback = isUsdaDataSource && mapZoom <= USDA_STATE_LAYER_MAX_ZOOM;
   const usdaRequestLevel = isUsdaDataSource
     ? (
       usdaSelectedLevel === "state"
@@ -2760,10 +2761,28 @@ export default function App() {
   const usdaRenderLevel = isUsdaDataSource
     ? (usdaRequestLevel || usdaMapLevel || usdaSelectedLevel)
     : null;
+  const cdcRenderLevel = isCdcDataSource
+    ? (mapZoom <= USDA_STATE_LAYER_MAX_ZOOM ? "state" : "county")
+    : null;
+  const cdcLowZoomStateFallback = isCdcDataSource && cdcRenderLevel === "state";
+  const cdcFiscalYearOptions = useMemo(() => {
+    const tokens = (cdcFilterOptions.fiscal_years ?? [])
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+    tokens.sort((left, right) => {
+      const leftNumeric = Number(left);
+      const rightNumeric = Number(right);
+      if (Number.isFinite(leftNumeric) && Number.isFinite(rightNumeric)) {
+        return rightNumeric - leftNumeric;
+      }
+      return right.localeCompare(left);
+    });
+    return tokens;
+  }, [cdcFilterOptions.fiscal_years]);
   const selectedTemporalValue = isHpsaDataSource
     ? selectedHpsaDomain
     : isCdcDataSource
-      ? `${cdcBasis}|${cdcGeography}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}`
+      ? `${cdcBasis}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}`
     : isUsdaDataSource
       ? `food_environment_atlas_2025|${usdaRenderLevel ?? "county"}`
     : isFemaDataSource
@@ -2786,6 +2805,23 @@ export default function App() {
     setUsdaMeasureSearch("");
     setUsdaShowMapDiagnostics(false);
   }, [isUsdaDataSource]);
+
+  useEffect(() => {
+    if (!isCdcDataSource) {
+      return;
+    }
+    if (cdcFiscalYearOptions.length === 0) {
+      if (cdcFiscalYear) {
+        setCdcFiscalYear("");
+      }
+      return;
+    }
+    const normalizedSelection = String(cdcFiscalYear ?? "").trim();
+    if (normalizedSelection && cdcFiscalYearOptions.includes(normalizedSelection)) {
+      return;
+    }
+    setCdcFiscalYear(cdcFiscalYearOptions[0]);
+  }, [cdcFiscalYear, cdcFiscalYearOptions, isCdcDataSource]);
 
   useEffect(() => {
     if (isPlacesDataSource) return;
@@ -3369,7 +3405,7 @@ export default function App() {
           const preferredMetric = String(
             options?.cdcPreferredMetric
             ?? CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis]
-            ?? "total_funding"
+            ?? "fy_obligated"
           ).trim();
           if (
             preferredMetric
@@ -3708,7 +3744,7 @@ export default function App() {
           });
         } else if (source === DATA_SOURCES.CDC_FUNDING) {
           applyMeasureDefaults(taggedMeasures, {
-            cdcPreferredMetric: CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] ?? "total_funding",
+            cdcPreferredMetric: CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] ?? "fy_obligated",
           });
         } else {
           applyMeasureDefaults(taggedMeasures);
@@ -4031,12 +4067,12 @@ export default function App() {
 
       if (isCdcDataSource) {
         const metric = String(
-          selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "total_funding"
+          selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "fy_obligated"
         ).trim();
         const payload = await fetchCdcFundingMap({
           apiBase: API_BASE,
           basis: cdcBasis,
-          geography: cdcGeography,
+          geography: cdcRenderLevel ?? "county",
           metric,
           assistance_type: cdcBasis === "prime" ? cdcAssistanceType : null,
           fiscal_year: cdcFiscalYear || null,
@@ -4046,13 +4082,14 @@ export default function App() {
           state: cdcStateFilter || null,
           bbox: bboxValue || null,
           zoom: mapZoom,
-          limit: cdcGeography === "state" ? 200 : 7000,
+          limit: (cdcRenderLevel ?? "county") === "state" ? 200 : 7000,
           signal: controller.signal,
         });
         const features = Array.isArray(payload?.features) ? payload.features : [];
+        const zoomNote = cdcLowZoomStateFallback ? "Zoom in to view county-level detail." : "";
         const note = String(payload?.meta?.note ?? "").trim();
         const noData = features.length === 0 ? "No CDC funding data in view." : "";
-        setCdcMapMessage([note, noData].filter(Boolean).join(" ") || null);
+        setCdcMapMessage([zoomNote, note, noData].filter(Boolean).join(" ") || null);
         return payload;
       }
 
@@ -4285,7 +4322,8 @@ export default function App() {
       cdcCenter,
       cdcFiscalYear,
       cdcFundingOffice,
-      cdcGeography,
+      cdcLowZoomStateFallback,
+      cdcRenderLevel,
       cdcStateFilter,
       mapZoom,
       loadCmsSelectionData,
@@ -4575,7 +4613,7 @@ export default function App() {
     return fetchCdcFundingLegend({
       apiBase: API_BASE,
       basis: cdcBasis,
-      geography: cdcGeography,
+      geography: cdcRenderLevel ?? "county",
       metric: selectedMeasureId,
       assistance_type: cdcBasis === "prime" ? cdcAssistanceType : null,
       fiscal_year: cdcFiscalYear || null,
@@ -4593,7 +4631,7 @@ export default function App() {
     cdcCenter,
     cdcFiscalYear,
     cdcFundingOffice,
-    cdcGeography,
+    cdcRenderLevel,
     cdcLegendBbox,
     cdcStateFilter,
     selectedMeasureId,
@@ -4610,7 +4648,7 @@ export default function App() {
       return;
     }
 
-    const legendKey = `legend|cdc|${cdcBasis}|${cdcGeography}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}|${cdcLegendBbox ?? "global"}`;
+    const legendKey = `legend|cdc|${cdcBasis}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}|${cdcLegendBbox ?? "global"}`;
     const cachedLegend = getCached(legendKey);
     if (cachedLegend) {
       setCdcLegend(cachedLegend);
@@ -4657,7 +4695,7 @@ export default function App() {
     cdcCenter,
     cdcFiscalYear,
     cdcFundingOffice,
-    cdcGeography,
+    cdcRenderLevel,
     cdcLegendBbox,
     cdcStateFilter,
     fetchCdcLegendPayload,
@@ -5449,7 +5487,7 @@ export default function App() {
 
       if (isCdcDataSource) {
         const featureGeoLevel = String(
-          featureProps?.geo_level ?? featureProps?.level ?? cdcGeography ?? "county"
+          featureProps?.geo_level ?? featureProps?.level ?? cdcRenderLevel ?? "county"
         ).trim().toLowerCase() === "state"
           ? "state"
           : "county";
@@ -5477,20 +5515,50 @@ export default function App() {
           pickFirstDefined(featureProps?.value, featureProps?.metric_value, featureProps?.data_value)
         );
         const metricId = String(selectedMeasureId ?? "").trim();
-        const isCountMetric = metricId === "award_count" || metricId === "subaward_count";
+        const isCountMetric = (
+          metricId === "transaction_count"
+          || metricId === "distinct_award_count"
+          || metricId === "subaward_count"
+        );
         const valueText = value == null
           ? "No data"
           : isCountMetric
             ? Math.round(value).toLocaleString("en-US")
             : `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-        const countValue = toFiniteNumericValue(
-          pickFirstDefined(
-            featureProps?.award_count,
-            cdcBasis === "subaward" ? featureProps?.subaward_count : null
-          )
-        );
+        if (cdcBasis === "prime") {
+          const fiscalYearText = String(
+            pickFirstDefined(featureProps?.fiscal_year, cdcFiscalYear, "")
+          ).trim();
+          const obligatedAmount = toFiniteNumericValue(featureProps?.fy_obligated_amount);
+          const outlayAmount = toFiniteNumericValue(featureProps?.fy_outlayed_amount_estimated);
+          const distinctAwards = toFiniteNumericValue(
+            pickFirstDefined(featureProps?.distinct_award_count, featureProps?.award_count)
+          );
+          const transactionCount = toFiniteNumericValue(featureProps?.transaction_count);
+          const fyPrefix = fiscalYearText ? `Fiscal Year ${fiscalYearText}` : "Fiscal year";
+          const obligatedText = obligatedAmount == null
+            ? "No data"
+            : `$${obligatedAmount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+          const outlayText = outlayAmount == null
+            ? "No data"
+            : `$${outlayAmount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+          const distinctText = distinctAwards == null
+            ? "No data"
+            : Math.round(distinctAwards).toLocaleString("en-US");
+          const transactionText = transactionCount == null
+            ? "No data"
+            : Math.round(transactionCount).toLocaleString("en-US");
+          return (
+            `${areaLine}<br/>${metricLabel}: ${valueText}`
+            + `<br/>${fyPrefix} Obligated: ${obligatedText}`
+            + `<br/>Distinct Awards with ${fyPrefix} Transactions: ${distinctText}`
+            + `<br/>Transaction Count: ${transactionText}`
+            + `<br/>Estimated ${fyPrefix} Outlayed: ${outlayText}`
+          );
+        }
+        const countValue = toFiniteNumericValue(featureProps?.subaward_count);
         const countText = countValue == null ? "No data" : Math.round(countValue).toLocaleString("en-US");
-        return `${areaLine}<br/>${metricLabel}: ${valueText}<br/>Award count: ${countText}`;
+        return `${areaLine}<br/>${metricLabel}: ${valueText}<br/>Subaward count: ${countText}`;
       }
 
       if (isHpsaDataSource) {
@@ -5585,7 +5653,7 @@ export default function App() {
       isSviDataSource,
       isUsdaDataSource,
       cdcBasis,
-      cdcGeography,
+      cdcRenderLevel,
       selectedHpsaDomain,
       selectedMeasure,
       selectedMeasureId,
@@ -6331,10 +6399,10 @@ export default function App() {
   ]);
 
   const currentLayerLabel = isCdcDataSource
-    ? (cdcGeography === "state" ? "state" : "county")
+    ? (cdcRenderLevel === "state" ? "state" : "county")
     : (tractsActive ? "tract" : "county");
   const zoomToSelectedLabel = isCdcDataSource
-    ? `Zoom to Selected ${cdcGeography === "state" ? "State" : "County"}`
+    ? `Zoom to Selected ${cdcRenderLevel === "state" ? "State" : "County"}`
     : tractsActive
       ? "Zoom to Selected Census Tract"
       : "Zoom to Selected County";
@@ -6513,14 +6581,18 @@ export default function App() {
   );
   const cdcMetricNumeric = toFiniteNumericValue(cdcMetricValue);
   const cdcMetricId = String(selectedMeasureId ?? "").trim();
-  const cdcMetricIsCount = cdcMetricId === "award_count" || cdcMetricId === "subaward_count";
+  const cdcMetricIsCount = (
+    cdcMetricId === "transaction_count"
+    || cdcMetricId === "distinct_award_count"
+    || cdcMetricId === "subaward_count"
+  );
   const cdcMetricValueText = cdcMetricNumeric == null
     ? "No data"
     : cdcMetricIsCount
       ? Math.round(cdcMetricNumeric).toLocaleString("en-US")
       : `$${cdcMetricNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   const cdcGeoLevel = String(
-    firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, cdcGeography, "county")
+    firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, cdcRenderLevel, "county")
   ).trim().toLowerCase() === "state"
     ? "state"
     : "county";
@@ -6536,18 +6608,130 @@ export default function App() {
         ? (cdcStateCode ? `${cdcCountyName}, ${cdcStateCode}` : cdcCountyName)
         : String(firstDefined(selectedFeatureProps?.id, "Unknown county")).trim()
     );
-  const cdcAwardCountNumeric = toFiniteNumericValue(
-    firstDefined(
-      selectedFeatureProps?.award_count,
-      cdcBasis === "subaward" ? selectedFeatureProps?.subaward_count : null
-    )
+  const cdcSelectedFiscalYear = String(
+    firstDefined(selectedFeatureProps?.fiscal_year, cdcFiscalYear, "")
+  ).trim();
+  const cdcFyObligatedNumeric = toFiniteNumericValue(selectedFeatureProps?.fy_obligated_amount);
+  const cdcFyOutlayNumeric = toFiniteNumericValue(selectedFeatureProps?.fy_outlayed_amount_estimated);
+  const cdcDistinctAwardNumeric = toFiniteNumericValue(
+    firstDefined(selectedFeatureProps?.distinct_award_count, selectedFeatureProps?.award_count)
   );
-  const cdcAwardCountText = cdcAwardCountNumeric == null
+  const cdcTransactionCountNumeric = toFiniteNumericValue(selectedFeatureProps?.transaction_count);
+  const cdcSubawardCountNumeric = toFiniteNumericValue(selectedFeatureProps?.subaward_count);
+  const cdcDistinctAwardText = cdcDistinctAwardNumeric == null
     ? "No data"
-    : Math.round(cdcAwardCountNumeric).toLocaleString("en-US");
+    : Math.round(cdcDistinctAwardNumeric).toLocaleString("en-US");
+  const cdcTransactionCountText = cdcTransactionCountNumeric == null
+    ? "No data"
+    : Math.round(cdcTransactionCountNumeric).toLocaleString("en-US");
+  const cdcSubawardCountText = cdcSubawardCountNumeric == null
+    ? "No data"
+    : Math.round(cdcSubawardCountNumeric).toLocaleString("en-US");
+  const cdcFyObligatedText = cdcFyObligatedNumeric == null
+    ? "No data"
+    : `$${cdcFyObligatedNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const cdcFyOutlayText = cdcFyOutlayNumeric == null
+    ? "No data"
+    : `$${cdcFyOutlayNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   const cdcSummaryNote = cdcBasis === "prime"
-    ? "Funds awarded to recipients located in this geography."
+    ? "Lifetime award totals may be larger because many awards span multiple years."
     : "Subawards reported to entities in this geography.";
+  const cdcSelectedGeoLevel = String(
+    firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, "")
+  ).trim().toLowerCase();
+  const cdcSearchSelectedStateCode = normalizeStateAbbreviation(
+    cdcSelectedGeoLevel === "state"
+      ? firstDefined(
+        selectedFeatureProps?.state_abbr,
+        selectedFeatureProps?.state_code,
+        selectedFeatureProps?.id,
+        selectedFeatureProps?.location_id,
+        ""
+      )
+      : firstDefined(
+        selectedFeatureProps?.state_abbr,
+        selectedFeatureProps?.state_code,
+        ""
+      )
+  );
+  const cdcSearchSelectedStateName = String(
+    cdcSelectedGeoLevel === "state"
+      ? firstDefined(
+        selectedFeatureProps?.state_name,
+        selectedFeatureProps?.name,
+        ""
+      )
+      : firstDefined(selectedFeatureProps?.state_name, "")
+  ).trim();
+  const cdcSearchSelectedCountyFips = cdcSelectedGeoLevel === "county"
+    ? normalizeCountyFips(
+      firstDefined(
+        selectedFeatureProps?.county_fips,
+        selectedFeatureProps?.location_id,
+        selectedFeatureProps?.id,
+        ""
+      )
+    )
+    : null;
+  const cdcSearchSelectedCountyName = String(
+    cdcSelectedGeoLevel === "county"
+      ? firstDefined(selectedFeatureProps?.county_name, selectedFeatureProps?.name, "")
+      : ""
+  ).trim();
+  const cdcSearchSelectedStateLabel = cdcSearchSelectedStateName || cdcSearchSelectedStateCode;
+  const cdcSearchSelectedCountyLabel = cdcSearchSelectedCountyName
+    ? (
+      cdcSearchSelectedStateCode
+        ? `${cdcSearchSelectedCountyName}, ${cdcSearchSelectedStateCode}`
+        : cdcSearchSelectedCountyName
+    )
+    : (cdcSearchSelectedCountyFips ? `County ${cdcSearchSelectedCountyFips}` : "");
+  const cdcSearchGeographyScopeMessage = cdcSearchSelectedCountyFips
+    ? `Showing results within ${cdcSearchSelectedCountyLabel}.`
+    : (
+      cdcSearchSelectedStateLabel
+        ? `Showing results within ${cdcSearchSelectedStateLabel}.`
+        : null
+    );
+  const cdcSearchFilterSummaryParts = [
+    cdcBasis === "prime" ? "Prime Awards" : "Subawards",
+  ];
+  if (cdcBasis === "prime" && cdcAssistanceType) {
+    cdcSearchFilterSummaryParts.push(`Assistance type: ${cdcAssistanceType}`);
+  }
+  if (cdcFiscalYear) {
+    cdcSearchFilterSummaryParts.push(`FY ${cdcFiscalYear}`);
+  }
+  if (cdcFundingOffice) {
+    cdcSearchFilterSummaryParts.push(`Funding CIO: ${cdcFundingOffice}`);
+  }
+  if (cdcAwardingOffice) {
+    cdcSearchFilterSummaryParts.push(`Awarding office: ${cdcAwardingOffice}`);
+  }
+  if (cdcCenter) {
+    cdcSearchFilterSummaryParts.push(`Center: ${cdcCenter}`);
+  }
+  if (cdcStateFilter) {
+    cdcSearchFilterSummaryParts.push(`State filter: ${cdcStateFilter}`);
+  }
+  const cdcSearchFilterSummaryMessage = `Results filtered to ${cdcSearchFilterSummaryParts.join(", ")}.`;
+  const cdcSearchScopeKey = [
+    cdcBasis,
+    cdcAssistanceType || "",
+    cdcFiscalYear || "",
+    cdcAwardingOffice || "",
+    cdcFundingOffice || "",
+    cdcCenter || "",
+    cdcStateFilter || "",
+    cdcSearchSelectedStateCode || "",
+    cdcSearchSelectedStateName || "",
+    cdcSearchSelectedCountyFips || "",
+    cdcSearchSelectedCountyName || "",
+  ].join("|");
+  const cdcSearchToken = String(cdcSearchQuery ?? "").trim();
+  const cdcHasSearchText = cdcSearchToken.length > 0;
+  const cdcSearchReady = cdcSearchToken.length >= 2;
+  const cdcTopRow = cdcTopRows[0] ?? null;
   const femaMeasureLabel = getFemaMeasureLabel(selectedMeasure, selectedMeasureId);
   const femaLevel = String(
     firstDefined(selectedFeatureProps?.level, selectedFeatureProps?.geo_level, tractsActive ? "tract" : "county")
@@ -6865,7 +7049,7 @@ export default function App() {
         : isFemaDataSource
           ? (selectedMeasureId || FEMA_DEFAULT_MEASURE)
           : isCdcDataSource
-            ? (selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "total_funding")
+            ? (selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "fy_obligated")
           : isUsdaDataSource
             ? (selectedMeasureId || USDA_DEFAULT_VARIABLE)
           : (selectedMeasureId || "PLACES");
@@ -6891,7 +7075,7 @@ export default function App() {
       data_value_type_id: resolvedType,
       zoom: mapZoom,
       bbox,
-      active_layer: isCdcDataSource ? cdcGeography : (tractsActive ? "tract" : "county"),
+      active_layer: isCdcDataSource ? cdcRenderLevel : (tractsActive ? "tract" : "county"),
     };
   }, [
     bbox,
@@ -6905,7 +7089,7 @@ export default function App() {
     mapZoom,
     cdcBasis,
     cdcFiscalYear,
-    cdcGeography,
+    cdcRenderLevel,
     selectedCmsAgeLevel,
     selectedAsOfDateForContext,
     selectedHpsaDomain,
@@ -6938,7 +7122,7 @@ export default function App() {
           ? {
             cdcBasis,
             cdcMetric: selectedMeasureId,
-            cdcGeography,
+            cdcGeography: cdcRenderLevel,
             cdcFiscalYear: parseYearFromToken(cdcFiscalYear),
           }
         : isUsdaDataSource
@@ -6991,7 +7175,7 @@ export default function App() {
     mapZoom,
     cdcBasis,
     cdcFiscalYear,
-    cdcGeography,
+    cdcRenderLevel,
     selectedCmsAgeLevel,
     selectedAreaNameForContext,
     selectedAsOfDateForContext,
@@ -7011,7 +7195,25 @@ export default function App() {
 
   useEffect(() => {
     setCdcSearchPage(1);
-  }, [cdcSearchQuery, cdcAssistanceType, cdcFiscalYear, cdcStateFilter]);
+  }, [cdcSearchQuery, cdcSearchScopeKey]);
+
+  useEffect(() => {
+    if (!isCdcDataSource) {
+      return;
+    }
+    setCdcSearchResults([]);
+    setCdcSearchTotal(0);
+    setCdcSearchError(null);
+    setCdcSelectedResult(null);
+    setCdcDetailRecord(null);
+    setCdcDetailError(null);
+  }, [cdcSearchScopeKey, isCdcDataSource]);
+
+  useEffect(() => {
+    if (String(cdcSearchQuery ?? "").trim().length === 0) {
+      setCdcSelectedResult(null);
+    }
+  }, [cdcSearchQuery]);
 
   useEffect(() => {
     if (!isCdcDataSource) {
@@ -7043,10 +7245,17 @@ export default function App() {
     searchCdcFunding({
       apiBase: API_BASE,
       q: queryToken,
-      basis: "all",
+      basis: cdcBasis,
       assistance_type: cdcBasis === "prime" ? cdcAssistanceType : null,
       fiscal_year: cdcFiscalYear || null,
+      awarding_office: cdcAwardingOffice || null,
+      funding_office: cdcFundingOffice || null,
+      center: cdcCenter || null,
       state: cdcStateFilter || null,
+      selected_state_code: cdcSearchSelectedStateCode || null,
+      selected_state_name: cdcSearchSelectedStateName || null,
+      selected_county_fips: cdcSearchSelectedCountyFips || null,
+      selected_county_name: cdcSearchSelectedCountyName || null,
       page: cdcSearchPage,
       page_size: 20,
       signal: controller.signal,
@@ -7079,10 +7288,17 @@ export default function App() {
     };
   }, [
     cdcAssistanceType,
+    cdcAwardingOffice,
     cdcBasis,
+    cdcCenter,
     cdcFiscalYear,
+    cdcFundingOffice,
     cdcSearchPage,
     cdcSearchQuery,
+    cdcSearchSelectedCountyFips,
+    cdcSearchSelectedCountyName,
+    cdcSearchSelectedStateCode,
+    cdcSearchSelectedStateName,
     cdcStateFilter,
     isCdcDataSource,
   ]);
@@ -7106,7 +7322,7 @@ export default function App() {
     cdcDetailAbortRef.current = controller;
 
     const detailRequest = cdcSelectedResult.record_type === "prime_award"
-      ? { prime_unique_key: cdcSelectedResult.record_id }
+      ? { prime_unique_key: cdcSelectedResult.record_id, fiscal_year: cdcFiscalYear || null }
       : { subaward_id: Number(cdcSelectedResult.record_id) };
 
     setIsCdcDetailLoading(true);
@@ -7140,7 +7356,7 @@ export default function App() {
         cdcDetailAbortRef.current = null;
       }
     };
-  }, [cdcSelectedResult, isCdcDataSource]);
+  }, [cdcFiscalYear, cdcSelectedResult, isCdcDataSource]);
 
   useEffect(() => {
     if (!isCdcDataSource || !selectedFeatureProps || !selectedMeasureId) {
@@ -7156,7 +7372,7 @@ export default function App() {
     }
 
     const featureGeoLevel = String(
-      firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, cdcGeography)
+      firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, cdcRenderLevel)
     ).trim().toLowerCase() === "state"
       ? "state"
       : "county";
@@ -7203,7 +7419,7 @@ export default function App() {
       awarding_office: cdcAwardingOffice || null,
       funding_office: cdcFundingOffice || null,
       center: cdcCenter || null,
-      limit: 5,
+      limit: 1,
       signal: controller.signal,
     })
       .then((payload) => {
@@ -7239,7 +7455,7 @@ export default function App() {
     cdcCenter,
     cdcFiscalYear,
     cdcFundingOffice,
-    cdcGeography,
+    cdcRenderLevel,
     isCdcDataSource,
     selectedFeatureProps,
     selectedMeasureId,
@@ -7497,7 +7713,7 @@ export default function App() {
     }
 
     const targetZoom = isCdcDataSource
-      ? (cdcGeography === "state" ? 6.0 : 8.5)
+      ? (cdcRenderLevel === "state" ? 6.0 : 8.5)
       : tractsActive
         ? 10.0
         : 9.0;
@@ -7548,7 +7764,7 @@ export default function App() {
     map.setView([center.lat, center.lng], targetZoom);
   }, [
     activeFeatures,
-    cdcGeography,
+    cdcRenderLevel,
     isCdcDataSource,
     selectedLocationId,
     selectedProps,
@@ -7562,7 +7778,7 @@ export default function App() {
 
     const countyFips = String(resultRow?.county_fips ?? "").trim();
     const stateCode = String(resultRow?.state_code ?? "").trim().toUpperCase();
-    const preferredLocation = cdcGeography === "state"
+    const preferredLocation = cdcRenderLevel === "state"
       ? (stateCode || countyFips)
       : (countyFips || stateCode);
     if (!preferredLocation) {
@@ -7574,7 +7790,7 @@ export default function App() {
         handleZoomToSelected();
       }, 40);
     }
-  }, [cdcGeography, handleZoomToSelected, selectActiveFeatureByLocationId]);
+  }, [cdcRenderLevel, handleZoomToSelected, selectActiveFeatureByLocationId]);
 
   const handleToggleHistoryClick = useCallback(() => {
     setHistoryOpen((current) => !current);
@@ -7745,10 +7961,15 @@ export default function App() {
   const rightOverlayInset = compactOverlayLayout
     ? 16
     : 16 + (profilePanelWidth > 0 ? profilePanelWidth + 12 : 0);
+  const bottomOverlayInset = compactOverlayLayout ? 164 : 156;
   const legendTopOffset = compactOverlayLayout
     ? 16 + measurePanelHeight + 12
     : 16;
-  const legendMaxHeight = Math.max(180, mapViewportHeight - (legendTopOffset + 16));
+  const legendBottomOffset = bottomOverlayInset;
+  const cdcMeasurePanelMaxHeight = Math.max(
+    180,
+    mapViewportHeight - (16 + bottomOverlayInset + (compactOverlayLayout ? 190 : 24))
+  );
   const usdaLegendLabel = getUsdaPlainLabel(
     selectedMeasureId,
     firstDefined(
@@ -7842,7 +8063,7 @@ export default function App() {
   const legendSubtitle = isHpsaDataSource
     ? "County-only HPSA choropleth"
     : isCdcDataSource
-      ? `${cdcBasis === "prime" ? "Prime Awards" : "Subawards"} • ${cdcGeography === "state" ? "State" : "County"}`
+      ? `${cdcBasis === "prime" ? "Prime Awards" : "Subawards"} • ${cdcRenderLevel === "state" ? "State" : "County"}`
     : isUsdaDataSource
       ? `${usdaLegendLabel} (${usdaRenderLevel === "state" ? "State-level" : "County-level"})`
     : isFemaDataSource
@@ -7912,6 +8133,8 @@ export default function App() {
             padding: "12px 14px",
             fontSize: 12,
             maxWidth: "min(560px, calc(100vw - 32px))",
+            maxHeight: isCdcDataSource ? cdcMeasurePanelMaxHeight : undefined,
+            overflowY: isCdcDataSource ? "auto" : undefined,
             display: "grid",
             gap: 10,
             zIndex: 2200,
@@ -7951,7 +8174,6 @@ export default function App() {
                   }
                   if (nextSource === DATA_SOURCES.CDC_FUNDING) {
                     setCdcBasis("prime");
-                    setCdcGeography("county");
                     setCdcAssistanceType("");
                     setCdcFiscalYear("");
                     setCdcAwardingOffice("");
@@ -8128,26 +8350,12 @@ export default function App() {
                       const nextBasis = String(event.target.value ?? "prime");
                       setCdcBasis(nextBasis);
                       setCdcAssistanceType("");
-                      const defaultMetric = CDC_DEFAULT_METRIC_BY_BASIS[nextBasis] ?? "total_funding";
+                      const defaultMetric = CDC_DEFAULT_METRIC_BY_BASIS[nextBasis] ?? "fy_obligated";
                       setSelectedMeasureId(defaultMetric);
                     }}
                     style={controlSelectStyle}
                   >
                     {CDC_BASIS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>Geography</span>
-                  <select
-                    value={cdcGeography}
-                    onChange={(event) => setCdcGeography(String(event.target.value ?? "county"))}
-                    style={controlSelectStyle}
-                  >
-                    {CDC_GEOGRAPHY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -8176,10 +8384,10 @@ export default function App() {
                   <select
                     value={cdcFiscalYear}
                     onChange={(event) => setCdcFiscalYear(String(event.target.value ?? ""))}
+                    disabled={cdcFiscalYearOptions.length === 0}
                     style={controlSelectStyle}
                   >
-                    <option value="">All fiscal years</option>
-                    {(cdcFilterOptions.fiscal_years ?? []).map((value) => (
+                    {cdcFiscalYearOptions.map((value) => (
                       <option key={`cdc-fy-${value}`} value={String(value)}>
                         {value}
                       </option>
@@ -8187,68 +8395,18 @@ export default function App() {
                   </select>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>CDC center / subagency</span>
-                  <select
-                    value={cdcCenter}
-                    onChange={(event) => setCdcCenter(String(event.target.value ?? ""))}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All centers / subagencies</option>
-                    {(cdcFilterOptions.centers ?? []).map((value) => (
-                      <option key={`cdc-center-${value}`} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>Awarding office</span>
-                  <select
-                    value={cdcAwardingOffice}
-                    onChange={(event) => setCdcAwardingOffice(String(event.target.value ?? ""))}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All awarding offices</option>
-                    {(cdcFilterOptions.awarding_offices ?? []).map((value) => (
-                      <option key={`cdc-awarding-office-${value}`} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>Funding office</span>
+                  <span style={{ fontWeight: 600 }}>Funding CIO</span>
                   <select
                     value={cdcFundingOffice}
                     onChange={(event) => setCdcFundingOffice(String(event.target.value ?? ""))}
                     style={controlSelectStyle}
                   >
-                    <option value="">All funding offices</option>
+                    <option value="">All funding CIOs</option>
                     {(cdcFilterOptions.funding_offices ?? []).map((value) => (
                       <option key={`cdc-funding-office-${value}`} value={value}>
                         {value}
                       </option>
                     ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>State filter</span>
-                  <select
-                    value={cdcStateFilter}
-                    onChange={(event) => setCdcStateFilter(String(event.target.value ?? "").toUpperCase())}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All states</option>
-                    {(cdcFilterOptions.states ?? []).map((entry) => {
-                      const code = String(entry?.code ?? "").trim().toUpperCase();
-                      const name = String(entry?.name ?? code).trim();
-                      if (!code) return null;
-                      return (
-                        <option key={`cdc-state-${code}`} value={code}>
-                          {code} - {name}
-                        </option>
-                      );
-                    })}
                   </select>
                 </label>
               </>
@@ -8366,7 +8524,10 @@ export default function App() {
 	              <div style={{ display: "grid", gap: 4, color: "#475569" }}>
 	                <div style={{ fontWeight: 600, color: "#0F2D46" }}>CDC Funding</div>
 	                <div>
-	                  {cdcBasis === "prime" ? "Prime Awards" : "Subawards"} • {cdcGeography === "state" ? "State totals" : "County totals"}
+	                  {cdcBasis === "prime" ? "Prime Awards" : "Subawards"} • {cdcRenderLevel === "state" ? "State totals" : "County totals"}
+	                </div>
+	                <div style={{ fontSize: 11 }}>
+	                  For Prime Awards, selected fiscal year values are based on CDC transaction records. Obligated amounts reflect transaction activity in that fiscal year. Outlay amounts may be estimated from cumulative transaction snapshots when available.
 	                </div>
 	                <div style={{ fontSize: 11 }}>
 	                  Prime awards and subawards are shown separately. Subawards are downstream portions of prime awards and are not added to prime totals in this view.
@@ -8481,9 +8642,6 @@ export default function App() {
 	                      fontSize: 12,
 	                    }}
 	                  />
-	                  <div style={{ color: "#64748b", fontSize: 11 }}>
-	                    Type at least 2 characters to search. Results include both Prime Awards and Subawards.
-	                  </div>
 	                </div>
 	              ) : (
 	                <label style={{ display: "grid", gap: 6 }}>
@@ -8695,13 +8853,13 @@ export default function App() {
           ...floatingPanelStyle,
           position: "absolute",
           top: legendTopOffset,
+          bottom: legendBottomOffset,
           left: compactOverlayLayout ? 16 : "auto",
           right: rightOverlayInset,
           padding: "12px 14px",
           fontSize: 12,
           width: compactOverlayLayout ? "auto" : "min(320px, calc(100vw - 32px))",
           maxWidth: "min(520px, calc(100vw - 32px))",
-          maxHeight: legendMaxHeight,
           overflowY: "auto",
           zIndex: 2100,
         }}
@@ -8845,8 +9003,13 @@ export default function App() {
             <div style={{ color: "#475569" }}>{cdcMapMessage}</div>
           ) : null}
           {isCdcDataSource ? (
-            <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
-              Prime awards and subawards are shown separately. Subawards are downstream portions of prime awards and are not added to prime totals in this view.
+            <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 4 }}>
+              <div>
+                For Prime Awards, selected fiscal year values are based on CDC transaction records. Obligated amounts reflect transaction activity in that fiscal year. Outlay amounts may be estimated from cumulative transaction snapshots when available.
+              </div>
+              <div>
+                Prime awards and subawards are shown separately. Subawards are downstream portions of prime awards and are not added to prime totals in this view.
+              </div>
             </div>
           ) : null}
           {isFemaDataSource && femaLegendDescription ? (
@@ -8924,28 +9087,96 @@ export default function App() {
 	                  <p>
 	                    <strong>{selectedMeasureDisplayName}</strong>: <strong>{cdcMetricValueText}</strong>.
 	                  </p>
-	                  <p>Award count: <strong>{cdcAwardCountText}</strong>.</p>
+	                  {cdcBasis === "prime" ? (
+	                    <>
+	                      <p>
+	                        Fiscal Year {cdcSelectedFiscalYear || "N/A"} Obligated: <strong>{cdcFyObligatedText}</strong>.
+	                      </p>
+	                      <p>
+	                        Distinct Awards with Fiscal Year {cdcSelectedFiscalYear || "N/A"} Transactions: <strong>{cdcDistinctAwardText}</strong>.
+	                      </p>
+	                      <p>
+	                        Transaction Count: <strong>{cdcTransactionCountText}</strong>.
+	                      </p>
+	                      <p>
+	                        Estimated Fiscal Year {cdcSelectedFiscalYear || "N/A"} Outlayed: <strong>{cdcFyOutlayText}</strong>.
+	                      </p>
+	                    </>
+	                  ) : (
+	                    <p>Subaward count: <strong>{cdcSubawardCountText}</strong>.</p>
+	                  )}
 	                  <p>{cdcSummaryNote}</p>
 	                  {isCdcTopLoading ? (
-	                    <div style={{ color: "#64748b" }}>Loading top awards...</div>
+	                    <div style={{ color: "#64748b" }}>
+	                      Loading top {cdcBasis === "prime" ? "award" : "subaward"}...
+	                    </div>
 	                  ) : cdcTopError ? (
 	                    <div style={{ color: "#b91c1c" }}>{cdcTopError}</div>
 	                  ) : (
 	                    <div style={{ display: "grid", gap: 4 }}>
-	                      <div style={{ fontWeight: 600 }}>Top 5 {cdcBasis === "prime" ? "awards" : "subawards"}</div>
-	                      {cdcTopRows.length === 0 ? (
+	                      <div style={{ fontWeight: 600 }}>
+	                        Top {cdcBasis === "prime" ? "award" : "subaward"}
+	                      </div>
+	                      {!cdcTopRow ? (
 	                        <div style={{ color: "#64748b" }}>No records for this geography under current filters.</div>
 	                      ) : (
-	                        cdcTopRows.map((row) => (
-	                          <div key={`cdc-top-${row.record_id}`} style={{ display: "grid", gap: 2 }}>
-	                            <div style={{ fontWeight: 600 }}>
-	                              {String(row?.entity_name ?? "Unknown recipient")}
-	                            </div>
-	                            <div style={{ color: "#475569", fontSize: 11 }}>
-	                              {row?.record_type === "subaward" ? "Subaward" : "Prime award"} • FAIN {String(row?.fain ?? "N/A")}
-	                            </div>
+	                        <div key={`cdc-top-${cdcTopRow.record_id}`} style={{ display: "grid", gap: 2 }}>
+	                          <div style={{ fontWeight: 600 }}>
+	                            {truncateText(
+	                              String(cdcTopRow?.description ?? "").trim()
+	                                || String(cdcTopRow?.entity_name ?? "Unknown recipient"),
+	                              140
+	                            )}
 	                          </div>
-	                        ))
+	                          <div style={{ color: "#475569", fontSize: 11 }}>
+	                            Recipient: {String(cdcTopRow?.entity_name ?? "Unknown recipient")}
+	                          </div>
+	                          <div style={{ color: "#475569", fontSize: 11 }}>
+	                            {cdcTopRow?.record_type === "subaward" ? "Subaward" : "Prime award"} • FAIN {String(cdcTopRow?.fain ?? "N/A")}
+	                          </div>
+	                          {cdcBasis === "prime" ? (
+	                            <>
+	                              <div style={{ color: "#334155", fontSize: 11 }}>
+	                                FY obligated: {(() => {
+	                                  const value = toFiniteNumericValue(cdcTopRow?.fy_obligated_amount);
+	                                  if (value == null) return "No data";
+	                                  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+	                                })()}
+	                              </div>
+	                              <div style={{ color: "#475569", fontSize: 11 }}>
+	                                Estimated FY outlayed: {(() => {
+	                                  const value = toFiniteNumericValue(cdcTopRow?.fy_outlayed_amount_estimated);
+	                                  if (value == null) return "No data";
+	                                  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+	                                })()}
+	                                {" • "}
+	                                Lifetime total: {(() => {
+	                                  const value = toFiniteNumericValue(cdcTopRow?.lifetime_total_funding_amount);
+	                                  if (value == null) return "No data";
+	                                  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+	                                })()}
+	                              </div>
+	                            </>
+	                          ) : (
+	                            <div style={{ color: "#334155", fontSize: 11 }}>
+	                              Amount: {(() => {
+	                                const value = toFiniteNumericValue(cdcTopRow?.amount);
+	                                if (value == null) return "No data";
+	                                return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+	                              })()}
+	                            </div>
+	                          )}
+	                          {cdcTopRow?.usaspending_permalink ? (
+	                            <a
+	                              href={cdcTopRow.usaspending_permalink}
+	                              target="_blank"
+	                              rel="noreferrer"
+	                              style={{ fontSize: 11 }}
+	                            >
+	                              View on USAspending
+	                            </a>
+	                          ) : null}
+	                        </div>
 	                      )}
 	                      {cdcTopNote ? (
 	                        <div style={{ color: "#64748b", fontSize: 11 }}>{cdcTopNote}</div>
@@ -9060,21 +9291,27 @@ export default function App() {
           </>
         ) : null}
 
-        {isCdcDataSource ? (
+        {isCdcDataSource && cdcHasSearchText ? (
           <>
             <hr />
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ fontWeight: 700 }}>CDC Search Results</div>
+              <div style={{ color: "#64748b", fontSize: 11 }}>
+                {cdcSearchFilterSummaryMessage}
+              </div>
+              {cdcSearchGeographyScopeMessage ? (
+                <div style={{ color: "#64748b", fontSize: 11 }}>
+                  {cdcSearchGeographyScopeMessage}
+                </div>
+              ) : null}
               {isCdcSearchLoading ? (
                 <div style={{ color: "#64748b" }}>Searching...</div>
               ) : cdcSearchError ? (
                 <div style={{ color: "#b91c1c" }}>{cdcSearchError}</div>
+              ) : !cdcSearchReady ? (
+                <div style={{ color: "#64748b" }}>Search starts after 2 characters.</div>
               ) : cdcSearchResults.length === 0 ? (
-                <div style={{ color: "#64748b" }}>
-                  {String(cdcSearchQuery ?? "").trim().length < 2
-                    ? "Enter at least 2 characters to search."
-                    : "No matches under current filters."}
-                </div>
+                <div style={{ color: "#64748b" }}>No matches under current filters.</div>
               ) : (
                 <div style={{ display: "grid", gap: 8 }}>
                   <div style={{ color: "#64748b", fontSize: 11 }}>
@@ -9175,7 +9412,7 @@ export default function App() {
                 </div>
               )}
 
-              {cdcSelectedResult ? (
+              {cdcSearchReady && cdcSelectedResult ? (
                 <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>Selected record details</div>
                   {isCdcDetailLoading ? (
@@ -9202,7 +9439,7 @@ export default function App() {
                         )}
                       </div>
                       <div>
-                        <strong>Amount:</strong>{" "}
+                        <strong>{cdcDetailRecord.record_type === "prime_award" ? "Lifetime total funding" : "Amount"}:</strong>{" "}
                         {(() => {
                           const detailAmount = toFiniteNumericValue(
                             cdcDetailRecord.total_funding_amount ?? cdcDetailRecord.subaward_amount
@@ -9211,6 +9448,96 @@ export default function App() {
                           return `$${detailAmount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
                         })()}
                       </div>
+                      {cdcDetailRecord.record_type === "prime_award" ? (
+                        <>
+                          <div>
+                            <strong>Lifetime total obligated:</strong>{" "}
+                            {(() => {
+                              const value = toFiniteNumericValue(cdcDetailRecord.total_obligated_amount);
+                              if (value == null) return "N/A";
+                              return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                            })()}
+                          </div>
+                          <div>
+                            <strong>Lifetime total outlayed:</strong>{" "}
+                            {(() => {
+                              const value = toFiniteNumericValue(cdcDetailRecord.total_outlayed_amount);
+                              if (value == null) return "N/A";
+                              return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                            })()}
+                          </div>
+                          <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 6, display: "grid", gap: 4 }}>
+                            <div style={{ fontWeight: 700 }}>
+                              Fiscal Year {String(cdcDetailRecord.selected_fiscal_year ?? cdcFiscalYear ?? "N/A")} Transactions
+                            </div>
+                            <div>
+                              <strong>FY obligated:</strong>{" "}
+                              {(() => {
+                                const value = toFiniteNumericValue(cdcDetailRecord?.fy_transaction_summary?.fy_obligated_amount);
+                                if (value == null) return "No data";
+                                return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                              })()}
+                            </div>
+                            <div>
+                              <strong>Estimated FY outlayed:</strong>{" "}
+                              {(() => {
+                                const value = toFiniteNumericValue(cdcDetailRecord?.fy_transaction_summary?.fy_outlayed_amount_estimated);
+                                if (value == null) return "No data";
+                                return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                              })()}
+                            </div>
+                            <div>
+                              <strong>Distinct awards:</strong>{" "}
+                              {(() => {
+                                const value = toFiniteNumericValue(cdcDetailRecord?.fy_transaction_summary?.distinct_award_count);
+                                if (value == null) return "No data";
+                                return Math.round(value).toLocaleString("en-US");
+                              })()}
+                              {" • "}
+                              <strong>Transactions:</strong>{" "}
+                              {(() => {
+                                const value = toFiniteNumericValue(cdcDetailRecord?.fy_transaction_summary?.transaction_count);
+                                if (value == null) return "No data";
+                                return Math.round(value).toLocaleString("en-US");
+                              })()}
+                            </div>
+                            {Array.isArray(cdcDetailRecord?.fy_transactions) && cdcDetailRecord.fy_transactions.length > 0 ? (
+                              <div style={{ display: "grid", gap: 4, marginTop: 2 }}>
+                                {cdcDetailRecord.fy_transactions.map((tx, index) => (
+                                  <div
+                                    key={`cdc-detail-tx-${String(tx?.assistance_transaction_unique_key ?? index)}`}
+                                    style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "6px 8px", display: "grid", gap: 2 }}
+                                  >
+                                    <div style={{ fontSize: 11, color: "#475569" }}>
+                                      {String(tx?.action_date ?? "No date")} • Mod {String(tx?.modification_number ?? "N/A")}
+                                    </div>
+                                    <div style={{ fontSize: 11 }}>
+                                      Obligation: {(() => {
+                                        const value = toFiniteNumericValue(tx?.federal_action_obligation);
+                                        if (value == null) return "No data";
+                                        return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                                      })()}
+                                      {" • "}
+                                      Estimated outlay delta: {(() => {
+                                        const value = toFiniteNumericValue(tx?.estimated_outlay_delta);
+                                        if (value == null) return "No data";
+                                        return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+                                      })()}
+                                    </div>
+                                    {tx?.transaction_description ? (
+                                      <div style={{ fontSize: 11, color: "#334155" }}>
+                                        {truncateText(String(tx.transaction_description), 160)}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ color: "#64748b", fontSize: 11 }}>No transactions found in the selected fiscal year.</div>
+                            )}
+                          </div>
+                        </>
+                      ) : null}
                       {cdcDetailRecord.usaspending_permalink ? (
                         <a href={cdcDetailRecord.usaspending_permalink} target="_blank" rel="noreferrer">
                           Open USAspending record

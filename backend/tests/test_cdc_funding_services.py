@@ -119,7 +119,11 @@ class _FakeSessionForTop:
                     "fain": "FAIN-PRIME-1",
                     "entity_name": "Prime Recipient",
                     "assistance_type_description": "Project Grants",
-                    "amount": 2000.00,
+                    "fy_obligated_amount": 2000.00,
+                    "fy_outlayed_amount_estimated": 1300.00,
+                    "transaction_count": 3,
+                    "distinct_award_count": 1,
+                    "lifetime_total_funding_amount": 5000.00,
                     "latest_action_date": date(2025, 12, 12),
                     "state_code": "AL",
                     "state_name": "Alabama",
@@ -134,6 +138,7 @@ class _FakeSessionForTop:
 
 def test_read_prime_and_subaward_rows_counts_and_normalization(tmp_path) -> None:
     prime_path = tmp_path / "prime.csv"
+    tx_path = tmp_path / "tx.csv"
     sub_path = tmp_path / "sub.csv"
 
     with prime_path.open("w", newline="", encoding="utf-8") as handle:
@@ -196,7 +201,37 @@ def test_read_prime_and_subaward_rows_counts_and_normalization(tmp_path) -> None
             }
         )
 
+    with tx_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "assistance_transaction_unique_key",
+                "assistance_award_unique_key",
+                "award_id_fain",
+                "action_date_fiscal_year",
+                "recipient_state_code",
+                "prime_award_transaction_recipient_county_fips_code",
+                "federal_action_obligation",
+                "cfda_number",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "assistance_transaction_unique_key": "TX-1",
+                "assistance_award_unique_key": "PRIME-KEY-1",
+                "award_id_fain": "FAIN-1",
+                "action_date_fiscal_year": "2026",
+                "recipient_state_code": "al",
+                "prime_award_transaction_recipient_county_fips_code": "1001",
+                "federal_action_obligation": "99.75",
+                "cfda_number": "93.276",
+            }
+        )
+        writer.writerow({"assistance_transaction_unique_key": ""})
+
     prime_rows = cdc_ingest._read_prime_rows(prime_path)
+    tx_rows = cdc_ingest._read_prime_transaction_rows(tx_path)
     sub_rows = cdc_ingest._read_subaward_rows(sub_path)
 
     assert len(prime_rows) == 1
@@ -205,6 +240,14 @@ def test_read_prime_and_subaward_rows_counts_and_normalization(tmp_path) -> None
     assert prime_rows[0]["award_latest_action_date_fiscal_year"] == 2026
     assert str(prime_rows[0]["total_funding_amount"]) == "1234.56"
     assert prime_rows[0]["cfda_program_num"] == "93.354"
+
+    assert len(tx_rows) == 1
+    assert tx_rows[0]["assistance_transaction_unique_key"] == "TX-1"
+    assert tx_rows[0]["assistance_award_unique_key"] == "PRIME-KEY-1"
+    assert tx_rows[0]["recipient_state_code"] == "AL"
+    assert tx_rows[0]["prime_award_transaction_recipient_county_fips_code"] == "01001"
+    assert tx_rows[0]["action_date_fiscal_year"] == 2026
+    assert str(tx_rows[0]["federal_action_obligation"]) == "99.75"
 
     assert len(sub_rows) == 1
     assert sub_rows[0]["subawardee_state_code"] == "AL"
@@ -221,6 +264,11 @@ def test_refresh_summary_tables_uses_recipient_and_subawardee_geography() -> Non
     assert "p.recipient_state_code AS geography_id" in sql_blob
     assert "p.recipient_county_fips AS geography_id" in sql_blob
     assert "WHERE p.recipient_county_fips IS NOT NULL" in sql_blob
+
+    assert "FROM cdc_funding.prime_transactions AS t" in sql_blob
+    assert "LEFT JOIN cdc_funding.prime_awards AS p" in sql_blob
+    assert "tx.resolved_state_code AS geography_id" in sql_blob
+    assert "tx.resolved_county_fips AS geography_id" in sql_blob
 
     assert "FROM cdc_funding.subawards AS s" in sql_blob
     assert "s.subawardee_state_code AS geography_id" in sql_blob
@@ -249,10 +297,61 @@ def test_search_returns_prime_and_subaward_rows() -> None:
 
     combined_sql = next(sql for sql in fake_db.sql_calls if "SELECT *" in sql and "FROM (" in sql)
     assert "p.assistance_type_description = :assistance_type" in combined_sql
-    assert "p.award_latest_action_date_fiscal_year = :fiscal_year" in combined_sql
+    assert "FROM cdc_funding.prime_transactions AS tx" in combined_sql
+    assert "tx.action_date_fiscal_year = :fiscal_year" in combined_sql
     assert "s.subaward_action_date_fiscal_year = :fiscal_year" in combined_sql
-    assert "p.recipient_state_code = :state_code" in combined_sql
-    assert "s.subawardee_state_code = :state_code" in combined_sql
+    assert "p.recipient_state_code = :state_filter_code" in combined_sql
+    assert "s.subawardee_state_code = :state_filter_code" in combined_sql
+
+
+def test_search_applies_office_and_center_filters() -> None:
+    fake_db = _FakeSessionForSearch()
+    cdc_services.search_awards(
+        fake_db,
+        q="recipient",
+        basis="all",
+        assistance_type=None,
+        fiscal_year=None,
+        awarding_office="Office A",
+        funding_office="Office B",
+        center="NCIRD",
+        state=None,
+        page=1,
+        page_size=25,
+    )
+
+    combined_sql = next(sql for sql in fake_db.sql_calls if "SELECT *" in sql and "FROM (" in sql)
+    assert "p.awarding_office_name = :awarding_office" in combined_sql
+    assert "s.prime_award_awarding_office_name = :awarding_office" in combined_sql
+    assert "p.funding_office_name = :funding_office" in combined_sql
+    assert "s.prime_award_funding_office_name = :funding_office" in combined_sql
+    assert "p.awarding_sub_agency_name = :center OR p.funding_sub_agency_name = :center" in combined_sql
+    assert (
+        "s.prime_award_awarding_sub_agency_name = :center "
+        "OR s.prime_award_funding_sub_agency_name = :center"
+    ) in combined_sql
+
+
+def test_search_prefers_selected_county_scope_over_selected_state_scope() -> None:
+    fake_db = _FakeSessionForSearch()
+    cdc_services.search_awards(
+        fake_db,
+        q="recipient",
+        basis="all",
+        assistance_type=None,
+        fiscal_year=None,
+        state=None,
+        selected_state_code="AL",
+        selected_county_fips="01001",
+        page=1,
+        page_size=25,
+    )
+
+    combined_sql = next(sql for sql in fake_db.sql_calls if "SELECT *" in sql and "FROM (" in sql)
+    assert "p.recipient_county_fips = :selected_county_fips" in combined_sql
+    assert "s.subawardee_county_fips = :selected_county_fips" in combined_sql
+    assert "p.recipient_state_code = :selected_state_code" not in combined_sql
+    assert "s.subawardee_state_code = :selected_state_code" not in combined_sql
 
 
 def test_top_awards_applies_filters_for_prime_state_query() -> None:
@@ -262,7 +361,7 @@ def test_top_awards_applies_filters_for_prime_state_query() -> None:
         basis="prime",
         geography="state",
         geography_id="AL",
-        metric="total_funding",
+        metric="fy_obligated",
         assistance_type="Project Grants",
         fiscal_year=2026,
         awarding_office="Office A",
@@ -277,9 +376,9 @@ def test_top_awards_applies_filters_for_prime_state_query() -> None:
     assert len(payload["rows"]) == 1
     assert payload["rows"][0]["record_type"] == "prime_award"
 
-    assert "p.recipient_state_code = :geography_id" in fake_db.last_sql
-    assert "p.assistance_type_description = :assistance_type" in fake_db.last_sql
-    assert "p.award_latest_action_date_fiscal_year = :fiscal_year" in fake_db.last_sql
-    assert "p.awarding_office_name = :awarding_office" in fake_db.last_sql
-    assert "p.funding_office_name = :funding_office" in fake_db.last_sql
-    assert "p.awarding_sub_agency_name = :center OR p.funding_sub_agency_name = :center" in fake_db.last_sql
+    assert "tx.resolved_state_code = :geography_id" in fake_db.last_sql
+    assert "tx.assistance_type_description = :assistance_type" in fake_db.last_sql
+    assert "tx.action_date_fiscal_year = :fiscal_year" in fake_db.last_sql
+    assert "tx.awarding_office_name = :awarding_office" in fake_db.last_sql
+    assert "tx.funding_office_name = :funding_office" in fake_db.last_sql
+    assert "tx.awarding_sub_agency_name = :center OR tx.funding_sub_agency_name = :center" in fake_db.last_sql

@@ -21,12 +21,16 @@ DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
 DEFAULT_CHUNKSIZE = 1000
 
 PRIME_FILENAME = "Assistance_PrimeAwardSummaries_2026-03-07_H14M24S59_1.csv"
-SUBAWARD_FILENAME = "Assistance_Subawards_2026-03-07_H14M25S36_1.csv"
+PRIME_TRANSACTIONS_FILENAME = "Assistance_PrimeTransactions_2026-03-07_H14M31S18_1.csv"
+SUBAWARD_FILENAME = "Assistance_Subawards_2026-03-07_H14M29S16_1.csv"
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
+PRIME_TRANSACTIONS_TABLE = cdc_funding_table("prime_transactions")
 SUBAWARD_TABLE = cdc_funding_table("subawards")
 PRIME_STATE_SUMMARY_TABLE = cdc_funding_table("prime_state_summary")
 PRIME_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_county_summary")
+PRIME_TX_STATE_SUMMARY_TABLE = cdc_funding_table("prime_transaction_state_summary")
+PRIME_TX_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_transaction_county_summary")
 SUBAWARD_STATE_SUMMARY_TABLE = cdc_funding_table("subaward_state_summary")
 SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
 
@@ -62,6 +66,11 @@ def parse_args() -> argparse.Namespace:
         "--prime-path",
         default=None,
         help=f"Optional explicit path to {PRIME_FILENAME}.",
+    )
+    parser.add_argument(
+        "--transaction-path",
+        default=None,
+        help=f"Optional explicit path to {PRIME_TRANSACTIONS_FILENAME}.",
     )
     parser.add_argument(
         "--subaward-path",
@@ -303,6 +312,99 @@ def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        raise FileNotFoundError(f"Prime transaction CSV not found: {path}")
+
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for source_row in reader:
+            raw_row = {
+                str(key): _clean_text(value)
+                for key, value in (source_row or {}).items()
+                if key is not None
+            }
+
+            assistance_transaction_unique_key = _clean_text(
+                raw_row.get("assistance_transaction_unique_key")
+            )
+            if assistance_transaction_unique_key is None:
+                continue
+
+            assistance_award_unique_key = _clean_text(raw_row.get("assistance_award_unique_key"))
+
+            row_payload = {
+                "assistance_transaction_unique_key": assistance_transaction_unique_key,
+                "assistance_award_unique_key": assistance_award_unique_key,
+                "award_id_fain": _clean_text(raw_row.get("award_id_fain")),
+                "modification_number": _clean_text(raw_row.get("modification_number")),
+                "award_id_uri": _clean_text(raw_row.get("award_id_uri")),
+                "federal_action_obligation": _parse_decimal(raw_row.get("federal_action_obligation")),
+                "total_obligated_amount": _parse_decimal(raw_row.get("total_obligated_amount")),
+                "total_outlayed_amount_for_overall_award": _parse_decimal(
+                    raw_row.get("total_outlayed_amount_for_overall_award")
+                ),
+                "action_date": _parse_date(raw_row.get("action_date")),
+                "action_date_fiscal_year": _parse_int(raw_row.get("action_date_fiscal_year")),
+                "awarding_sub_agency_name": _clean_text(raw_row.get("awarding_sub_agency_name")),
+                "funding_sub_agency_name": _clean_text(raw_row.get("funding_sub_agency_name")),
+                "awarding_office_name": _clean_text(raw_row.get("awarding_office_name")),
+                "funding_office_name": _clean_text(raw_row.get("funding_office_name")),
+                "recipient_name": _clean_text(raw_row.get("recipient_name")),
+                "recipient_city_name": _clean_text(raw_row.get("recipient_city_name")),
+                "recipient_county_name": _clean_text(raw_row.get("recipient_county_name")),
+                "prime_award_transaction_recipient_county_fips_code": _normalize_fips(
+                    raw_row.get("prime_award_transaction_recipient_county_fips_code"),
+                    length=5,
+                ),
+                "recipient_state_code": _normalize_state_code(raw_row.get("recipient_state_code")),
+                "recipient_state_name": _clean_text(raw_row.get("recipient_state_name")),
+                "primary_place_of_performance_county_name": _clean_text(
+                    raw_row.get("primary_place_of_performance_county_name")
+                ),
+                "prime_award_transaction_place_of_performance_county_fips_code": _normalize_fips(
+                    raw_row.get("prime_award_transaction_place_of_performance_county_fips_code"),
+                    length=5,
+                ),
+                "primary_place_of_performance_state_name": _clean_text(
+                    raw_row.get("primary_place_of_performance_state_name")
+                ),
+                "assistance_type_description": _clean_text(raw_row.get("assistance_type_description")),
+                "transaction_description": _clean_text(raw_row.get("transaction_description")),
+                "prime_award_base_transaction_description": _clean_text(
+                    raw_row.get("prime_award_base_transaction_description")
+                ),
+                "cfda_number": _clean_text(raw_row.get("cfda_number")),
+                "cfda_title": _clean_text(raw_row.get("cfda_title")),
+                "usaspending_permalink": _clean_text(raw_row.get("usaspending_permalink")),
+                "searchable_text": _build_searchable_text(
+                    assistance_transaction_unique_key,
+                    assistance_award_unique_key,
+                    raw_row.get("award_id_fain"),
+                    raw_row.get("award_id_uri"),
+                    raw_row.get("recipient_name"),
+                    raw_row.get("recipient_city_name"),
+                    raw_row.get("recipient_county_name"),
+                    raw_row.get("recipient_state_code"),
+                    raw_row.get("recipient_state_name"),
+                    raw_row.get("assistance_type_description"),
+                    raw_row.get("awarding_sub_agency_name"),
+                    raw_row.get("funding_sub_agency_name"),
+                    raw_row.get("awarding_office_name"),
+                    raw_row.get("funding_office_name"),
+                    raw_row.get("transaction_description"),
+                    raw_row.get("prime_award_base_transaction_description"),
+                    raw_row.get("cfda_number"),
+                    raw_row.get("cfda_title"),
+                ),
+                "raw": raw_row,
+            }
+            rows.append(row_payload)
+
+    return rows
+
+
 def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Subaward CSV not found: {path}")
@@ -397,9 +499,12 @@ def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
 def _ensure_target_tables(connection: Any) -> None:
     required_tables = [
         PRIME_TABLE,
+        PRIME_TRANSACTIONS_TABLE,
         SUBAWARD_TABLE,
         PRIME_STATE_SUMMARY_TABLE,
         PRIME_COUNTY_SUMMARY_TABLE,
+        PRIME_TX_STATE_SUMMARY_TABLE,
+        PRIME_TX_COUNTY_SUMMARY_TABLE,
         SUBAWARD_STATE_SUMMARY_TABLE,
         SUBAWARD_COUNTY_SUMMARY_TABLE,
     ]
@@ -532,6 +637,127 @@ def _upsert_prime_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: 
     return total
 
 
+def _upsert_prime_transaction_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: int) -> int:
+    if not rows:
+        return 0
+
+    statement = text(
+        f"""
+        INSERT INTO {PRIME_TRANSACTIONS_TABLE} (
+            assistance_transaction_unique_key,
+            assistance_award_unique_key,
+            award_id_fain,
+            modification_number,
+            award_id_uri,
+            federal_action_obligation,
+            total_obligated_amount,
+            total_outlayed_amount_for_overall_award,
+            action_date,
+            action_date_fiscal_year,
+            awarding_sub_agency_name,
+            funding_sub_agency_name,
+            awarding_office_name,
+            funding_office_name,
+            recipient_name,
+            recipient_city_name,
+            recipient_county_name,
+            prime_award_transaction_recipient_county_fips_code,
+            recipient_state_code,
+            recipient_state_name,
+            primary_place_of_performance_county_name,
+            prime_award_transaction_place_of_performance_county_fips_code,
+            primary_place_of_performance_state_name,
+            assistance_type_description,
+            transaction_description,
+            prime_award_base_transaction_description,
+            cfda_number,
+            cfda_title,
+            usaspending_permalink,
+            raw,
+            searchable_text
+        ) VALUES (
+            :assistance_transaction_unique_key,
+            :assistance_award_unique_key,
+            :award_id_fain,
+            :modification_number,
+            :award_id_uri,
+            :federal_action_obligation,
+            :total_obligated_amount,
+            :total_outlayed_amount_for_overall_award,
+            :action_date,
+            :action_date_fiscal_year,
+            :awarding_sub_agency_name,
+            :funding_sub_agency_name,
+            :awarding_office_name,
+            :funding_office_name,
+            :recipient_name,
+            :recipient_city_name,
+            :recipient_county_name,
+            :prime_award_transaction_recipient_county_fips_code,
+            :recipient_state_code,
+            :recipient_state_name,
+            :primary_place_of_performance_county_name,
+            :prime_award_transaction_place_of_performance_county_fips_code,
+            :primary_place_of_performance_state_name,
+            :assistance_type_description,
+            :transaction_description,
+            :prime_award_base_transaction_description,
+            :cfda_number,
+            :cfda_title,
+            :usaspending_permalink,
+            CAST(:raw AS jsonb),
+            :searchable_text
+        )
+        ON CONFLICT ON CONSTRAINT uq_cdc_prime_transactions_assistance_transaction_unique_key
+        DO UPDATE SET
+            assistance_award_unique_key = EXCLUDED.assistance_award_unique_key,
+            award_id_fain = EXCLUDED.award_id_fain,
+            modification_number = EXCLUDED.modification_number,
+            award_id_uri = EXCLUDED.award_id_uri,
+            federal_action_obligation = EXCLUDED.federal_action_obligation,
+            total_obligated_amount = EXCLUDED.total_obligated_amount,
+            total_outlayed_amount_for_overall_award = EXCLUDED.total_outlayed_amount_for_overall_award,
+            action_date = EXCLUDED.action_date,
+            action_date_fiscal_year = EXCLUDED.action_date_fiscal_year,
+            awarding_sub_agency_name = EXCLUDED.awarding_sub_agency_name,
+            funding_sub_agency_name = EXCLUDED.funding_sub_agency_name,
+            awarding_office_name = EXCLUDED.awarding_office_name,
+            funding_office_name = EXCLUDED.funding_office_name,
+            recipient_name = EXCLUDED.recipient_name,
+            recipient_city_name = EXCLUDED.recipient_city_name,
+            recipient_county_name = EXCLUDED.recipient_county_name,
+            prime_award_transaction_recipient_county_fips_code = EXCLUDED.prime_award_transaction_recipient_county_fips_code,
+            recipient_state_code = EXCLUDED.recipient_state_code,
+            recipient_state_name = EXCLUDED.recipient_state_name,
+            primary_place_of_performance_county_name = EXCLUDED.primary_place_of_performance_county_name,
+            prime_award_transaction_place_of_performance_county_fips_code = EXCLUDED.prime_award_transaction_place_of_performance_county_fips_code,
+            primary_place_of_performance_state_name = EXCLUDED.primary_place_of_performance_state_name,
+            assistance_type_description = EXCLUDED.assistance_type_description,
+            transaction_description = EXCLUDED.transaction_description,
+            prime_award_base_transaction_description = EXCLUDED.prime_award_base_transaction_description,
+            cfda_number = EXCLUDED.cfda_number,
+            cfda_title = EXCLUDED.cfda_title,
+            usaspending_permalink = EXCLUDED.usaspending_permalink,
+            raw = EXCLUDED.raw,
+            searchable_text = EXCLUDED.searchable_text,
+            updated_at = now()
+        """
+    )
+
+    total = 0
+    for chunk in _chunks(rows, chunk_size):
+        payload = [
+            {
+                **row,
+                "raw": json.dumps(row.get("raw") or {}, ensure_ascii=False),
+            }
+            for row in chunk
+        ]
+        result = connection.execute(statement, payload)
+        total += int(result.rowcount or 0)
+    return total
+
+
 def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: int) -> int:
     if not rows:
         return 0
@@ -630,6 +856,8 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
 def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(text(f"TRUNCATE TABLE {PRIME_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {PRIME_COUNTY_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_STATE_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_COUNTY_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_COUNTY_SUMMARY_TABLE}"))
 
@@ -719,6 +947,186 @@ def _refresh_summary_tables(connection: Any) -> None:
                 p.funding_sub_agency_name,
                 p.awarding_office_name,
                 p.funding_office_name
+            """
+        )
+    )
+
+    # Annual outlays are estimated from per-award cumulative snapshots by taking
+    # transaction-to-transaction deltas ordered within each award.
+    connection.execute(
+        text(
+            f"""
+            WITH tx_ordered AS (
+                SELECT
+                    t.*,
+                    LAG(t.total_outlayed_amount_for_overall_award) OVER (
+                        PARTITION BY COALESCE(
+                            t.assistance_award_unique_key,
+                            t.assistance_transaction_unique_key
+                        )
+                        ORDER BY
+                            t.action_date NULLS FIRST,
+                            COALESCE(t.modification_number, ''),
+                            t.assistance_transaction_unique_key
+                    ) AS prior_total_outlayed_amount_for_overall_award
+                FROM {PRIME_TRANSACTIONS_TABLE} AS t
+                WHERE t.action_date_fiscal_year IS NOT NULL
+            ),
+            tx_enriched AS (
+                SELECT
+                    tx.assistance_award_unique_key,
+                    tx.action_date_fiscal_year AS fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    tx.federal_action_obligation,
+                    COALESCE(tx.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
+                    COALESCE(NULLIF(tx.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
+                    COALESCE(
+                        tx.prime_award_transaction_recipient_county_fips_code,
+                        p.recipient_county_fips
+                    ) AS resolved_county_fips,
+                    COALESCE(NULLIF(tx.recipient_county_name, ''), p.recipient_county_name) AS resolved_county_name,
+                    CASE
+                        WHEN tx.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                        WHEN tx.prior_total_outlayed_amount_for_overall_award IS NULL
+                            THEN tx.total_outlayed_amount_for_overall_award
+                        ELSE tx.total_outlayed_amount_for_overall_award
+                            - tx.prior_total_outlayed_amount_for_overall_award
+                    END AS estimated_outlay_delta
+                FROM tx_ordered AS tx
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = tx.assistance_award_unique_key
+            )
+            INSERT INTO {PRIME_TX_STATE_SUMMARY_TABLE} (
+                geography_id,
+                geography_name,
+                fiscal_year,
+                assistance_type_description,
+                awarding_sub_agency_name,
+                funding_sub_agency_name,
+                awarding_office_name,
+                funding_office_name,
+                fy_obligated_amount,
+                fy_outlayed_amount_estimated,
+                transaction_count,
+                distinct_award_count
+            )
+            SELECT
+                tx.resolved_state_code AS geography_id,
+                MAX(tx.resolved_state_name) AS geography_name,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
+                COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                COUNT(*)::integer AS transaction_count,
+                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count
+            FROM tx_enriched AS tx
+            WHERE tx.resolved_state_code IS NOT NULL
+            GROUP BY
+                tx.resolved_state_code,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name
+            """
+        )
+    )
+
+    connection.execute(
+        text(
+            f"""
+            WITH tx_ordered AS (
+                SELECT
+                    t.*,
+                    LAG(t.total_outlayed_amount_for_overall_award) OVER (
+                        PARTITION BY COALESCE(
+                            t.assistance_award_unique_key,
+                            t.assistance_transaction_unique_key
+                        )
+                        ORDER BY
+                            t.action_date NULLS FIRST,
+                            COALESCE(t.modification_number, ''),
+                            t.assistance_transaction_unique_key
+                    ) AS prior_total_outlayed_amount_for_overall_award
+                FROM {PRIME_TRANSACTIONS_TABLE} AS t
+                WHERE t.action_date_fiscal_year IS NOT NULL
+            ),
+            tx_enriched AS (
+                SELECT
+                    tx.assistance_award_unique_key,
+                    tx.action_date_fiscal_year AS fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    tx.federal_action_obligation,
+                    COALESCE(tx.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
+                    COALESCE(NULLIF(tx.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
+                    COALESCE(
+                        tx.prime_award_transaction_recipient_county_fips_code,
+                        p.recipient_county_fips
+                    ) AS resolved_county_fips,
+                    COALESCE(NULLIF(tx.recipient_county_name, ''), p.recipient_county_name) AS resolved_county_name,
+                    CASE
+                        WHEN tx.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                        WHEN tx.prior_total_outlayed_amount_for_overall_award IS NULL
+                            THEN tx.total_outlayed_amount_for_overall_award
+                        ELSE tx.total_outlayed_amount_for_overall_award
+                            - tx.prior_total_outlayed_amount_for_overall_award
+                    END AS estimated_outlay_delta
+                FROM tx_ordered AS tx
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = tx.assistance_award_unique_key
+            )
+            INSERT INTO {PRIME_TX_COUNTY_SUMMARY_TABLE} (
+                geography_id,
+                geography_name,
+                state_code,
+                fiscal_year,
+                assistance_type_description,
+                awarding_sub_agency_name,
+                funding_sub_agency_name,
+                awarding_office_name,
+                funding_office_name,
+                fy_obligated_amount,
+                fy_outlayed_amount_estimated,
+                transaction_count,
+                distinct_award_count
+            )
+            SELECT
+                tx.resolved_county_fips AS geography_id,
+                MAX(tx.resolved_county_name) AS geography_name,
+                MAX(tx.resolved_state_code) AS state_code,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
+                COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                COUNT(*)::integer AS transaction_count,
+                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count
+            FROM tx_enriched AS tx
+            WHERE tx.resolved_county_fips IS NOT NULL
+            GROUP BY
+                tx.resolved_county_fips,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name
             """
         )
     )
@@ -820,10 +1228,12 @@ def ingest(
     *,
     db_url: str,
     prime_path: Path,
+    transaction_path: Path,
     subaward_path: Path,
     chunksize: int,
 ) -> dict[str, Any]:
     prime_rows = _read_prime_rows(prime_path)
+    transaction_rows = _read_prime_transaction_rows(transaction_path)
     subaward_rows = _read_subaward_rows(subaward_path)
 
     started_at = time.perf_counter()
@@ -831,6 +1241,7 @@ def ingest(
     with engine.begin() as connection:
         _ensure_target_tables(connection)
         prime_upserts = _upsert_prime_rows(connection, prime_rows, chunksize)
+        transaction_upserts = _upsert_prime_transaction_rows(connection, transaction_rows, chunksize)
         subaward_upserts = _upsert_subaward_rows(connection, subaward_rows, chunksize)
         _refresh_summary_tables(connection)
 
@@ -838,10 +1249,13 @@ def ingest(
     return {
         "schema": CDC_FUNDING_SCHEMA,
         "prime_source_path": str(prime_path),
+        "transaction_source_path": str(transaction_path),
         "subaward_source_path": str(subaward_path),
         "prime_rows_read": len(prime_rows),
+        "transaction_rows_read": len(transaction_rows),
         "subaward_rows_read": len(subaward_rows),
         "prime_rows_upserted": prime_upserts,
+        "transaction_rows_upserted": transaction_upserts,
         "subaward_rows_upserted": subaward_upserts,
         "elapsed_seconds": elapsed_seconds,
     }
@@ -851,6 +1265,11 @@ def main() -> None:
     args = parse_args()
     data_dir = _resolve_data_dir(args.data_dir)
     prime_path = _resolve_path(explicit=args.prime_path, data_dir=data_dir, filename=PRIME_FILENAME)
+    transaction_path = _resolve_path(
+        explicit=args.transaction_path,
+        data_dir=data_dir,
+        filename=PRIME_TRANSACTIONS_FILENAME,
+    )
     subaward_path = _resolve_path(
         explicit=args.subaward_path,
         data_dir=data_dir,
@@ -860,6 +1279,7 @@ def main() -> None:
     summary = ingest(
         db_url=args.db_url,
         prime_path=prime_path,
+        transaction_path=transaction_path,
         subaward_path=subaward_path,
         chunksize=max(1, int(args.chunksize)),
     )

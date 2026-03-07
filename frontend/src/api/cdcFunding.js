@@ -31,7 +31,7 @@ export async function fetchCdcFundingMap({
   apiBase = DEFAULT_API_BASE,
   basis = "prime",
   geography = "county",
-  metric = "total_funding",
+  metric = "fy_obligated",
   assistance_type,
   fiscal_year,
   awarding_office,
@@ -70,7 +70,7 @@ export async function fetchCdcFundingLegend({
   apiBase = DEFAULT_API_BASE,
   basis = "prime",
   geography = "county",
-  metric = "total_funding",
+  metric = "fy_obligated",
   assistance_type,
   fiscal_year,
   awarding_office,
@@ -102,10 +102,18 @@ export async function fetchCdcFundingLegend({
 export async function searchCdcFunding({
   apiBase = DEFAULT_API_BASE,
   q,
-  basis = "all",
+  basis = "prime",
   assistance_type,
   fiscal_year,
+  awarding_office,
+  funding_office,
+  funding_cio,
+  center,
   state,
+  selected_state_code,
+  selected_state_name,
+  selected_county_fips,
+  selected_county_name,
   page = 1,
   page_size = 25,
   signal,
@@ -117,7 +125,15 @@ export async function searchCdcFunding({
   if (Number.isFinite(Number(fiscal_year))) {
     url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
+  setIfPresent(url, "awarding_office", awarding_office);
+  setIfPresent(url, "funding_office", funding_office);
+  setIfPresent(url, "funding_cio", funding_cio);
+  setIfPresent(url, "center", center);
   setIfPresent(url, "state", state);
+  setIfPresent(url, "selected_state_code", selected_state_code);
+  setIfPresent(url, "selected_state_name", selected_state_name);
+  setIfPresent(url, "selected_county_fips", selected_county_fips);
+  setIfPresent(url, "selected_county_name", selected_county_name);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(page_size));
   const response = await fetch(url, { signal });
@@ -128,12 +144,16 @@ export async function fetchCdcFundingDetail({
   apiBase = DEFAULT_API_BASE,
   prime_unique_key,
   subaward_id,
+  fiscal_year,
   signal,
 } = {}) {
   const url = new URL(`${apiBase}/api/cdc/funding/detail`);
   setIfPresent(url, "prime_unique_key", prime_unique_key);
   if (Number.isFinite(Number(subaward_id))) {
     url.searchParams.set("subaward_id", String(Number(subaward_id)));
+  }
+  if (Number.isFinite(Number(fiscal_year))) {
+    url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding detail.");
@@ -144,7 +164,7 @@ export async function fetchCdcFundingTop({
   basis = "prime",
   geography = "county",
   geography_id,
-  metric = "total_funding",
+  metric = "fy_obligated",
   assistance_type,
   fiscal_year,
   awarding_office,

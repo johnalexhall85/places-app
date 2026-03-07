@@ -353,7 +353,7 @@ export default function SearchBar({
         right: compactLayout ? 16 : rightInset,
         bottom: 16,
         width: "auto",
-        zIndex: 2300,
+        zIndex: 2000,
       }}
     >
       {toastMessage ? (

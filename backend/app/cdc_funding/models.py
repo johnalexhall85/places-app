@@ -112,6 +112,124 @@ class CdcSubaward(Base):
     )
 
 
+class CdcPrimeTransaction(Base):
+    __tablename__ = "prime_transactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    assistance_transaction_unique_key = Column(Text, nullable=False)
+    assistance_award_unique_key = Column(Text, nullable=True)
+    award_id_fain = Column(Text, nullable=True)
+    modification_number = Column(Text, nullable=True)
+    award_id_uri = Column(Text, nullable=True)
+    federal_action_obligation = Column(Numeric(18, 2), nullable=True)
+    total_obligated_amount = Column(Numeric(18, 2), nullable=True)
+    total_outlayed_amount_for_overall_award = Column(Numeric(18, 2), nullable=True)
+    action_date = Column(Date, nullable=True)
+    action_date_fiscal_year = Column(Integer, nullable=True)
+    awarding_sub_agency_name = Column(Text, nullable=True)
+    funding_sub_agency_name = Column(Text, nullable=True)
+    awarding_office_name = Column(Text, nullable=True)
+    funding_office_name = Column(Text, nullable=True)
+    recipient_name = Column(Text, nullable=True)
+    recipient_city_name = Column(Text, nullable=True)
+    recipient_county_name = Column(Text, nullable=True)
+    prime_award_transaction_recipient_county_fips_code = Column(String(5), nullable=True)
+    recipient_state_code = Column(String(2), nullable=True)
+    recipient_state_name = Column(Text, nullable=True)
+    primary_place_of_performance_county_name = Column(Text, nullable=True)
+    prime_award_transaction_place_of_performance_county_fips_code = Column(String(5), nullable=True)
+    primary_place_of_performance_state_name = Column(Text, nullable=True)
+    assistance_type_description = Column(Text, nullable=True)
+    transaction_description = Column(Text, nullable=True)
+    prime_award_base_transaction_description = Column(Text, nullable=True)
+    cfda_number = Column(Text, nullable=True)
+    cfda_title = Column(Text, nullable=True)
+    usaspending_permalink = Column(Text, nullable=True)
+    raw = Column(JSONB, nullable=False)
+    searchable_text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "assistance_transaction_unique_key",
+            name="uq_cdc_prime_transactions_assistance_transaction_unique_key",
+        ),
+        Index("cdc_prime_transactions_award_unique_key_idx", "assistance_award_unique_key"),
+        Index("cdc_prime_transactions_transaction_unique_key_idx", "assistance_transaction_unique_key"),
+        Index("cdc_prime_transactions_award_fain_idx", "award_id_fain"),
+        Index("cdc_prime_transactions_fiscal_year_idx", "action_date_fiscal_year"),
+        Index("cdc_prime_transactions_recipient_state_code_idx", "recipient_state_code"),
+        Index(
+            "cdc_prime_transactions_recipient_county_fips_idx",
+            "prime_award_transaction_recipient_county_fips_code",
+        ),
+        Index("cdc_prime_transactions_assistance_type_idx", "assistance_type_description"),
+        Index("cdc_prime_transactions_awarding_office_idx", "awarding_office_name"),
+        Index("cdc_prime_transactions_funding_office_idx", "funding_office_name"),
+        Index("cdc_prime_transactions_raw_gin_idx", "raw", postgresql_using="gin"),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )
+
+
+class CdcPrimeTransactionStateSummary(Base):
+    __tablename__ = "prime_transaction_state_summary"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geography_id = Column(String(2), nullable=False)
+    geography_name = Column(Text, nullable=True)
+    fiscal_year = Column(Integer, nullable=True)
+    assistance_type_description = Column(Text, nullable=True)
+    awarding_sub_agency_name = Column(Text, nullable=True)
+    funding_sub_agency_name = Column(Text, nullable=True)
+    awarding_office_name = Column(Text, nullable=True)
+    funding_office_name = Column(Text, nullable=True)
+    fy_obligated_amount = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    fy_outlayed_amount_estimated = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    transaction_count = Column(Integer, nullable=False, server_default=text("0"))
+    distinct_award_count = Column(Integer, nullable=False, server_default=text("0"))
+
+    __table_args__ = (
+        Index("cdc_prime_tx_state_summary_geography_idx", "geography_id"),
+        Index("cdc_prime_tx_state_summary_fiscal_year_idx", "fiscal_year"),
+        Index("cdc_prime_tx_state_summary_assistance_type_idx", "assistance_type_description"),
+        Index("cdc_prime_tx_state_summary_awarding_office_idx", "awarding_office_name"),
+        Index("cdc_prime_tx_state_summary_funding_office_idx", "funding_office_name"),
+        Index("cdc_prime_tx_state_summary_awarding_sub_agency_idx", "awarding_sub_agency_name"),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )
+
+
+class CdcPrimeTransactionCountySummary(Base):
+    __tablename__ = "prime_transaction_county_summary"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geography_id = Column(String(5), nullable=False)
+    geography_name = Column(Text, nullable=True)
+    state_code = Column(String(2), nullable=True)
+    fiscal_year = Column(Integer, nullable=True)
+    assistance_type_description = Column(Text, nullable=True)
+    awarding_sub_agency_name = Column(Text, nullable=True)
+    funding_sub_agency_name = Column(Text, nullable=True)
+    awarding_office_name = Column(Text, nullable=True)
+    funding_office_name = Column(Text, nullable=True)
+    fy_obligated_amount = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    fy_outlayed_amount_estimated = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    transaction_count = Column(Integer, nullable=False, server_default=text("0"))
+    distinct_award_count = Column(Integer, nullable=False, server_default=text("0"))
+
+    __table_args__ = (
+        Index("cdc_prime_tx_county_summary_geography_idx", "geography_id"),
+        Index("cdc_prime_tx_county_summary_state_code_idx", "state_code"),
+        Index("cdc_prime_tx_county_summary_fiscal_year_idx", "fiscal_year"),
+        Index("cdc_prime_tx_county_summary_assistance_type_idx", "assistance_type_description"),
+        Index("cdc_prime_tx_county_summary_awarding_office_idx", "awarding_office_name"),
+        Index("cdc_prime_tx_county_summary_funding_office_idx", "funding_office_name"),
+        Index("cdc_prime_tx_county_summary_awarding_sub_agency_idx", "awarding_sub_agency_name"),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )
+
+
 class CdcPrimeStateSummary(Base):
     __tablename__ = "prime_state_summary"
 

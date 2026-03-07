@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
 def get_cdc_funding_map(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
-    metric: str = Query(default="total_funding"),
+    metric: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
@@ -52,7 +52,7 @@ def get_cdc_funding_map(
 def get_cdc_funding_legend(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
-    metric: str = Query(default="total_funding"),
+    metric: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
@@ -95,18 +95,37 @@ def search_cdc_funding(
     basis: Literal["all", "prime", "subaward"] = Query(default="all"),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    funding_cio: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
     state: str | None = Query(default=None),
+    selected_state_code: str | None = Query(default=None),
+    selected_state_name: str | None = Query(default=None),
+    selected_county_fips: str | None = Query(default=None),
+    selected_county_name: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or funding_cio or "").strip() or office_value
     return services.search_awards(
         db,
         q=q,
         basis=basis,
         assistance_type=assistance_type,
         fiscal_year=fiscal_year,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
         state=state,
+        selected_state_code=selected_state_code,
+        selected_state_name=selected_state_name,
+        selected_county_fips=selected_county_fips,
+        selected_county_name=selected_county_name,
         page=page,
         page_size=page_size,
     )
@@ -116,12 +135,14 @@ def search_cdc_funding(
 def get_cdc_funding_detail(
     prime_unique_key: str | None = Query(default=None),
     subaward_id: int | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     payload = services.fetch_detail(
         db,
         prime_unique_key=prime_unique_key,
         subaward_id=subaward_id,
+        fiscal_year=fiscal_year,
     )
     if payload is None:
         if prime_unique_key:
@@ -135,7 +156,7 @@ def get_cdc_funding_top(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
     geography_id: str = Query(..., min_length=1),
-    metric: str = Query(default="total_funding"),
+    metric: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
