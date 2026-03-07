@@ -20,6 +20,8 @@ def test_schema_registry_has_expected_sources() -> None:
         "fema",
         "fema_nri",
         "fema_national_risk_index",
+        "cdc",
+        "cdc_funding",
     }
     assert set(SCHEMA_BY_SOURCE) == expected_sources
     for schema in SCHEMA_BY_SOURCE.values():

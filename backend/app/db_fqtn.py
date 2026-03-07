@@ -3,6 +3,7 @@ import re
 from app.db_schemas import (
     ACS_SCHEMA,
     CMS_SCHEMA,
+    CDC_FUNDING_SCHEMA,
     HRSA_SCHEMA,
     PLACES_SCHEMA,
     SCHEMA_BY_SOURCE,
@@ -58,6 +59,10 @@ def usda_food_env_table(name: str) -> str:
 
 def fema_nri_table(name: str) -> str:
     return fqtn(FEMA_NRI_SCHEMA, name)
+
+
+def cdc_funding_table(name: str) -> str:
+    return fqtn(CDC_FUNDING_SCHEMA, name)
 
 
 def source_table(source: str, table: str) -> str:

@@ -9,6 +9,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.db_fqtn import (  # noqa: E402
     acs_table,
+    cdc_funding_table,
     cms_table,
     fema_nri_table,
     hrsa_table,
@@ -19,6 +20,7 @@ from app.db_fqtn import (  # noqa: E402
 )
 from app.db_schemas import (  # noqa: E402
     ACS_SCHEMA,
+    CDC_FUNDING_SCHEMA,
     CMS_SCHEMA,
     FEMA_NRI_SCHEMA,
     HRSA_SCHEMA,
@@ -35,6 +37,7 @@ __all__ = [
     "SVI_SCHEMA",
     "HRSA_SCHEMA",
     "CMS_SCHEMA",
+    "CDC_FUNDING_SCHEMA",
     "FEMA_NRI_SCHEMA",
     "USDA_FOOD_ACCESS_SCHEMA",
     "USDA_FOOD_ENV_SCHEMA",
@@ -44,6 +47,7 @@ __all__ = [
     "svi_table",
     "hrsa_table",
     "cms_table",
+    "cdc_funding_table",
     "fema_nri_table",
     "usda_food_access_table",
     "usda_food_env_table",

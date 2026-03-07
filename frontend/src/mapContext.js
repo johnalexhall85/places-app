@@ -21,6 +21,10 @@
  *   acsDataValueTypeId?: string,
  *   femaMeasureId?: string,
  *   usdaField?: string,
+ *   cdcBasis?: "prime" | "subaward",
+ *   cdcMetric?: string,
+ *   cdcGeography?: "state" | "county",
+ *   cdcFiscalYear?: number,
  *   sviTheme?: string,
  *   sviMeasureId?: string,
  *   sviYear?: number
@@ -43,6 +47,7 @@ function normalizeDataSource(value) {
   if (token === "svi") return "SVI";
   if (token === "hpsa") return "HPSA";
   if (token === "cms") return "CMS";
+  if (token === "cdc_funding" || token === "cdc-funding" || token === "cdc") return "CDC_FUNDING";
   if (token === "fema_nri" || token === "fema-nri" || token === "fema") return "FEMA_NRI";
   if (
     token === "usda_food_environment"
@@ -111,6 +116,10 @@ function removeUndefined(value) {
  *     acsDataValueTypeId?: string | null,
  *     femaMeasureId?: string | null,
  *     usdaField?: string | null,
+ *     cdcBasis?: string | null,
+ *     cdcMetric?: string | null,
+ *     cdcGeography?: string | null,
+ *     cdcFiscalYear?: number | null,
  *     sviTheme?: string | null,
  *     sviMeasureId?: string | null,
  *     sviYear?: number | null
@@ -183,6 +192,18 @@ export function buildMapContext(input) {
       : undefined,
     usdaField: hasText(input?.selection?.usdaField)
       ? String(input.selection.usdaField).trim()
+      : undefined,
+    cdcBasis: hasText(input?.selection?.cdcBasis)
+      ? String(input.selection.cdcBasis).trim().toLowerCase()
+      : undefined,
+    cdcMetric: hasText(input?.selection?.cdcMetric)
+      ? String(input.selection.cdcMetric).trim()
+      : undefined,
+    cdcGeography: hasText(input?.selection?.cdcGeography)
+      ? String(input.selection.cdcGeography).trim().toLowerCase()
+      : undefined,
+    cdcFiscalYear: Number.isFinite(Number(input?.selection?.cdcFiscalYear))
+      ? Number(input.selection.cdcFiscalYear)
       : undefined,
     sviTheme: hasText(input?.selection?.sviTheme)
       ? String(input.selection.sviTheme).trim()

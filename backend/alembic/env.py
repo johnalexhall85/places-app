@@ -30,6 +30,7 @@ from app.cms import models as cms_models  # noqa: F401
 from app.fema_nri import models as fema_nri_models  # noqa: F401
 from app.usda_food_access import models as usda_food_access_models  # noqa: F401
 from app.usda_food_env import models as usda_food_env_models  # noqa: F401
+from app.cdc_funding import models as cdc_funding_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -60,6 +61,12 @@ TARGET_TABLES = {
     "state_values",
     "nri_county",
     "nri_tract",
+    "prime_awards",
+    "subawards",
+    "prime_state_summary",
+    "prime_county_summary",
+    "subaward_state_summary",
+    "subaward_county_summary",
     "alembic_version",
 }
 

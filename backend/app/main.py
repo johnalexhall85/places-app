@@ -24,6 +24,7 @@ from app.cms.router import router as cms_router
 from app.fema_nri.router import router as fema_nri_router
 from app.usda_food_access.router import router as usda_food_access_router
 from app.usda_food_env.router import router as usda_food_env_router
+from app.cdc_funding.router import router as cdc_funding_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -65,3 +66,4 @@ app.include_router(cms_router)
 app.include_router(fema_nri_router)
 app.include_router(usda_food_access_router)
 app.include_router(usda_food_env_router)
+app.include_router(cdc_funding_router)
