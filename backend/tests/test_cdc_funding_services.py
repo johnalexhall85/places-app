@@ -136,6 +136,41 @@ class _FakeSessionForTop:
         )
 
 
+class _FakeSessionForScopeDebug:
+    def __init__(self):
+        self.sql_calls: list[str] = []
+        self.params_calls: list[dict] = []
+
+    def execute(self, statement, params=None):
+        sql_text = str(statement)
+        self.sql_calls.append(sql_text)
+        self.params_calls.append(dict(params or {}))
+
+        if "to_regclass" in sql_text:
+            return _FakeResult([{"exists": "ok"}])
+        if "SELECT COUNT(*)::integer AS total_count" in sql_text:
+            return _FakeResult([{"total_count": 1}])
+        if "FROM cdc_funding.award_scope_classification AS c" in sql_text:
+            return _FakeResult(
+                [
+                    {
+                        "assistance_award_unique_key": "PRIME-KEY-STATEWIDE",
+                        "award_id_fain": "FAIN-STATE-1",
+                        "recipient_name": "State of Example Department of Health",
+                        "cfda_program_title": "State Public Health Infrastructure",
+                        "scope_classification": "statewide",
+                        "scope_score": 11,
+                        "scope_confidence": "high",
+                        "reason_codes": ["STATE_HEALTH_AGENCY", "DESC_STATEWIDE"],
+                        "is_allocatable_to_counties": True,
+                        "allocation_method_default": "total_population",
+                        "classifier_version": "v1",
+                    }
+                ]
+            )
+        return _FakeResult([])
+
+
 def test_read_prime_and_subaward_rows_counts_and_normalization(tmp_path) -> None:
     prime_path = tmp_path / "prime.csv"
     tx_path = tmp_path / "tx.csv"
@@ -268,12 +303,87 @@ def test_refresh_summary_tables_uses_recipient_and_subawardee_geography() -> Non
     assert "FROM cdc_funding.prime_transactions AS t" in sql_blob
     assert "LEFT JOIN cdc_funding.prime_awards AS p" in sql_blob
     assert "tx.resolved_state_code AS geography_id" in sql_blob
-    assert "tx.resolved_county_fips AS geography_id" in sql_blob
+    assert "LEFT JOIN cdc_funding.award_scope_classification AS cls" in sql_blob
+    assert "tx.scope_classification = 'statewide'" in sql_blob
+    assert "dim_county AS county" in sql_blob
 
     assert "FROM cdc_funding.subawards AS s" in sql_blob
     assert "s.subawardee_state_code AS geography_id" in sql_blob
     assert "s.subawardee_county_fips AS geography_id" in sql_blob
     assert "WHERE s.subawardee_county_fips IS NOT NULL" in sql_blob
+
+
+def test_scope_classifier_marks_state_health_department_as_statewide() -> None:
+    scope = cdc_ingest._classify_award_scope(
+        recipient_name="State of Georgia Department of Public Health",
+        assistance_type_description="Block Grant",
+        recipient_state_code="GA",
+        recipient_county_fips=None,
+        transaction_descriptions="Supports statewide public health system capacity across the state.",
+        transaction_base_descriptions=None,
+        transaction_cfda_titles="Public Health Block Grant",
+        prime_award_base_transaction_description="State infrastructure support",
+        cfda_program_title="Preventive Health and Health Services Block Grant",
+    )
+
+    assert scope["scope_classification"] == "statewide"
+    assert scope["is_allocatable_to_counties"] is True
+    assert "STATE_HEALTH_AGENCY" in scope["reason_codes"]
+    assert "DESC_STATEWIDE" in scope["reason_codes"]
+
+
+def test_scope_classifier_marks_county_local_language_as_local_county() -> None:
+    scope = cdc_ingest._classify_award_scope(
+        recipient_name="Fulton County Health Department",
+        assistance_type_description="Project Grants",
+        recipient_state_code="GA",
+        recipient_county_fips="13121",
+        transaction_descriptions="Local county community-based service expansion.",
+        transaction_base_descriptions=None,
+        transaction_cfda_titles="Health Services",
+        prime_award_base_transaction_description=None,
+        cfda_program_title=None,
+    )
+
+    assert scope["scope_classification"] == "local_county"
+    assert scope["is_allocatable_to_counties"] is False
+    assert "DESC_LOCAL" in scope["reason_codes"]
+    assert "COUNTY_PRESENT" in scope["reason_codes"]
+
+
+def test_scope_classifier_marks_national_entity_as_multi_state() -> None:
+    scope = cdc_ingest._classify_award_scope(
+        recipient_name="National Public Health Consortium",
+        assistance_type_description="Cooperative Agreement",
+        recipient_state_code=None,
+        recipient_county_fips=None,
+        transaction_descriptions="National network with multi-state coordination and regional support.",
+        transaction_base_descriptions=None,
+        transaction_cfda_titles=None,
+        prime_award_base_transaction_description=None,
+        cfda_program_title=None,
+    )
+
+    assert scope["scope_classification"] == "multi_state"
+    assert scope["is_allocatable_to_counties"] is False
+    assert "DESC_REGIONAL" in scope["reason_codes"]
+
+
+def test_scope_classifier_marks_ambiguous_case_as_unknown() -> None:
+    scope = cdc_ingest._classify_award_scope(
+        recipient_name="Example Health Initiative",
+        assistance_type_description="Cooperative Agreement",
+        recipient_state_code="GA",
+        recipient_county_fips=None,
+        transaction_descriptions="Program operations support",
+        transaction_base_descriptions=None,
+        transaction_cfda_titles=None,
+        prime_award_base_transaction_description=None,
+        cfda_program_title=None,
+    )
+
+    assert scope["scope_classification"] == "unknown"
+    assert scope["is_allocatable_to_counties"] is False
 
 
 def test_search_returns_prime_and_subaward_rows() -> None:
@@ -302,6 +412,30 @@ def test_search_returns_prime_and_subaward_rows() -> None:
     assert "s.subaward_action_date_fiscal_year = :fiscal_year" in combined_sql
     assert "p.recipient_state_code = :state_filter_code" in combined_sql
     assert "s.subawardee_state_code = :state_filter_code" in combined_sql
+
+
+def test_scope_debug_endpoint_returns_classifier_rows() -> None:
+    fake_db = _FakeSessionForScopeDebug()
+    payload = cdc_services.fetch_scope_classification_debug(
+        fake_db,
+        q="state",
+        scope_classification="statewide",
+        min_score=6,
+        page=1,
+        page_size=25,
+    )
+
+    assert payload["total"] == 1
+    assert payload["scope_classification"] == "statewide"
+    assert payload["results"][0]["assistance_award_unique_key"] == "PRIME-KEY-STATEWIDE"
+    assert payload["results"][0]["scope_classification"] == "statewide"
+    assert payload["results"][0]["reason_codes"] == ["STATE_HEALTH_AGENCY", "DESC_STATEWIDE"]
+
+    query_sql = next(
+        sql for sql in fake_db.sql_calls if "FROM cdc_funding.award_scope_classification AS c" in sql
+    )
+    assert "c.scope_classification = :scope_classification" in query_sql
+    assert "c.scope_score >= :min_score" in query_sql
 
 
 def test_search_applies_office_and_center_filters() -> None:

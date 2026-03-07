@@ -151,6 +151,25 @@ def get_cdc_funding_detail(
     return payload
 
 
+@router.get("/scope-classification/debug")
+def get_cdc_scope_classification_debug(
+    q: str | None = Query(default=None),
+    scope_classification: str | None = Query(default=None),
+    min_score: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    return services.fetch_scope_classification_debug(
+        db,
+        q=q,
+        scope_classification=scope_classification,
+        min_score=min_score,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/top")
 def get_cdc_funding_top(
     basis: Literal["prime", "subaward"] = Query(default="prime"),

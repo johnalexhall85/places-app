@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, DateTime, Index, Integer, Numeric, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, Column, Date, DateTime, Index, Integer, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.db import Base
@@ -168,6 +168,43 @@ class CdcPrimeTransaction(Base):
         Index("cdc_prime_transactions_awarding_office_idx", "awarding_office_name"),
         Index("cdc_prime_transactions_funding_office_idx", "funding_office_name"),
         Index("cdc_prime_transactions_raw_gin_idx", "raw", postgresql_using="gin"),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )
+
+
+class CdcAwardScopeClassification(Base):
+    __tablename__ = "award_scope_classification"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    assistance_award_unique_key = Column(Text, nullable=False)
+    award_id_fain = Column(Text, nullable=True)
+    scope_classification = Column(String(32), nullable=False)
+    scope_score = Column(Integer, nullable=False, server_default=text("0"))
+    scope_confidence = Column(String(16), nullable=False, server_default=text("'low'"))
+    reason_codes = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    is_allocatable_to_counties = Column(Boolean, nullable=False, server_default=text("false"))
+    allocation_method_default = Column(Text, nullable=True)
+    classifier_version = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=False), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "assistance_award_unique_key",
+            name="uq_cdc_award_scope_classification_award_key",
+        ),
+        Index(
+            "cdc_award_scope_classification_award_key_idx",
+            "assistance_award_unique_key",
+        ),
+        Index(
+            "cdc_award_scope_classification_scope_idx",
+            "scope_classification",
+        ),
+        Index(
+            "cdc_award_scope_classification_allocatable_idx",
+            "is_allocatable_to_counties",
+        ),
         {"schema": CDC_FUNDING_SCHEMA},
     )
 

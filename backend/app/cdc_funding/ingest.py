@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
-from app.db_fqtn import cdc_funding_table
+from app.db_fqtn import cdc_funding_table, places_table
 from app.db_schemas import CDC_FUNDING_SCHEMA
 
 DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
@@ -33,6 +33,79 @@ PRIME_TX_STATE_SUMMARY_TABLE = cdc_funding_table("prime_transaction_state_summar
 PRIME_TX_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_transaction_county_summary")
 SUBAWARD_STATE_SUMMARY_TABLE = cdc_funding_table("subaward_state_summary")
 SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
+AWARD_SCOPE_CLASSIFICATION_TABLE = cdc_funding_table("award_scope_classification")
+COUNTY_DIM_TABLE = places_table("dim_county")
+
+SCOPE_CLASSIFIER_VERSION = "v1"
+SCOPE_CLASS_DEFAULT_ALLOCATION_METHOD = "total_population"
+
+STATEWIDE_SCORE_THRESHOLD = 6
+LOCAL_SCORE_THRESHOLD = 4
+MULTI_STATE_SCORE_THRESHOLD = 5
+MULTI_COUNTY_SCORE_THRESHOLD = 4
+
+STATE_HEALTH_AGENCY_PATTERNS = (
+    re.compile(r"\bstate of\b", re.IGNORECASE),
+    re.compile(r"\bdepartment of health\b", re.IGNORECASE),
+    re.compile(r"\bdept(?:artment)? of health\b", re.IGNORECASE),
+    re.compile(r"\bdepartment of public health\b", re.IGNORECASE),
+    re.compile(r"\bdepartment of human services\b", re.IGNORECASE),
+)
+
+LOCAL_RECIPIENT_PATTERNS = (
+    re.compile(r"\bcounty\b", re.IGNORECASE),
+    re.compile(r"\bcity of\b", re.IGNORECASE),
+    re.compile(r"\bmunicipal\b", re.IGNORECASE),
+    re.compile(r"\bparish\b", re.IGNORECASE),
+)
+
+MULTI_STATE_RECIPIENT_PATTERNS = (
+    re.compile(r"\bnational\b", re.IGNORECASE),
+    re.compile(r"\binterstate\b", re.IGNORECASE),
+    re.compile(r"\bmulti[\s-]?state\b", re.IGNORECASE),
+    re.compile(r"\bconsortium\b", re.IGNORECASE),
+)
+
+STATEWIDE_DESC_CLUES = (
+    "statewide",
+    "across the state",
+    "state program",
+    "state public health system",
+)
+
+STATE_CAPACITY_CLUES = (
+    "state capacity",
+    "state infrastructure",
+    "statewide infrastructure",
+    "public health infrastructure",
+)
+
+LOCAL_DESC_CLUES = (
+    "county",
+    "city",
+    "district",
+    "local",
+    "community-based",
+    "municipal",
+    "parish",
+)
+
+MULTI_STATE_DESC_CLUES = (
+    "regional",
+    "multi-state",
+    "interstate",
+    "national",
+    "consortium",
+    "network",
+)
+
+MULTI_COUNTY_DESC_CLUES = (
+    "multi-county",
+    "multiple counties",
+    "across counties",
+)
+
+BLOCK_GRANT_CLUES = ("block grant",)
 
 NULL_TOKENS = {
     "",
@@ -191,6 +264,183 @@ def _build_searchable_text(*parts: Any) -> str:
             continue
         output.append(token)
     return " | ".join(output)
+
+
+def _normalize_match_text(value: Any) -> str:
+    token = _clean_text(value)
+    if token is None:
+        return ""
+    return re.sub(r"\s+", " ", token).strip().lower()
+
+
+def _merge_match_text(*parts: Any) -> str:
+    tokens = [_normalize_match_text(part) for part in parts]
+    return " | ".join(token for token in tokens if token)
+
+
+def _contains_any_clue(haystack: str, clues: tuple[str, ...]) -> bool:
+    if not haystack:
+        return False
+    return any(clue in haystack for clue in clues)
+
+
+def _matches_any_pattern(haystack: str, patterns: tuple[re.Pattern[str], ...]) -> bool:
+    if not haystack:
+        return False
+    return any(pattern.search(haystack) for pattern in patterns)
+
+
+def _append_reason(reasons: list[str], reason: str) -> None:
+    if reason not in reasons:
+        reasons.append(reason)
+
+
+def _classify_award_scope(
+    *,
+    recipient_name: Any,
+    assistance_type_description: Any,
+    recipient_state_code: Any,
+    recipient_county_fips: Any,
+    transaction_descriptions: Any,
+    transaction_base_descriptions: Any,
+    transaction_cfda_titles: Any,
+    prime_award_base_transaction_description: Any,
+    cfda_program_title: Any,
+) -> dict[str, Any]:
+    recipient_text = _normalize_match_text(recipient_name)
+    description_text = _merge_match_text(
+        transaction_descriptions,
+        transaction_base_descriptions,
+        prime_award_base_transaction_description,
+        transaction_cfda_titles,
+        cfda_program_title,
+    )
+    program_text = _merge_match_text(cfda_program_title, transaction_cfda_titles, assistance_type_description)
+
+    statewide_score = 0
+    local_score = 0
+    multi_state_score = 0
+    multi_county_score = 0
+    reasons: list[str] = []
+
+    if _matches_any_pattern(recipient_text, STATE_HEALTH_AGENCY_PATTERNS):
+        statewide_score += 4
+        _append_reason(reasons, "STATE_HEALTH_AGENCY")
+
+    if _matches_any_pattern(recipient_text, LOCAL_RECIPIENT_PATTERNS):
+        local_score += 3
+        _append_reason(reasons, "RECIPIENT_LOCAL_ENTITY")
+
+    if _matches_any_pattern(recipient_text, MULTI_STATE_RECIPIENT_PATTERNS):
+        multi_state_score += 4
+        _append_reason(reasons, "RECIPIENT_MULTI_STATE_ENTITY")
+
+    if _contains_any_clue(description_text, STATEWIDE_DESC_CLUES):
+        statewide_score += 5
+        _append_reason(reasons, "DESC_STATEWIDE")
+
+    if _contains_any_clue(description_text, STATE_CAPACITY_CLUES):
+        statewide_score += 2
+        _append_reason(reasons, "DESC_STATE_CAPACITY")
+
+    if _contains_any_clue(description_text, LOCAL_DESC_CLUES):
+        local_score += 3
+        _append_reason(reasons, "DESC_LOCAL")
+
+    if _contains_any_clue(description_text, MULTI_STATE_DESC_CLUES):
+        multi_state_score += 5
+        _append_reason(reasons, "DESC_REGIONAL")
+
+    if _contains_any_clue(description_text, MULTI_COUNTY_DESC_CLUES):
+        multi_county_score += 4
+        _append_reason(reasons, "DESC_MULTI_COUNTY")
+
+    if _contains_any_clue(program_text, BLOCK_GRANT_CLUES):
+        statewide_score += 3
+        _append_reason(reasons, "PROGRAM_BLOCK_GRANT")
+
+    normalized_state_code = _normalize_state_code(recipient_state_code)
+    normalized_county_fips = _normalize_fips(recipient_county_fips, length=5)
+
+    if normalized_state_code and not normalized_county_fips:
+        statewide_score += 2
+        _append_reason(reasons, "COUNTY_MISSING_STATE_PRESENT")
+    if normalized_county_fips:
+        local_score += 2
+        _append_reason(reasons, "COUNTY_PRESENT")
+    if not normalized_state_code and not normalized_county_fips:
+        _append_reason(reasons, "GEOGRAPHY_MISSING")
+
+    class_scores = {
+        "statewide": statewide_score,
+        "local_county": local_score,
+        "multi_county": multi_county_score,
+        "multi_state": multi_state_score,
+    }
+
+    # Explicit thresholds keep this deterministic and easy to tune:
+    # - statewide: score >= 6 and not overridden by stronger local/regional cues
+    # - local_county: score >= 4
+    # - multi_state: score >= 5 (takes precedence over statewide/local)
+    # - multi_county: score >= 4 when explicit multi-county language is present
+    if (
+        multi_state_score >= MULTI_STATE_SCORE_THRESHOLD
+        and multi_state_score >= statewide_score
+        and multi_state_score >= local_score
+        and multi_state_score >= multi_county_score
+    ):
+        scope_classification = "multi_state"
+    elif (
+        multi_county_score >= MULTI_COUNTY_SCORE_THRESHOLD
+        and multi_county_score >= local_score
+        and multi_state_score < MULTI_STATE_SCORE_THRESHOLD
+    ):
+        scope_classification = "multi_county"
+    elif (
+        statewide_score >= STATEWIDE_SCORE_THRESHOLD
+        and statewide_score >= (local_score + 1)
+        and multi_state_score < MULTI_STATE_SCORE_THRESHOLD
+    ):
+        scope_classification = "statewide"
+    elif local_score >= LOCAL_SCORE_THRESHOLD and local_score >= statewide_score:
+        scope_classification = "local_county"
+    else:
+        scope_classification = "unknown"
+        if not reasons:
+            _append_reason(reasons, "NO_STRONG_SIGNALS")
+
+    sorted_scores = sorted(class_scores.values(), reverse=True)
+    top_score = sorted_scores[0] if sorted_scores else 0
+    second_score = sorted_scores[1] if len(sorted_scores) > 1 else 0
+    score_margin = top_score - second_score
+
+    if scope_classification == "unknown":
+        scope_confidence = "low"
+    elif top_score >= 9 and score_margin >= 3:
+        scope_confidence = "high"
+    elif top_score >= 6 and score_margin >= 2:
+        scope_confidence = "medium"
+    else:
+        scope_confidence = "low"
+
+    if scope_classification == "unknown" and top_score == 0:
+        scope_score = 0
+    else:
+        scope_score = class_scores.get(scope_classification, top_score)
+
+    return {
+        "scope_classification": scope_classification,
+        "scope_score": int(scope_score),
+        "scope_confidence": scope_confidence,
+        "reason_codes": reasons,
+        "is_allocatable_to_counties": scope_classification == "statewide",
+        "allocation_method_default": (
+            SCOPE_CLASS_DEFAULT_ALLOCATION_METHOD
+            if scope_classification == "statewide"
+            else None
+        ),
+        "classifier_version": SCOPE_CLASSIFIER_VERSION,
+    }
 
 
 def _chunks(items: list[dict[str, Any]], chunk_size: int) -> Iterable[list[dict[str, Any]]]:
@@ -501,6 +751,7 @@ def _ensure_target_tables(connection: Any) -> None:
         PRIME_TABLE,
         PRIME_TRANSACTIONS_TABLE,
         SUBAWARD_TABLE,
+        AWARD_SCOPE_CLASSIFICATION_TABLE,
         PRIME_STATE_SUMMARY_TABLE,
         PRIME_COUNTY_SUMMARY_TABLE,
         PRIME_TX_STATE_SUMMARY_TABLE,
@@ -853,6 +1104,111 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
     return total
 
 
+def _refresh_award_scope_classification(connection: Any, chunk_size: int = DEFAULT_CHUNKSIZE) -> None:
+    connection.execute(text(f"TRUNCATE TABLE {AWARD_SCOPE_CLASSIFICATION_TABLE}"))
+
+    source_rows = connection.execute(
+        text(
+            f"""
+            WITH tx_agg AS (
+                SELECT
+                    tx.assistance_award_unique_key,
+                    MAX(tx.award_id_fain) AS award_id_fain,
+                    MAX(tx.recipient_name) AS recipient_name,
+                    MAX(tx.recipient_state_code) AS recipient_state_code,
+                    MAX(tx.prime_award_transaction_recipient_county_fips_code) AS recipient_county_fips,
+                    MAX(tx.assistance_type_description) AS assistance_type_description,
+                    STRING_AGG(DISTINCT NULLIF(tx.transaction_description, ''), ' | ') AS tx_descriptions,
+                    STRING_AGG(
+                        DISTINCT NULLIF(tx.prime_award_base_transaction_description, ''),
+                        ' | '
+                    ) AS tx_base_descriptions,
+                    STRING_AGG(DISTINCT NULLIF(tx.cfda_title, ''), ' | ') AS tx_cfda_titles
+                FROM {PRIME_TRANSACTIONS_TABLE} AS tx
+                WHERE tx.assistance_award_unique_key IS NOT NULL
+                GROUP BY tx.assistance_award_unique_key
+            )
+            SELECT
+                COALESCE(p.unique_key, tx.assistance_award_unique_key) AS assistance_award_unique_key,
+                COALESCE(p.fain, tx.award_id_fain) AS award_id_fain,
+                COALESCE(NULLIF(tx.recipient_name, ''), p.recipient_name) AS recipient_name,
+                COALESCE(tx.assistance_type_description, p.assistance_type_description)
+                    AS assistance_type_description,
+                COALESCE(tx.recipient_state_code, p.recipient_state_code) AS recipient_state_code,
+                COALESCE(tx.recipient_county_fips, p.recipient_county_fips) AS recipient_county_fips,
+                p.cfda_program_title,
+                p.prime_award_base_transaction_description,
+                tx.tx_descriptions,
+                tx.tx_base_descriptions,
+                tx.tx_cfda_titles
+            FROM {PRIME_TABLE} AS p
+            FULL OUTER JOIN tx_agg AS tx
+                ON tx.assistance_award_unique_key = p.unique_key
+            WHERE COALESCE(p.unique_key, tx.assistance_award_unique_key) IS NOT NULL
+            """
+        )
+    ).mappings()
+
+    insert_statement = text(
+        f"""
+        INSERT INTO {AWARD_SCOPE_CLASSIFICATION_TABLE} (
+            assistance_award_unique_key,
+            award_id_fain,
+            scope_classification,
+            scope_score,
+            scope_confidence,
+            reason_codes,
+            is_allocatable_to_counties,
+            allocation_method_default,
+            classifier_version
+        ) VALUES (
+            :assistance_award_unique_key,
+            :award_id_fain,
+            :scope_classification,
+            :scope_score,
+            :scope_confidence,
+            CAST(:reason_codes AS jsonb),
+            :is_allocatable_to_counties,
+            :allocation_method_default,
+            :classifier_version
+        )
+        """
+    )
+
+    payload: list[dict[str, Any]] = []
+    for row in source_rows:
+        scope = _classify_award_scope(
+            recipient_name=row.get("recipient_name"),
+            assistance_type_description=row.get("assistance_type_description"),
+            recipient_state_code=row.get("recipient_state_code"),
+            recipient_county_fips=row.get("recipient_county_fips"),
+            transaction_descriptions=row.get("tx_descriptions"),
+            transaction_base_descriptions=row.get("tx_base_descriptions"),
+            transaction_cfda_titles=row.get("tx_cfda_titles"),
+            prime_award_base_transaction_description=row.get("prime_award_base_transaction_description"),
+            cfda_program_title=row.get("cfda_program_title"),
+        )
+        payload.append(
+            {
+                "assistance_award_unique_key": row.get("assistance_award_unique_key"),
+                "award_id_fain": row.get("award_id_fain"),
+                "scope_classification": scope["scope_classification"],
+                "scope_score": scope["scope_score"],
+                "scope_confidence": scope["scope_confidence"],
+                "reason_codes": json.dumps(scope["reason_codes"], ensure_ascii=False),
+                "is_allocatable_to_counties": scope["is_allocatable_to_counties"],
+                "allocation_method_default": scope["allocation_method_default"],
+                "classifier_version": scope["classifier_version"],
+            }
+        )
+        if len(payload) >= max(1, int(chunk_size)):
+            connection.execute(insert_statement, payload)
+            payload = []
+
+    if payload:
+        connection.execute(insert_statement, payload)
+
+
 def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(text(f"TRUNCATE TABLE {PRIME_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {PRIME_COUNTY_SUMMARY_TABLE}"))
@@ -974,6 +1330,7 @@ def _refresh_summary_tables(connection: Any) -> None:
             ),
             tx_enriched AS (
                 SELECT
+                    tx.assistance_transaction_unique_key,
                     tx.assistance_award_unique_key,
                     tx.action_date_fiscal_year AS fiscal_year,
                     tx.assistance_type_description,
@@ -1062,6 +1419,7 @@ def _refresh_summary_tables(connection: Any) -> None:
             ),
             tx_enriched AS (
                 SELECT
+                    tx.assistance_transaction_unique_key,
                     tx.assistance_award_unique_key,
                     tx.action_date_fiscal_year AS fiscal_year,
                     tx.assistance_type_description,
@@ -1083,10 +1441,200 @@ def _refresh_summary_tables(connection: Any) -> None:
                             THEN tx.total_outlayed_amount_for_overall_award
                         ELSE tx.total_outlayed_amount_for_overall_award
                             - tx.prior_total_outlayed_amount_for_overall_award
-                    END AS estimated_outlay_delta
+                    END AS estimated_outlay_delta,
+                    COALESCE(cls.scope_classification, 'unknown') AS scope_classification,
+                    COALESCE(cls.is_allocatable_to_counties, false) AS is_allocatable_to_counties
                 FROM tx_ordered AS tx
                 LEFT JOIN {PRIME_TABLE} AS p
                     ON p.unique_key = tx.assistance_award_unique_key
+                LEFT JOIN {AWARD_SCOPE_CLASSIFICATION_TABLE} AS cls
+                    ON cls.assistance_award_unique_key = tx.assistance_award_unique_key
+            ),
+            state_county_weights AS (
+                SELECT
+                    county.location_id AS county_fips,
+                    county.state_abbr AS state_code,
+                    county.county_name,
+                    county.total_population::numeric AS county_population,
+                    SUM(county.total_population::numeric) OVER (
+                        PARTITION BY county.state_abbr
+                    ) AS state_population
+                FROM {COUNTY_DIM_TABLE} AS county
+                WHERE county.location_id ~ '^[0-9]{{5}}$'
+                  AND county.state_abbr IS NOT NULL
+                  AND county.total_population IS NOT NULL
+                  AND county.total_population > 0
+            ),
+            direct_tx AS (
+                SELECT
+                    tx.resolved_county_fips AS geography_id,
+                    tx.resolved_county_name AS geography_name,
+                    tx.resolved_state_code AS state_code,
+                    tx.fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    tx.federal_action_obligation AS fy_obligated_amount,
+                    tx.estimated_outlay_delta AS fy_outlayed_amount_estimated,
+                    1::numeric AS tx_count_share,
+                    tx.assistance_award_unique_key
+                FROM tx_enriched AS tx
+                WHERE tx.resolved_county_fips IS NOT NULL
+            ),
+            statewide_tx AS (
+                SELECT
+                    tx.assistance_transaction_unique_key,
+                    tx.assistance_award_unique_key,
+                    tx.fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    tx.federal_action_obligation,
+                    tx.estimated_outlay_delta,
+                    tx.resolved_state_code AS state_code
+                FROM tx_enriched AS tx
+                WHERE tx.resolved_county_fips IS NULL
+                  AND tx.resolved_state_code IS NOT NULL
+                  AND tx.scope_classification = 'statewide'
+                  AND tx.is_allocatable_to_counties = true
+            ),
+            allocated_tx AS (
+                SELECT
+                    weights.county_fips AS geography_id,
+                    weights.county_name AS geography_name,
+                    statewide.state_code,
+                    statewide.fiscal_year,
+                    statewide.assistance_type_description,
+                    statewide.awarding_sub_agency_name,
+                    statewide.funding_sub_agency_name,
+                    statewide.awarding_office_name,
+                    statewide.funding_office_name,
+                    COALESCE(statewide.federal_action_obligation, 0)
+                        * (weights.county_population / NULLIF(weights.state_population, 0))
+                        AS fy_obligated_amount,
+                    COALESCE(statewide.estimated_outlay_delta, 0)
+                        * (weights.county_population / NULLIF(weights.state_population, 0))
+                        AS fy_outlayed_amount_estimated,
+                    (weights.county_population / NULLIF(weights.state_population, 0))::numeric
+                        AS tx_count_share,
+                    statewide.assistance_award_unique_key
+                FROM statewide_tx AS statewide
+                JOIN state_county_weights AS weights
+                    ON weights.state_code = statewide.state_code
+            ),
+            direct_awards AS (
+                SELECT DISTINCT
+                    direct.geography_id,
+                    direct.geography_name,
+                    direct.state_code,
+                    direct.fiscal_year,
+                    direct.assistance_type_description,
+                    direct.awarding_sub_agency_name,
+                    direct.funding_sub_agency_name,
+                    direct.awarding_office_name,
+                    direct.funding_office_name,
+                    direct.assistance_award_unique_key
+                FROM direct_tx AS direct
+                WHERE direct.assistance_award_unique_key IS NOT NULL
+            ),
+            statewide_awards AS (
+                SELECT DISTINCT
+                    statewide.assistance_award_unique_key,
+                    statewide.fiscal_year,
+                    statewide.assistance_type_description,
+                    statewide.awarding_sub_agency_name,
+                    statewide.funding_sub_agency_name,
+                    statewide.awarding_office_name,
+                    statewide.funding_office_name,
+                    statewide.state_code
+                FROM statewide_tx AS statewide
+                WHERE statewide.assistance_award_unique_key IS NOT NULL
+            ),
+            allocated_awards AS (
+                SELECT
+                    weights.county_fips AS geography_id,
+                    weights.county_name AS geography_name,
+                    awards.state_code,
+                    awards.fiscal_year,
+                    awards.assistance_type_description,
+                    awards.awarding_sub_agency_name,
+                    awards.funding_sub_agency_name,
+                    awards.awarding_office_name,
+                    awards.funding_office_name,
+                    (weights.county_population / NULLIF(weights.state_population, 0))::numeric
+                        AS award_count_share
+                FROM statewide_awards AS awards
+                JOIN state_county_weights AS weights
+                    ON weights.state_code = awards.state_code
+            ),
+            county_contributions AS (
+                SELECT
+                    direct.geography_id,
+                    direct.geography_name,
+                    direct.state_code,
+                    direct.fiscal_year,
+                    direct.assistance_type_description,
+                    direct.awarding_sub_agency_name,
+                    direct.funding_sub_agency_name,
+                    direct.awarding_office_name,
+                    direct.funding_office_name,
+                    direct.fy_obligated_amount,
+                    direct.fy_outlayed_amount_estimated,
+                    direct.tx_count_share,
+                    0::numeric AS award_count_share
+                FROM direct_tx AS direct
+                UNION ALL
+                SELECT
+                    allocated.geography_id,
+                    allocated.geography_name,
+                    allocated.state_code,
+                    allocated.fiscal_year,
+                    allocated.assistance_type_description,
+                    allocated.awarding_sub_agency_name,
+                    allocated.funding_sub_agency_name,
+                    allocated.awarding_office_name,
+                    allocated.funding_office_name,
+                    allocated.fy_obligated_amount,
+                    allocated.fy_outlayed_amount_estimated,
+                    allocated.tx_count_share,
+                    0::numeric AS award_count_share
+                FROM allocated_tx AS allocated
+                UNION ALL
+                SELECT
+                    direct_awards.geography_id,
+                    direct_awards.geography_name,
+                    direct_awards.state_code,
+                    direct_awards.fiscal_year,
+                    direct_awards.assistance_type_description,
+                    direct_awards.awarding_sub_agency_name,
+                    direct_awards.funding_sub_agency_name,
+                    direct_awards.awarding_office_name,
+                    direct_awards.funding_office_name,
+                    0::numeric AS fy_obligated_amount,
+                    0::numeric AS fy_outlayed_amount_estimated,
+                    0::numeric AS tx_count_share,
+                    1::numeric AS award_count_share
+                FROM direct_awards
+                UNION ALL
+                SELECT
+                    allocated_awards.geography_id,
+                    allocated_awards.geography_name,
+                    allocated_awards.state_code,
+                    allocated_awards.fiscal_year,
+                    allocated_awards.assistance_type_description,
+                    allocated_awards.awarding_sub_agency_name,
+                    allocated_awards.funding_sub_agency_name,
+                    allocated_awards.awarding_office_name,
+                    allocated_awards.funding_office_name,
+                    0::numeric AS fy_obligated_amount,
+                    0::numeric AS fy_outlayed_amount_estimated,
+                    0::numeric AS tx_count_share,
+                    allocated_awards.award_count_share
+                FROM allocated_awards
             )
             INSERT INTO {PRIME_TX_COUNTY_SUMMARY_TABLE} (
                 geography_id,
@@ -1104,29 +1652,31 @@ def _refresh_summary_tables(connection: Any) -> None:
                 distinct_award_count
             )
             SELECT
-                tx.resolved_county_fips AS geography_id,
-                MAX(tx.resolved_county_name) AS geography_name,
-                MAX(tx.resolved_state_code) AS state_code,
-                tx.fiscal_year,
-                tx.assistance_type_description,
-                tx.awarding_sub_agency_name,
-                tx.funding_sub_agency_name,
-                tx.awarding_office_name,
-                tx.funding_office_name,
-                COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
-                COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
-                COUNT(*)::integer AS transaction_count,
-                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count
-            FROM tx_enriched AS tx
-            WHERE tx.resolved_county_fips IS NOT NULL
+                contribution.geography_id,
+                MAX(contribution.geography_name) AS geography_name,
+                MAX(contribution.state_code) AS state_code,
+                contribution.fiscal_year,
+                contribution.assistance_type_description,
+                contribution.awarding_sub_agency_name,
+                contribution.funding_sub_agency_name,
+                contribution.awarding_office_name,
+                contribution.funding_office_name,
+                COALESCE(SUM(contribution.fy_obligated_amount), 0) AS fy_obligated_amount,
+                COALESCE(SUM(contribution.fy_outlayed_amount_estimated), 0) AS fy_outlayed_amount_estimated,
+                GREATEST(0, ROUND(COALESCE(SUM(contribution.tx_count_share), 0)))::integer
+                    AS transaction_count,
+                GREATEST(0, ROUND(COALESCE(SUM(contribution.award_count_share), 0)))::integer
+                    AS distinct_award_count
+            FROM county_contributions AS contribution
+            WHERE contribution.geography_id IS NOT NULL
             GROUP BY
-                tx.resolved_county_fips,
-                tx.fiscal_year,
-                tx.assistance_type_description,
-                tx.awarding_sub_agency_name,
-                tx.funding_sub_agency_name,
-                tx.awarding_office_name,
-                tx.funding_office_name
+                contribution.geography_id,
+                contribution.fiscal_year,
+                contribution.assistance_type_description,
+                contribution.awarding_sub_agency_name,
+                contribution.funding_sub_agency_name,
+                contribution.awarding_office_name,
+                contribution.funding_office_name
             """
         )
     )
@@ -1243,6 +1793,7 @@ def ingest(
         prime_upserts = _upsert_prime_rows(connection, prime_rows, chunksize)
         transaction_upserts = _upsert_prime_transaction_rows(connection, transaction_rows, chunksize)
         subaward_upserts = _upsert_subaward_rows(connection, subaward_rows, chunksize)
+        _refresh_award_scope_classification(connection, chunk_size=chunksize)
         _refresh_summary_tables(connection)
 
     elapsed_seconds = round(time.perf_counter() - started_at, 3)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from decimal import Decimal
@@ -21,6 +22,7 @@ PRIME_TX_STATE_SUMMARY_TABLE = cdc_funding_table("prime_transaction_state_summar
 PRIME_TX_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_transaction_county_summary")
 SUBAWARD_STATE_SUMMARY_TABLE = cdc_funding_table("subaward_state_summary")
 SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
+AWARD_SCOPE_CLASSIFICATION_TABLE = cdc_funding_table("award_scope_classification")
 COUNTY_BOUNDARY_TABLE = places_table("dim_county_boundary")
 COUNTY_DIM_TABLE = places_table("dim_county")
 STATE_BOUNDARY_TABLE = places_table("dim_state_boundary")
@@ -34,6 +36,13 @@ VALID_METRICS = {
     "distinct_award_count",
     "total_subaward",
     "subaward_count",
+}
+VALID_SCOPE_CLASSIFICATIONS = {
+    "local_county",
+    "statewide",
+    "multi_county",
+    "multi_state",
+    "unknown",
 }
 
 PRIME_METRICS = {
@@ -83,6 +92,17 @@ def _ensure_award_tables(db: Session) -> None:
                     "Run migrations and CDC funding ingestion."
                 ),
             )
+
+
+def _ensure_scope_classification_table(db: Session) -> None:
+    if not _table_exists(db, AWARD_SCOPE_CLASSIFICATION_TABLE):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Required table {AWARD_SCOPE_CLASSIFICATION_TABLE} is missing. "
+                "Run migrations and CDC funding ingestion."
+            ),
+        )
 
 
 def _ensure_required_tables(db: Session, *, basis: str, geography: str) -> None:
@@ -1230,6 +1250,142 @@ def search_awards(
         "page_size": page_size,
         "total": int(total_count or 0),
         "results": results,
+    }
+
+
+def fetch_scope_classification_debug(
+    db: Session,
+    *,
+    q: str | None = None,
+    scope_classification: str | None = None,
+    min_score: int | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> dict[str, Any]:
+    _ensure_award_tables(db)
+    _ensure_scope_classification_table(db)
+
+    normalized_scope = _strip_optional(scope_classification)
+    if normalized_scope is not None:
+        normalized_scope = normalized_scope.lower()
+        if normalized_scope not in VALID_SCOPE_CLASSIFICATIONS:
+            allowed = ", ".join(sorted(VALID_SCOPE_CLASSIFICATIONS))
+            raise HTTPException(status_code=400, detail=f"scope_classification must be one of {allowed}")
+
+    page = int(page)
+    page_size = int(page_size)
+    if page < 1:
+        raise HTTPException(status_code=400, detail="page must be >= 1")
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=400, detail="page_size must be between 1 and 100")
+
+    normalized_min_score = int(min_score) if min_score is not None else None
+    query_token = str(q or "").strip()
+
+    params: dict[str, Any] = {
+        "limit": page_size,
+        "offset": (page - 1) * page_size,
+    }
+    filters: list[str] = []
+
+    if query_token:
+        params["q"] = f"%{query_token}%"
+        filters.append(
+            "("
+            "COALESCE(c.award_id_fain, p.fain, '') ILIKE :q "
+            "OR COALESCE(p.recipient_name, '') ILIKE :q "
+            "OR COALESCE(p.cfda_program_title, '') ILIKE :q "
+            "OR COALESCE(p.prime_award_base_transaction_description, '') ILIKE :q"
+            ")"
+        )
+
+    if normalized_scope:
+        params["scope_classification"] = normalized_scope
+        filters.append("c.scope_classification = :scope_classification")
+
+    if normalized_min_score is not None:
+        params["min_score"] = normalized_min_score
+        filters.append("c.scope_score >= :min_score")
+
+    where_sql = ""
+    if filters:
+        where_sql = "WHERE " + " AND ".join(filters)
+
+    base_sql = (
+        f"FROM {AWARD_SCOPE_CLASSIFICATION_TABLE} AS c "
+        f"LEFT JOIN {PRIME_TABLE} AS p ON p.unique_key = c.assistance_award_unique_key "
+        f"{where_sql}"
+    )
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT
+                c.assistance_award_unique_key,
+                COALESCE(c.award_id_fain, p.fain) AS award_id_fain,
+                p.recipient_name,
+                p.cfda_program_title,
+                c.scope_classification,
+                c.scope_score,
+                c.scope_confidence,
+                c.reason_codes,
+                c.is_allocatable_to_counties,
+                c.allocation_method_default,
+                c.classifier_version
+            {base_sql}
+            ORDER BY
+                c.scope_score DESC,
+                c.scope_classification ASC,
+                COALESCE(c.award_id_fain, p.fain) ASC NULLS LAST
+            LIMIT :limit
+            OFFSET :offset
+            """
+        ),
+        params,
+    ).mappings().all()
+
+    total = db.execute(
+        text(f"SELECT COUNT(*)::integer AS total_count {base_sql}"),
+        params,
+    ).mappings().one()["total_count"]
+
+    result_rows: list[dict[str, Any]] = []
+    for row in rows:
+        reason_codes = row.get("reason_codes")
+        if isinstance(reason_codes, str):
+            try:
+                parsed_reason_codes = json.loads(reason_codes)
+            except json.JSONDecodeError:
+                parsed_reason_codes = [reason_codes]
+        elif isinstance(reason_codes, list):
+            parsed_reason_codes = reason_codes
+        else:
+            parsed_reason_codes = []
+
+        result_rows.append(
+            {
+                "assistance_award_unique_key": row.get("assistance_award_unique_key"),
+                "award_id_fain": row.get("award_id_fain"),
+                "recipient_name": row.get("recipient_name"),
+                "program_title": row.get("cfda_program_title"),
+                "scope_classification": row.get("scope_classification"),
+                "scope_score": int(row.get("scope_score") or 0),
+                "scope_confidence": row.get("scope_confidence"),
+                "reason_codes": parsed_reason_codes,
+                "is_allocatable_to_counties": bool(row.get("is_allocatable_to_counties")),
+                "allocation_method_default": row.get("allocation_method_default"),
+                "classifier_version": row.get("classifier_version"),
+            }
+        )
+
+    return {
+        "q": query_token or None,
+        "scope_classification": normalized_scope,
+        "min_score": normalized_min_score,
+        "page": page,
+        "page_size": page_size,
+        "total": int(total or 0),
+        "results": result_rows,
     }
 
 
