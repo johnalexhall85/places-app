@@ -126,6 +126,7 @@ export HRSA_SCHEMA=public
 export CMS_SCHEMA=cms
 export USDA_FOOD_ACCESS_SCHEMA=usda_food_access
 export USDA_FOOD_ENV_SCHEMA=usda_food_env
+export FEMA_NRI_SCHEMA=fema_nri
 ```
 
 Quick schema mapping verification:
@@ -197,6 +198,10 @@ python -m app.usda_food_access.ingest
 
 # USDA Food Environment Atlas 2025 (county/state map dataset)
 python -m app.usda_food_env.ingest
+
+# FEMA National Risk Index (county + tract map dataset)
+# (run migrations first: cd backend && ./.venv/bin/alembic upgrade head)
+python -m app.fema_nri.ingest --replace
 ```
 
 USDA Food Environment map rendering behavior:

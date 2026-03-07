@@ -1,0 +1,3170 @@
+{
+  "dataset_key": "fema_nri_december_2025",
+  "dataset_name": "FEMA National Risk Index",
+  "dataset_vintage": "December 2025",
+  "notes": "FEMA National Risk Index is designed for planning and broad comparison; it is not a substitute for local engineering-grade risk assessment.",
+  "default_measure_id": "RISK_SCORE",
+  "measure_count": 158,
+  "measures": [
+    {
+      "measure_id": "RISK_VALUE",
+      "raw_field": "RISK_VALUE",
+      "display_label": "National Risk Index - Value - Composite",
+      "group": "Composite risk",
+      "subgroup": "National Risk Index",
+      "description": "National Risk Index - Value - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "RISK_RATNG",
+      "hazard_name": null,
+      "sort_order": 1
+    },
+    {
+      "measure_id": "RISK_SCORE",
+      "raw_field": "RISK_SCORE",
+      "display_label": "National Risk Index - Score - Composite",
+      "group": "Composite risk",
+      "subgroup": "National Risk Index",
+      "description": "National Risk Index - Score - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "RISK_RATNG",
+      "hazard_name": null,
+      "sort_order": 2
+    },
+    {
+      "measure_id": "RISK_RATNG",
+      "raw_field": "RISK_RATNG",
+      "display_label": "National Risk Index - Rating - Composite",
+      "group": "Composite risk",
+      "subgroup": "National Risk Index",
+      "description": "National Risk Index - Rating - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": null,
+      "sort_order": 3
+    },
+    {
+      "measure_id": "EAL_VALT",
+      "raw_field": "EAL_VALT",
+      "display_label": "Expected Annual Loss - Total - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Total - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "EAL_RATNG",
+      "hazard_name": null,
+      "sort_order": 4
+    },
+    {
+      "measure_id": "EAL_VALB",
+      "raw_field": "EAL_VALB",
+      "display_label": "Expected Annual Loss - Building Value - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Building Value - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "EAL_RATNG",
+      "hazard_name": null,
+      "sort_order": 5
+    },
+    {
+      "measure_id": "EAL_VALP",
+      "raw_field": "EAL_VALP",
+      "display_label": "Expected Annual Loss - Population - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Population - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "EAL_RATNG",
+      "hazard_name": null,
+      "sort_order": 6
+    },
+    {
+      "measure_id": "EAL_VALA",
+      "raw_field": "EAL_VALA",
+      "display_label": "Expected Annual Loss - Agriculture Value - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Agriculture Value - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "EAL_RATNG",
+      "hazard_name": null,
+      "sort_order": 7
+    },
+    {
+      "measure_id": "EAL_SCORE",
+      "raw_field": "EAL_SCORE",
+      "display_label": "Expected Annual Loss - Score - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Score - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "EAL_RATNG",
+      "hazard_name": null,
+      "sort_order": 8
+    },
+    {
+      "measure_id": "EAL_RATNG",
+      "raw_field": "EAL_RATNG",
+      "display_label": "Expected Annual Loss - Rating - Composite",
+      "group": "Expected annual loss",
+      "subgroup": "Composite expected annual loss",
+      "description": "Expected Annual Loss - Rating - Composite. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": null,
+      "sort_order": 9
+    },
+    {
+      "measure_id": "SOVI_SCORE",
+      "raw_field": "SOVI_SCORE",
+      "display_label": "Social Vulnerability - Score",
+      "group": "Community factors",
+      "subgroup": "Social vulnerability",
+      "description": "Social Vulnerability - Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "SOVI_RATNG",
+      "hazard_name": null,
+      "sort_order": 10
+    },
+    {
+      "measure_id": "SOVI_RATNG",
+      "raw_field": "SOVI_RATNG",
+      "display_label": "Social Vulnerability - Rating",
+      "group": "Community factors",
+      "subgroup": "Social vulnerability",
+      "description": "Social Vulnerability - Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": null,
+      "sort_order": 11
+    },
+    {
+      "measure_id": "RESL_SCORE",
+      "raw_field": "RESL_SCORE",
+      "display_label": "Community Resilience - Score",
+      "group": "Community factors",
+      "subgroup": "Community resilience",
+      "description": "Community Resilience - Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "RESL_RATNG",
+      "hazard_name": null,
+      "sort_order": 12
+    },
+    {
+      "measure_id": "RESL_RATNG",
+      "raw_field": "RESL_RATNG",
+      "display_label": "Community Resilience - Rating",
+      "group": "Community factors",
+      "subgroup": "Community resilience",
+      "description": "Community Resilience - Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": null,
+      "sort_order": 13
+    },
+    {
+      "measure_id": "CRF_VALUE",
+      "raw_field": "CRF_VALUE",
+      "display_label": "Community Risk Factor - Value",
+      "group": "Community factors",
+      "subgroup": "Community risk factor",
+      "description": "Community Risk Factor - Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": null,
+      "sort_order": 14
+    },
+    {
+      "measure_id": "AVLN_RISKV",
+      "raw_field": "AVLN_RISKV",
+      "display_label": "Avalanche - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "AVLN_RISKR",
+      "hazard_name": "Avalanche",
+      "sort_order": 15
+    },
+    {
+      "measure_id": "AVLN_RISKS",
+      "raw_field": "AVLN_RISKS",
+      "display_label": "Avalanche - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "AVLN_RISKR",
+      "hazard_name": "Avalanche",
+      "sort_order": 16
+    },
+    {
+      "measure_id": "AVLN_RISKR",
+      "raw_field": "AVLN_RISKR",
+      "display_label": "Avalanche - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Avalanche",
+      "sort_order": 17
+    },
+    {
+      "measure_id": "AVLN_EALT",
+      "raw_field": "AVLN_EALT",
+      "display_label": "Avalanche - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "AVLN_EALR",
+      "hazard_name": "Avalanche",
+      "sort_order": 18
+    },
+    {
+      "measure_id": "AVLN_EALS",
+      "raw_field": "AVLN_EALS",
+      "display_label": "Avalanche - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "AVLN_EALR",
+      "hazard_name": "Avalanche",
+      "sort_order": 19
+    },
+    {
+      "measure_id": "AVLN_EALR",
+      "raw_field": "AVLN_EALR",
+      "display_label": "Avalanche - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Avalanche",
+      "sort_order": 20
+    },
+    {
+      "measure_id": "AVLN_AFREQ",
+      "raw_field": "AVLN_AFREQ",
+      "display_label": "Avalanche - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Avalanche",
+      "sort_order": 21
+    },
+    {
+      "measure_id": "AVLN_EVNTS",
+      "raw_field": "AVLN_EVNTS",
+      "display_label": "Avalanche - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Avalanche",
+      "description": "Avalanche - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Avalanche",
+      "sort_order": 22
+    },
+    {
+      "measure_id": "CFLD_RISKV",
+      "raw_field": "CFLD_RISKV",
+      "display_label": "Coastal Flooding - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CFLD_RISKR",
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 23
+    },
+    {
+      "measure_id": "CFLD_RISKS",
+      "raw_field": "CFLD_RISKS",
+      "display_label": "Coastal Flooding - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CFLD_RISKR",
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 24
+    },
+    {
+      "measure_id": "CFLD_RISKR",
+      "raw_field": "CFLD_RISKR",
+      "display_label": "Coastal Flooding - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 25
+    },
+    {
+      "measure_id": "CFLD_EALT",
+      "raw_field": "CFLD_EALT",
+      "display_label": "Coastal Flooding - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CFLD_EALR",
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 26
+    },
+    {
+      "measure_id": "CFLD_EALS",
+      "raw_field": "CFLD_EALS",
+      "display_label": "Coastal Flooding - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CFLD_EALR",
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 27
+    },
+    {
+      "measure_id": "CFLD_EALR",
+      "raw_field": "CFLD_EALR",
+      "display_label": "Coastal Flooding - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 28
+    },
+    {
+      "measure_id": "CFLD_AFREQ",
+      "raw_field": "CFLD_AFREQ",
+      "display_label": "Coastal Flooding - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 29
+    },
+    {
+      "measure_id": "CFLD_EVNTS",
+      "raw_field": "CFLD_EVNTS",
+      "display_label": "Coastal Flooding - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Coastal Flooding",
+      "description": "Coastal Flooding - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Coastal Flooding",
+      "sort_order": 30
+    },
+    {
+      "measure_id": "CWAV_RISKV",
+      "raw_field": "CWAV_RISKV",
+      "display_label": "Cold Wave - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CWAV_RISKR",
+      "hazard_name": "Cold Wave",
+      "sort_order": 31
+    },
+    {
+      "measure_id": "CWAV_RISKS",
+      "raw_field": "CWAV_RISKS",
+      "display_label": "Cold Wave - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CWAV_RISKR",
+      "hazard_name": "Cold Wave",
+      "sort_order": 32
+    },
+    {
+      "measure_id": "CWAV_RISKR",
+      "raw_field": "CWAV_RISKR",
+      "display_label": "Cold Wave - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Cold Wave",
+      "sort_order": 33
+    },
+    {
+      "measure_id": "CWAV_EALT",
+      "raw_field": "CWAV_EALT",
+      "display_label": "Cold Wave - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CWAV_EALR",
+      "hazard_name": "Cold Wave",
+      "sort_order": 34
+    },
+    {
+      "measure_id": "CWAV_EALS",
+      "raw_field": "CWAV_EALS",
+      "display_label": "Cold Wave - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "CWAV_EALR",
+      "hazard_name": "Cold Wave",
+      "sort_order": 35
+    },
+    {
+      "measure_id": "CWAV_EALR",
+      "raw_field": "CWAV_EALR",
+      "display_label": "Cold Wave - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Cold Wave",
+      "sort_order": 36
+    },
+    {
+      "measure_id": "CWAV_AFREQ",
+      "raw_field": "CWAV_AFREQ",
+      "display_label": "Cold Wave - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Cold Wave",
+      "sort_order": 37
+    },
+    {
+      "measure_id": "CWAV_EVNTS",
+      "raw_field": "CWAV_EVNTS",
+      "display_label": "Cold Wave - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Cold Wave",
+      "description": "Cold Wave - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Cold Wave",
+      "sort_order": 38
+    },
+    {
+      "measure_id": "DRGT_RISKV",
+      "raw_field": "DRGT_RISKV",
+      "display_label": "Drought - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "DRGT_RISKR",
+      "hazard_name": "Drought",
+      "sort_order": 39
+    },
+    {
+      "measure_id": "DRGT_RISKS",
+      "raw_field": "DRGT_RISKS",
+      "display_label": "Drought - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "DRGT_RISKR",
+      "hazard_name": "Drought",
+      "sort_order": 40
+    },
+    {
+      "measure_id": "DRGT_RISKR",
+      "raw_field": "DRGT_RISKR",
+      "display_label": "Drought - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Drought",
+      "sort_order": 41
+    },
+    {
+      "measure_id": "DRGT_EALT",
+      "raw_field": "DRGT_EALT",
+      "display_label": "Drought - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "DRGT_EALR",
+      "hazard_name": "Drought",
+      "sort_order": 42
+    },
+    {
+      "measure_id": "DRGT_EALS",
+      "raw_field": "DRGT_EALS",
+      "display_label": "Drought - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "DRGT_EALR",
+      "hazard_name": "Drought",
+      "sort_order": 43
+    },
+    {
+      "measure_id": "DRGT_EALR",
+      "raw_field": "DRGT_EALR",
+      "display_label": "Drought - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Drought",
+      "sort_order": 44
+    },
+    {
+      "measure_id": "DRGT_AFREQ",
+      "raw_field": "DRGT_AFREQ",
+      "display_label": "Drought - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Drought",
+      "sort_order": 45
+    },
+    {
+      "measure_id": "DRGT_EVNTS",
+      "raw_field": "DRGT_EVNTS",
+      "display_label": "Drought - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Drought",
+      "description": "Drought - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Drought",
+      "sort_order": 46
+    },
+    {
+      "measure_id": "ERQK_RISKV",
+      "raw_field": "ERQK_RISKV",
+      "display_label": "Earthquake - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ERQK_RISKR",
+      "hazard_name": "Earthquake",
+      "sort_order": 47
+    },
+    {
+      "measure_id": "ERQK_RISKS",
+      "raw_field": "ERQK_RISKS",
+      "display_label": "Earthquake - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ERQK_RISKR",
+      "hazard_name": "Earthquake",
+      "sort_order": 48
+    },
+    {
+      "measure_id": "ERQK_RISKR",
+      "raw_field": "ERQK_RISKR",
+      "display_label": "Earthquake - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Earthquake",
+      "sort_order": 49
+    },
+    {
+      "measure_id": "ERQK_EALT",
+      "raw_field": "ERQK_EALT",
+      "display_label": "Earthquake - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ERQK_EALR",
+      "hazard_name": "Earthquake",
+      "sort_order": 50
+    },
+    {
+      "measure_id": "ERQK_EALS",
+      "raw_field": "ERQK_EALS",
+      "display_label": "Earthquake - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ERQK_EALR",
+      "hazard_name": "Earthquake",
+      "sort_order": 51
+    },
+    {
+      "measure_id": "ERQK_EALR",
+      "raw_field": "ERQK_EALR",
+      "display_label": "Earthquake - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Earthquake",
+      "sort_order": 52
+    },
+    {
+      "measure_id": "ERQK_AFREQ",
+      "raw_field": "ERQK_AFREQ",
+      "display_label": "Earthquake - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Earthquake",
+      "sort_order": 53
+    },
+    {
+      "measure_id": "ERQK_EVNTS",
+      "raw_field": "ERQK_EVNTS",
+      "display_label": "Earthquake - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Earthquake",
+      "description": "Earthquake - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Earthquake",
+      "sort_order": 54
+    },
+    {
+      "measure_id": "HAIL_RISKV",
+      "raw_field": "HAIL_RISKV",
+      "display_label": "Hail - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HAIL_RISKR",
+      "hazard_name": "Hail",
+      "sort_order": 55
+    },
+    {
+      "measure_id": "HAIL_RISKS",
+      "raw_field": "HAIL_RISKS",
+      "display_label": "Hail - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HAIL_RISKR",
+      "hazard_name": "Hail",
+      "sort_order": 56
+    },
+    {
+      "measure_id": "HAIL_RISKR",
+      "raw_field": "HAIL_RISKR",
+      "display_label": "Hail - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hail",
+      "sort_order": 57
+    },
+    {
+      "measure_id": "HAIL_EALT",
+      "raw_field": "HAIL_EALT",
+      "display_label": "Hail - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HAIL_EALR",
+      "hazard_name": "Hail",
+      "sort_order": 58
+    },
+    {
+      "measure_id": "HAIL_EALS",
+      "raw_field": "HAIL_EALS",
+      "display_label": "Hail - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HAIL_EALR",
+      "hazard_name": "Hail",
+      "sort_order": 59
+    },
+    {
+      "measure_id": "HAIL_EALR",
+      "raw_field": "HAIL_EALR",
+      "display_label": "Hail - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hail",
+      "sort_order": 60
+    },
+    {
+      "measure_id": "HAIL_AFREQ",
+      "raw_field": "HAIL_AFREQ",
+      "display_label": "Hail - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hail",
+      "sort_order": 61
+    },
+    {
+      "measure_id": "HAIL_EVNTS",
+      "raw_field": "HAIL_EVNTS",
+      "display_label": "Hail - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hail",
+      "description": "Hail - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hail",
+      "sort_order": 62
+    },
+    {
+      "measure_id": "HWAV_RISKV",
+      "raw_field": "HWAV_RISKV",
+      "display_label": "Heat Wave - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HWAV_RISKR",
+      "hazard_name": "Heat Wave",
+      "sort_order": 63
+    },
+    {
+      "measure_id": "HWAV_RISKS",
+      "raw_field": "HWAV_RISKS",
+      "display_label": "Heat Wave - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HWAV_RISKR",
+      "hazard_name": "Heat Wave",
+      "sort_order": 64
+    },
+    {
+      "measure_id": "HWAV_RISKR",
+      "raw_field": "HWAV_RISKR",
+      "display_label": "Heat Wave - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Heat Wave",
+      "sort_order": 65
+    },
+    {
+      "measure_id": "HWAV_EALT",
+      "raw_field": "HWAV_EALT",
+      "display_label": "Heat Wave - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HWAV_EALR",
+      "hazard_name": "Heat Wave",
+      "sort_order": 66
+    },
+    {
+      "measure_id": "HWAV_EALS",
+      "raw_field": "HWAV_EALS",
+      "display_label": "Heat Wave - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HWAV_EALR",
+      "hazard_name": "Heat Wave",
+      "sort_order": 67
+    },
+    {
+      "measure_id": "HWAV_EALR",
+      "raw_field": "HWAV_EALR",
+      "display_label": "Heat Wave - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Heat Wave",
+      "sort_order": 68
+    },
+    {
+      "measure_id": "HWAV_AFREQ",
+      "raw_field": "HWAV_AFREQ",
+      "display_label": "Heat Wave - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Heat Wave",
+      "sort_order": 69
+    },
+    {
+      "measure_id": "HWAV_EVNTS",
+      "raw_field": "HWAV_EVNTS",
+      "display_label": "Heat Wave - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Heat Wave",
+      "description": "Heat Wave - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Heat Wave",
+      "sort_order": 70
+    },
+    {
+      "measure_id": "HRCN_RISKV",
+      "raw_field": "HRCN_RISKV",
+      "display_label": "Hurricane - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HRCN_RISKR",
+      "hazard_name": "Hurricane",
+      "sort_order": 71
+    },
+    {
+      "measure_id": "HRCN_RISKS",
+      "raw_field": "HRCN_RISKS",
+      "display_label": "Hurricane - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HRCN_RISKR",
+      "hazard_name": "Hurricane",
+      "sort_order": 72
+    },
+    {
+      "measure_id": "HRCN_RISKR",
+      "raw_field": "HRCN_RISKR",
+      "display_label": "Hurricane - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hurricane",
+      "sort_order": 73
+    },
+    {
+      "measure_id": "HRCN_EALT",
+      "raw_field": "HRCN_EALT",
+      "display_label": "Hurricane - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HRCN_EALR",
+      "hazard_name": "Hurricane",
+      "sort_order": 74
+    },
+    {
+      "measure_id": "HRCN_EALS",
+      "raw_field": "HRCN_EALS",
+      "display_label": "Hurricane - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "HRCN_EALR",
+      "hazard_name": "Hurricane",
+      "sort_order": 75
+    },
+    {
+      "measure_id": "HRCN_EALR",
+      "raw_field": "HRCN_EALR",
+      "display_label": "Hurricane - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hurricane",
+      "sort_order": 76
+    },
+    {
+      "measure_id": "HRCN_AFREQ",
+      "raw_field": "HRCN_AFREQ",
+      "display_label": "Hurricane - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hurricane",
+      "sort_order": 77
+    },
+    {
+      "measure_id": "HRCN_EVNTS",
+      "raw_field": "HRCN_EVNTS",
+      "display_label": "Hurricane - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Hurricane",
+      "description": "Hurricane - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Hurricane",
+      "sort_order": 78
+    },
+    {
+      "measure_id": "ISTM_RISKV",
+      "raw_field": "ISTM_RISKV",
+      "display_label": "Ice Storm - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ISTM_RISKR",
+      "hazard_name": "Ice Storm",
+      "sort_order": 79
+    },
+    {
+      "measure_id": "ISTM_RISKS",
+      "raw_field": "ISTM_RISKS",
+      "display_label": "Ice Storm - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ISTM_RISKR",
+      "hazard_name": "Ice Storm",
+      "sort_order": 80
+    },
+    {
+      "measure_id": "ISTM_RISKR",
+      "raw_field": "ISTM_RISKR",
+      "display_label": "Ice Storm - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Ice Storm",
+      "sort_order": 81
+    },
+    {
+      "measure_id": "ISTM_EALT",
+      "raw_field": "ISTM_EALT",
+      "display_label": "Ice Storm - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ISTM_EALR",
+      "hazard_name": "Ice Storm",
+      "sort_order": 82
+    },
+    {
+      "measure_id": "ISTM_EALS",
+      "raw_field": "ISTM_EALS",
+      "display_label": "Ice Storm - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "ISTM_EALR",
+      "hazard_name": "Ice Storm",
+      "sort_order": 83
+    },
+    {
+      "measure_id": "ISTM_EALR",
+      "raw_field": "ISTM_EALR",
+      "display_label": "Ice Storm - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Ice Storm",
+      "sort_order": 84
+    },
+    {
+      "measure_id": "ISTM_AFREQ",
+      "raw_field": "ISTM_AFREQ",
+      "display_label": "Ice Storm - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Ice Storm",
+      "sort_order": 85
+    },
+    {
+      "measure_id": "ISTM_EVNTS",
+      "raw_field": "ISTM_EVNTS",
+      "display_label": "Ice Storm - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Ice Storm",
+      "description": "Ice Storm - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Ice Storm",
+      "sort_order": 86
+    },
+    {
+      "measure_id": "IFLD_RISKV",
+      "raw_field": "IFLD_RISKV",
+      "display_label": "Inland Flooding - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "IFLD_RISKR",
+      "hazard_name": "Inland Flooding",
+      "sort_order": 87
+    },
+    {
+      "measure_id": "IFLD_RISKS",
+      "raw_field": "IFLD_RISKS",
+      "display_label": "Inland Flooding - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "IFLD_RISKR",
+      "hazard_name": "Inland Flooding",
+      "sort_order": 88
+    },
+    {
+      "measure_id": "IFLD_RISKR",
+      "raw_field": "IFLD_RISKR",
+      "display_label": "Inland Flooding - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Inland Flooding",
+      "sort_order": 89
+    },
+    {
+      "measure_id": "IFLD_EALT",
+      "raw_field": "IFLD_EALT",
+      "display_label": "Inland Flooding - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "IFLD_EALR",
+      "hazard_name": "Inland Flooding",
+      "sort_order": 90
+    },
+    {
+      "measure_id": "IFLD_EALS",
+      "raw_field": "IFLD_EALS",
+      "display_label": "Inland Flooding - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "IFLD_EALR",
+      "hazard_name": "Inland Flooding",
+      "sort_order": 91
+    },
+    {
+      "measure_id": "IFLD_EALR",
+      "raw_field": "IFLD_EALR",
+      "display_label": "Inland Flooding - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Inland Flooding",
+      "sort_order": 92
+    },
+    {
+      "measure_id": "IFLD_AFREQ",
+      "raw_field": "IFLD_AFREQ",
+      "display_label": "Inland Flooding - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Inland Flooding",
+      "sort_order": 93
+    },
+    {
+      "measure_id": "IFLD_EVNTS",
+      "raw_field": "IFLD_EVNTS",
+      "display_label": "Inland Flooding - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Inland Flooding",
+      "description": "Inland Flooding - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Inland Flooding",
+      "sort_order": 94
+    },
+    {
+      "measure_id": "LNDS_RISKV",
+      "raw_field": "LNDS_RISKV",
+      "display_label": "Landslide - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LNDS_RISKR",
+      "hazard_name": "Landslide",
+      "sort_order": 95
+    },
+    {
+      "measure_id": "LNDS_RISKS",
+      "raw_field": "LNDS_RISKS",
+      "display_label": "Landslide - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LNDS_RISKR",
+      "hazard_name": "Landslide",
+      "sort_order": 96
+    },
+    {
+      "measure_id": "LNDS_RISKR",
+      "raw_field": "LNDS_RISKR",
+      "display_label": "Landslide - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Landslide",
+      "sort_order": 97
+    },
+    {
+      "measure_id": "LNDS_EALT",
+      "raw_field": "LNDS_EALT",
+      "display_label": "Landslide - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LNDS_EALR",
+      "hazard_name": "Landslide",
+      "sort_order": 98
+    },
+    {
+      "measure_id": "LNDS_EALS",
+      "raw_field": "LNDS_EALS",
+      "display_label": "Landslide - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LNDS_EALR",
+      "hazard_name": "Landslide",
+      "sort_order": 99
+    },
+    {
+      "measure_id": "LNDS_EALR",
+      "raw_field": "LNDS_EALR",
+      "display_label": "Landslide - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Landslide",
+      "sort_order": 100
+    },
+    {
+      "measure_id": "LNDS_AFREQ",
+      "raw_field": "LNDS_AFREQ",
+      "display_label": "Landslide - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Landslide",
+      "sort_order": 101
+    },
+    {
+      "measure_id": "LNDS_EVNTS",
+      "raw_field": "LNDS_EVNTS",
+      "display_label": "Landslide - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Landslide",
+      "description": "Landslide - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Landslide",
+      "sort_order": 102
+    },
+    {
+      "measure_id": "LTNG_RISKV",
+      "raw_field": "LTNG_RISKV",
+      "display_label": "Lightning - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LTNG_RISKR",
+      "hazard_name": "Lightning",
+      "sort_order": 103
+    },
+    {
+      "measure_id": "LTNG_RISKS",
+      "raw_field": "LTNG_RISKS",
+      "display_label": "Lightning - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LTNG_RISKR",
+      "hazard_name": "Lightning",
+      "sort_order": 104
+    },
+    {
+      "measure_id": "LTNG_RISKR",
+      "raw_field": "LTNG_RISKR",
+      "display_label": "Lightning - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Lightning",
+      "sort_order": 105
+    },
+    {
+      "measure_id": "LTNG_EALT",
+      "raw_field": "LTNG_EALT",
+      "display_label": "Lightning - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LTNG_EALR",
+      "hazard_name": "Lightning",
+      "sort_order": 106
+    },
+    {
+      "measure_id": "LTNG_EALS",
+      "raw_field": "LTNG_EALS",
+      "display_label": "Lightning - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "LTNG_EALR",
+      "hazard_name": "Lightning",
+      "sort_order": 107
+    },
+    {
+      "measure_id": "LTNG_EALR",
+      "raw_field": "LTNG_EALR",
+      "display_label": "Lightning - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Lightning",
+      "sort_order": 108
+    },
+    {
+      "measure_id": "LTNG_AFREQ",
+      "raw_field": "LTNG_AFREQ",
+      "display_label": "Lightning - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Lightning",
+      "sort_order": 109
+    },
+    {
+      "measure_id": "LTNG_EVNTS",
+      "raw_field": "LTNG_EVNTS",
+      "display_label": "Lightning - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Lightning",
+      "description": "Lightning - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Lightning",
+      "sort_order": 110
+    },
+    {
+      "measure_id": "SWND_RISKV",
+      "raw_field": "SWND_RISKV",
+      "display_label": "Strong Wind - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "SWND_RISKR",
+      "hazard_name": "Strong Wind",
+      "sort_order": 111
+    },
+    {
+      "measure_id": "SWND_RISKS",
+      "raw_field": "SWND_RISKS",
+      "display_label": "Strong Wind - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "SWND_RISKR",
+      "hazard_name": "Strong Wind",
+      "sort_order": 112
+    },
+    {
+      "measure_id": "SWND_RISKR",
+      "raw_field": "SWND_RISKR",
+      "display_label": "Strong Wind - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Strong Wind",
+      "sort_order": 113
+    },
+    {
+      "measure_id": "SWND_EALT",
+      "raw_field": "SWND_EALT",
+      "display_label": "Strong Wind - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "SWND_EALR",
+      "hazard_name": "Strong Wind",
+      "sort_order": 114
+    },
+    {
+      "measure_id": "SWND_EALS",
+      "raw_field": "SWND_EALS",
+      "display_label": "Strong Wind - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "SWND_EALR",
+      "hazard_name": "Strong Wind",
+      "sort_order": 115
+    },
+    {
+      "measure_id": "SWND_EALR",
+      "raw_field": "SWND_EALR",
+      "display_label": "Strong Wind - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Strong Wind",
+      "sort_order": 116
+    },
+    {
+      "measure_id": "SWND_AFREQ",
+      "raw_field": "SWND_AFREQ",
+      "display_label": "Strong Wind - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Strong Wind",
+      "sort_order": 117
+    },
+    {
+      "measure_id": "SWND_EVNTS",
+      "raw_field": "SWND_EVNTS",
+      "display_label": "Strong Wind - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Strong Wind",
+      "description": "Strong Wind - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Strong Wind",
+      "sort_order": 118
+    },
+    {
+      "measure_id": "TRND_RISKV",
+      "raw_field": "TRND_RISKV",
+      "display_label": "Tornado - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TRND_RISKR",
+      "hazard_name": "Tornado",
+      "sort_order": 119
+    },
+    {
+      "measure_id": "TRND_RISKS",
+      "raw_field": "TRND_RISKS",
+      "display_label": "Tornado - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TRND_RISKR",
+      "hazard_name": "Tornado",
+      "sort_order": 120
+    },
+    {
+      "measure_id": "TRND_RISKR",
+      "raw_field": "TRND_RISKR",
+      "display_label": "Tornado - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tornado",
+      "sort_order": 121
+    },
+    {
+      "measure_id": "TRND_EALT",
+      "raw_field": "TRND_EALT",
+      "display_label": "Tornado - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TRND_EALR",
+      "hazard_name": "Tornado",
+      "sort_order": 122
+    },
+    {
+      "measure_id": "TRND_EALS",
+      "raw_field": "TRND_EALS",
+      "display_label": "Tornado - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TRND_EALR",
+      "hazard_name": "Tornado",
+      "sort_order": 123
+    },
+    {
+      "measure_id": "TRND_EALR",
+      "raw_field": "TRND_EALR",
+      "display_label": "Tornado - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tornado",
+      "sort_order": 124
+    },
+    {
+      "measure_id": "TRND_AFREQ",
+      "raw_field": "TRND_AFREQ",
+      "display_label": "Tornado - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tornado",
+      "sort_order": 125
+    },
+    {
+      "measure_id": "TRND_EVNTS",
+      "raw_field": "TRND_EVNTS",
+      "display_label": "Tornado - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tornado",
+      "description": "Tornado - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tornado",
+      "sort_order": 126
+    },
+    {
+      "measure_id": "TSUN_RISKV",
+      "raw_field": "TSUN_RISKV",
+      "display_label": "Tsunami - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TSUN_RISKR",
+      "hazard_name": "Tsunami",
+      "sort_order": 127
+    },
+    {
+      "measure_id": "TSUN_RISKS",
+      "raw_field": "TSUN_RISKS",
+      "display_label": "Tsunami - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TSUN_RISKR",
+      "hazard_name": "Tsunami",
+      "sort_order": 128
+    },
+    {
+      "measure_id": "TSUN_RISKR",
+      "raw_field": "TSUN_RISKR",
+      "display_label": "Tsunami - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tsunami",
+      "sort_order": 129
+    },
+    {
+      "measure_id": "TSUN_EALT",
+      "raw_field": "TSUN_EALT",
+      "display_label": "Tsunami - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TSUN_EALR",
+      "hazard_name": "Tsunami",
+      "sort_order": 130
+    },
+    {
+      "measure_id": "TSUN_EALS",
+      "raw_field": "TSUN_EALS",
+      "display_label": "Tsunami - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "TSUN_EALR",
+      "hazard_name": "Tsunami",
+      "sort_order": 131
+    },
+    {
+      "measure_id": "TSUN_EALR",
+      "raw_field": "TSUN_EALR",
+      "display_label": "Tsunami - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tsunami",
+      "sort_order": 132
+    },
+    {
+      "measure_id": "TSUN_AFREQ",
+      "raw_field": "TSUN_AFREQ",
+      "display_label": "Tsunami - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tsunami",
+      "sort_order": 133
+    },
+    {
+      "measure_id": "TSUN_EVNTS",
+      "raw_field": "TSUN_EVNTS",
+      "display_label": "Tsunami - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Tsunami",
+      "description": "Tsunami - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Tsunami",
+      "sort_order": 134
+    },
+    {
+      "measure_id": "VLCN_RISKV",
+      "raw_field": "VLCN_RISKV",
+      "display_label": "Volcanic Activity - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "VLCN_RISKR",
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 135
+    },
+    {
+      "measure_id": "VLCN_RISKS",
+      "raw_field": "VLCN_RISKS",
+      "display_label": "Volcanic Activity - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "VLCN_RISKR",
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 136
+    },
+    {
+      "measure_id": "VLCN_RISKR",
+      "raw_field": "VLCN_RISKR",
+      "display_label": "Volcanic Activity - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 137
+    },
+    {
+      "measure_id": "VLCN_EALT",
+      "raw_field": "VLCN_EALT",
+      "display_label": "Volcanic Activity - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "VLCN_EALR",
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 138
+    },
+    {
+      "measure_id": "VLCN_EALS",
+      "raw_field": "VLCN_EALS",
+      "display_label": "Volcanic Activity - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "VLCN_EALR",
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 139
+    },
+    {
+      "measure_id": "VLCN_EALR",
+      "raw_field": "VLCN_EALR",
+      "display_label": "Volcanic Activity - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 140
+    },
+    {
+      "measure_id": "VLCN_AFREQ",
+      "raw_field": "VLCN_AFREQ",
+      "display_label": "Volcanic Activity - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 141
+    },
+    {
+      "measure_id": "VLCN_EVNTS",
+      "raw_field": "VLCN_EVNTS",
+      "display_label": "Volcanic Activity - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Volcanic Activity",
+      "description": "Volcanic Activity - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Volcanic Activity",
+      "sort_order": 142
+    },
+    {
+      "measure_id": "WFIR_RISKV",
+      "raw_field": "WFIR_RISKV",
+      "display_label": "Wildfire - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WFIR_RISKR",
+      "hazard_name": "Wildfire",
+      "sort_order": 143
+    },
+    {
+      "measure_id": "WFIR_RISKS",
+      "raw_field": "WFIR_RISKS",
+      "display_label": "Wildfire - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WFIR_RISKR",
+      "hazard_name": "Wildfire",
+      "sort_order": 144
+    },
+    {
+      "measure_id": "WFIR_RISKR",
+      "raw_field": "WFIR_RISKR",
+      "display_label": "Wildfire - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Wildfire",
+      "sort_order": 145
+    },
+    {
+      "measure_id": "WFIR_EALT",
+      "raw_field": "WFIR_EALT",
+      "display_label": "Wildfire - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WFIR_EALR",
+      "hazard_name": "Wildfire",
+      "sort_order": 146
+    },
+    {
+      "measure_id": "WFIR_EALS",
+      "raw_field": "WFIR_EALS",
+      "display_label": "Wildfire - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WFIR_EALR",
+      "hazard_name": "Wildfire",
+      "sort_order": 147
+    },
+    {
+      "measure_id": "WFIR_EALR",
+      "raw_field": "WFIR_EALR",
+      "display_label": "Wildfire - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Wildfire",
+      "sort_order": 148
+    },
+    {
+      "measure_id": "WFIR_AFREQ",
+      "raw_field": "WFIR_AFREQ",
+      "display_label": "Wildfire - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Wildfire",
+      "sort_order": 149
+    },
+    {
+      "measure_id": "WFIR_EVNTS",
+      "raw_field": "WFIR_EVNTS",
+      "display_label": "Wildfire - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Wildfire",
+      "description": "Wildfire - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Wildfire",
+      "sort_order": 150
+    },
+    {
+      "measure_id": "WNTW_RISKV",
+      "raw_field": "WNTW_RISKV",
+      "display_label": "Winter Weather - Hazard Type Risk Index Value",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Hazard Type Risk Index Value. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WNTW_RISKR",
+      "hazard_name": "Winter Weather",
+      "sort_order": 151
+    },
+    {
+      "measure_id": "WNTW_RISKS",
+      "raw_field": "WNTW_RISKS",
+      "display_label": "Winter Weather - Hazard Type Risk Index Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Hazard Type Risk Index Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WNTW_RISKR",
+      "hazard_name": "Winter Weather",
+      "sort_order": 152
+    },
+    {
+      "measure_id": "WNTW_RISKR",
+      "raw_field": "WNTW_RISKR",
+      "display_label": "Winter Weather - Hazard Type Risk Index Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Hazard Type Risk Index Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Winter Weather",
+      "sort_order": 153
+    },
+    {
+      "measure_id": "WNTW_EALT",
+      "raw_field": "WNTW_EALT",
+      "display_label": "Winter Weather - Expected Annual Loss - Total",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Expected Annual Loss - Total. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "USD",
+      "value_type": "dollars",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "usd_compact",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WNTW_EALR",
+      "hazard_name": "Winter Weather",
+      "sort_order": 154
+    },
+    {
+      "measure_id": "WNTW_EALS",
+      "raw_field": "WNTW_EALS",
+      "display_label": "Winter Weather - Expected Annual Loss Score",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Expected Annual Loss Score. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "continuous",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_1",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": "WNTW_EALR",
+      "hazard_name": "Winter Weather",
+      "sort_order": 155
+    },
+    {
+      "measure_id": "WNTW_EALR",
+      "raw_field": "WNTW_EALR",
+      "display_label": "Winter Weather - Expected Annual Loss Rating",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Expected Annual Loss Rating. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": null,
+      "value_type": "rating",
+      "legend_mode": "ordered_category",
+      "tooltip_formatter": "rating",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Winter Weather",
+      "sort_order": 156
+    },
+    {
+      "measure_id": "WNTW_AFREQ",
+      "raw_field": "WNTW_AFREQ",
+      "display_label": "Winter Weather - Annualized Frequency",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Annualized Frequency. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "events/year",
+      "value_type": "frequency",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "decimal_3",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Winter Weather",
+      "sort_order": 157
+    },
+    {
+      "measure_id": "WNTW_EVNTS",
+      "raw_field": "WNTW_EVNTS",
+      "display_label": "Winter Weather - Number of Events",
+      "group": "Hazard-specific risk",
+      "subgroup": "Winter Weather",
+      "description": "Winter Weather - Number of Events. FEMA National Risk Index planning-oriented indicator for broad comparison.",
+      "unit": "count",
+      "value_type": "count",
+      "legend_mode": "quantile",
+      "tooltip_formatter": "integer",
+      "supported_levels": [
+        "county",
+        "tract"
+      ],
+      "visible_by_default": true,
+      "companion_rating_field": null,
+      "hazard_name": "Winter Weather",
+      "sort_order": 158
+    }
+  ]
+}

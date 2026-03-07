@@ -10,6 +10,7 @@ Defaults:
 - `CMS_SCHEMA=cms`
 - `USDA_FOOD_ACCESS_SCHEMA=usda_food_access`
 - `USDA_FOOD_ENV_SCHEMA=usda_food_env`
+- `FEMA_NRI_SCHEMA=fema_nri`
 
 Verify resolved mapping and table access:
 
@@ -53,6 +54,10 @@ python -m app.usda_food_access.ingest
 
 # USDA Food Environment Atlas ingest (county/state, July 2025)
 python -m app.usda_food_env.ingest
+
+# FEMA National Risk Index ingest (county + tract, December 2025)
+# (run migrations first: cd backend && ./.venv/bin/alembic upgrade head)
+python -m app.fema_nri.ingest --replace
 ```
 
 ## Ingest SVI Multiple Years (2018, 2020, 2022)

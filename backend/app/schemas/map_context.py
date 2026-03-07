@@ -25,6 +25,8 @@ class MapContextSelection(BaseModel):
     acsYearWindow: str | None = None
     acsDataValueTypeId: str | None = None
 
+    femaMeasureId: str | None = None
+
     sviTheme: str | None = None
     sviMeasureId: str | None = None
     sviYear: int | None = None

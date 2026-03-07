@@ -21,6 +21,7 @@ from app.routers.profile_reports import router as profile_reports_router
 from app.routers.svi import router as svi_router
 from app.routers.hpsa import router as hpsa_router
 from app.cms.router import router as cms_router
+from app.fema_nri.router import router as fema_nri_router
 from app.usda_food_access.router import router as usda_food_access_router
 from app.usda_food_env.router import router as usda_food_env_router
 
@@ -61,5 +62,6 @@ app.include_router(profile_reports_router)
 app.include_router(svi_router)
 app.include_router(hpsa_router)
 app.include_router(cms_router)
+app.include_router(fema_nri_router)
 app.include_router(usda_food_access_router)
 app.include_router(usda_food_env_router)

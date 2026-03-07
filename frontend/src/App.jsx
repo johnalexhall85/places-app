@@ -40,6 +40,11 @@ import {
   fetchUsdaFoodEnvironmentMap,
   fetchUsdaFoodEnvironmentVariables,
 } from "./api/usdaFoodEnvironment";
+import {
+  fetchFemaNriLegend,
+  fetchFemaNriMap,
+  fetchFemaNriMeasures,
+} from "./api/femaNri";
 
 const API_BASE = "http://localhost:8000";
 const DATA_SOURCES = {
@@ -49,8 +54,10 @@ const DATA_SOURCES = {
   HPSA: "hpsa",
   CMS: "cms",
   USDA_FOOD_ENV: "usda_food_environment",
+  FEMA_NRI: "fema_nri",
 };
 const USDA_DEFAULT_VARIABLE = "PCT_LACCESS_POP19";
+const FEMA_DEFAULT_MEASURE = "RISK_SCORE";
 const USDA_PLAIN_LABELS = {
   LA1and10: "People with low food access (1 mile urban / 10 miles rural)",
   LAhalfand10: "People with low food access (0.5 mile urban / 10 miles rural)",
@@ -160,6 +167,13 @@ const USDA_HEAT_LAYER_GRADIENT = {
   1.0: "#1b4965",
 };
 const USDA_HEAT_RAMP_CSS = "linear-gradient(to right, #e6f4f1, #a8dadc, #5fb3b3, #2a9d8f, #1b4965)";
+const FEMA_RATING_COLORS = {
+  "Very Low": "#edf8e9",
+  Low: "#bae4b3",
+  Moderate: "#74c476",
+  High: "#31a354",
+  "Very High": "#006d2c",
+};
 const HPSA_TIER_COLORS = {
   1: COLORS[0],
   2: COLORS[1],
@@ -402,6 +416,8 @@ function tagMeasuresForSource(measuresList, source) {
         ? "cms"
         : source === DATA_SOURCES.USDA_FOOD_ENV
           ? "usda"
+          : source === DATA_SOURCES.FEMA_NRI
+            ? "fema"
       : "places";
   return (measuresList ?? []).map((measure) => ({
     ...measure,
@@ -791,6 +807,75 @@ function getUsdaPlainDescription(field, fallbackDescription) {
     return USDA_PLAIN_DESCRIPTIONS_BY_FIELD[normalizedField];
   }
   return String(fallbackDescription ?? "").trim();
+}
+
+function getFemaMeasureLabel(measure, fallbackId = "") {
+  return String(
+    measure?.name
+    ?? measure?.label
+    ?? measure?.display_label
+    ?? measure?.measure
+    ?? fallbackId
+    ?? ""
+  ).trim() || fallbackId || "FEMA NRI measure";
+}
+
+function normalizeFemaRatingLabel(value) {
+  const token = String(value ?? "").trim();
+  if (!token) return null;
+  const normalized = token.toLowerCase();
+  if (normalized === "very low" || normalized === "verylow" || normalized === "vlow") return "Very Low";
+  if (normalized === "low") return "Low";
+  if (normalized === "moderate" || normalized === "mod") return "Moderate";
+  if (normalized === "high") return "High";
+  if (normalized === "very high" || normalized === "veryhigh" || normalized === "vhigh") return "Very High";
+  return token;
+}
+
+function formatCompactUsd(value) {
+  const numeric = toFiniteNumericValue(value);
+  if (numeric == null) return "No data";
+  const abs = Math.abs(numeric);
+  if (abs >= 1_000_000_000) {
+    return `$${(numeric / 1_000_000_000).toFixed(1)}B`;
+  }
+  if (abs >= 1_000_000) {
+    return `$${(numeric / 1_000_000).toFixed(1)}M`;
+  }
+  if (abs >= 1_000) {
+    return `$${(numeric / 1_000).toFixed(1)}K`;
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numeric);
+}
+
+function formatFemaValue(value, measure = {}, { noDataLabel = "No data" } = {}) {
+  const valueType = String(measure?.fema_value_type ?? measure?.value_type ?? "").trim().toLowerCase();
+  const formatter = String(measure?.fema_tooltip_formatter ?? measure?.tooltip_formatter ?? "").trim().toLowerCase();
+  const ratingValue = normalizeFemaRatingLabel(value);
+  if (valueType === "rating" || formatter === "rating") {
+    return ratingValue || noDataLabel;
+  }
+
+  const numeric = toFiniteNumericValue(value);
+  if (numeric == null) return noDataLabel;
+
+  if (valueType === "dollars" || formatter === "usd_compact" || String(measure?.unit ?? "").toUpperCase() === "USD") {
+    return formatCompactUsd(numeric);
+  }
+  if (valueType === "count") {
+    return numeric.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+  if (valueType === "frequency") {
+    return numeric.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  if (formatter === "decimal_1") {
+    return numeric.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+  return numeric.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function formatSviLevelText(level) {
@@ -1533,6 +1618,372 @@ function UsdaMeasureSelector({
   );
 }
 
+function FemaMeasureSelector({
+  selectedMeasureId,
+  selectedMeasure,
+  isOpen,
+  onToggleOpen,
+  onClose,
+  searchValue,
+  onSearchChange,
+  groupedMeasures,
+  totalVisibleMeasures,
+  onSelectMeasure,
+}) {
+  const selectorButtonStyle = {
+    minHeight: 36,
+    borderRadius: 8,
+    border: "1px solid #c4d2e0",
+    background: "#ffffff",
+    color: "#0f2d46",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    width: "100%",
+  };
+  const selectedLabel = getFemaMeasureLabel(selectedMeasure, selectedMeasureId);
+  const selectedText = selectedLabel || "Select FEMA measure";
+
+  const renderPill = (label, styles = {}) => (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: 999,
+        border: "1px solid #cbd5e1",
+        background: "#f8fafc",
+        color: "#334155",
+        fontSize: 10,
+        fontWeight: 700,
+        padding: "1px 6px",
+        ...styles,
+      }}
+    >
+      {label}
+    </span>
+  );
+
+  const renderMeasureButton = (measure) => {
+    const measureId = String(measure?.measure_id ?? "").trim();
+    if (!measureId) return null;
+    const isSelected = measureId === selectedMeasureId;
+    const label = getFemaMeasureLabel(measure, measureId);
+    const description = String(measure?.description ?? "").trim();
+    const valueType = String(measure?.fema_value_type ?? "").trim().toLowerCase();
+    const hazardName = String(measure?.fema_hazard_name ?? "").trim();
+    const valueTypeLabel = valueType
+      ? valueType.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+      : "";
+    return (
+      <button
+        key={measureId}
+        type="button"
+        onClick={() => onSelectMeasure(measureId)}
+        style={{
+          display: "grid",
+          gap: 4,
+          width: "100%",
+          textAlign: "left",
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: `1px solid ${isSelected ? "#1d4ed8" : "#dbe3eb"}`,
+          background: isSelected ? "#eff6ff" : "#ffffff",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ color: "#0f172a", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
+          {label}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {valueTypeLabel ? renderPill(valueTypeLabel) : null}
+          {hazardName ? renderPill(hazardName, {
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1d4ed8",
+          }) : null}
+        </div>
+        {description ? (
+          <div style={{ color: "#475569", fontSize: 11 }}>
+            {truncateText(description, 140)}
+          </div>
+        ) : null}
+      </button>
+    );
+  };
+
+  const hasAnyMeasures = totalVisibleMeasures > 0;
+
+  return (
+    <div style={{ display: "grid", gap: 6, position: "relative" }}>
+      <button
+        type="button"
+        aria-label="Measure"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        onClick={onToggleOpen}
+        style={{
+          ...selectorButtonStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+          {selectedText}
+        </span>
+        <span style={{ marginLeft: 8, color: "#64748b", fontSize: 11 }}>▼</span>
+      </button>
+
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-label="FEMA measure selector"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 2600,
+            border: "1px solid #dbe3eb",
+            borderRadius: 10,
+            background: "#ffffff",
+            boxShadow: "0 14px 30px rgba(15, 23, 42, 0.16)",
+            padding: 10,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input
+              type="search"
+              placeholder="Search FEMA measures..."
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              autoFocus
+              style={{
+                flex: 1,
+                height: 30,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                padding: "0 10px",
+                fontSize: 12,
+              }}
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                height: 30,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                color: "#334155",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "0 8px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={{ maxHeight: 420, overflowY: "auto", display: "grid", gap: 10, paddingRight: 2 }}>
+            {groupedMeasures.length > 0 ? groupedMeasures.map((group, groupIndex) => (
+              <details key={`fema-group-${group.group}`} open={groupIndex === 0}>
+                <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+                  {group.group} ({group.count})
+                </summary>
+                <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+                  {group.subgroups.map((subgroup, subgroupIndex) => (
+                    <details key={`fema-subgroup-${group.group}-${subgroup.subgroup}`} open={groupIndex === 0 && subgroupIndex === 0}>
+                      <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 600 }}>
+                        {subgroup.subgroup} ({subgroup.measures.length})
+                      </summary>
+                      <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
+                        {subgroup.measures.map((measure) => renderMeasureButton(measure))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </details>
+            )) : null}
+            {!hasAnyMeasures ? (
+              <div style={{ color: "#64748b", fontSize: 11 }}>
+                No FEMA measures match the current search.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PlacesMeasureSelector({
+  selectedMeasureId,
+  selectedMeasure,
+  isOpen,
+  onToggleOpen,
+  onClose,
+  searchValue,
+  onSearchChange,
+  categoryGroups,
+  totalVisibleMeasures,
+  onSelectMeasure,
+}) {
+  const selectorButtonStyle = {
+    minHeight: 36,
+    borderRadius: 8,
+    border: "1px solid #c4d2e0",
+    background: "#ffffff",
+    color: "#0f2d46",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    width: "100%",
+  };
+  const selectedLabel = getMeasureDisplayName(selectedMeasure);
+  const selectedText = selectedMeasureId
+    ? `${selectedMeasureId}${selectedLabel ? ` - ${selectedLabel}` : ""}`
+    : "Select PLACES measure";
+
+  const renderMeasureButton = (measure) => {
+    const measureId = String(measure?.measure_id ?? "").trim();
+    if (!measureId) return null;
+    const isSelected = measureId === selectedMeasureId;
+    const label = getMeasureDisplayName(measure);
+    const optionLabel = `${measureId}${label ? ` - ${label}` : ""}`;
+    const description = String(measure?.short_question_text ?? measure?.description ?? "").trim();
+    return (
+      <button
+        key={measureId}
+        type="button"
+        onClick={() => onSelectMeasure(measureId)}
+        style={{
+          display: "grid",
+          gap: 4,
+          width: "100%",
+          textAlign: "left",
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: `1px solid ${isSelected ? "#1d4ed8" : "#dbe3eb"}`,
+          background: isSelected ? "#eff6ff" : "#ffffff",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ color: "#0f172a", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
+          {optionLabel}
+        </div>
+        {description ? (
+          <div style={{ color: "#475569", fontSize: 11 }}>
+            {truncateText(description, 140)}
+          </div>
+        ) : null}
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 6, position: "relative" }}>
+      <button
+        type="button"
+        aria-label="Measure"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        onClick={onToggleOpen}
+        style={{
+          ...selectorButtonStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+          {selectedText}
+        </span>
+        <span style={{ marginLeft: 8, color: "#64748b", fontSize: 11 }}>▼</span>
+      </button>
+
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-label="PLACES measure selector"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 2600,
+            border: "1px solid #dbe3eb",
+            borderRadius: 10,
+            background: "#ffffff",
+            boxShadow: "0 14px 30px rgba(15, 23, 42, 0.16)",
+            padding: 10,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input
+              type="search"
+              placeholder="Search PLACES measures..."
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              autoFocus
+              style={{
+                flex: 1,
+                height: 30,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                padding: "0 10px",
+                fontSize: 12,
+              }}
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                height: 30,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                color: "#334155",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "0 8px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={{ maxHeight: 420, overflowY: "auto", display: "grid", gap: 10, paddingRight: 2 }}>
+            {categoryGroups.length > 0 ? categoryGroups.map((group, index) => (
+              <details key={`places-category-${group.category}`} open={index === 0}>
+                <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+                  {group.category} ({group.measures.length})
+                </summary>
+                <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
+                  {group.measures.map((measure) => renderMeasureButton(measure))}
+                </div>
+              </details>
+            )) : null}
+            {totalVisibleMeasures === 0 ? (
+              <div style={{ color: "#64748b", fontSize: 11 }}>
+                No PLACES measures match the current search.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MapToolbar({
   defaultCenter,
   defaultZoom,
@@ -1957,14 +2408,19 @@ export default function App() {
   const [sviYearsError, setSviYearsError] = useState(null);
   const [acsLegend, setAcsLegend] = useState(null);
   const [usdaLegend, setUsdaLegend] = useState(null);
+  const [femaLegend, setFemaLegend] = useState(null);
   const [isLegendLoading, setIsLegendLoading] = useState(false);
   const [isUsdaLegendLoading, setIsUsdaLegendLoading] = useState(false);
+  const [isFemaLegendLoading, setIsFemaLegendLoading] = useState(false);
   const [usdaMapMessage, setUsdaMapMessage] = useState(null);
+  const [femaMapMessage, setFemaMapMessage] = useState(null);
   const [usdaMapLevel, setUsdaMapLevel] = useState("county");
   const [usdaIncludeArchive, setUsdaIncludeArchive] = useState(false);
   const [usdaShowStateMeasures, setUsdaShowStateMeasures] = useState(false);
   const [usdaMeasureSearch, setUsdaMeasureSearch] = useState("");
   const [usdaMeasurePickerOpen, setUsdaMeasurePickerOpen] = useState(false);
+  const [placesMeasureSearch, setPlacesMeasureSearch] = useState("");
+  const [placesMeasurePickerOpen, setPlacesMeasurePickerOpen] = useState(false);
   const [usdaShowMapDiagnostics, setUsdaShowMapDiagnostics] = useState(false);
   const [usdaMapDiagnostics, setUsdaMapDiagnostics] = useState(null);
   const [usdaVariableMeta, setUsdaVariableMeta] = useState({
@@ -1975,6 +2431,14 @@ export default function App() {
       state: null,
     },
   });
+  const [femaCatalogMeta, setFemaCatalogMeta] = useState({
+    dataset_name: "FEMA National Risk Index",
+    dataset_vintage: "",
+    notes: "",
+    default_measure_id: FEMA_DEFAULT_MEASURE,
+  });
+  const [femaMeasureSearch, setFemaMeasureSearch] = useState("");
+  const [femaMeasurePickerOpen, setFemaMeasurePickerOpen] = useState(false);
   const [usdaRecentMeasureIds, setUsdaRecentMeasureIds] = useState(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -2045,6 +2509,8 @@ export default function App() {
   const pendingCountySelectionTimerRef = useRef(null);
   const pendingAssistantCountyZoomRef = useRef(false);
   const usdaMeasureSelectorRef = useRef(null);
+  const placesMeasureSelectorRef = useRef(null);
+  const femaMeasureSelectorRef = useRef(null);
   const previousTractsActiveRef = useRef(null);
   const assistantStreamTimerRef = useRef(null);
   const assistantStreamRunIdRef = useRef(0);
@@ -2064,6 +2530,7 @@ export default function App() {
   const stateAbortRef = useRef(null);
   const historyAbortRef = useRef(null);
   const usdaLegendAbortRef = useRef(null);
+  const femaLegendAbortRef = useRef(null);
   
   // Caching
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
@@ -2119,6 +2586,36 @@ export default function App() {
   }, [usdaMeasurePickerOpen]);
 
   useEffect(() => {
+    if (!placesMeasurePickerOpen) return () => {};
+    const handlePointerDown = (event) => {
+      const container = placesMeasureSelectorRef.current;
+      if (!container) return;
+      if (!container.contains(event.target)) {
+        setPlacesMeasurePickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [placesMeasurePickerOpen]);
+
+  useEffect(() => {
+    if (!femaMeasurePickerOpen) return () => {};
+    const handlePointerDown = (event) => {
+      const container = femaMeasureSelectorRef.current;
+      if (!container) return;
+      if (!container.contains(event.target)) {
+        setFemaMeasurePickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [femaMeasurePickerOpen]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(
@@ -2156,6 +2653,7 @@ export default function App() {
   const isHpsaDataSource = selectedDataSource === DATA_SOURCES.HPSA;
   const isCmsDataSource = selectedDataSource === DATA_SOURCES.CMS;
   const isUsdaDataSource = selectedDataSource === DATA_SOURCES.USDA_FOOD_ENV;
+  const isFemaDataSource = selectedDataSource === DATA_SOURCES.FEMA_NRI;
   const isPlacesDataSource = selectedDataSource === DATA_SOURCES.PLACES;
   const selectedCmsAgeOption = getCmsAgeOption(selectedCmsAgeGroup);
   const selectedCmsAgeLevel = selectedCmsAgeOption.apiValue;
@@ -2170,6 +2668,8 @@ export default function App() {
           ? "cms"
         : isUsdaDataSource
           ? "usda-food-environment"
+        : isFemaDataSource
+          ? "fema-nri"
         : "places";
   const historySupported = selectedDataSource === DATA_SOURCES.PLACES;
   const tractsActive = !isUsdaDataSource && !isHpsaDataSource && !isCmsDataSource && mapZoom >= TRACT_ZOOM;
@@ -2199,6 +2699,8 @@ export default function App() {
     ? selectedHpsaDomain
     : isUsdaDataSource
       ? `food_environment_atlas_2025|${usdaRenderLevel ?? "county"}`
+    : isFemaDataSource
+      ? `fema_nri_december_2025|${tractsActive ? "tract" : "county"}`
     : isAcsDataSource
       ? selectedYearWindow
       : isSviDataSource
@@ -2217,6 +2719,18 @@ export default function App() {
     setUsdaMeasureSearch("");
     setUsdaShowMapDiagnostics(false);
   }, [isUsdaDataSource]);
+
+  useEffect(() => {
+    if (isPlacesDataSource) return;
+    setPlacesMeasurePickerOpen(false);
+    setPlacesMeasureSearch("");
+  }, [isPlacesDataSource]);
+
+  useEffect(() => {
+    if (isFemaDataSource) return;
+    setFemaMeasurePickerOpen(false);
+    setFemaMeasureSearch("");
+  }, [isFemaDataSource]);
 
   useEffect(() => {
     if (!isUsdaDataSource) return;
@@ -2241,10 +2755,33 @@ export default function App() {
     }
     return map;
   }, [isSviDataSource, measures]);
+  const placesSearchToken = String(placesMeasureSearch ?? "").trim().toLowerCase();
+  const placesVisibleMeasures = useMemo(() => {
+    if (!isPlacesDataSource) return [];
+    return [...(measures ?? [])]
+      .filter((measure) => {
+        if (!placesSearchToken) return true;
+        const haystack = [
+          measure?.measure_id,
+          measure?.name,
+          measure?.measure,
+          measure?.short_question_text,
+          measure?.category,
+        ]
+          .map((value) => String(value ?? "").trim().toLowerCase())
+          .join(" ");
+        return haystack.includes(placesSearchToken);
+      })
+      .sort((left, right) => {
+        const leftLabel = getMeasureDisplayName(left);
+        const rightLabel = getMeasureDisplayName(right);
+        return String(leftLabel).localeCompare(String(rightLabel));
+      });
+  }, [isPlacesDataSource, measures, placesSearchToken]);
   const placesMeasureGroups = useMemo(() => {
     if (!isPlacesDataSource) return [];
     const grouped = new Map();
-    for (const measure of measures ?? []) {
+    for (const measure of placesVisibleMeasures) {
       const categoryName = String(measure?.category ?? "Other").trim() || "Other";
       if (!grouped.has(categoryName)) {
         grouped.set(categoryName, []);
@@ -2255,13 +2792,9 @@ export default function App() {
       .sort((left, right) => String(left[0]).localeCompare(String(right[0])))
       .map(([category, groupMeasures]) => ({
         category,
-        measures: [...groupMeasures].sort((left, right) => {
-          const leftLabel = getMeasureDisplayName(left);
-          const rightLabel = getMeasureDisplayName(right);
-          return String(leftLabel).localeCompare(String(rightLabel));
-        }),
+        measures: groupMeasures,
       }));
-  }, [isPlacesDataSource, measures]);
+  }, [isPlacesDataSource, placesVisibleMeasures]);
   const usdaMeasureById = useMemo(() => {
     if (!isUsdaDataSource) return new Map();
     return new Map(
@@ -2370,6 +2903,71 @@ export default function App() {
       String(measure?.usda_level ?? "county").toLowerCase() === "state"
     ));
   }, [isUsdaDataSource, usdaVisibleMeasures]);
+  const femaSearchToken = String(femaMeasureSearch ?? "").trim().toLowerCase();
+  const femaVisibleMeasures = useMemo(() => {
+    if (!isFemaDataSource) return [];
+    return [...(measures ?? [])]
+      .filter((measure) => {
+        if (!femaSearchToken) return true;
+        const haystack = [
+          measure?.measure_id,
+          measure?.name,
+          measure?.label,
+          measure?.description,
+          measure?.fema_group,
+          measure?.fema_subgroup,
+          measure?.fema_hazard_name,
+        ]
+          .map((value) => String(value ?? "").trim().toLowerCase())
+          .join(" ");
+        return haystack.includes(femaSearchToken);
+      })
+      .sort((left, right) => (
+        getFemaMeasureLabel(left, left?.measure_id)
+          .localeCompare(getFemaMeasureLabel(right, right?.measure_id))
+      ));
+  }, [femaSearchToken, isFemaDataSource, measures]);
+  const femaGroupedMeasures = useMemo(() => {
+    if (!isFemaDataSource) return [];
+    const grouped = new Map();
+    for (const measure of femaVisibleMeasures) {
+      const groupName = String(measure?.fema_group ?? measure?.category ?? "Other").trim() || "Other";
+      const subgroupName = String(measure?.fema_subgroup ?? "General").trim() || "General";
+      if (!grouped.has(groupName)) {
+        grouped.set(groupName, new Map());
+      }
+      const subgroupMap = grouped.get(groupName);
+      if (!subgroupMap.has(subgroupName)) {
+        subgroupMap.set(subgroupName, []);
+      }
+      subgroupMap.get(subgroupName).push(measure);
+    }
+    return Array.from(grouped.entries())
+      .sort((left, right) => String(left[0]).localeCompare(String(right[0])))
+      .map(([groupName, subgroupMap]) => {
+        const subgroups = Array.from(subgroupMap.entries())
+          .sort((left, right) => String(left[0]).localeCompare(String(right[0])))
+          .map(([subgroupName, subgroupMeasures]) => ({
+            subgroup: subgroupName,
+            measures: subgroupMeasures,
+          }));
+        const count = subgroups.reduce((sum, subgroup) => sum + subgroup.measures.length, 0);
+        return {
+          group: groupName,
+          count,
+          subgroups,
+        };
+      });
+  }, [femaVisibleMeasures, isFemaDataSource]);
+  useEffect(() => {
+    if (!isFemaDataSource) return;
+    if (!selectedMeasureId) return;
+    if ((measures ?? []).some((measure) => measure?.measure_id === selectedMeasureId)) return;
+    const fallback = measures[0]?.measure_id ?? "";
+    if (fallback) {
+      setSelectedMeasureId(fallback);
+    }
+  }, [isFemaDataSource, measures, selectedMeasureId]);
   const selectedMeasureSource = selectedMeasure?.source ?? null;
   const isAcsMeasureSelected = isAcsDataSource && selectedMeasureSource === "acs";
   const acsYearWindows = useMemo(() => {
@@ -2384,7 +2982,14 @@ export default function App() {
   }, [isAcsDataSource, selectedMeasure]);
 
   useEffect(() => {
-    if (isAcsDataSource || isSviDataSource || isHpsaDataSource || isCmsDataSource || isUsdaDataSource) return;
+    if (
+      isAcsDataSource
+      || isSviDataSource
+      || isHpsaDataSource
+      || isCmsDataSource
+      || isUsdaDataSource
+      || isFemaDataSource
+    ) return;
     if (!selectedMeasureId) return;
     if (selectedYear == null || !Number.isFinite(Number(selectedYear))) return;
     if (selectedType !== "CrdPrv" && selectedType !== "AgeAdjPrv") return;
@@ -2399,6 +3004,7 @@ export default function App() {
     isHpsaDataSource,
     isCmsDataSource,
     isUsdaDataSource,
+    isFemaDataSource,
     selectedMeasureId,
     selectedType,
     selectedYear,
@@ -2532,6 +3138,20 @@ export default function App() {
       const numeric = values.filter((value) => Number.isFinite(value));
       return numeric.length >= 2 ? numeric : computedBreaks;
     }
+    if (isFemaDataSource) {
+      const femaValueType = String(selectedMeasure?.fema_value_type ?? "").trim().toLowerCase();
+      const femaLegendMode = String(selectedMeasure?.fema_legend_mode ?? "").trim().toLowerCase();
+      const isRatingMeasure = femaValueType === "rating" || femaLegendMode === "ordered_category";
+      if (isRatingMeasure) return [];
+      const bins = Array.isArray(femaLegend?.bins) ? femaLegend.bins : [];
+      if (bins.length === 0) return computedBreaks;
+      const values = [Number(bins[0]?.min)];
+      bins.forEach((bin) => {
+        values.push(Number(bin?.max));
+      });
+      const numeric = values.filter((value) => Number.isFinite(value));
+      return numeric.length >= 2 ? numeric : computedBreaks;
+    }
     if (!isAcsDataSource) {
       return computedBreaks;
     }
@@ -2551,9 +3171,12 @@ export default function App() {
     computedBreaks,
     isAcsDataSource,
     isCmsDataSource,
+    isFemaDataSource,
     isSviDataSource,
+    femaLegend,
     isUsdaDataSource,
     isUsdaHeatMode,
+    selectedMeasure,
     usdaLegend,
     usdaHeatValues,
   ]);
@@ -2606,6 +3229,8 @@ export default function App() {
           ? DATA_SOURCES.CMS
         : source === DATA_SOURCES.USDA_FOOD_ENV
           ? `${DATA_SOURCES.USDA_FOOD_ENV}:${usdaShowStateMeasures ? "all" : "county"}:${usdaIncludeArchive ? "archive" : "current"}`
+        : source === DATA_SOURCES.FEMA_NRI
+          ? DATA_SOURCES.FEMA_NRI
         : DATA_SOURCES.PLACES;
     const cachedMeasures = source === DATA_SOURCES.USDA_FOOD_ENV
       ? null
@@ -2660,6 +3285,22 @@ export default function App() {
           return USDA_DEFAULT_VARIABLE;
         }
         if (
+          source === DATA_SOURCES.FEMA_NRI
+          && usdaPreferredIds.some((preferredId) => (
+            nextMeasures.some((measure) => measure.measure_id === preferredId)
+          ))
+        ) {
+          return usdaPreferredIds.find((preferredId) => (
+            nextMeasures.some((measure) => measure.measure_id === preferredId)
+          )) ?? FEMA_DEFAULT_MEASURE;
+        }
+        if (
+          source === DATA_SOURCES.FEMA_NRI
+          && nextMeasures.some((measure) => measure.measure_id === FEMA_DEFAULT_MEASURE)
+        ) {
+          return FEMA_DEFAULT_MEASURE;
+        }
+        if (
           source === DATA_SOURCES.SVI
           && nextMeasures.some(
             (measure) => measure.measure_id === "RPL_THEMES" && measure.svi_available !== false
@@ -2694,6 +3335,12 @@ export default function App() {
           level: usdaShowStateMeasures ? "all" : "county",
           include_archival: usdaIncludeArchive,
         })
+        : source === DATA_SOURCES.FEMA_NRI
+          ? fetchFemaNriMeasures({
+            apiBase: API_BASE,
+            level: "all",
+            include_hidden: true,
+          })
         : fetch(`${API_BASE}${endpoint}`)
           .then((response) => {
             if (!response.ok) {
@@ -2705,11 +3352,23 @@ export default function App() {
     fetchMeasuresPromise
       .then((data) => {
         if (!isMounted) return;
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.variables)
-            ? data.variables
-            : [];
+        const list = (() => {
+          if (Array.isArray(data)) return data;
+          if (Array.isArray(data?.measures)) return data.measures;
+          if (Array.isArray(data?.variables)) return data.variables;
+          if (Array.isArray(data?.groups)) {
+            const flattened = [];
+            for (const group of data.groups) {
+              const subgroups = Array.isArray(group?.subgroups) ? group.subgroups : [];
+              for (const subgroup of subgroups) {
+                const subgroupMeasures = Array.isArray(subgroup?.measures) ? subgroup.measures : [];
+                flattened.push(...subgroupMeasures);
+              }
+            }
+            return flattened;
+          }
+          return [];
+        })();
         let sorted = [];
         if (source === DATA_SOURCES.CMS) {
           sorted = buildCmsCuratedMeasures(list);
@@ -2783,6 +3442,53 @@ export default function App() {
               }
               return String(getMeasureDisplayName(left)).localeCompare(String(getMeasureDisplayName(right)));
             });
+        } else if (source === DATA_SOURCES.FEMA_NRI) {
+          const defaultMeasureId = String(
+            data?.default_measure_id
+            ?? data?.defaults?.county
+            ?? FEMA_DEFAULT_MEASURE
+          ).trim() || FEMA_DEFAULT_MEASURE;
+          setFemaCatalogMeta({
+            dataset_name: String(data?.dataset_name ?? "FEMA National Risk Index"),
+            dataset_vintage: String(data?.dataset_vintage ?? ""),
+            notes: String(data?.notes ?? ""),
+            default_measure_id: defaultMeasureId,
+          });
+          sorted = list
+            .map((item) => {
+              const measureId = String(item?.measure_id ?? item?.raw_field ?? "").trim();
+              if (!measureId) return null;
+              const label = String(item?.display_label ?? item?.label ?? measureId).trim() || measureId;
+              return {
+                ...item,
+                measure_id: measureId,
+                name: label,
+                measure: label,
+                label,
+                description: String(item?.description ?? "").trim() || null,
+                category: String(item?.group ?? "Other").trim() || "Other",
+                fema_group: String(item?.group ?? "Other").trim() || "Other",
+                fema_subgroup: String(item?.subgroup ?? "General").trim() || "General",
+                fema_unit: item?.unit ?? null,
+                fema_value_type: String(item?.value_type ?? "").trim() || "continuous",
+                fema_legend_mode: String(item?.legend_mode ?? "").trim() || "quantile",
+                fema_tooltip_formatter: String(item?.tooltip_formatter ?? "").trim() || "decimal_1",
+                fema_supported_levels: Array.isArray(item?.supported_levels) ? item.supported_levels : [],
+                fema_visible_by_default: Boolean(item?.visible_by_default),
+                fema_companion_rating_field: String(item?.companion_rating_field ?? "").trim() || null,
+                fema_hazard_name: String(item?.hazard_name ?? "").trim() || null,
+                fema_sort_order: Number.isFinite(Number(item?.sort_order)) ? Number(item.sort_order) : null,
+              };
+            })
+            .filter(Boolean)
+            .sort((left, right) => {
+              const leftOrder = Number.isFinite(left?.fema_sort_order) ? Number(left.fema_sort_order) : 1_000_000;
+              const rightOrder = Number.isFinite(right?.fema_sort_order) ? Number(right.fema_sort_order) : 1_000_000;
+              if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+              const leftLabel = getFemaMeasureLabel(left).toLowerCase();
+              const rightLabel = getFemaMeasureLabel(right).toLowerCase();
+              return leftLabel.localeCompare(rightLabel);
+            });
         } else if (source === DATA_SOURCES.SVI) {
           const apiById = new Map();
           for (const measure of list) {
@@ -2829,6 +3535,9 @@ export default function App() {
         }
 
         const taggedMeasures = tagMeasuresForSource(sorted, source);
+        if (source === DATA_SOURCES.FEMA_NRI && taggedMeasures.length === 0) {
+          throw new Error("FEMA measures payload was empty. Check /api/fema/nri/measures.");
+        }
         measuresCacheRef.current.set(sourceKey, taggedMeasures);
         setMeasures(taggedMeasures);
         if (source === DATA_SOURCES.USDA_FOOD_ENV) {
@@ -2845,6 +3554,15 @@ export default function App() {
           applyMeasureDefaults(taggedMeasures, {
             usdaPreferredIds: [countyDefault, stateDefault],
           });
+        } else if (source === DATA_SOURCES.FEMA_NRI) {
+          const femaDefault = String(
+            data?.default_measure_id
+            ?? data?.defaults?.county
+            ?? FEMA_DEFAULT_MEASURE
+          ).trim() || FEMA_DEFAULT_MEASURE;
+          applyMeasureDefaults(taggedMeasures, {
+            usdaPreferredIds: [femaDefault],
+          });
         } else {
           applyMeasureDefaults(taggedMeasures);
         }
@@ -2856,6 +3574,9 @@ export default function App() {
           measuresCacheRef.current.set(sourceKey, fallbackCmsMeasures);
           setMeasures(fallbackCmsMeasures);
           applyMeasureDefaults(fallbackCmsMeasures);
+        } else if (source === DATA_SOURCES.FEMA_NRI) {
+          measuresCacheRef.current.delete(sourceKey);
+          setMeasures([]);
         }
         setError(errorResponse.message ?? "Failed to load measures.");
       });
@@ -2882,6 +3603,16 @@ export default function App() {
     }
 
     if (selectedDataSource === DATA_SOURCES.USDA_FOOD_ENV) {
+      setIsYearsLoading(false);
+      setYearsError(null);
+      setYears([]);
+      setSelectedYear(null);
+      setIsSviYearsLoading(false);
+      setSviYearsError(null);
+      return;
+    }
+
+    if (selectedDataSource === DATA_SOURCES.FEMA_NRI) {
       setIsYearsLoading(false);
       setYearsError(null);
       setYears([]);
@@ -3127,6 +3858,33 @@ export default function App() {
       const controller = new AbortController();
       countyAbortRef.current = controller;
 
+      if (isFemaDataSource) {
+        if (!bboxValue) {
+          throw new Error("bbox is required for FEMA NRI map requests.");
+        }
+        const payload = await fetchFemaNriMap({
+          apiBase: API_BASE,
+          measure: selectedMeasureId,
+          bbox: bboxValue,
+          zoom: mapZoom,
+          level: "county",
+          limit: 7000,
+          signal: controller.signal,
+        });
+
+        const features = Array.isArray(payload?.features) ? payload.features : [];
+        const warningNote = typeof payload?.meta?.warning === "string"
+          ? payload.meta.warning.trim()
+          : "";
+        const noDataNote = features.length === 0 ? "No FEMA NRI data in view." : "";
+        const combinedNote = [warningNote, noDataNote]
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+          .join(" ");
+        setFemaMapMessage(combinedNote || null);
+        return payload;
+      }
+
       if (isUsdaDataSource) {
         if (!bboxValue) {
           throw new Error("bbox is required for USDA Food Environment map requests.");
@@ -3186,6 +3944,7 @@ export default function App() {
       setUsdaMapMessage(null);
       setUsdaMapLevel("county");
       setUsdaMapDiagnostics(null);
+      setFemaMapMessage(null);
 
       if (isHpsaDataSource) {
         const hpsaUrl = new URL(`${API_BASE}/hpsa/counties`);
@@ -3318,6 +4077,7 @@ export default function App() {
       isHpsaDataSource,
       isCmsDataSource,
       isUsdaDataSource,
+      isFemaDataSource,
       isAcsMeasureSelected,
       mapZoom,
       loadCmsSelectionData,
@@ -3525,6 +4285,81 @@ export default function App() {
     setCached,
   ]);
 
+  const femaLegendBbox = tractsActive ? bbox : null;
+
+  const fetchFemaLegendPayload = useCallback(async ({ signal } = {}) => {
+    if (!selectedMeasureId) return null;
+    return fetchFemaNriLegend({
+      apiBase: API_BASE,
+      measure: selectedMeasureId,
+      bbox: femaLegendBbox,
+      level: tractsActive ? "tract" : "county",
+      signal,
+    });
+  }, [femaLegendBbox, selectedMeasureId, tractsActive]);
+
+  useEffect(() => {
+    if (!isFemaDataSource || !selectedMeasureId) {
+      if (femaLegendAbortRef.current) {
+        femaLegendAbortRef.current.abort();
+        femaLegendAbortRef.current = null;
+      }
+      setFemaLegend(null);
+      setIsFemaLegendLoading(false);
+      return;
+    }
+
+    const femaLevel = tractsActive ? "tract" : "county";
+    const legendKey = `legend|fema|${selectedMeasureId}|${femaLevel}|${femaLegendBbox ?? "global"}|${BIN_COUNT}`;
+    const cachedLegend = getCached(legendKey);
+    if (cachedLegend) {
+      setFemaLegend(cachedLegend);
+      return;
+    }
+
+    if (femaLegendAbortRef.current) {
+      femaLegendAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    femaLegendAbortRef.current = controller;
+
+    setIsFemaLegendLoading(true);
+    fetchFemaLegendPayload({ signal: controller.signal })
+      .then((data) => {
+        if (!data) return;
+        setCached(legendKey, data);
+        setFemaLegend(data);
+      })
+      .catch((legendError) => {
+        if (isAbortLikeError(legendError, controller.signal)) {
+          return;
+        }
+        console.error("FEMA legend fetch failed:", legendError);
+        setFemaLegend(null);
+      })
+      .finally(() => {
+        if (femaLegendAbortRef.current === controller) {
+          femaLegendAbortRef.current = null;
+        }
+        setIsFemaLegendLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (femaLegendAbortRef.current === controller) {
+        femaLegendAbortRef.current = null;
+      }
+    };
+  }, [
+    fetchFemaLegendPayload,
+    femaLegendBbox,
+    getCached,
+    isFemaDataSource,
+    selectedMeasureId,
+    setCached,
+    tractsActive,
+  ]);
+
   const fetchTractsForBbox = useCallback(
     async (bboxValue) => {
       if (!bboxValue) {
@@ -3543,6 +4378,30 @@ export default function App() {
 
       setUsdaMapMessage(null);
       setUsdaMapDiagnostics(null);
+      setFemaMapMessage(null);
+
+      if (isFemaDataSource) {
+        const payload = await fetchFemaNriMap({
+          apiBase: API_BASE,
+          measure: selectedMeasureId,
+          bbox: bboxValue,
+          zoom: mapZoom,
+          level: "tract",
+          limit: 15000,
+          signal: controller.signal,
+        });
+        const features = Array.isArray(payload?.features) ? payload.features : [];
+        const warningNote = typeof payload?.meta?.warning === "string"
+          ? payload.meta.warning.trim()
+          : "";
+        const noDataNote = features.length === 0 ? "No FEMA NRI tract data in view." : "";
+        const combinedNote = [warningNote, noDataNote]
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+          .join(" ");
+        setFemaMapMessage(combinedNote || null);
+        return payload;
+      }
 
       const url = isAcsDataSource
         ? new URL(`${API_BASE}/acs-nmf/tracts`)
@@ -3574,7 +4433,9 @@ export default function App() {
     [
       isAcsDataSource,
       isSviDataSource,
+      isFemaDataSource,
       isAcsMeasureSelected,
+      mapZoom,
       selectedMeasureId,
       selectedSviYear,
       selectedYear,
@@ -3593,6 +4454,7 @@ export default function App() {
     if (stateAbortRef.current) stateAbortRef.current.abort();
     if (historyAbortRef.current) historyAbortRef.current.abort();
     if (usdaLegendAbortRef.current) usdaLegendAbortRef.current.abort();
+    if (femaLegendAbortRef.current) femaLegendAbortRef.current.abort();
     // Clear currently-displayed geojson so the map updates for the new measure
     setCountyGeojson(null);
     setTractGeojson(null);
@@ -3600,8 +4462,11 @@ export default function App() {
     setStateBoundaryOverlay(null);
     setAcsLegend(null);
     setUsdaLegend(null);
+    setFemaLegend(null);
     setIsUsdaLegendLoading(false);
+    setIsFemaLegendLoading(false);
     setUsdaMapMessage(null);
+    setFemaMapMessage(null);
     setUsdaMapLevel("county");
     setUsdaMapDiagnostics(null);
     setUsdaHeatLayer(null);
@@ -3746,6 +4611,7 @@ export default function App() {
       && !isHpsaDataSource
       && !isCmsDataSource
       && !isUsdaDataSource
+      && !isFemaDataSource
       && !selectedType
     );
     if (
@@ -3985,6 +4851,7 @@ export default function App() {
     isHpsaDataSource,
     isCmsDataSource,
     isUsdaDataSource,
+    isFemaDataSource,
     syncHpsaMetadataFromCountyPayload,
     isAcsMeasureSelected,
     selectedMeasureId,
@@ -3994,6 +4861,19 @@ export default function App() {
     setCached,
     tractsActive,
   ]);
+
+  const femaRatingColorByLabel = useMemo(() => {
+    const output = new Map();
+    const categories = Array.isArray(femaLegend?.categories) ? femaLegend.categories : [];
+    categories.forEach((category) => {
+      const label = normalizeFemaRatingLabel(category?.label ?? category?.value);
+      if (!label) return;
+      if (FEMA_RATING_COLORS[label]) {
+        output.set(label, FEMA_RATING_COLORS[label]);
+      }
+    });
+    return output;
+  }, [femaLegend]);
 
   const choroplethStyle = useCallback(
     (feature) => {
@@ -4023,6 +4903,26 @@ export default function App() {
         strokeColor = darkenHexColor(fillColor, 0.18);
         strokeWeight = 0.7;
         fillOpacity = 0.85;
+      } else if (isFemaDataSource) {
+        const isRatingMeasure = (
+          String(selectedMeasure?.fema_value_type ?? "").trim().toLowerCase() === "rating"
+          || String(selectedMeasure?.fema_legend_mode ?? "").trim().toLowerCase() === "ordered_category"
+        );
+        if (isRatingMeasure) {
+          const ratingLabel = normalizeFemaRatingLabel(
+            feature?.properties?.value_text
+            ?? feature?.properties?.rating
+            ?? feature?.properties?.value
+          );
+          fillColor = ratingLabel
+            ? (femaRatingColorByLabel.get(ratingLabel) ?? FEMA_RATING_COLORS[ratingLabel] ?? NO_DATA_COLOR)
+            : NO_DATA_COLOR;
+        } else {
+          fillColor = fillColor || NO_DATA_COLOR;
+        }
+        strokeColor = darkenHexColor(fillColor, 0.18);
+        strokeWeight = tractsActive ? 0.6 : 0.8;
+        fillOpacity = 0.84;
       }
       return {
         color: strokeColor,
@@ -4034,7 +4934,17 @@ export default function App() {
         lineCap: "round",
       };
     },
-    [breaks, isHpsaDataSource, isSviDataSource, isUsdaDataSource, sviBins, tractsActive]
+    [
+      breaks,
+      femaRatingColorByLabel,
+      isFemaDataSource,
+      isHpsaDataSource,
+      isSviDataSource,
+      isUsdaDataSource,
+      selectedMeasure,
+      sviBins,
+      tractsActive,
+    ]
   );
 
   const countyBoundaryLineStyle = useCallback(() => {
@@ -4056,7 +4966,7 @@ export default function App() {
   }, []);
 
   const applySelectedStyle = useCallback((layer) => {
-    if (isUsdaDataSource) {
+    if (isUsdaDataSource || isFemaDataSource) {
       layer.setStyle({
         color: "#0f2d46",
         weight: 2,
@@ -4067,7 +4977,7 @@ export default function App() {
       return;
     }
     layer.setStyle({ color: "orange", weight: 2.5 });
-  }, [isUsdaDataSource]);
+  }, [isFemaDataSource, isUsdaDataSource]);
 
   const handleFeatureClick = useCallback(
     (feature, layer, options = {}) => {
@@ -4113,7 +5023,7 @@ export default function App() {
 
   const buildCountyHoverTooltipHtml = useCallback(
     (featureProps) => {
-      if (!featureProps || (tractsActive && !isUsdaDataSource)) {
+      if (!featureProps || (tractsActive && !isUsdaDataSource && !isFemaDataSource)) {
         return null;
       }
 
@@ -4168,6 +5078,45 @@ export default function App() {
         });
         const usdaValueText = formatTooltipValue(featureProps?.value, usdaUnitType);
         return `${areaLine}<br/>${usdaLabel}: ${usdaValueText}`;
+      }
+
+      if (isFemaDataSource) {
+        const featureLevel = String(
+          featureProps?.level ?? featureProps?.geo_level ?? (tractsActive ? "tract" : "county")
+        ).trim().toLowerCase() === "tract"
+          ? "tract"
+          : "county";
+        const areaLine = featureLevel === "tract"
+          ? String(
+            pickFirstDefined(
+              featureProps?.tract_name,
+              featureProps?.name,
+              featureProps?.tract_geoid,
+              "Unknown tract"
+            )
+          ).trim()
+          : countyLine;
+        const femaLabel = getFemaMeasureLabel(selectedMeasure, selectedMeasureId);
+        const femaValueText = formatFemaValue(
+          pickFirstDefined(featureProps?.value_text, featureProps?.value),
+          selectedMeasure
+        );
+        const ratingText = normalizeFemaRatingLabel(featureProps?.rating);
+        const hazardName = String(
+          pickFirstDefined(featureProps?.hazard_name, selectedMeasure?.fema_hazard_name, "")
+        ).trim();
+        const extra = [];
+        if (
+          ratingText
+          && String(selectedMeasure?.fema_value_type ?? "").trim().toLowerCase() !== "rating"
+        ) {
+          extra.push(`Rating: ${ratingText}`);
+        }
+        if (hazardName) {
+          extra.push(`Hazard: ${hazardName}`);
+        }
+        const extraLine = extra.length > 0 ? `<br/>${extra.join(" • ")}` : "";
+        return `${areaLine}<br/>${femaLabel}: ${femaValueText}${extraLine}`;
       }
 
       if (isCmsDataSource) {
@@ -4265,6 +5214,7 @@ export default function App() {
     [
       isAcsDataSource,
       isCmsDataSource,
+      isFemaDataSource,
       isHpsaDataSource,
       isSviDataSource,
       isUsdaDataSource,
@@ -4289,7 +5239,7 @@ export default function App() {
       layer.on("mouseover", () => {
         setHoveredProps(featureProps);
         if (selectedLayerRef.current !== layer) {
-          if (isUsdaDataSource) {
+          if (isUsdaDataSource || isFemaDataSource) {
             layer.setStyle({
               weight: 2,
               color: "#0f172a",
@@ -4320,7 +5270,14 @@ export default function App() {
         }
       });
     },
-    [applySelectedStyle, buildCountyHoverTooltipHtml, handleFeatureClick, isUsdaDataSource, tractsActive]
+    [
+      applySelectedStyle,
+      buildCountyHoverTooltipHtml,
+      handleFeatureClick,
+      isFemaDataSource,
+      isUsdaDataSource,
+      tractsActive,
+    ]
   );
 
   const selectActiveFeatureByLocationId = useCallback(
@@ -5091,6 +6048,8 @@ export default function App() {
     ? `${HPSA_DOMAIN_LABELS[selectedHpsaDomain] ?? "Primary Care"} HPSA score`
     : isSviDataSource
       ? getSviLabel(selectedMeasureId)
+      : isFemaDataSource
+        ? getFemaMeasureLabel(selectedMeasure, selectedMeasureId)
       : isUsdaDataSource
         ? getUsdaPlainLabel(selectedMeasureId, getMeasureDisplayName(selectedMeasure))
       : getMeasureDisplayName(selectedMeasure);
@@ -5171,6 +6130,41 @@ export default function App() {
     firstDefined(selectedFeatureProps?.state_name, selectedFeatureProps?.name, selectedFeatureProps?.state_abbr, "Unknown")
   ).trim();
   const usdaLocationLine = usdaGeoLevel === "state" ? usdaStateLine : usdaCountyLine;
+  const femaMeasureLabel = getFemaMeasureLabel(selectedMeasure, selectedMeasureId);
+  const femaLevel = String(
+    firstDefined(selectedFeatureProps?.level, selectedFeatureProps?.geo_level, tractsActive ? "tract" : "county")
+  ).trim().toLowerCase() === "tract"
+    ? "tract"
+    : "county";
+  const femaStateAbbr = String(firstDefined(selectedFeatureProps?.state_abbr, selectedFeatureProps?.state_fips, "")).trim();
+  const femaCountyName = String(
+    firstDefined(selectedFeatureProps?.county_name, selectedFeatureProps?.county, selectedFeatureProps?.name, "")
+  ).trim();
+  const femaCountyLine = femaCountyName
+    ? (femaStateAbbr ? `${femaCountyName}, ${femaStateAbbr}` : femaCountyName)
+    : String(firstDefined(selectedFeatureProps?.county_geoid, selectedFeatureProps?.location_id, "Unknown county")).trim();
+  const femaTractName = String(
+    firstDefined(selectedFeatureProps?.tract_name, selectedFeatureProps?.name, "")
+  ).trim();
+  const femaTractGeoid = String(
+    firstDefined(selectedFeatureProps?.tract_geoid, selectedFeatureProps?.location_id, selectedFeatureProps?.id, "")
+  ).trim();
+  const femaTractLine = femaTractName
+    ? `${femaTractName}${femaCountyLine ? ` • ${femaCountyLine}` : ""}`
+    : (femaTractGeoid || "Unknown tract");
+  const femaLocationLine = femaLevel === "tract" ? femaTractLine : femaCountyLine;
+  const femaValueRaw = firstDefined(selectedFeatureProps?.value_text, selectedFeatureProps?.value, selectedFeatureProps?.data_value);
+  const femaValueText = formatFemaValue(femaValueRaw, selectedMeasure);
+  const femaRatingText = normalizeFemaRatingLabel(
+    firstDefined(selectedFeatureProps?.rating, selectedFeatureProps?.value_text)
+  );
+  const femaHazardName = String(
+    firstDefined(selectedFeatureProps?.hazard_name, selectedMeasure?.fema_hazard_name, "")
+  ).trim();
+  const femaMeasureDescription = truncateText(
+    String(firstDefined(selectedMeasure?.description, "")).trim(),
+    170
+  );
   const sviValue = firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.data_value);
   const sviMeasureId = String(
     firstDefined(selectedFeatureProps?.measure_id, selectedMeasureId, "")
@@ -5415,6 +6409,12 @@ export default function App() {
   ).trim();
   const selectedAsOfDateForContext = isHpsaDataSource
     ? (hpsaAsOfText != null ? String(hpsaAsOfText) : undefined)
+    : isFemaDataSource
+      ? (
+        hasText(femaCatalogMeta?.dataset_vintage)
+          ? String(femaCatalogMeta.dataset_vintage).trim()
+          : undefined
+      )
     : isAcsDataSource
       ? (selectedYearWindow != null ? String(selectedYearWindow) : undefined)
       : isSviDataSource
@@ -5428,6 +6428,8 @@ export default function App() {
         ? parseYearFromToken(selectedSviYear)
         : isHpsaDataSource
           ? parseYearFromToken(selectedAsOfDateForContext)
+          : isFemaDataSource
+            ? parseYearFromToken(selectedAsOfDateForContext)
           : isUsdaDataSource
             ? 2025
           : parseYearFromToken(selectedYear);
@@ -5438,6 +6440,8 @@ export default function App() {
         ? (selectedMeasureId || "RPL_THEMES")
         : isHpsaDataSource
           ? "HPSA"
+          : isFemaDataSource
+            ? (selectedMeasureId || FEMA_DEFAULT_MEASURE)
           : isUsdaDataSource
             ? (selectedMeasureId || USDA_DEFAULT_VARIABLE)
           : (selectedMeasureId || "PLACES");
@@ -5447,6 +6451,8 @@ export default function App() {
         ? "Rank"
         : isHpsaDataSource
           ? (selectedHpsaDomain || "pc")
+          : isFemaDataSource
+            ? "FEMA_NRI"
           : isUsdaDataSource
             ? "USDA"
           : isCmsDataSource
@@ -5465,6 +6471,7 @@ export default function App() {
     bbox,
     isAcsDataSource,
     isCmsDataSource,
+    isFemaDataSource,
     isHpsaDataSource,
     isSviDataSource,
     isUsdaDataSource,
@@ -5483,37 +6490,41 @@ export default function App() {
   const buildCurrentMapContext = useCallback(() => {
     if (!selectedLocationId) return null;
 
-	    const selection = isHpsaDataSource
-	      ? {
-	        hpsaDomain: selectedHpsaDomain,
-	      }
-	      : isAcsDataSource
+    const selection = isHpsaDataSource
+      ? {
+        hpsaDomain: selectedHpsaDomain,
+      }
+      : isAcsDataSource
         ? {
           acsVariable: selectedMeasureId,
           acsYearWindow: selectedYearWindow,
           acsDataValueTypeId: selectedType || "Percent",
         }
-	      : isUsdaDataSource
-	        ? {
-	          usdaField: selectedMeasureId,
-	        }
+        : isFemaDataSource
+          ? {
+            femaMeasureId: selectedMeasureId,
+          }
+        : isUsdaDataSource
+          ? {
+            usdaField: selectedMeasureId,
+          }
         : isSviDataSource
-	          ? {
-	            sviTheme: sviThemeLabel || null,
-	            sviMeasureId: selectedMeasureId,
-	            sviYear: selectedSviYear,
-	          }
-	          : isCmsDataSource
-	            ? {
-	              cmsMeasureId: selectedMeasureId,
-	              cmsYear: parseYearFromToken(selectedYear),
-	              cmsAgeLevel: selectedCmsAgeLevel,
-	            }
-	          : {
-	            placesMeasureId: selectedMeasureId,
-	            placesYear: parseYearFromToken(selectedYear),
-	            placesValueTypeId: selectedType,
-	          };
+          ? {
+            sviTheme: sviThemeLabel || null,
+            sviMeasureId: selectedMeasureId,
+            sviYear: selectedSviYear,
+          }
+          : isCmsDataSource
+            ? {
+              cmsMeasureId: selectedMeasureId,
+              cmsYear: parseYearFromToken(selectedYear),
+              cmsAgeLevel: selectedCmsAgeLevel,
+            }
+          : {
+            placesMeasureId: selectedMeasureId,
+            placesYear: parseYearFromToken(selectedYear),
+            placesValueTypeId: selectedType,
+          };
 
     return buildMapContext({
       dataSource: selectedDataSource,
@@ -5531,17 +6542,18 @@ export default function App() {
       },
       asOfDate: selectedAsOfDateForContext,
     });
-	  }, [
-	    bbox,
-	    isAcsDataSource,
-	    isCmsDataSource,
-	    isHpsaDataSource,
-	    isSviDataSource,
-	    isUsdaDataSource,
-	    mapZoom,
-	    selectedCmsAgeLevel,
-	    selectedAreaNameForContext,
-	    selectedAsOfDateForContext,
+  }, [
+    bbox,
+    isAcsDataSource,
+    isCmsDataSource,
+    isFemaDataSource,
+    isHpsaDataSource,
+    isSviDataSource,
+    isUsdaDataSource,
+    mapZoom,
+    selectedCmsAgeLevel,
+    selectedAreaNameForContext,
+    selectedAsOfDateForContext,
     selectedCountyFipsForContext,
     selectedDataSource,
     selectedGeoLevel,
@@ -5919,6 +6931,41 @@ export default function App() {
         };
       });
     }
+    if (isFemaDataSource) {
+      const categories = Array.isArray(femaLegend?.categories) ? femaLegend.categories : [];
+      if (categories.length > 0) {
+        return categories.map((category, index) => {
+          const categoryLabel = normalizeFemaRatingLabel(category?.label ?? category?.value) || "No data";
+          const categoryCount = Number(category?.count);
+          return {
+            key: `fema-category-${categoryLabel}-${index}`,
+            color: FEMA_RATING_COLORS[categoryLabel] ?? COLORS[index] ?? COLORS[COLORS.length - 1],
+            label: categoryLabel,
+            subLabel: Number.isFinite(categoryCount)
+              ? `n=${categoryCount.toLocaleString("en-US")}`
+              : null,
+          };
+        });
+      }
+
+      const bins = Array.isArray(femaLegend?.bins) ? femaLegend.bins : [];
+      if (bins.length > 0) {
+        return bins.map((bin, index) => ({
+          key: `fema-bin-${bin?.min}-${bin?.max}-${index}`,
+          colorIndex: index,
+          label: String(bin?.label ?? formatRange(bin?.min, bin?.max)),
+        }));
+      }
+
+      return breaks.slice(0, -1).map((start, index) => {
+        const end = breaks[index + 1];
+        return {
+          key: `fema-fallback-${start}-${end}-${index}`,
+          colorIndex: index,
+          label: formatRange(start, end),
+        };
+      });
+    }
     if (isAcsDataSource) {
       const bins = Array.isArray(acsLegend?.bins) ? acsLegend.bins : [];
       return bins.map((bin, index) => ({
@@ -5952,9 +6999,11 @@ export default function App() {
     acsLegend,
     breaks,
     cmsUnitType,
+    femaLegend,
     hpsaTierRanges,
     isAcsDataSource,
     isCmsDataSource,
+    isFemaDataSource,
     isHpsaDataSource,
     isSviDataSource,
     isUsdaDataSource,
@@ -6000,6 +7049,16 @@ export default function App() {
   const usdaLegendAggText = usdaRenderLevel === "state"
     ? "Value = USDA Food Environment state-level indicator."
     : "Value = USDA Food Environment county-level indicator.";
+  const femaLegendLabel = getFemaMeasureLabel(selectedMeasure, selectedMeasureId);
+  const femaLegendDescription = truncateText(
+    String(firstDefined(femaLegend?.description, selectedMeasure?.description, "")).trim(),
+    180
+  );
+  const femaLegendNote = truncateText(
+    String(firstDefined(femaLegend?.note, femaCatalogMeta?.notes, "")).trim(),
+    220
+  );
+  const femaLegendLevelText = tractsActive ? "Census tract level" : "County level";
   const usdaHeatPoints = Array.isArray(usdaHeatLayer?.points) ? usdaHeatLayer.points : [];
   const usdaHeatAgg = String(usdaHeatLayer?.agg ?? "median").toLowerCase();
   const usdaHeatUnitType = usdaHeatAgg === "pct_flagged"
@@ -6044,6 +7103,8 @@ export default function App() {
     ? `Healthcare Access — ${hpsaDomainLabel}`
     : isUsdaDataSource
       ? "USDA Food Environment"
+    : isFemaDataSource
+      ? "FEMA National Risk Index"
     : isSviDataSource
       ? (selectedMeasureDisplayName || selectedMeasureId)
       : isCmsDataSource
@@ -6055,6 +7116,8 @@ export default function App() {
     ? "County-only HPSA choropleth"
     : isUsdaDataSource
       ? `${usdaLegendLabel} (${usdaRenderLevel === "state" ? "State-level" : "County-level"})`
+    : isFemaDataSource
+      ? `${femaLegendLabel} (${femaLegendLevelText})`
     : isSviDataSource
       ? "Levels of Vulnerability"
       : isCmsDataSource
@@ -6153,12 +7216,21 @@ export default function App() {
                     setUsdaMeasureSearch("");
                     setUsdaMeasurePickerOpen(false);
                   }
+                  if (nextSource === DATA_SOURCES.FEMA_NRI) {
+                    setFemaMeasureSearch("");
+                    setFemaMeasurePickerOpen(false);
+                  }
+                  if (nextSource === DATA_SOURCES.PLACES) {
+                    setPlacesMeasureSearch("");
+                    setPlacesMeasurePickerOpen(false);
+                  }
                 }}
                 style={controlSelectStyle}
               >
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
                 <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment</option>
+                <option value={DATA_SOURCES.FEMA_NRI}>FEMA National Risk Index</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
                 <option value={DATA_SOURCES.SVI}>Social Vulnerability Index</option>
                 <option value={DATA_SOURCES.HPSA}>HRSA HPSA</option>
@@ -6214,6 +7286,44 @@ export default function App() {
                   }}
                 />
               </div>
+            ) : isFemaDataSource ? (
+              <div ref={femaMeasureSelectorRef} style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>Measure</span>
+                <FemaMeasureSelector
+                  selectedMeasureId={selectedMeasureId}
+                  selectedMeasure={selectedMeasure}
+                  isOpen={femaMeasurePickerOpen}
+                  onToggleOpen={() => setFemaMeasurePickerOpen((value) => !value)}
+                  onClose={() => setFemaMeasurePickerOpen(false)}
+                  searchValue={femaMeasureSearch}
+                  onSearchChange={setFemaMeasureSearch}
+                  groupedMeasures={femaGroupedMeasures}
+                  totalVisibleMeasures={femaVisibleMeasures.length}
+                  onSelectMeasure={(measureId) => {
+                    setSelectedMeasureId(measureId);
+                    setFemaMeasurePickerOpen(false);
+                  }}
+                />
+              </div>
+            ) : isPlacesDataSource ? (
+              <div ref={placesMeasureSelectorRef} style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>Measure</span>
+                <PlacesMeasureSelector
+                  selectedMeasureId={selectedMeasureId}
+                  selectedMeasure={selectedMeasure}
+                  isOpen={placesMeasurePickerOpen}
+                  onToggleOpen={() => setPlacesMeasurePickerOpen((value) => !value)}
+                  onClose={() => setPlacesMeasurePickerOpen(false)}
+                  searchValue={placesMeasureSearch}
+                  onSearchChange={setPlacesMeasureSearch}
+                  categoryGroups={placesMeasureGroups}
+                  totalVisibleMeasures={placesVisibleMeasures.length}
+                  onSelectMeasure={(measureId) => {
+                    setSelectedMeasureId(measureId);
+                    setPlacesMeasurePickerOpen(false);
+                  }}
+                />
+              </div>
             ) : (
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 600 }}>Measure</span>
@@ -6242,20 +7352,6 @@ export default function App() {
                               value={normalizedId}
                               disabled={!isAvailable}
                             >
-                              {optionLabel}
-                            </option>
-                          );
-                        })}
-                      </optgroup>
-                    ))
-                  ) : isPlacesDataSource ? (
-                    placesMeasureGroups.map((group) => (
-                      <optgroup key={`places-${group.category}`} label={group.category}>
-                        {group.measures.map((measure) => {
-                          const label = getMeasureDisplayName(measure);
-                          const optionLabel = `${measure.measure_id}${label ? ` - ${label}` : ""}`;
-                          return (
-                            <option key={measure.measure_id} value={measure.measure_id}>
                               {optionLabel}
                             </option>
                           );
@@ -6360,6 +7456,37 @@ export default function App() {
                     </div>
                   ) : null}
 	              </div>
+	            ) : isFemaDataSource ? (
+	              <div style={{ display: "grid", gap: 4, color: "#475569" }}>
+	                <div style={{ fontWeight: 600, color: "#0F2D46" }}>FEMA Risk Index</div>
+	                <div>
+	                  {String(femaCatalogMeta?.dataset_name ?? "FEMA National Risk Index")}
+	                  {femaCatalogMeta?.dataset_vintage ? ` (${femaCatalogMeta.dataset_vintage})` : ""}
+	                </div>
+	                <div style={{ fontSize: 11 }}>
+	                  Group: {String(selectedMeasure?.fema_group ?? selectedMeasure?.category ?? "Other")}
+	                </div>
+	                <div style={{ fontSize: 11 }}>
+	                  Subgroup: {String(selectedMeasure?.fema_subgroup ?? "General")}
+	                </div>
+	                <div style={{ marginTop: 2 }}>
+	                  <span
+	                    style={{
+	                      display: "inline-flex",
+	                      alignItems: "center",
+	                      padding: "2px 8px",
+	                      borderRadius: 999,
+	                      border: "1px solid #bfdbfe",
+	                      background: "#eff6ff",
+	                      color: "#1d4ed8",
+	                      fontSize: 11,
+	                      fontWeight: 600,
+	                    }}
+	                  >
+	                    {tractsActive ? "Census tract level" : "County level"}
+	                  </span>
+	                </div>
+	              </div>
 	            ) : (
 	              <label style={{ display: "grid", gap: 6 }}>
 	                <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
@@ -6437,6 +7564,14 @@ export default function App() {
 	                  <div>USDA Food Environment indicator value</div>
 	                  <div style={{ color: "#64748b", fontSize: 11 }}>
 	                    Values are selected from USDA variable metadata.
+	                  </div>
+	                </div>
+	              ) : isFemaDataSource ? (
+	                <div style={{ display: "grid", gap: 4 }}>
+	                  <div style={{ fontWeight: 600 }}>Data type</div>
+	                  <div>FEMA National Risk Index indicator value</div>
+	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                    Includes scores, ratings, expected annual loss, and hazard-specific indicators.
 	                  </div>
 	                </div>
 	              ) : (
@@ -6743,6 +7878,7 @@ export default function App() {
               || isHpsaChoroplethLoading
               || (isAcsDataSource && isLegendLoading)
               || (isUsdaDataSource && isUsdaLegendLoading)
+              || (isFemaDataSource && isFemaLegendLoading)
               ? "Loading..."
               : "Legend unavailable."}
 	          {!isHpsaDataSource && !(isUsdaDataSource && isUsdaHeatMode) ? (
@@ -6769,6 +7905,11 @@ export default function App() {
               n={usdaLegend.n ?? 0}, no data={usdaLegend.noDataCount ?? 0}
             </div>
           ) : null}
+          {isFemaDataSource && femaLegend ? (
+            <div style={{ color: "#64748b" }}>
+              n={femaLegend.n ?? 0}, no data={femaLegend.noDataCount ?? 0}
+            </div>
+          ) : null}
           {isUsdaDataSource && isUsdaHeatMode && usdaHeatLayer ? (
             <div style={{ color: "#64748b" }}>
               cells={Array.isArray(usdaHeatLayer?.points) ? usdaHeatLayer.points.length : 0}
@@ -6782,6 +7923,15 @@ export default function App() {
           ) : null}
           {isUsdaDataSource && usdaMapMessage ? (
             <div style={{ color: "#475569" }}>{usdaMapMessage}</div>
+          ) : null}
+          {isFemaDataSource && femaLegendDescription ? (
+            <div style={{ color: "#475569" }}>{femaLegendDescription}</div>
+          ) : null}
+          {isFemaDataSource && femaLegendNote ? (
+            <div style={{ color: "#475569" }}>{femaLegendNote}</div>
+          ) : null}
+          {isFemaDataSource && femaMapMessage ? (
+            <div style={{ color: "#475569" }}>{femaMapMessage}</div>
           ) : null}
 	          {isHpsaDataSource && hpsaQuartiles ? (
 	            <div style={{ color: "#64748b" }}>
@@ -6853,6 +8003,27 @@ export default function App() {
 	                    <p>{usdaLegendDescription}</p>
 	                  ) : null}
 	                </>
+              ) : isFemaDataSource ? (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+                    {femaLevel === "tract" ? "Census tract" : "County"} • {femaLocationLine}
+                  </div>
+                  <p>
+                    <strong>{femaMeasureLabel}</strong>: <strong>{femaValueText}</strong>.
+                  </p>
+                  {femaRatingText && String(selectedMeasure?.fema_value_type ?? "").trim().toLowerCase() !== "rating" ? (
+                    <p>Composite risk rating: <strong>{femaRatingText}</strong>.</p>
+                  ) : null}
+                  {femaHazardName ? (
+                    <p>Hazard: <strong>{femaHazardName}</strong>.</p>
+                  ) : null}
+                  {femaMeasureDescription ? (
+                    <p>{femaMeasureDescription}</p>
+                  ) : null}
+                  <p style={{ color: "#475569" }}>
+                    FEMA NRI supports planning and broad comparison, and is not a substitute for local engineering-grade risk assessment.
+                  </p>
+                </>
 	              ) : isAcsDataSource ? (
 	                <p>
 	                  In <strong>{acsAreaLabel}</strong>,{" "}

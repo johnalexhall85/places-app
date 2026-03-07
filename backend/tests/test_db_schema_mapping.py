@@ -17,6 +17,9 @@ def test_schema_registry_has_expected_sources() -> None:
         "usda_food_access",
         "usda_food_environment",
         "usda_food_env",
+        "fema",
+        "fema_nri",
+        "fema_national_risk_index",
     }
     assert set(SCHEMA_BY_SOURCE) == expected_sources
     for schema in SCHEMA_BY_SOURCE.values():

@@ -19,6 +19,7 @@
  *   acsVariable?: string,
  *   acsYearWindow?: string,
  *   acsDataValueTypeId?: string,
+ *   femaMeasureId?: string,
  *   usdaField?: string,
  *   sviTheme?: string,
  *   sviMeasureId?: string,
@@ -42,6 +43,7 @@ function normalizeDataSource(value) {
   if (token === "svi") return "SVI";
   if (token === "hpsa") return "HPSA";
   if (token === "cms") return "CMS";
+  if (token === "fema_nri" || token === "fema-nri" || token === "fema") return "FEMA_NRI";
   if (
     token === "usda_food_environment"
     || token === "usda-food-environment"
@@ -107,6 +109,7 @@ function removeUndefined(value) {
  *     acsVariable?: string | null,
  *     acsYearWindow?: string | null,
  *     acsDataValueTypeId?: string | null,
+ *     femaMeasureId?: string | null,
  *     usdaField?: string | null,
  *     sviTheme?: string | null,
  *     sviMeasureId?: string | null,
@@ -174,6 +177,9 @@ export function buildMapContext(input) {
       : undefined,
     acsDataValueTypeId: hasText(input?.selection?.acsDataValueTypeId)
       ? String(input.selection.acsDataValueTypeId).trim()
+      : undefined,
+    femaMeasureId: hasText(input?.selection?.femaMeasureId)
+      ? String(input.selection.femaMeasureId).trim()
       : undefined,
     usdaField: hasText(input?.selection?.usdaField)
       ? String(input.selection.usdaField).trim()
