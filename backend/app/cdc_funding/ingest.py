@@ -6,6 +6,7 @@ import json
 import os
 import re
 import time
+import uuid
 from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -14,11 +15,30 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
+from app.cdc_funding.appropriation import (
+    APPROPRIATION_CLASSIFICATION_SOURCE_OFFICIAL,
+    APPROPRIATION_CLASSIFIER_VERSION,
+    APPROPRIATION_TYPE_UNKNOWN,
+    classify_official_emergency_code,
+)
 from app.db_fqtn import cdc_funding_table, places_table
 from app.db_schemas import CDC_FUNDING_SCHEMA
 
 DEFAULT_DB_URL = "postgresql+psycopg://places:places@localhost:5432/places"
 DEFAULT_CHUNKSIZE = 1000
+CDC_MIN_FISCAL_YEAR = 2000
+CDC_MAX_FISCAL_YEAR = 2100
+DISCOVERY_GLOB_BY_RECORD_TYPE = {
+    "prime_award": "Assistance_PrimeAwardSummaries_*.csv",
+    "prime_transaction": "Assistance_PrimeTransactions_*.csv",
+    "subaward": "Assistance_Subawards_*.csv",
+}
+_FILENAME_FY_PATTERNS = (
+    re.compile(r"(?i)(?:^|[^A-Za-z0-9])FY[_\-\s]?(?P<yy>\d{2}|20\d{2})(?:[^A-Za-z0-9]|$)"),
+    re.compile(
+        r"(?i)(?:^|[^A-Za-z0-9])fiscal[_\-\s]?year[_\-\s]?(?P<year>20\d{2})(?:[^A-Za-z0-9]|$)"
+    ),
+)
 
 PRIME_FILENAME = "Assistance_PrimeAwardSummaries_2026-03-07_H14M24S59_1.csv"
 PRIME_TRANSACTIONS_FILENAME = "Assistance_PrimeTransactions_2026-03-07_H14M31S18_1.csv"
@@ -31,10 +51,17 @@ PRIME_STATE_SUMMARY_TABLE = cdc_funding_table("prime_state_summary")
 PRIME_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_county_summary")
 PRIME_TX_STATE_SUMMARY_TABLE = cdc_funding_table("prime_transaction_state_summary")
 PRIME_TX_COUNTY_SUMMARY_TABLE = cdc_funding_table("prime_transaction_county_summary")
+PRIME_TX_COUNTY_ALLOCATED_SUMMARY_TABLE = cdc_funding_table(
+    "prime_transaction_county_summary_allocated"
+)
+PRIME_TX_NATIONAL_SUMMARY_TABLE = cdc_funding_table("prime_transaction_national_summary")
 SUBAWARD_STATE_SUMMARY_TABLE = cdc_funding_table("subaward_state_summary")
 SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
+SUBAWARD_NATIONAL_SUMMARY_TABLE = cdc_funding_table("subaward_national_summary")
 AWARD_SCOPE_CLASSIFICATION_TABLE = cdc_funding_table("award_scope_classification")
+APPROPRIATION_CLASSIFICATION_TABLE = cdc_funding_table("appropriation_classification")
 COUNTY_DIM_TABLE = places_table("dim_county")
+POPULATION_VIEW_TABLE = places_table("v_geography_population")
 
 SCOPE_CLASSIFIER_VERSION = "v1"
 SCOPE_CLASS_DEFAULT_ALLOCATION_METHOD = "total_population"
@@ -156,6 +183,31 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_CHUNKSIZE,
         help=f"Upsert batch size (default: {DEFAULT_CHUNKSIZE}).",
     )
+    parser.add_argument(
+        "--fiscal-year",
+        "--year",
+        dest="fiscal_years",
+        action="append",
+        type=int,
+        default=[],
+        help=(
+            "Optional fiscal year to ingest (repeatable). "
+            "When omitted, all discovered fiscal years are ingested."
+        ),
+    )
+    parser.add_argument(
+        "--fiscal-year-range",
+        nargs=2,
+        type=int,
+        metavar=("START", "END"),
+        default=None,
+        help="Optional inclusive fiscal year range to ingest (for example: --fiscal-year-range 2020 2026).",
+    )
+    parser.add_argument(
+        "--list-discovered",
+        action="store_true",
+        help="List discovered CDC funding files and inferred fiscal years, then exit.",
+    )
     return parser.parse_args()
 
 
@@ -226,6 +278,112 @@ def _parse_date(value: Any) -> date | None:
         except ValueError:
             continue
     return None
+
+
+def _normalize_fiscal_year(value: Any) -> int | None:
+    parsed = _parse_int(value)
+    if parsed is None:
+        return None
+    if parsed < CDC_MIN_FISCAL_YEAR or parsed > CDC_MAX_FISCAL_YEAR:
+        return None
+    return parsed
+
+
+def _infer_fiscal_year_from_date(value: Any) -> int | None:
+    parsed = _parse_date(value)
+    if parsed is None:
+        return None
+    # Federal FY starts on Oct 1.
+    return parsed.year + 1 if parsed.month >= 10 else parsed.year
+
+
+def _normalize_requested_fiscal_years(
+    *,
+    fiscal_years: list[int] | None,
+    fiscal_year_range: tuple[int, int] | None,
+) -> set[int] | None:
+    years: set[int] = set()
+    for value in fiscal_years or []:
+        normalized = _normalize_fiscal_year(value)
+        if normalized is None:
+            raise ValueError(f"Invalid fiscal year: {value}")
+        years.add(normalized)
+
+    if fiscal_year_range:
+        start = _normalize_fiscal_year(fiscal_year_range[0])
+        end = _normalize_fiscal_year(fiscal_year_range[1])
+        if start is None or end is None:
+            raise ValueError(f"Invalid fiscal year range: {fiscal_year_range}")
+        if start > end:
+            start, end = end, start
+        years.update(range(start, end + 1))
+
+    return years or None
+
+
+def _filename_fiscal_years(path: Path) -> set[int]:
+    years: set[int] = set()
+    name = path.name
+    for pattern in _FILENAME_FY_PATTERNS:
+        for match in pattern.finditer(name):
+            token = match.groupdict().get("year") or match.groupdict().get("yy")
+            if token is None:
+                continue
+            if len(token) == 2:
+                token = f"20{token}"
+            normalized = _normalize_fiscal_year(token)
+            if normalized is not None:
+                years.add(normalized)
+    return years
+
+
+def _is_supported_source_csv(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    if path.suffix.lower() != ".csv":
+        return False
+    # Skip Windows ADS metadata files committed from ZIP exports.
+    if path.name.endswith(":Zone.Identifier"):
+        return False
+    return True
+
+
+def discover_source_files(data_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    discovered: dict[str, list[dict[str, Any]]] = {
+        "prime_award": [],
+        "prime_transaction": [],
+        "subaward": [],
+    }
+    for record_type, pattern in DISCOVERY_GLOB_BY_RECORD_TYPE.items():
+        for path in sorted(data_dir.rglob(pattern)):
+            if not _is_supported_source_csv(path):
+                continue
+            discovered[record_type].append(
+                {
+                    "path": path.resolve(),
+                    "filename_fiscal_years": sorted(_filename_fiscal_years(path)),
+                }
+            )
+    return discovered
+
+
+def _validate_required_columns(
+    *,
+    path: Path,
+    header_columns: list[str] | None,
+    required_columns: dict[str, tuple[str, ...]],
+) -> None:
+    header = {str(column).strip() for column in (header_columns or []) if column is not None}
+    missing: list[str] = []
+    for logical_name, aliases in required_columns.items():
+        if not any(alias in header for alias in aliases):
+            missing.append(f"{logical_name} ({', '.join(aliases)})")
+    if missing:
+        missing_text = "; ".join(missing)
+        raise ValueError(
+            f"CSV {path} is missing required column(s): {missing_text}. "
+            "Check USAspending export schema mapping."
+        )
 
 
 def _first_present(row: dict[str, Any], *keys: str) -> Any:
@@ -448,6 +606,42 @@ def _chunks(items: list[dict[str, Any]], chunk_size: int) -> Iterable[list[dict[
         yield items[idx : idx + chunk_size]
 
 
+def _with_source_metadata(
+    row_payload: dict[str, Any],
+    *,
+    source_path: Path,
+    import_batch_id: str | None,
+    import_started_at: datetime | None,
+) -> dict[str, Any]:
+    return {
+        **row_payload,
+        "source_file_name": source_path.name,
+        "source_import_batch_id": import_batch_id,
+        "source_imported_at": import_started_at,
+    }
+
+
+def _make_subaward_unique_key(
+    *,
+    prime_award_unique_key: str | None,
+    subaward_number: str | None,
+    subaward_action_date: date | None,
+    subawardee_name: str | None,
+    subaward_amount: Decimal | None,
+) -> str:
+    action_date_token = subaward_action_date.isoformat() if subaward_action_date else ""
+    amount_token = str(subaward_amount) if subaward_amount is not None else ""
+    return "|".join(
+        [
+            prime_award_unique_key or "",
+            subaward_number or "",
+            action_date_token,
+            subawardee_name or "",
+            amount_token,
+        ]
+    )
+
+
 def _resolve_data_dir(explicit_data_dir: str | None) -> Path:
     if explicit_data_dir:
         return Path(explicit_data_dir).expanduser().resolve()
@@ -470,13 +664,31 @@ def _resolve_path(*, explicit: str | None, data_dir: Path, filename: str) -> Pat
     return (data_dir / filename).resolve()
 
 
-def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
+def _read_prime_rows(
+    path: Path,
+    *,
+    allowed_fiscal_years: set[int] | None = None,
+    import_batch_id: str | None = None,
+    import_started_at: datetime | None = None,
+    filename_fiscal_years: set[int] | None = None,
+) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Prime award CSV not found: {path}")
 
+    file_fiscal_years = set(filename_fiscal_years or _filename_fiscal_years(path))
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
+        _validate_required_columns(
+            path=path,
+            header_columns=reader.fieldnames,
+            required_columns={
+                "assistance_award_unique_key": (
+                    "assistance_award_unique_key",
+                    "prime_award_unique_key",
+                ),
+            },
+        )
         for source_row in reader:
             raw_row = {
                 str(key): _clean_text(value)
@@ -484,22 +696,67 @@ def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
                 if key is not None
             }
 
-            unique_key = _clean_text(raw_row.get("assistance_award_unique_key"))
+            unique_key = _first_present(
+                raw_row,
+                "assistance_award_unique_key",
+                "prime_award_unique_key",
+            )
             if unique_key is None:
                 continue
 
             cfda_numbers_and_titles = _clean_text(raw_row.get("cfda_numbers_and_titles"))
             cfda_program_num, cfda_program_title = _extract_cfda_program(cfda_numbers_and_titles)
+            award_latest_action_date = _parse_date(
+                _first_present(
+                    raw_row,
+                    "award_latest_action_date",
+                    "prime_award_latest_action_date",
+                )
+            )
+            award_latest_action_date_fiscal_year = _normalize_fiscal_year(
+                _first_present(
+                    raw_row,
+                    "award_latest_action_date_fiscal_year",
+                    "prime_award_latest_action_date_fiscal_year",
+                )
+            )
+            if award_latest_action_date_fiscal_year is None:
+                award_latest_action_date_fiscal_year = _infer_fiscal_year_from_date(award_latest_action_date)
+            if award_latest_action_date_fiscal_year is None and len(file_fiscal_years) == 1:
+                award_latest_action_date_fiscal_year = next(iter(file_fiscal_years))
+            if (
+                allowed_fiscal_years is not None
+                and award_latest_action_date_fiscal_year is not None
+                and award_latest_action_date_fiscal_year not in allowed_fiscal_years
+            ):
+                continue
+            if (
+                allowed_fiscal_years is not None
+                and award_latest_action_date_fiscal_year is None
+            ):
+                continue
+
             recipient_state_code = _normalize_state_code(raw_row.get("recipient_state_code"))
             recipient_county_fips = _normalize_fips(
-                raw_row.get("prime_award_summary_recipient_county_fips_code"),
+                _first_present(
+                    raw_row,
+                    "prime_award_summary_recipient_county_fips_code",
+                    "recipient_county_fips_code",
+                ),
                 length=5,
+            )
+            emergency_classification = classify_official_emergency_code(
+                _first_present(
+                    raw_row,
+                    "disaster_emergency_fund_codes",
+                    "prime_award_disaster_emergency_fund_codes",
+                )
             )
 
             row_payload = {
                 "unique_key": unique_key,
-                "fain": _clean_text(raw_row.get("award_id_fain")),
-                "uri": _clean_text(raw_row.get("award_id_uri")),
+                "fain": _first_present(raw_row, "award_id_fain", "prime_award_fain"),
+                "uri": _first_present(raw_row, "award_id_uri", "prime_award_award_id_uri"),
                 "recipient_name": _clean_text(raw_row.get("recipient_name")),
                 "recipient_state_code": recipient_state_code,
                 "recipient_state_name": _clean_text(raw_row.get("recipient_state_name")),
@@ -520,10 +777,8 @@ def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
                 "total_obligated_amount": _parse_decimal(raw_row.get("total_obligated_amount")),
                 "total_outlayed_amount": _parse_decimal(raw_row.get("total_outlayed_amount")),
                 "award_base_action_date": _parse_date(raw_row.get("award_base_action_date")),
-                "award_latest_action_date": _parse_date(raw_row.get("award_latest_action_date")),
-                "award_latest_action_date_fiscal_year": _parse_int(
-                    raw_row.get("award_latest_action_date_fiscal_year")
-                ),
+                "award_latest_action_date": award_latest_action_date,
+                "award_latest_action_date_fiscal_year": award_latest_action_date_fiscal_year,
                 "awarding_sub_agency_name": _clean_text(raw_row.get("awarding_sub_agency_name")),
                 "funding_sub_agency_name": _clean_text(raw_row.get("funding_sub_agency_name")),
                 "awarding_office_name": _clean_text(raw_row.get("awarding_office_name")),
@@ -539,6 +794,12 @@ def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
                     raw_row.get("prime_award_summary_recipient_state_fips_code"),
                     length=2,
                 ),
+                "disaster_emergency_fund_codes_raw": emergency_classification["raw_emergency_code"],
+                "appropriation_type": emergency_classification["appropriation_type"],
+                "appropriation_subtype": emergency_classification["appropriation_subtype"],
+                "appropriation_reason_code": emergency_classification["appropriation_reason_code"],
+                "appropriation_classification_source": emergency_classification["classification_source"],
+                "appropriation_classifier_version": emergency_classification["classifier_version"],
                 "searchable_text": _build_searchable_text(
                     unique_key,
                     raw_row.get("award_id_fain"),
@@ -554,21 +815,44 @@ def _read_prime_rows(path: Path) -> list[dict[str, Any]]:
                     raw_row.get("funding_office_name"),
                     cfda_numbers_and_titles,
                     raw_row.get("prime_award_base_transaction_description"),
+                    emergency_classification["raw_emergency_code"],
                 ),
                 "raw": raw_row,
             }
-            rows.append(row_payload)
+            rows.append(
+                _with_source_metadata(
+                    row_payload,
+                    source_path=path,
+                    import_batch_id=import_batch_id,
+                    import_started_at=import_started_at,
+                )
+            )
 
     return rows
 
 
-def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
+def _read_prime_transaction_rows(
+    path: Path,
+    *,
+    allowed_fiscal_years: set[int] | None = None,
+    import_batch_id: str | None = None,
+    import_started_at: datetime | None = None,
+    filename_fiscal_years: set[int] | None = None,
+) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Prime transaction CSV not found: {path}")
 
+    file_fiscal_years = set(filename_fiscal_years or _filename_fiscal_years(path))
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
+        _validate_required_columns(
+            path=path,
+            header_columns=reader.fieldnames,
+            required_columns={
+                "assistance_transaction_unique_key": ("assistance_transaction_unique_key",),
+            },
+        )
         for source_row in reader:
             raw_row = {
                 str(key): _clean_text(value)
@@ -582,7 +866,32 @@ def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
             if assistance_transaction_unique_key is None:
                 continue
 
+            action_date = _parse_date(raw_row.get("action_date"))
+            action_date_fiscal_year = _normalize_fiscal_year(raw_row.get("action_date_fiscal_year"))
+            if action_date_fiscal_year is None:
+                action_date_fiscal_year = _infer_fiscal_year_from_date(action_date)
+            if action_date_fiscal_year is None and len(file_fiscal_years) == 1:
+                action_date_fiscal_year = next(iter(file_fiscal_years))
+            if (
+                allowed_fiscal_years is not None
+                and action_date_fiscal_year is not None
+                and action_date_fiscal_year not in allowed_fiscal_years
+            ):
+                continue
+            if (
+                allowed_fiscal_years is not None
+                and action_date_fiscal_year is None
+            ):
+                continue
+
             assistance_award_unique_key = _clean_text(raw_row.get("assistance_award_unique_key"))
+            emergency_classification = classify_official_emergency_code(
+                _first_present(
+                    raw_row,
+                    "disaster_emergency_fund_codes_for_overall_award",
+                    "disaster_emergency_fund_codes",
+                )
+            )
 
             row_payload = {
                 "assistance_transaction_unique_key": assistance_transaction_unique_key,
@@ -595,8 +904,8 @@ def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
                 "total_outlayed_amount_for_overall_award": _parse_decimal(
                     raw_row.get("total_outlayed_amount_for_overall_award")
                 ),
-                "action_date": _parse_date(raw_row.get("action_date")),
-                "action_date_fiscal_year": _parse_int(raw_row.get("action_date_fiscal_year")),
+                "action_date": action_date,
+                "action_date_fiscal_year": action_date_fiscal_year,
                 "awarding_sub_agency_name": _clean_text(raw_row.get("awarding_sub_agency_name")),
                 "funding_sub_agency_name": _clean_text(raw_row.get("funding_sub_agency_name")),
                 "awarding_office_name": _clean_text(raw_row.get("awarding_office_name")),
@@ -628,6 +937,12 @@ def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
                 "cfda_number": _clean_text(raw_row.get("cfda_number")),
                 "cfda_title": _clean_text(raw_row.get("cfda_title")),
                 "usaspending_permalink": _clean_text(raw_row.get("usaspending_permalink")),
+                "disaster_emergency_fund_codes_raw": emergency_classification["raw_emergency_code"],
+                "appropriation_type": emergency_classification["appropriation_type"],
+                "appropriation_subtype": emergency_classification["appropriation_subtype"],
+                "appropriation_reason_code": emergency_classification["appropriation_reason_code"],
+                "appropriation_classification_source": emergency_classification["classification_source"],
+                "appropriation_classifier_version": emergency_classification["classifier_version"],
                 "searchable_text": _build_searchable_text(
                     assistance_transaction_unique_key,
                     assistance_award_unique_key,
@@ -647,21 +962,44 @@ def _read_prime_transaction_rows(path: Path) -> list[dict[str, Any]]:
                     raw_row.get("prime_award_base_transaction_description"),
                     raw_row.get("cfda_number"),
                     raw_row.get("cfda_title"),
+                    emergency_classification["raw_emergency_code"],
                 ),
                 "raw": raw_row,
             }
-            rows.append(row_payload)
+            rows.append(
+                _with_source_metadata(
+                    row_payload,
+                    source_path=path,
+                    import_batch_id=import_batch_id,
+                    import_started_at=import_started_at,
+                )
+            )
 
     return rows
 
 
-def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
+def _read_subaward_rows(
+    path: Path,
+    *,
+    allowed_fiscal_years: set[int] | None = None,
+    import_batch_id: str | None = None,
+    import_started_at: datetime | None = None,
+    filename_fiscal_years: set[int] | None = None,
+) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Subaward CSV not found: {path}")
 
+    file_fiscal_years = set(filename_fiscal_years or _filename_fiscal_years(path))
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
+        _validate_required_columns(
+            path=path,
+            header_columns=reader.fieldnames,
+            required_columns={
+                "prime_award_unique_key": ("prime_award_unique_key",),
+            },
+        )
         for source_row in reader:
             raw_row = {
                 str(key): _clean_text(value)
@@ -673,6 +1011,30 @@ def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
             if prime_award_unique_key is None:
                 continue
 
+            subaward_action_date = _parse_date(raw_row.get("subaward_action_date"))
+            subaward_action_date_fiscal_year = _normalize_fiscal_year(
+                _first_present(
+                    raw_row,
+                    "subaward_action_date_fiscal_year",
+                    "prime_award_latest_action_date_fiscal_year",
+                )
+            )
+            if subaward_action_date_fiscal_year is None:
+                subaward_action_date_fiscal_year = _infer_fiscal_year_from_date(subaward_action_date)
+            if subaward_action_date_fiscal_year is None and len(file_fiscal_years) == 1:
+                subaward_action_date_fiscal_year = next(iter(file_fiscal_years))
+            if (
+                allowed_fiscal_years is not None
+                and subaward_action_date_fiscal_year is not None
+                and subaward_action_date_fiscal_year not in allowed_fiscal_years
+            ):
+                continue
+            if (
+                allowed_fiscal_years is not None
+                and subaward_action_date_fiscal_year is None
+            ):
+                continue
+
             subawardee_state_code = _normalize_state_code(raw_row.get("subawardee_state_code"))
             subawardee_county_fips = _normalize_fips(
                 _first_present(
@@ -682,17 +1044,33 @@ def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
                 ),
                 length=5,
             )
+            emergency_classification = classify_official_emergency_code(
+                _first_present(
+                    raw_row,
+                    "prime_award_disaster_emergency_fund_codes",
+                    "disaster_emergency_fund_codes",
+                )
+            )
+            subaward_number = _clean_text(raw_row.get("subaward_number"))
+            subaward_amount = _parse_decimal(raw_row.get("subaward_amount"))
+            subawardee_name = _clean_text(raw_row.get("subawardee_name"))
 
             row_payload = {
                 "prime_award_unique_key": prime_award_unique_key,
-                "prime_award_fain": _clean_text(raw_row.get("prime_award_fain")),
-                "subaward_number": _clean_text(raw_row.get("subaward_number")),
-                "subaward_amount": _parse_decimal(raw_row.get("subaward_amount")),
-                "subaward_action_date": _parse_date(raw_row.get("subaward_action_date")),
-                "subaward_action_date_fiscal_year": _parse_int(
-                    raw_row.get("subaward_action_date_fiscal_year")
+                # Deterministic key supports idempotent reruns across overlapping year exports.
+                "subaward_unique_key": _make_subaward_unique_key(
+                    prime_award_unique_key=prime_award_unique_key,
+                    subaward_number=subaward_number,
+                    subaward_action_date=subaward_action_date,
+                    subawardee_name=subawardee_name,
+                    subaward_amount=subaward_amount,
                 ),
-                "subawardee_name": _clean_text(raw_row.get("subawardee_name")),
+                "prime_award_fain": _clean_text(raw_row.get("prime_award_fain")),
+                "subaward_number": subaward_number,
+                "subaward_amount": subaward_amount,
+                "subaward_action_date": subaward_action_date,
+                "subaward_action_date_fiscal_year": subaward_action_date_fiscal_year,
+                "subawardee_name": subawardee_name,
                 "subawardee_state_code": subawardee_state_code,
                 "subawardee_state_name": _clean_text(raw_row.get("subawardee_state_name")),
                 "subawardee_city_name": _clean_text(raw_row.get("subawardee_city_name")),
@@ -724,6 +1102,14 @@ def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
                 "prime_award_total_outlayed_amount": _parse_decimal(
                     raw_row.get("prime_award_total_outlayed_amount")
                 ),
+                "prime_award_disaster_emergency_fund_codes_raw": emergency_classification[
+                    "raw_emergency_code"
+                ],
+                "appropriation_type": emergency_classification["appropriation_type"],
+                "appropriation_subtype": emergency_classification["appropriation_subtype"],
+                "appropriation_reason_code": emergency_classification["appropriation_reason_code"],
+                "appropriation_classification_source": emergency_classification["classification_source"],
+                "appropriation_classifier_version": emergency_classification["classifier_version"],
                 "searchable_text": _build_searchable_text(
                     prime_award_unique_key,
                     raw_row.get("prime_award_fain"),
@@ -738,10 +1124,18 @@ def _read_subaward_rows(path: Path) -> list[dict[str, Any]]:
                     raw_row.get("prime_award_funding_office_name"),
                     raw_row.get("subaward_description"),
                     raw_row.get("prime_award_base_transaction_description"),
+                    emergency_classification["raw_emergency_code"],
                 ),
                 "raw": raw_row,
             }
-            rows.append(row_payload)
+            rows.append(
+                _with_source_metadata(
+                    row_payload,
+                    source_path=path,
+                    import_batch_id=import_batch_id,
+                    import_started_at=import_started_at,
+                )
+            )
 
     return rows
 
@@ -752,10 +1146,12 @@ def _ensure_target_tables(connection: Any) -> None:
         PRIME_TRANSACTIONS_TABLE,
         SUBAWARD_TABLE,
         AWARD_SCOPE_CLASSIFICATION_TABLE,
+        APPROPRIATION_CLASSIFICATION_TABLE,
         PRIME_STATE_SUMMARY_TABLE,
         PRIME_COUNTY_SUMMARY_TABLE,
         PRIME_TX_STATE_SUMMARY_TABLE,
         PRIME_TX_COUNTY_SUMMARY_TABLE,
+        PRIME_TX_COUNTY_ALLOCATED_SUMMARY_TABLE,
         SUBAWARD_STATE_SUMMARY_TABLE,
         SUBAWARD_COUNTY_SUMMARY_TABLE,
     ]
@@ -805,6 +1201,15 @@ def _upsert_prime_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: 
             prime_award_base_transaction_description,
             usaspending_permalink,
             recipient_state_fips_code,
+            disaster_emergency_fund_codes_raw,
+            appropriation_type,
+            appropriation_subtype,
+            appropriation_reason_code,
+            appropriation_classification_source,
+            appropriation_classifier_version,
+            source_file_name,
+            source_import_batch_id,
+            source_imported_at,
             raw,
             searchable_text
         ) VALUES (
@@ -836,6 +1241,15 @@ def _upsert_prime_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: 
             :prime_award_base_transaction_description,
             :usaspending_permalink,
             :recipient_state_fips_code,
+            :disaster_emergency_fund_codes_raw,
+            :appropriation_type,
+            :appropriation_subtype,
+            :appropriation_reason_code,
+            :appropriation_classification_source,
+            :appropriation_classifier_version,
+            :source_file_name,
+            :source_import_batch_id,
+            :source_imported_at,
             CAST(:raw AS jsonb),
             :searchable_text
         )
@@ -868,6 +1282,15 @@ def _upsert_prime_rows(connection: Any, rows: list[dict[str, Any]], chunk_size: 
             prime_award_base_transaction_description = EXCLUDED.prime_award_base_transaction_description,
             usaspending_permalink = EXCLUDED.usaspending_permalink,
             recipient_state_fips_code = EXCLUDED.recipient_state_fips_code,
+            disaster_emergency_fund_codes_raw = EXCLUDED.disaster_emergency_fund_codes_raw,
+            appropriation_type = EXCLUDED.appropriation_type,
+            appropriation_subtype = EXCLUDED.appropriation_subtype,
+            appropriation_reason_code = EXCLUDED.appropriation_reason_code,
+            appropriation_classification_source = EXCLUDED.appropriation_classification_source,
+            appropriation_classifier_version = EXCLUDED.appropriation_classifier_version,
+            source_file_name = EXCLUDED.source_file_name,
+            source_import_batch_id = EXCLUDED.source_import_batch_id,
+            source_imported_at = EXCLUDED.source_imported_at,
             raw = EXCLUDED.raw,
             searchable_text = EXCLUDED.searchable_text,
             updated_at = now()
@@ -924,6 +1347,15 @@ def _upsert_prime_transaction_rows(connection: Any, rows: list[dict[str, Any]], 
             cfda_number,
             cfda_title,
             usaspending_permalink,
+            disaster_emergency_fund_codes_raw,
+            appropriation_type,
+            appropriation_subtype,
+            appropriation_reason_code,
+            appropriation_classification_source,
+            appropriation_classifier_version,
+            source_file_name,
+            source_import_batch_id,
+            source_imported_at,
             raw,
             searchable_text
         ) VALUES (
@@ -956,6 +1388,15 @@ def _upsert_prime_transaction_rows(connection: Any, rows: list[dict[str, Any]], 
             :cfda_number,
             :cfda_title,
             :usaspending_permalink,
+            :disaster_emergency_fund_codes_raw,
+            :appropriation_type,
+            :appropriation_subtype,
+            :appropriation_reason_code,
+            :appropriation_classification_source,
+            :appropriation_classifier_version,
+            :source_file_name,
+            :source_import_batch_id,
+            :source_imported_at,
             CAST(:raw AS jsonb),
             :searchable_text
         )
@@ -989,6 +1430,15 @@ def _upsert_prime_transaction_rows(connection: Any, rows: list[dict[str, Any]], 
             cfda_number = EXCLUDED.cfda_number,
             cfda_title = EXCLUDED.cfda_title,
             usaspending_permalink = EXCLUDED.usaspending_permalink,
+            disaster_emergency_fund_codes_raw = EXCLUDED.disaster_emergency_fund_codes_raw,
+            appropriation_type = EXCLUDED.appropriation_type,
+            appropriation_subtype = EXCLUDED.appropriation_subtype,
+            appropriation_reason_code = EXCLUDED.appropriation_reason_code,
+            appropriation_classification_source = EXCLUDED.appropriation_classification_source,
+            appropriation_classifier_version = EXCLUDED.appropriation_classifier_version,
+            source_file_name = EXCLUDED.source_file_name,
+            source_import_batch_id = EXCLUDED.source_import_batch_id,
+            source_imported_at = EXCLUDED.source_imported_at,
             raw = EXCLUDED.raw,
             searchable_text = EXCLUDED.searchable_text,
             updated_at = now()
@@ -1017,6 +1467,7 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
         f"""
         INSERT INTO {SUBAWARD_TABLE} (
             prime_award_unique_key,
+            subaward_unique_key,
             prime_award_fain,
             subaward_number,
             subaward_amount,
@@ -1038,10 +1489,20 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
             usaspending_permalink,
             prime_award_amount,
             prime_award_total_outlayed_amount,
+            prime_award_disaster_emergency_fund_codes_raw,
+            appropriation_type,
+            appropriation_subtype,
+            appropriation_reason_code,
+            appropriation_classification_source,
+            appropriation_classifier_version,
+            source_file_name,
+            source_import_batch_id,
+            source_imported_at,
             raw,
             searchable_text
         ) VALUES (
             :prime_award_unique_key,
+            :subaward_unique_key,
             :prime_award_fain,
             :subaward_number,
             :subaward_amount,
@@ -1063,12 +1524,27 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
             :usaspending_permalink,
             :prime_award_amount,
             :prime_award_total_outlayed_amount,
+            :prime_award_disaster_emergency_fund_codes_raw,
+            :appropriation_type,
+            :appropriation_subtype,
+            :appropriation_reason_code,
+            :appropriation_classification_source,
+            :appropriation_classifier_version,
+            :source_file_name,
+            :source_import_batch_id,
+            :source_imported_at,
             CAST(:raw AS jsonb),
             :searchable_text
         )
-        ON CONFLICT ON CONSTRAINT uq_cdc_subawards_row
+        ON CONFLICT ON CONSTRAINT uq_cdc_subawards_unique_key
         DO UPDATE SET
+            prime_award_unique_key = EXCLUDED.prime_award_unique_key,
             prime_award_fain = EXCLUDED.prime_award_fain,
+            subaward_number = EXCLUDED.subaward_number,
+            subaward_amount = EXCLUDED.subaward_amount,
+            subaward_action_date = EXCLUDED.subaward_action_date,
+            subaward_action_date_fiscal_year = EXCLUDED.subaward_action_date_fiscal_year,
+            subawardee_name = EXCLUDED.subawardee_name,
             subawardee_state_code = EXCLUDED.subawardee_state_code,
             subawardee_state_name = EXCLUDED.subawardee_state_name,
             subawardee_city_name = EXCLUDED.subawardee_city_name,
@@ -1084,6 +1560,15 @@ def _upsert_subaward_rows(connection: Any, rows: list[dict[str, Any]], chunk_siz
             usaspending_permalink = EXCLUDED.usaspending_permalink,
             prime_award_amount = EXCLUDED.prime_award_amount,
             prime_award_total_outlayed_amount = EXCLUDED.prime_award_total_outlayed_amount,
+            prime_award_disaster_emergency_fund_codes_raw = EXCLUDED.prime_award_disaster_emergency_fund_codes_raw,
+            appropriation_type = EXCLUDED.appropriation_type,
+            appropriation_subtype = EXCLUDED.appropriation_subtype,
+            appropriation_reason_code = EXCLUDED.appropriation_reason_code,
+            appropriation_classification_source = EXCLUDED.appropriation_classification_source,
+            appropriation_classifier_version = EXCLUDED.appropriation_classifier_version,
+            source_file_name = EXCLUDED.source_file_name,
+            source_import_batch_id = EXCLUDED.source_import_batch_id,
+            source_imported_at = EXCLUDED.source_imported_at,
             raw = EXCLUDED.raw,
             searchable_text = EXCLUDED.searchable_text,
             updated_at = now()
@@ -1209,13 +1694,148 @@ def _refresh_award_scope_classification(connection: Any, chunk_size: int = DEFAU
         connection.execute(insert_statement, payload)
 
 
+def _refresh_appropriation_classification(connection: Any) -> None:
+    connection.execute(text(f"TRUNCATE TABLE {APPROPRIATION_CLASSIFICATION_TABLE}"))
+
+    connection.execute(
+        text(
+            f"""
+            INSERT INTO {APPROPRIATION_CLASSIFICATION_TABLE} (
+                record_type,
+                record_id,
+                assistance_award_unique_key,
+                award_id_fain,
+                raw_emergency_code,
+                appropriation_type,
+                appropriation_subtype,
+                appropriation_reason_code,
+                classification_source,
+                classifier_version
+            )
+            SELECT
+                'prime_transaction' AS record_type,
+                tx.assistance_transaction_unique_key AS record_id,
+                tx.assistance_award_unique_key,
+                tx.award_id_fain,
+                tx.disaster_emergency_fund_codes_raw AS raw_emergency_code,
+                COALESCE(tx.appropriation_type, :unknown_type) AS appropriation_type,
+                tx.appropriation_subtype,
+                tx.appropriation_reason_code,
+                COALESCE(
+                    tx.appropriation_classification_source,
+                    :official_source
+                ) AS classification_source,
+                COALESCE(
+                    tx.appropriation_classifier_version,
+                    :classifier_version
+                ) AS classifier_version
+            FROM {PRIME_TRANSACTIONS_TABLE} AS tx
+            WHERE tx.assistance_transaction_unique_key IS NOT NULL
+            """
+        ),
+        {
+            "unknown_type": APPROPRIATION_TYPE_UNKNOWN,
+            "official_source": APPROPRIATION_CLASSIFICATION_SOURCE_OFFICIAL,
+            "classifier_version": APPROPRIATION_CLASSIFIER_VERSION,
+        },
+    )
+
+    connection.execute(
+        text(
+            f"""
+            INSERT INTO {APPROPRIATION_CLASSIFICATION_TABLE} (
+                record_type,
+                record_id,
+                assistance_award_unique_key,
+                award_id_fain,
+                raw_emergency_code,
+                appropriation_type,
+                appropriation_subtype,
+                appropriation_reason_code,
+                classification_source,
+                classifier_version
+            )
+            SELECT
+                'subaward' AS record_type,
+                s.id::text AS record_id,
+                s.prime_award_unique_key AS assistance_award_unique_key,
+                s.prime_award_fain AS award_id_fain,
+                s.prime_award_disaster_emergency_fund_codes_raw AS raw_emergency_code,
+                COALESCE(s.appropriation_type, :unknown_type) AS appropriation_type,
+                s.appropriation_subtype,
+                s.appropriation_reason_code,
+                COALESCE(
+                    s.appropriation_classification_source,
+                    :official_source
+                ) AS classification_source,
+                COALESCE(
+                    s.appropriation_classifier_version,
+                    :classifier_version
+                ) AS classifier_version
+            FROM {SUBAWARD_TABLE} AS s
+            """
+        ),
+        {
+            "unknown_type": APPROPRIATION_TYPE_UNKNOWN,
+            "official_source": APPROPRIATION_CLASSIFICATION_SOURCE_OFFICIAL,
+            "classifier_version": APPROPRIATION_CLASSIFIER_VERSION,
+        },
+    )
+
+    connection.execute(
+        text(
+            f"""
+            INSERT INTO {APPROPRIATION_CLASSIFICATION_TABLE} (
+                record_type,
+                record_id,
+                assistance_award_unique_key,
+                award_id_fain,
+                raw_emergency_code,
+                appropriation_type,
+                appropriation_subtype,
+                appropriation_reason_code,
+                classification_source,
+                classifier_version
+            )
+            SELECT
+                'prime_award' AS record_type,
+                p.unique_key AS record_id,
+                p.unique_key AS assistance_award_unique_key,
+                p.fain AS award_id_fain,
+                p.disaster_emergency_fund_codes_raw AS raw_emergency_code,
+                COALESCE(p.appropriation_type, :unknown_type) AS appropriation_type,
+                p.appropriation_subtype,
+                p.appropriation_reason_code,
+                COALESCE(
+                    p.appropriation_classification_source,
+                    :official_source
+                ) AS classification_source,
+                COALESCE(
+                    p.appropriation_classifier_version,
+                    :classifier_version
+                ) AS classifier_version
+            FROM {PRIME_TABLE} AS p
+            WHERE p.unique_key IS NOT NULL
+            """
+        ),
+        {
+            "unknown_type": APPROPRIATION_TYPE_UNKNOWN,
+            "official_source": APPROPRIATION_CLASSIFICATION_SOURCE_OFFICIAL,
+            "classifier_version": APPROPRIATION_CLASSIFIER_VERSION,
+        },
+    )
+
+
 def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(text(f"TRUNCATE TABLE {PRIME_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {PRIME_COUNTY_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_COUNTY_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_COUNTY_ALLOCATED_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {PRIME_TX_NATIONAL_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_COUNTY_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_NATIONAL_SUMMARY_TABLE}"))
 
     connection.execute(
         text(
@@ -1338,6 +1958,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     tx.funding_sub_agency_name,
                     tx.awarding_office_name,
                     tx.funding_office_name,
+                    COALESCE(tx.appropriation_type, 'unknown') AS appropriation_type,
                     tx.federal_action_obligation,
                     COALESCE(tx.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
                     COALESCE(NULLIF(tx.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
@@ -1356,6 +1977,13 @@ def _refresh_summary_tables(connection: Any) -> None:
                 FROM tx_ordered AS tx
                 LEFT JOIN {PRIME_TABLE} AS p
                     ON p.unique_key = tx.assistance_award_unique_key
+            ),
+            state_population AS (
+                SELECT
+                    population.state_abbr,
+                    population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'state'
             )
             INSERT INTO {PRIME_TX_STATE_SUMMARY_TABLE} (
                 geography_id,
@@ -1366,10 +1994,16 @@ def _refresh_summary_tables(connection: Any) -> None:
                 funding_sub_agency_name,
                 awarding_office_name,
                 funding_office_name,
+                appropriation_type,
+                population,
                 fy_obligated_amount,
                 fy_outlayed_amount_estimated,
+                total_funding_amount,
                 transaction_count,
-                distinct_award_count
+                distinct_award_count,
+                funding_per_capita,
+                fy_obligated_per_capita,
+                fy_outlayed_amount_estimated_per_capita
             )
             SELECT
                 tx.resolved_state_code AS geography_id,
@@ -1380,11 +2014,31 @@ def _refresh_summary_tables(connection: Any) -> None:
                 tx.funding_sub_agency_name,
                 tx.awarding_office_name,
                 tx.funding_office_name,
+                tx.appropriation_type,
+                MAX(state_population.population) AS population,
                 COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
                 COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS total_funding_amount,
                 COUNT(*)::integer AS transaction_count,
-                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count
+                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count,
+                CASE
+                    WHEN MAX(state_population.population) IS NULL OR MAX(state_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(state_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(state_population.population) IS NULL OR MAX(state_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(state_population.population), 0)
+                END AS fy_obligated_per_capita,
+                CASE
+                    WHEN MAX(state_population.population) IS NULL OR MAX(state_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.estimated_outlay_delta), 0)
+                        / NULLIF(MAX(state_population.population), 0)
+                END AS fy_outlayed_amount_estimated_per_capita
             FROM tx_enriched AS tx
+            LEFT JOIN state_population
+                ON state_population.state_abbr = tx.resolved_state_code
             WHERE tx.resolved_state_code IS NOT NULL
             GROUP BY
                 tx.resolved_state_code,
@@ -1393,7 +2047,134 @@ def _refresh_summary_tables(connection: Any) -> None:
                 tx.awarding_sub_agency_name,
                 tx.funding_sub_agency_name,
                 tx.awarding_office_name,
-                tx.funding_office_name
+                tx.funding_office_name,
+                tx.appropriation_type
+            """
+        )
+    )
+
+    # Recipient-location county summary (truth-preserving default mode).
+    connection.execute(
+        text(
+            f"""
+            WITH tx_ordered AS (
+                SELECT
+                    t.*,
+                    LAG(t.total_outlayed_amount_for_overall_award) OVER (
+                        PARTITION BY COALESCE(
+                            t.assistance_award_unique_key,
+                            t.assistance_transaction_unique_key
+                        )
+                        ORDER BY
+                            t.action_date NULLS FIRST,
+                            COALESCE(t.modification_number, ''),
+                            t.assistance_transaction_unique_key
+                    ) AS prior_total_outlayed_amount_for_overall_award
+                FROM {PRIME_TRANSACTIONS_TABLE} AS t
+                WHERE t.action_date_fiscal_year IS NOT NULL
+            ),
+            tx_enriched AS (
+                SELECT
+                    tx.assistance_award_unique_key,
+                    tx.action_date_fiscal_year AS fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    COALESCE(tx.appropriation_type, 'unknown') AS appropriation_type,
+                    tx.federal_action_obligation,
+                    COALESCE(tx.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
+                    COALESCE(NULLIF(tx.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
+                    COALESCE(
+                        tx.prime_award_transaction_recipient_county_fips_code,
+                        p.recipient_county_fips
+                    ) AS resolved_county_fips,
+                    COALESCE(NULLIF(tx.recipient_county_name, ''), p.recipient_county_name) AS resolved_county_name,
+                    CASE
+                        WHEN tx.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                        WHEN tx.prior_total_outlayed_amount_for_overall_award IS NULL
+                            THEN tx.total_outlayed_amount_for_overall_award
+                        ELSE tx.total_outlayed_amount_for_overall_award
+                            - tx.prior_total_outlayed_amount_for_overall_award
+                    END AS estimated_outlay_delta
+                FROM tx_ordered AS tx
+                LEFT JOIN {PRIME_TABLE} AS p
+                    ON p.unique_key = tx.assistance_award_unique_key
+            ),
+            county_population AS (
+                SELECT
+                    population.geography_id AS county_fips,
+                    population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'county'
+            )
+            INSERT INTO {PRIME_TX_COUNTY_SUMMARY_TABLE} (
+                geography_id,
+                geography_name,
+                state_code,
+                fiscal_year,
+                assistance_type_description,
+                awarding_sub_agency_name,
+                funding_sub_agency_name,
+                awarding_office_name,
+                funding_office_name,
+                appropriation_type,
+                population,
+                fy_obligated_amount,
+                fy_outlayed_amount_estimated,
+                total_funding_amount,
+                transaction_count,
+                distinct_award_count,
+                funding_per_capita,
+                fy_obligated_per_capita,
+                fy_outlayed_amount_estimated_per_capita
+            )
+            SELECT
+                tx.resolved_county_fips AS geography_id,
+                MAX(tx.resolved_county_name) AS geography_name,
+                MAX(tx.resolved_state_code) AS state_code,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                tx.appropriation_type,
+                MAX(county_population.population) AS population,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
+                COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS total_funding_amount,
+                COUNT(*)::integer AS transaction_count,
+                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count,
+                CASE
+                    WHEN MAX(county_population.population) IS NULL OR MAX(county_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(county_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(county_population.population) IS NULL OR MAX(county_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(county_population.population), 0)
+                END AS fy_obligated_per_capita,
+                CASE
+                    WHEN MAX(county_population.population) IS NULL OR MAX(county_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.estimated_outlay_delta), 0)
+                        / NULLIF(MAX(county_population.population), 0)
+                END AS fy_outlayed_amount_estimated_per_capita
+            FROM tx_enriched AS tx
+            LEFT JOIN county_population
+                ON county_population.county_fips = tx.resolved_county_fips
+            WHERE tx.resolved_county_fips IS NOT NULL
+            GROUP BY
+                tx.resolved_county_fips,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                tx.appropriation_type
             """
         )
     )
@@ -1427,6 +2208,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     tx.funding_sub_agency_name,
                     tx.awarding_office_name,
                     tx.funding_office_name,
+                    COALESCE(tx.appropriation_type, 'unknown') AS appropriation_type,
                     tx.federal_action_obligation,
                     COALESCE(tx.recipient_state_code, p.recipient_state_code) AS resolved_state_code,
                     COALESCE(NULLIF(tx.recipient_state_name, ''), p.recipient_state_name) AS resolved_state_name,
@@ -1476,12 +2258,14 @@ def _refresh_summary_tables(connection: Any) -> None:
                     tx.funding_sub_agency_name,
                     tx.awarding_office_name,
                     tx.funding_office_name,
+                    tx.appropriation_type,
                     tx.federal_action_obligation AS fy_obligated_amount,
                     tx.estimated_outlay_delta AS fy_outlayed_amount_estimated,
                     1::numeric AS tx_count_share,
                     tx.assistance_award_unique_key
                 FROM tx_enriched AS tx
                 WHERE tx.resolved_county_fips IS NOT NULL
+                  AND tx.scope_classification <> 'statewide'
             ),
             statewide_tx AS (
                 SELECT
@@ -1493,12 +2277,12 @@ def _refresh_summary_tables(connection: Any) -> None:
                     tx.funding_sub_agency_name,
                     tx.awarding_office_name,
                     tx.funding_office_name,
+                    tx.appropriation_type,
                     tx.federal_action_obligation,
                     tx.estimated_outlay_delta,
                     tx.resolved_state_code AS state_code
                 FROM tx_enriched AS tx
-                WHERE tx.resolved_county_fips IS NULL
-                  AND tx.resolved_state_code IS NOT NULL
+                WHERE tx.resolved_state_code IS NOT NULL
                   AND tx.scope_classification = 'statewide'
                   AND tx.is_allocatable_to_counties = true
             ),
@@ -1513,6 +2297,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     statewide.funding_sub_agency_name,
                     statewide.awarding_office_name,
                     statewide.funding_office_name,
+                    statewide.appropriation_type,
                     COALESCE(statewide.federal_action_obligation, 0)
                         * (weights.county_population / NULLIF(weights.state_population, 0))
                         AS fy_obligated_amount,
@@ -1537,6 +2322,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     direct.funding_sub_agency_name,
                     direct.awarding_office_name,
                     direct.funding_office_name,
+                    direct.appropriation_type,
                     direct.assistance_award_unique_key
                 FROM direct_tx AS direct
                 WHERE direct.assistance_award_unique_key IS NOT NULL
@@ -1550,6 +2336,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     statewide.funding_sub_agency_name,
                     statewide.awarding_office_name,
                     statewide.funding_office_name,
+                    statewide.appropriation_type,
                     statewide.state_code
                 FROM statewide_tx AS statewide
                 WHERE statewide.assistance_award_unique_key IS NOT NULL
@@ -1565,6 +2352,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     awards.funding_sub_agency_name,
                     awards.awarding_office_name,
                     awards.funding_office_name,
+                    awards.appropriation_type,
                     (weights.county_population / NULLIF(weights.state_population, 0))::numeric
                         AS award_count_share
                 FROM statewide_awards AS awards
@@ -1582,6 +2370,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     direct.funding_sub_agency_name,
                     direct.awarding_office_name,
                     direct.funding_office_name,
+                    direct.appropriation_type,
                     direct.fy_obligated_amount,
                     direct.fy_outlayed_amount_estimated,
                     direct.tx_count_share,
@@ -1598,6 +2387,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     allocated.funding_sub_agency_name,
                     allocated.awarding_office_name,
                     allocated.funding_office_name,
+                    allocated.appropriation_type,
                     allocated.fy_obligated_amount,
                     allocated.fy_outlayed_amount_estimated,
                     allocated.tx_count_share,
@@ -1614,6 +2404,7 @@ def _refresh_summary_tables(connection: Any) -> None:
                     direct_awards.funding_sub_agency_name,
                     direct_awards.awarding_office_name,
                     direct_awards.funding_office_name,
+                    direct_awards.appropriation_type,
                     0::numeric AS fy_obligated_amount,
                     0::numeric AS fy_outlayed_amount_estimated,
                     0::numeric AS tx_count_share,
@@ -1630,13 +2421,14 @@ def _refresh_summary_tables(connection: Any) -> None:
                     allocated_awards.funding_sub_agency_name,
                     allocated_awards.awarding_office_name,
                     allocated_awards.funding_office_name,
+                    allocated_awards.appropriation_type,
                     0::numeric AS fy_obligated_amount,
                     0::numeric AS fy_outlayed_amount_estimated,
                     0::numeric AS tx_count_share,
                     allocated_awards.award_count_share
                 FROM allocated_awards
             )
-            INSERT INTO {PRIME_TX_COUNTY_SUMMARY_TABLE} (
+            INSERT INTO {PRIME_TX_COUNTY_ALLOCATED_SUMMARY_TABLE} (
                 geography_id,
                 geography_name,
                 state_code,
@@ -1646,10 +2438,16 @@ def _refresh_summary_tables(connection: Any) -> None:
                 funding_sub_agency_name,
                 awarding_office_name,
                 funding_office_name,
+                appropriation_type,
+                population,
                 fy_obligated_amount,
                 fy_outlayed_amount_estimated,
+                total_funding_amount,
                 transaction_count,
-                distinct_award_count
+                distinct_award_count,
+                funding_per_capita,
+                fy_obligated_per_capita,
+                fy_outlayed_amount_estimated_per_capita
             )
             SELECT
                 contribution.geography_id,
@@ -1661,13 +2459,36 @@ def _refresh_summary_tables(connection: Any) -> None:
                 contribution.funding_sub_agency_name,
                 contribution.awarding_office_name,
                 contribution.funding_office_name,
+                contribution.appropriation_type,
+                MAX(state_county_weights.county_population) AS population,
                 COALESCE(SUM(contribution.fy_obligated_amount), 0) AS fy_obligated_amount,
                 COALESCE(SUM(contribution.fy_outlayed_amount_estimated), 0) AS fy_outlayed_amount_estimated,
+                COALESCE(SUM(contribution.fy_obligated_amount), 0) AS total_funding_amount,
                 GREATEST(0, ROUND(COALESCE(SUM(contribution.tx_count_share), 0)))::integer
                     AS transaction_count,
                 GREATEST(0, ROUND(COALESCE(SUM(contribution.award_count_share), 0)))::integer
-                    AS distinct_award_count
+                    AS distinct_award_count,
+                CASE
+                    WHEN MAX(state_county_weights.county_population) IS NULL
+                        OR MAX(state_county_weights.county_population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(contribution.fy_obligated_amount), 0)
+                        / NULLIF(MAX(state_county_weights.county_population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(state_county_weights.county_population) IS NULL
+                        OR MAX(state_county_weights.county_population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(contribution.fy_obligated_amount), 0)
+                        / NULLIF(MAX(state_county_weights.county_population), 0)
+                END AS fy_obligated_per_capita,
+                CASE
+                    WHEN MAX(state_county_weights.county_population) IS NULL
+                        OR MAX(state_county_weights.county_population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(contribution.fy_outlayed_amount_estimated), 0)
+                        / NULLIF(MAX(state_county_weights.county_population), 0)
+                END AS fy_outlayed_amount_estimated_per_capita
             FROM county_contributions AS contribution
+            LEFT JOIN state_county_weights
+                ON state_county_weights.county_fips = contribution.geography_id
             WHERE contribution.geography_id IS NOT NULL
             GROUP BY
                 contribution.geography_id,
@@ -1676,7 +2497,8 @@ def _refresh_summary_tables(connection: Any) -> None:
                 contribution.awarding_sub_agency_name,
                 contribution.funding_sub_agency_name,
                 contribution.awarding_office_name,
-                contribution.funding_office_name
+                contribution.funding_office_name,
+                contribution.appropriation_type
             """
         )
     )
@@ -1684,6 +2506,13 @@ def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(
         text(
             f"""
+            WITH state_population AS (
+                SELECT
+                    population.state_abbr,
+                    population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'state'
+            )
             INSERT INTO {SUBAWARD_STATE_SUMMARY_TABLE} (
                 geography_id,
                 geography_name,
@@ -1692,12 +2521,16 @@ def _refresh_summary_tables(connection: Any) -> None:
                 funding_sub_agency_name,
                 awarding_office_name,
                 funding_office_name,
+                appropriation_type,
+                population,
                 total_funding_amount,
                 total_obligated_amount,
                 total_outlayed_amount,
                 award_count,
                 total_subaward_amount,
-                subaward_count
+                subaward_count,
+                funding_per_capita,
+                total_subaward_per_capita
             )
             SELECT
                 s.subawardee_state_code AS geography_id,
@@ -1707,13 +2540,27 @@ def _refresh_summary_tables(connection: Any) -> None:
                 s.prime_award_funding_sub_agency_name AS funding_sub_agency_name,
                 s.prime_award_awarding_office_name AS awarding_office_name,
                 s.prime_award_funding_office_name AS funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown') AS appropriation_type,
+                MAX(state_population.population) AS population,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_funding_amount,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_obligated_amount,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_outlayed_amount,
                 COUNT(DISTINCT s.prime_award_unique_key)::integer AS award_count,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_subaward_amount,
-                COUNT(*)::integer AS subaward_count
+                COUNT(*)::integer AS subaward_count,
+                CASE
+                    WHEN MAX(state_population.population) IS NULL OR MAX(state_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(state_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(state_population.population) IS NULL OR MAX(state_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(state_population.population), 0)
+                END AS total_subaward_per_capita
             FROM {SUBAWARD_TABLE} AS s
+            LEFT JOIN state_population
+                ON state_population.state_abbr = s.subawardee_state_code
             WHERE s.subawardee_state_code IS NOT NULL
             GROUP BY
                 s.subawardee_state_code,
@@ -1721,7 +2568,8 @@ def _refresh_summary_tables(connection: Any) -> None:
                 s.prime_award_awarding_sub_agency_name,
                 s.prime_award_funding_sub_agency_name,
                 s.prime_award_awarding_office_name,
-                s.prime_award_funding_office_name
+                s.prime_award_funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown')
             """
         )
     )
@@ -1729,6 +2577,13 @@ def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(
         text(
             f"""
+            WITH county_population AS (
+                SELECT
+                    population.geography_id AS county_fips,
+                    population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'county'
+            )
             INSERT INTO {SUBAWARD_COUNTY_SUMMARY_TABLE} (
                 geography_id,
                 geography_name,
@@ -1738,12 +2593,16 @@ def _refresh_summary_tables(connection: Any) -> None:
                 funding_sub_agency_name,
                 awarding_office_name,
                 funding_office_name,
+                appropriation_type,
+                population,
                 total_funding_amount,
                 total_obligated_amount,
                 total_outlayed_amount,
                 award_count,
                 total_subaward_amount,
-                subaward_count
+                subaward_count,
+                funding_per_capita,
+                total_subaward_per_capita
             )
             SELECT
                 s.subawardee_county_fips AS geography_id,
@@ -1754,13 +2613,27 @@ def _refresh_summary_tables(connection: Any) -> None:
                 s.prime_award_funding_sub_agency_name AS funding_sub_agency_name,
                 s.prime_award_awarding_office_name AS awarding_office_name,
                 s.prime_award_funding_office_name AS funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown') AS appropriation_type,
+                MAX(county_population.population) AS population,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_funding_amount,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_obligated_amount,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_outlayed_amount,
                 COUNT(DISTINCT s.prime_award_unique_key)::integer AS award_count,
                 COALESCE(SUM(s.subaward_amount), 0) AS total_subaward_amount,
-                COUNT(*)::integer AS subaward_count
+                COUNT(*)::integer AS subaward_count,
+                CASE
+                    WHEN MAX(county_population.population) IS NULL OR MAX(county_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(county_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(county_population.population) IS NULL OR MAX(county_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(county_population.population), 0)
+                END AS total_subaward_per_capita
             FROM {SUBAWARD_TABLE} AS s
+            LEFT JOIN county_population
+                ON county_population.county_fips = s.subawardee_county_fips
             WHERE s.subawardee_county_fips IS NOT NULL
             GROUP BY
                 s.subawardee_county_fips,
@@ -1768,23 +2641,304 @@ def _refresh_summary_tables(connection: Any) -> None:
                 s.prime_award_awarding_sub_agency_name,
                 s.prime_award_funding_sub_agency_name,
                 s.prime_award_awarding_office_name,
-                s.prime_award_funding_office_name
+                s.prime_award_funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown')
+            """
+        )
+    )
+
+    connection.execute(
+        text(
+            f"""
+            WITH tx_ordered AS (
+                SELECT
+                    t.*,
+                    LAG(t.total_outlayed_amount_for_overall_award) OVER (
+                        PARTITION BY COALESCE(
+                            t.assistance_award_unique_key,
+                            t.assistance_transaction_unique_key
+                        )
+                        ORDER BY
+                            t.action_date NULLS FIRST,
+                            COALESCE(t.modification_number, ''),
+                            t.assistance_transaction_unique_key
+                    ) AS prior_total_outlayed_amount_for_overall_award
+                FROM {PRIME_TRANSACTIONS_TABLE} AS t
+                WHERE t.action_date_fiscal_year IS NOT NULL
+            ),
+            tx_enriched AS (
+                SELECT
+                    tx.assistance_award_unique_key,
+                    tx.action_date_fiscal_year AS fiscal_year,
+                    tx.assistance_type_description,
+                    tx.awarding_sub_agency_name,
+                    tx.funding_sub_agency_name,
+                    tx.awarding_office_name,
+                    tx.funding_office_name,
+                    COALESCE(tx.appropriation_type, 'unknown') AS appropriation_type,
+                    tx.federal_action_obligation,
+                    CASE
+                        WHEN tx.total_outlayed_amount_for_overall_award IS NULL THEN NULL
+                        WHEN tx.prior_total_outlayed_amount_for_overall_award IS NULL
+                            THEN tx.total_outlayed_amount_for_overall_award
+                        ELSE tx.total_outlayed_amount_for_overall_award
+                            - tx.prior_total_outlayed_amount_for_overall_award
+                    END AS estimated_outlay_delta
+                FROM tx_ordered AS tx
+            ),
+            national_population AS (
+                SELECT population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'nation'
+                  AND population.geography_id = 'US'
+                LIMIT 1
+            )
+            INSERT INTO {PRIME_TX_NATIONAL_SUMMARY_TABLE} (
+                geography_id,
+                geography_name,
+                fiscal_year,
+                assistance_type_description,
+                awarding_sub_agency_name,
+                funding_sub_agency_name,
+                awarding_office_name,
+                funding_office_name,
+                appropriation_type,
+                population,
+                fy_obligated_amount,
+                fy_outlayed_amount_estimated,
+                total_funding_amount,
+                transaction_count,
+                distinct_award_count,
+                funding_per_capita,
+                fy_obligated_per_capita,
+                fy_outlayed_amount_estimated_per_capita
+            )
+            SELECT
+                'US'::text AS geography_id,
+                'United States'::text AS geography_name,
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                tx.appropriation_type,
+                MAX(national_population.population) AS population,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS fy_obligated_amount,
+                COALESCE(SUM(tx.estimated_outlay_delta), 0) AS fy_outlayed_amount_estimated,
+                COALESCE(SUM(tx.federal_action_obligation), 0) AS total_funding_amount,
+                COUNT(*)::integer AS transaction_count,
+                COUNT(DISTINCT tx.assistance_award_unique_key)::integer AS distinct_award_count,
+                CASE
+                    WHEN MAX(national_population.population) IS NULL OR MAX(national_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(national_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(national_population.population) IS NULL OR MAX(national_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.federal_action_obligation), 0)
+                        / NULLIF(MAX(national_population.population), 0)
+                END AS fy_obligated_per_capita,
+                CASE
+                    WHEN MAX(national_population.population) IS NULL OR MAX(national_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(tx.estimated_outlay_delta), 0)
+                        / NULLIF(MAX(national_population.population), 0)
+                END AS fy_outlayed_amount_estimated_per_capita
+            FROM tx_enriched AS tx
+            LEFT JOIN national_population
+                ON TRUE
+            GROUP BY
+                tx.fiscal_year,
+                tx.assistance_type_description,
+                tx.awarding_sub_agency_name,
+                tx.funding_sub_agency_name,
+                tx.awarding_office_name,
+                tx.funding_office_name,
+                tx.appropriation_type
+            """
+        )
+    )
+
+    connection.execute(
+        text(
+            f"""
+            WITH national_population AS (
+                SELECT population.population
+                FROM {POPULATION_VIEW_TABLE} AS population
+                WHERE population.geography_type = 'nation'
+                  AND population.geography_id = 'US'
+                LIMIT 1
+            )
+            INSERT INTO {SUBAWARD_NATIONAL_SUMMARY_TABLE} (
+                geography_id,
+                geography_name,
+                fiscal_year,
+                awarding_sub_agency_name,
+                funding_sub_agency_name,
+                awarding_office_name,
+                funding_office_name,
+                appropriation_type,
+                population,
+                total_funding_amount,
+                total_obligated_amount,
+                total_outlayed_amount,
+                award_count,
+                total_subaward_amount,
+                subaward_count,
+                funding_per_capita,
+                total_subaward_per_capita
+            )
+            SELECT
+                'US'::text AS geography_id,
+                'United States'::text AS geography_name,
+                s.subaward_action_date_fiscal_year AS fiscal_year,
+                s.prime_award_awarding_sub_agency_name AS awarding_sub_agency_name,
+                s.prime_award_funding_sub_agency_name AS funding_sub_agency_name,
+                s.prime_award_awarding_office_name AS awarding_office_name,
+                s.prime_award_funding_office_name AS funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown') AS appropriation_type,
+                MAX(national_population.population) AS population,
+                COALESCE(SUM(s.subaward_amount), 0) AS total_funding_amount,
+                COALESCE(SUM(s.subaward_amount), 0) AS total_obligated_amount,
+                COALESCE(SUM(s.subaward_amount), 0) AS total_outlayed_amount,
+                COUNT(DISTINCT s.prime_award_unique_key)::integer AS award_count,
+                COALESCE(SUM(s.subaward_amount), 0) AS total_subaward_amount,
+                COUNT(*)::integer AS subaward_count,
+                CASE
+                    WHEN MAX(national_population.population) IS NULL OR MAX(national_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(national_population.population), 0)
+                END AS funding_per_capita,
+                CASE
+                    WHEN MAX(national_population.population) IS NULL OR MAX(national_population.population) = 0 THEN NULL
+                    ELSE COALESCE(SUM(s.subaward_amount), 0)
+                        / NULLIF(MAX(national_population.population), 0)
+                END AS total_subaward_per_capita
+            FROM {SUBAWARD_TABLE} AS s
+            LEFT JOIN national_population
+                ON TRUE
+            GROUP BY
+                s.subaward_action_date_fiscal_year,
+                s.prime_award_awarding_sub_agency_name,
+                s.prime_award_funding_sub_agency_name,
+                s.prime_award_awarding_office_name,
+                s.prime_award_funding_office_name,
+                COALESCE(s.appropriation_type, 'unknown')
             """
         )
     )
 
 
-def ingest(
+def _normalize_source_entry(path: Path) -> dict[str, Any]:
+    resolved = path.expanduser().resolve()
+    return {
+        "path": resolved,
+        "filename_fiscal_years": sorted(_filename_fiscal_years(resolved)),
+    }
+
+
+def _filter_sources_for_requested_years(
+    *,
+    sources: list[dict[str, Any]],
+    requested_fiscal_years: set[int] | None,
+) -> list[dict[str, Any]]:
+    if requested_fiscal_years is None:
+        return sources
+    filtered: list[dict[str, Any]] = []
+    for source in sources:
+        filename_years = {
+            int(year)
+            for year in source.get("filename_fiscal_years", [])
+            if _normalize_fiscal_year(year) is not None
+        }
+        if filename_years and filename_years.isdisjoint(requested_fiscal_years):
+            continue
+        filtered.append(source)
+    return filtered
+
+
+def _load_rows_for_sources(
+    *,
+    sources: list[dict[str, Any]],
+    reader: Any,
+    fiscal_year_field: str,
+    requested_fiscal_years: set[int] | None,
+    import_batch_id: str,
+    import_started_at: datetime,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    source_summaries: list[dict[str, Any]] = []
+    for source in sources:
+        source_path = Path(source["path"])
+        filename_fiscal_years = {
+            int(year)
+            for year in source.get("filename_fiscal_years", [])
+            if _normalize_fiscal_year(year) is not None
+        }
+        source_rows = reader(
+            source_path,
+            allowed_fiscal_years=requested_fiscal_years,
+            import_batch_id=import_batch_id,
+            import_started_at=import_started_at,
+            filename_fiscal_years=filename_fiscal_years,
+        )
+        row_years = sorted(
+            {
+                int(year)
+                for year in (
+                    row.get(fiscal_year_field)
+                    for row in source_rows
+                )
+                if _normalize_fiscal_year(year) is not None
+            }
+        )
+        source_summaries.append(
+            {
+                "path": str(source_path),
+                "filename_fiscal_years": sorted(filename_fiscal_years),
+                "row_fiscal_years": row_years,
+                "row_count": len(source_rows),
+            }
+        )
+        rows.extend(source_rows)
+    return rows, source_summaries
+
+
+def ingest_from_sources(
     *,
     db_url: str,
-    prime_path: Path,
-    transaction_path: Path,
-    subaward_path: Path,
+    prime_sources: list[dict[str, Any]],
+    transaction_sources: list[dict[str, Any]],
+    subaward_sources: list[dict[str, Any]],
     chunksize: int,
+    requested_fiscal_years: set[int] | None = None,
 ) -> dict[str, Any]:
-    prime_rows = _read_prime_rows(prime_path)
-    transaction_rows = _read_prime_transaction_rows(transaction_path)
-    subaward_rows = _read_subaward_rows(subaward_path)
+    import_batch_id = uuid.uuid4().hex
+    import_started_at = datetime.utcnow()
+    prime_rows, prime_source_summaries = _load_rows_for_sources(
+        sources=prime_sources,
+        reader=_read_prime_rows,
+        fiscal_year_field="award_latest_action_date_fiscal_year",
+        requested_fiscal_years=requested_fiscal_years,
+        import_batch_id=import_batch_id,
+        import_started_at=import_started_at,
+    )
+    transaction_rows, transaction_source_summaries = _load_rows_for_sources(
+        sources=transaction_sources,
+        reader=_read_prime_transaction_rows,
+        fiscal_year_field="action_date_fiscal_year",
+        requested_fiscal_years=requested_fiscal_years,
+        import_batch_id=import_batch_id,
+        import_started_at=import_started_at,
+    )
+    subaward_rows, subaward_source_summaries = _load_rows_for_sources(
+        sources=subaward_sources,
+        reader=_read_subaward_rows,
+        fiscal_year_field="subaward_action_date_fiscal_year",
+        requested_fiscal_years=requested_fiscal_years,
+        import_batch_id=import_batch_id,
+        import_started_at=import_started_at,
+    )
 
     started_at = time.perf_counter()
     engine = create_engine(db_url)
@@ -1794,14 +2948,18 @@ def ingest(
         transaction_upserts = _upsert_prime_transaction_rows(connection, transaction_rows, chunksize)
         subaward_upserts = _upsert_subaward_rows(connection, subaward_rows, chunksize)
         _refresh_award_scope_classification(connection, chunk_size=chunksize)
+        _refresh_appropriation_classification(connection)
         _refresh_summary_tables(connection)
 
     elapsed_seconds = round(time.perf_counter() - started_at, 3)
     return {
         "schema": CDC_FUNDING_SCHEMA,
-        "prime_source_path": str(prime_path),
-        "transaction_source_path": str(transaction_path),
-        "subaward_source_path": str(subaward_path),
+        "import_batch_id": import_batch_id,
+        "import_started_at": import_started_at.isoformat(),
+        "requested_fiscal_years": sorted(requested_fiscal_years) if requested_fiscal_years else None,
+        "prime_source_files": prime_source_summaries,
+        "transaction_source_files": transaction_source_summaries,
+        "subaward_source_files": subaward_source_summaries,
         "prime_rows_read": len(prime_rows),
         "transaction_rows_read": len(transaction_rows),
         "subaward_rows_read": len(subaward_rows),
@@ -1812,27 +2970,108 @@ def ingest(
     }
 
 
+def ingest(
+    *,
+    db_url: str,
+    prime_path: Path,
+    transaction_path: Path,
+    subaward_path: Path,
+    chunksize: int,
+) -> dict[str, Any]:
+    return ingest_from_sources(
+        db_url=db_url,
+        prime_sources=[_normalize_source_entry(prime_path)],
+        transaction_sources=[_normalize_source_entry(transaction_path)],
+        subaward_sources=[_normalize_source_entry(subaward_path)],
+        chunksize=chunksize,
+        requested_fiscal_years=None,
+    )
+
+
 def main() -> None:
     args = parse_args()
     data_dir = _resolve_data_dir(args.data_dir)
-    prime_path = _resolve_path(explicit=args.prime_path, data_dir=data_dir, filename=PRIME_FILENAME)
-    transaction_path = _resolve_path(
-        explicit=args.transaction_path,
-        data_dir=data_dir,
-        filename=PRIME_TRANSACTIONS_FILENAME,
-    )
-    subaward_path = _resolve_path(
-        explicit=args.subaward_path,
-        data_dir=data_dir,
-        filename=SUBAWARD_FILENAME,
-    )
 
-    summary = ingest(
+    requested_fiscal_years = _normalize_requested_fiscal_years(
+        fiscal_years=list(args.fiscal_years or []),
+        fiscal_year_range=tuple(args.fiscal_year_range) if args.fiscal_year_range else None,
+    )
+    explicit_mode = bool(args.prime_path or args.transaction_path or args.subaward_path)
+    if explicit_mode:
+        prime_sources = [
+            _normalize_source_entry(
+                _resolve_path(explicit=args.prime_path, data_dir=data_dir, filename=PRIME_FILENAME)
+            )
+        ]
+        transaction_sources = [
+            _normalize_source_entry(
+                _resolve_path(
+                    explicit=args.transaction_path,
+                    data_dir=data_dir,
+                    filename=PRIME_TRANSACTIONS_FILENAME,
+                )
+            )
+        ]
+        subaward_sources = [
+            _normalize_source_entry(
+                _resolve_path(
+                    explicit=args.subaward_path,
+                    data_dir=data_dir,
+                    filename=SUBAWARD_FILENAME,
+                )
+            )
+        ]
+    else:
+        discovered = discover_source_files(data_dir)
+        prime_sources = _filter_sources_for_requested_years(
+            sources=discovered["prime_award"],
+            requested_fiscal_years=requested_fiscal_years,
+        )
+        transaction_sources = _filter_sources_for_requested_years(
+            sources=discovered["prime_transaction"],
+            requested_fiscal_years=requested_fiscal_years,
+        )
+        subaward_sources = _filter_sources_for_requested_years(
+            sources=discovered["subaward"],
+            requested_fiscal_years=requested_fiscal_years,
+        )
+
+        if args.list_discovered:
+            print(
+                json.dumps(
+                    {
+                        "data_dir": str(data_dir),
+                        "requested_fiscal_years": sorted(requested_fiscal_years) if requested_fiscal_years else None,
+                        "prime_award_files": prime_sources,
+                        "prime_transaction_files": transaction_sources,
+                        "subaward_files": subaward_sources,
+                    },
+                    indent=2,
+                    default=str,
+                )
+            )
+            return
+
+    if not prime_sources:
+        raise FileNotFoundError(
+            f"No prime award source files found in {data_dir} for selected fiscal-year filters."
+        )
+    if not transaction_sources:
+        raise FileNotFoundError(
+            f"No prime transaction source files found in {data_dir} for selected fiscal-year filters."
+        )
+    if not subaward_sources:
+        raise FileNotFoundError(
+            f"No subaward source files found in {data_dir} for selected fiscal-year filters."
+        )
+
+    summary = ingest_from_sources(
         db_url=args.db_url,
-        prime_path=prime_path,
-        transaction_path=transaction_path,
-        subaward_path=subaward_path,
+        prime_sources=prime_sources,
+        transaction_sources=transaction_sources,
+        subaward_sources=subaward_sources,
         chunksize=max(1, int(args.chunksize)),
+        requested_fiscal_years=requested_fiscal_years,
     )
     print(json.dumps(summary, indent=2, default=str))
 

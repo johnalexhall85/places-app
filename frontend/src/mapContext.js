@@ -22,6 +22,7 @@
  *   femaMeasureId?: string,
  *   usdaField?: string,
  *   cdcBasis?: "prime" | "subaward",
+ *   cdcAppropriationType?: "all" | "regular" | "covid_emergency" | "other_emergency" | "unknown",
  *   cdcMetric?: string,
  *   cdcGeography?: "state" | "county",
  *   cdcFiscalYear?: number,
@@ -117,6 +118,7 @@ function removeUndefined(value) {
  *     femaMeasureId?: string | null,
  *     usdaField?: string | null,
  *     cdcBasis?: string | null,
+ *     cdcAppropriationType?: string | null,
  *     cdcMetric?: string | null,
  *     cdcGeography?: string | null,
  *     cdcFiscalYear?: number | null,
@@ -195,6 +197,9 @@ export function buildMapContext(input) {
       : undefined,
     cdcBasis: hasText(input?.selection?.cdcBasis)
       ? String(input.selection.cdcBasis).trim().toLowerCase()
+      : undefined,
+    cdcAppropriationType: hasText(input?.selection?.cdcAppropriationType)
+      ? String(input.selection.cdcAppropriationType).trim().toLowerCase()
       : undefined,
     cdcMetric: hasText(input?.selection?.cdcMetric)
       ? String(input.selection.cdcMetric).trim()

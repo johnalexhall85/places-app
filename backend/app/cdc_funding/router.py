@@ -15,7 +15,14 @@ router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
 def get_cdc_funding_map(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
     metric: str | None = Query(default=None),
+    display_mode: Literal["total", "per_capita"] = Query(default="total"),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
@@ -35,7 +42,10 @@ def get_cdc_funding_map(
         db,
         basis=basis,
         geography=geography,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
         metric=metric,
+        display_mode=display_mode,
         assistance_type=assistance_type,
         fiscal_year=fiscal_year,
         awarding_office=awarding_office_value,
@@ -52,7 +62,14 @@ def get_cdc_funding_map(
 def get_cdc_funding_legend(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
     metric: str | None = Query(default=None),
+    display_mode: Literal["total", "per_capita"] = Query(default="total"),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
@@ -70,7 +87,10 @@ def get_cdc_funding_legend(
         db,
         basis=basis,
         geography=geography,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
         metric=metric,
+        display_mode=display_mode,
         assistance_type=assistance_type,
         fiscal_year=fiscal_year,
         awarding_office=awarding_office_value,
@@ -78,6 +98,43 @@ def get_cdc_funding_legend(
         center=center,
         state=state,
         bbox=bbox,
+    )
+
+
+@router.get("/national")
+def get_cdc_funding_national_summary(
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    metric: str | None = Query(default=None),
+    display_mode: Literal["total", "per_capita"] = Query(default="total"),
+    assistance_type: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or "").strip() or office_value
+    return services.fetch_national_summary(
+        db,
+        basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        metric=metric,
+        display_mode=display_mode,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
     )
 
 
@@ -93,6 +150,12 @@ def get_cdc_funding_filters(
 def search_cdc_funding(
     q: str | None = Query(default=None),
     basis: Literal["all", "prime", "subaward"] = Query(default="all"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
@@ -116,6 +179,8 @@ def search_cdc_funding(
         db,
         q=q,
         basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
         assistance_type=assistance_type,
         fiscal_year=fiscal_year,
         awarding_office=awarding_office_value,
@@ -136,6 +201,13 @@ def get_cdc_funding_detail(
     prime_unique_key: str | None = Query(default=None),
     subaward_id: int | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    selected_county_fips: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     payload = services.fetch_detail(
@@ -143,6 +215,9 @@ def get_cdc_funding_detail(
         prime_unique_key=prime_unique_key,
         subaward_id=subaward_id,
         fiscal_year=fiscal_year,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        selected_county_fips=selected_county_fips,
     )
     if payload is None:
         if prime_unique_key:
@@ -170,10 +245,33 @@ def get_cdc_scope_classification_debug(
     )
 
 
+@router.get("/allocation/debug")
+def get_cdc_allocation_debug(
+    assistance_award_unique_key: str | None = Query(default=None),
+    award_id_fain: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
+    limit_counties: int = Query(default=10, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    return services.fetch_allocation_debug(
+        db,
+        assistance_award_unique_key=assistance_award_unique_key,
+        award_id_fain=award_id_fain,
+        fiscal_year=fiscal_year,
+        limit_counties=limit_counties,
+    )
+
+
 @router.get("/top")
 def get_cdc_funding_top(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     geography: Literal["state", "county"] = Query(default="county"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
     geography_id: str = Query(..., min_length=1),
     metric: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
@@ -192,6 +290,8 @@ def get_cdc_funding_top(
         db,
         basis=basis,
         geography=geography,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
         geography_id=geography_id,
         metric=metric,
         assistance_type=assistance_type,
@@ -201,3 +301,75 @@ def get_cdc_funding_top(
         center=center,
         limit=limit,
     )
+
+
+@router.get("/trend")
+def get_cdc_funding_trend(
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    geography_type: Literal["state", "county"] = Query(default="county"),
+    geography_id: str = Query(..., min_length=1),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    metric: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    funding_cio: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    start_fy: int | None = Query(default=None),
+    end_fy: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or funding_cio or "").strip() or office_value
+    return services.fetch_trend(
+        db,
+        basis=basis,
+        geography=geography_type,
+        geography_id=geography_id,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        metric=metric,
+        assistance_type=assistance_type,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
+        state=state,
+        start_fy=start_fy,
+        end_fy=end_fy,
+    )
+
+
+@router.get("/appropriation/debug")
+def get_cdc_appropriation_debug(
+    q: str | None = Query(default=None),
+    record_type: Literal["prime_transaction", "subaward", "prime_award"] | None = Query(default=None),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    return services.fetch_appropriation_classification_debug(
+        db,
+        q=q,
+        record_type=record_type,
+        appropriation_type=appropriation_type,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/ingestion/debug")
+def get_cdc_ingestion_debug(
+    db: Session = Depends(get_db),
+):
+    return services.fetch_ingestion_debug(db)

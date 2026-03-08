@@ -19,8 +19,10 @@ def test_cdc_funding_model_tables_use_schema() -> None:
     assert cdc_models.CdcPrimeCountySummary.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcSubawardStateSummary.__table__.schema == CDC_FUNDING_SCHEMA
     assert cdc_models.CdcSubawardCountySummary.__table__.schema == CDC_FUNDING_SCHEMA
+    assert cdc_models.CdcAppropriationClassification.__table__.schema == CDC_FUNDING_SCHEMA
 
 
 def test_cdc_funding_router_is_registered() -> None:
     route_paths = {route.path for route in app.routes}
     assert any(path.startswith("/api/cdc/funding/") for path in route_paths)
+    assert "/api/cdc/funding/trend" in route_paths
