@@ -12,6 +12,7 @@ import {
 } from "react-leaflet";
 import SearchBar from "./SearchBar";
 import AskMapChat from "./components/AskMapChat";
+import CdcFundingMethodologyControl from "./components/CdcFundingMethodologyControl";
 import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
 import {
@@ -30,6 +31,10 @@ import {
 } from "./content/hpsaLegendCopy";
 import { buildMapContext } from "./mapContext";
 import useSelectedAreaProfileTarget from "./hooks/useSelectedAreaProfileTarget";
+import {
+  getProfileButtonCopy,
+  resolveCdcFundingProfileTarget,
+} from "./utils/cdcFundingProfileTarget";
 import {
   fetchCmsGvCountyGeo,
   fetchCmsMeasures,
@@ -50,12 +55,17 @@ import {
   fetchCdcFundingFilters,
   fetchCdcFundingLegend,
   fetchCdcFundingMap,
+  fetchCdcFundingMethodologySummary,
   fetchCdcFundingTrend,
   fetchCdcFundingTop,
   searchCdcFunding,
 } from "./api/cdcFunding";
-
-const API_BASE = "http://localhost:8000";
+import {
+  fetchTaggsFilters,
+  fetchTaggsStateLegend,
+  fetchTaggsStateMap,
+} from "./api/taggs";
+import { API_BASE } from "./config/apiBase";
 const DATA_SOURCES = {
   PLACES: "places",
   ACS_NMF: "acs_nmf",
@@ -63,6 +73,7 @@ const DATA_SOURCES = {
   HPSA: "hpsa",
   CMS: "cms",
   CDC_FUNDING: "cdc_funding",
+  TAGGS: "taggs",
   USDA_FOOD_ENV: "usda_food_environment",
   FEMA_NRI: "fema_nri",
 };
@@ -91,6 +102,7 @@ const CDC_DEFAULT_METRIC_BY_BASIS = {
 };
 const CDC_TREND_FY_START_FALLBACK = 2020;
 const CDC_TREND_FY_END_FALLBACK = 2026;
+const NORMALIZATION_HELP_TEXT = "Reconstructed to CDC Funding Profiles scope and benchmarked against observed profile years";
 const USDA_DEFAULT_VARIABLE = "PCT_LACCESS_POP19";
 const FEMA_DEFAULT_MEASURE = "RISK_SCORE";
 const USDA_PLAIN_LABELS = {
@@ -461,6 +473,8 @@ function tagMeasuresForSource(measuresList, source) {
         ? "cms"
         : source === DATA_SOURCES.CDC_FUNDING
           ? "cdc"
+        : source === DATA_SOURCES.TAGGS
+          ? "taggs"
         : source === DATA_SOURCES.USDA_FOOD_ENV
           ? "usda"
           : source === DATA_SOURCES.FEMA_NRI
@@ -866,6 +880,21 @@ function formatCdcLegendRange(min, max, metricId) {
   return `${formattedMin} - ${formattedMax}`;
 }
 
+function isTaggsCountMetric(metricId) {
+  const token = String(metricId ?? "").trim().toLowerCase();
+  return token === "award_count" || token === "unique_recipient_count";
+}
+
+function formatTaggsLegendRange(min, max, metricId) {
+  const minValue = toFiniteNumericValue(min);
+  const maxValue = toFiniteNumericValue(max);
+  if (minValue == null || maxValue == null) return null;
+  if (isTaggsCountMetric(metricId)) {
+    return `${Math.round(minValue).toLocaleString("en-US")} - ${Math.round(maxValue).toLocaleString("en-US")}`;
+  }
+  return `${formatCdcLegendCurrency(minValue)} - ${formatCdcLegendCurrency(maxValue)}`;
+}
+
 function formatValue(value) {
   const numericValue = toFiniteNumericValue(value);
   if (numericValue == null) return "No data";
@@ -890,6 +919,15 @@ function formatCdcMetricValue(value, metricId) {
   const numeric = toFiniteNumericValue(value);
   if (numeric == null) return "No data";
   if (isCdcCountMetric(metricId)) {
+    return Math.round(numeric).toLocaleString("en-US");
+  }
+  return `$${numeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}
+
+function formatTaggsMetricValue(value, metricId) {
+  const numeric = toFiniteNumericValue(value);
+  if (numeric == null) return "No data";
+  if (isTaggsCountMetric(metricId)) {
     return Math.round(numeric).toLocaleString("en-US");
   }
   return `$${numeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -2146,12 +2184,16 @@ function MapToolbar({
   profileGenerating = false,
   profileTarget,
   onOpenProfile,
+  profileButtonLabel = "Open County/Tract Profile",
+  profileButtonTooltipEnabled = "Open County/Tract Profile",
+  profileButtonTooltipDisabled = "Select a county or tract first",
+  canAnalyzeSelectedArea = true,
 }) {
   const map = useMap();
   const profileEnabled = Boolean(profileTarget?.enabled && profileTarget?.href);
   const profileTooltip = profileEnabled
-    ? "Open County/Tract Profile"
-    : "Select a county or tract first";
+    ? profileButtonTooltipEnabled
+    : (profileTarget?.reason || profileButtonTooltipDisabled);
   const mapTypeSelectStyle = {
     height: 32,
     minWidth: 160,
@@ -2231,7 +2273,7 @@ function MapToolbar({
         <button
           type="button"
           onClick={onAnalyzeSelectedArea}
-          disabled={!hasSelectedLocation || profileGenerating}
+          disabled={!hasSelectedLocation || profileGenerating || !canAnalyzeSelectedArea}
           className="chip-primary-btn"
         >
           {profileGenerating ? "Analyzing..." : "Analyze this area"}
@@ -2251,7 +2293,7 @@ function MapToolbar({
                 fill="currentColor"
               />
             </svg>
-            Open County/Tract Profile
+            {profileButtonLabel}
           </span>
         </button>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
@@ -2808,6 +2850,87 @@ function CdcTrendChart({
   );
 }
 
+function NormalizeDataToggle({
+  value,
+  onChange,
+  note,
+  helpText = NORMALIZATION_HELP_TEXT,
+}) {
+  const baseButtonStyle = {
+    border: "none",
+    background: "transparent",
+    padding: "6px 12px",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+    color: "#33516d",
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontWeight: 600 }}>Normalize Data</span>
+        <span
+          title={helpText}
+          aria-label={helpText}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 18,
+            height: 18,
+            borderRadius: 999,
+            border: "1px solid #c4d2e0",
+            color: "#2c5f8a",
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          i
+        </span>
+      </div>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          width: "fit-content",
+          borderRadius: 999,
+          border: "1px solid #c4d2e0",
+          background: "#f8fafc",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          style={{
+            ...baseButtonStyle,
+            background: value ? "transparent" : "#dbeafe",
+            color: value ? "#33516d" : "#0f2d46",
+          }}
+        >
+          Off
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          style={{
+            ...baseButtonStyle,
+            background: value ? "#dbeafe" : "transparent",
+            color: value ? "#0f2d46" : "#33516d",
+            borderLeft: "1px solid #c4d2e0",
+          }}
+        >
+          On
+        </button>
+      </div>
+      <div style={{ color: "#475569", fontSize: 11 }}>
+        {note || helpText}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantMessages, setAssistantMessages] = useState([]);
@@ -2838,6 +2961,7 @@ export default function App() {
   const [cdcFundingOffice, setCdcFundingOffice] = useState("");
   const [cdcCenter, setCdcCenter] = useState("");
   const [cdcStateFilter, setCdcStateFilter] = useState("");
+  const [cdcNormalizeData, setCdcNormalizeData] = useState(false);
   const [cdcMapMessage, setCdcMapMessage] = useState(null);
   const [cdcFilterOptions, setCdcFilterOptions] = useState({
     basis: "all",
@@ -2870,6 +2994,29 @@ export default function App() {
   const [cdcTrendData, setCdcTrendData] = useState(null);
   const [isCdcTrendLoading, setIsCdcTrendLoading] = useState(false);
   const [cdcTrendError, setCdcTrendError] = useState(null);
+  const [taggsFiscalYear, setTaggsFiscalYear] = useState("");
+  const [taggsProgramOffice, setTaggsProgramOffice] = useState("");
+  const [taggsAln, setTaggsAln] = useState("");
+  const [taggsCanCode, setTaggsCanCode] = useState("");
+  const [taggsFundingStream, setTaggsFundingStream] = useState("");
+  const [taggsNormalizeData, setTaggsNormalizeData] = useState(false);
+  const [taggsMapMessage, setTaggsMapMessage] = useState(null);
+  const [taggsFilterOptions, setTaggsFilterOptions] = useState({
+    metric_options: [
+      { value: "total_funding", label: "Total funding" },
+      { value: "funding_per_capita", label: "Funding per capita" },
+      { value: "award_count", label: "Award count" },
+      { value: "unique_recipient_count", label: "Unique recipient count" },
+    ],
+    fiscal_years: [],
+    default_fiscal_year: null,
+    program_offices: [],
+    alns: [],
+    can_codes: [],
+    funding_streams: [],
+  });
+  const [taggsLegend, setTaggsLegend] = useState(null);
+  const [isTaggsLegendLoading, setIsTaggsLegendLoading] = useState(false);
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
   const [years, setYears] = useState([]);
@@ -3008,6 +3155,7 @@ export default function App() {
   const usdaLegendAbortRef = useRef(null);
   const femaLegendAbortRef = useRef(null);
   const cdcLegendAbortRef = useRef(null);
+  const taggsLegendAbortRef = useRef(null);
   const cdcSearchAbortRef = useRef(null);
   const cdcDetailAbortRef = useRef(null);
   const cdcTopAbortRef = useRef(null);
@@ -3134,6 +3282,7 @@ export default function App() {
   const isHpsaDataSource = selectedDataSource === DATA_SOURCES.HPSA;
   const isCmsDataSource = selectedDataSource === DATA_SOURCES.CMS;
   const isCdcDataSource = selectedDataSource === DATA_SOURCES.CDC_FUNDING;
+  const isTaggsDataSource = selectedDataSource === DATA_SOURCES.TAGGS;
   const isUsdaDataSource = selectedDataSource === DATA_SOURCES.USDA_FOOD_ENV;
   const isFemaDataSource = selectedDataSource === DATA_SOURCES.FEMA_NRI;
   const isPlacesDataSource = selectedDataSource === DATA_SOURCES.PLACES;
@@ -3150,13 +3299,15 @@ export default function App() {
           ? "cms"
         : isCdcDataSource
           ? "cdc-funding"
+        : isTaggsDataSource
+          ? "taggs"
         : isUsdaDataSource
           ? "usda-food-environment"
         : isFemaDataSource
           ? "fema-nri"
         : "places";
   const historySupported = selectedDataSource === DATA_SOURCES.PLACES;
-  const tractsActive = !isUsdaDataSource && !isHpsaDataSource && !isCmsDataSource && !isCdcDataSource && mapZoom >= TRACT_ZOOM;
+  const tractsActive = !isUsdaDataSource && !isHpsaDataSource && !isCmsDataSource && !isCdcDataSource && !isTaggsDataSource && mapZoom >= TRACT_ZOOM;
   const isUsdaHeatMode = false;
   const activeGeography = tractsActive ? "tract" : "county";
   const acsGeography = isAcsDataSource && tractsActive ? "tract" : "county";
@@ -3199,6 +3350,20 @@ export default function App() {
     });
     return tokens;
   }, [cdcFilterOptions.fiscal_years]);
+  const taggsFiscalYearOptions = useMemo(() => {
+    const tokens = (taggsFilterOptions.fiscal_years ?? [])
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+    tokens.sort((left, right) => {
+      const leftNumeric = Number(left);
+      const rightNumeric = Number(right);
+      if (Number.isFinite(leftNumeric) && Number.isFinite(rightNumeric)) {
+        return rightNumeric - leftNumeric;
+      }
+      return right.localeCompare(left);
+    });
+    return tokens;
+  }, [taggsFilterOptions.fiscal_years]);
   const cdcTrendYearBounds = useMemo(() => {
     const latestCompletedFy = getLatestCompletedFederalFiscalYear();
     const numericYears = (cdcFilterOptions.fiscal_years ?? [])
@@ -3232,7 +3397,9 @@ export default function App() {
   const selectedTemporalValue = isHpsaDataSource
     ? selectedHpsaDomain
     : isCdcDataSource
-      ? `${cdcBasis}|${cdcAppropriationType}|${cdcFundingGeographyMode}|${cdcEffectiveDisplayMode}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}`
+      ? `${cdcBasis}|${cdcAppropriationType}|${cdcFundingGeographyMode}|${cdcEffectiveDisplayMode}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}|normalize:${cdcNormalizeData ? "on" : "off"}`
+      : isTaggsDataSource
+      ? `${selectedMeasureId}|${taggsFiscalYear || "all"}|${taggsProgramOffice || "all"}|${taggsAln || "all"}|${taggsCanCode || "all"}|${taggsFundingStream || "all"}|normalize:${taggsNormalizeData ? "on" : "off"}`
       : isUsdaDataSource
       ? `food_environment_atlas_2025|${usdaRenderLevel ?? "county"}`
     : isFemaDataSource
@@ -3272,6 +3439,44 @@ export default function App() {
     }
     setCdcFiscalYear(cdcFiscalYearOptions[0]);
   }, [cdcFiscalYear, cdcFiscalYearOptions, isCdcDataSource]);
+
+  useEffect(() => {
+    if (!isTaggsDataSource) {
+      return;
+    }
+    if (taggsFiscalYearOptions.length === 0) {
+      if (taggsFiscalYear) {
+        setTaggsFiscalYear("");
+      }
+      return;
+    }
+    const normalizedSelection = String(taggsFiscalYear ?? "").trim();
+    if (normalizedSelection && taggsFiscalYearOptions.includes(normalizedSelection)) {
+      return;
+    }
+    setTaggsFiscalYear(taggsFiscalYearOptions[0]);
+  }, [isTaggsDataSource, taggsFiscalYear, taggsFiscalYearOptions]);
+
+  useEffect(() => {
+    if (!isTaggsDataSource) {
+      return;
+    }
+    if (taggsCanCode && !(taggsFilterOptions.can_codes ?? []).includes(taggsCanCode)) {
+      setTaggsCanCode("");
+    }
+    if (
+      taggsFundingStream
+      && !(taggsFilterOptions.funding_streams ?? []).includes(taggsFundingStream)
+    ) {
+      setTaggsFundingStream("");
+    }
+  }, [
+    isTaggsDataSource,
+    taggsCanCode,
+    taggsFundingStream,
+    taggsFilterOptions.can_codes,
+    taggsFilterOptions.funding_streams,
+  ]);
 
   useEffect(() => {
     if (!isCdcDataSource) return;
@@ -3565,6 +3770,8 @@ export default function App() {
       || isSviDataSource
       || isHpsaDataSource
       || isCmsDataSource
+      || isCdcDataSource
+      || isTaggsDataSource
       || isUsdaDataSource
       || isFemaDataSource
     ) return;
@@ -3582,6 +3789,7 @@ export default function App() {
     isHpsaDataSource,
     isCmsDataSource,
     isCdcDataSource,
+    isTaggsDataSource,
     isUsdaDataSource,
     isFemaDataSource,
     selectedMeasureId,
@@ -3714,6 +3922,16 @@ export default function App() {
       const numeric = values.filter((value) => Number.isFinite(value));
       return numeric.length >= 2 ? numeric : computedBreaks;
     }
+    if (isTaggsDataSource) {
+      const bins = Array.isArray(taggsLegend?.bins) ? taggsLegend.bins : [];
+      if (bins.length === 0) return computedBreaks;
+      const values = [Number(bins[0]?.min)];
+      bins.forEach((bin) => {
+        values.push(Number(bin?.max));
+      });
+      const numeric = values.filter((value) => Number.isFinite(value));
+      return numeric.length >= 2 ? numeric : computedBreaks;
+    }
     if (isUsdaDataSource) {
       if (isUsdaHeatMode) {
         return computeBreaks(usdaHeatValues);
@@ -3761,6 +3979,7 @@ export default function App() {
     computedBreaks,
     isAcsDataSource,
     isCdcDataSource,
+    isTaggsDataSource,
     isCmsDataSource,
     isFemaDataSource,
     isSviDataSource,
@@ -3768,6 +3987,7 @@ export default function App() {
     isUsdaDataSource,
     isUsdaHeatMode,
     selectedMeasure,
+    taggsLegend,
     usdaLegend,
     usdaHeatValues,
   ]);
@@ -3820,6 +4040,8 @@ export default function App() {
           ? DATA_SOURCES.CMS
         : source === DATA_SOURCES.CDC_FUNDING
           ? `${DATA_SOURCES.CDC_FUNDING}:${cdcBasis}`
+        : source === DATA_SOURCES.TAGGS
+          ? DATA_SOURCES.TAGGS
         : source === DATA_SOURCES.USDA_FOOD_ENV
           ? `${DATA_SOURCES.USDA_FOOD_ENV}:${usdaShowStateMeasures ? "all" : "county"}:${usdaIncludeArchive ? "archive" : "current"}`
         : source === DATA_SOURCES.FEMA_NRI
@@ -3872,6 +4094,12 @@ export default function App() {
             && nextMeasures.some((measure) => measure.measure_id === preferredMetric)
           ) {
             return preferredMetric;
+          }
+          return nextMeasures[0]?.measure_id ?? "";
+        }
+        if (source === DATA_SOURCES.TAGGS) {
+          if (nextMeasures.some((measure) => measure.measure_id === "total_funding")) {
+            return "total_funding";
           }
           return nextMeasures[0]?.measure_id ?? "";
         }
@@ -3940,6 +4168,10 @@ export default function App() {
         ? fetchCdcFundingFilters({
           apiBase: API_BASE,
           basis: cdcBasis,
+        })
+      : source === DATA_SOURCES.TAGGS
+        ? fetchTaggsFilters({
+          apiBase: API_BASE,
         })
       : source === DATA_SOURCES.USDA_FOOD_ENV
         ? fetchUsdaFoodEnvironmentVariables({
@@ -4016,6 +4248,38 @@ export default function App() {
             funding_offices: Array.isArray(data?.funding_offices) ? data.funding_offices : [],
             centers: Array.isArray(data?.centers) ? data.centers : [],
             states: Array.isArray(data?.states) ? data.states : [],
+          });
+        } else if (source === DATA_SOURCES.TAGGS) {
+          const metricOptions = Array.isArray(data?.metric_options) ? data.metric_options : [];
+          sorted = metricOptions
+            .map((option) => {
+              const metricValue = String(option?.value ?? "").trim();
+              const metricLabel = String(option?.label ?? metricValue).trim() || metricValue;
+              if (!metricValue) return null;
+              return {
+                measure_id: metricValue,
+                name: metricLabel,
+                measure: metricLabel,
+                label: metricLabel,
+                source: "taggs",
+              };
+            })
+            .filter(Boolean);
+          setTaggsFilterOptions({
+            metric_options: metricOptions.length > 0
+              ? metricOptions
+              : [
+                { value: "total_funding", label: "Total funding" },
+                { value: "funding_per_capita", label: "Funding per capita" },
+                { value: "award_count", label: "Award count" },
+                { value: "unique_recipient_count", label: "Unique recipient count" },
+              ],
+            fiscal_years: Array.isArray(data?.fiscal_years) ? data.fiscal_years : [],
+            default_fiscal_year: data?.default_fiscal_year ?? null,
+            program_offices: Array.isArray(data?.program_offices) ? data.program_offices : [],
+            alns: Array.isArray(data?.alns) ? data.alns : [],
+            can_codes: Array.isArray(data?.can_codes) ? data.can_codes : [],
+            funding_streams: Array.isArray(data?.funding_streams) ? data.funding_streams : [],
           });
         } else if (source === DATA_SOURCES.USDA_FOOD_ENV) {
           const notes = typeof data?.notes === "string" ? data.notes : "";
@@ -4212,6 +4476,8 @@ export default function App() {
           applyMeasureDefaults(taggedMeasures, {
             cdcPreferredMetric: CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] ?? "fy_obligated",
           });
+        } else if (source === DATA_SOURCES.TAGGS) {
+          applyMeasureDefaults(taggedMeasures);
         } else {
           applyMeasureDefaults(taggedMeasures);
         }
@@ -4237,6 +4503,23 @@ export default function App() {
             funding_offices: [],
             centers: [],
             states: [],
+          });
+        } else if (source === DATA_SOURCES.TAGGS) {
+          measuresCacheRef.current.delete(sourceKey);
+          setMeasures([]);
+          setTaggsFilterOptions({
+            metric_options: [
+              { value: "total_funding", label: "Total funding" },
+              { value: "funding_per_capita", label: "Funding per capita" },
+              { value: "award_count", label: "Award count" },
+              { value: "unique_recipient_count", label: "Unique recipient count" },
+            ],
+            fiscal_years: [],
+            default_fiscal_year: null,
+            program_offices: [],
+            alns: [],
+            can_codes: [],
+            funding_streams: [],
           });
         } else if (source === DATA_SOURCES.FEMA_NRI) {
           measuresCacheRef.current.delete(sourceKey);
@@ -4278,6 +4561,16 @@ export default function App() {
     }
 
     if (selectedDataSource === DATA_SOURCES.CDC_FUNDING) {
+      setIsYearsLoading(false);
+      setYearsError(null);
+      setYears([]);
+      setSelectedYear(null);
+      setIsSviYearsLoading(false);
+      setSviYearsError(null);
+      return;
+    }
+
+    if (selectedDataSource === DATA_SOURCES.TAGGS) {
       setIsYearsLoading(false);
       setYearsError(null);
       setYears([]);
@@ -4554,6 +4847,7 @@ export default function App() {
           bbox: bboxValue || null,
           zoom: mapZoom,
           limit: (cdcRenderLevel ?? "county") === "state" ? 200 : 7000,
+          normalize: cdcNormalizeData,
           signal: controller.signal,
         });
         const features = Array.isArray(payload?.features) ? payload.features : [];
@@ -4561,6 +4855,30 @@ export default function App() {
         const note = String(payload?.meta?.note ?? "").trim();
         const noData = features.length === 0 ? "No CDC funding data in view." : "";
         setCdcMapMessage([zoomNote, note, noData].filter(Boolean).join(" ") || null);
+        return payload;
+      }
+
+      if (isTaggsDataSource) {
+        const metric = String(selectedMeasureId || "total_funding").trim() || "total_funding";
+        const payload = await fetchTaggsStateMap({
+          apiBase: API_BASE,
+          metric,
+          fiscal_year: taggsFiscalYear || null,
+          program_office: taggsProgramOffice || null,
+          aln: taggsAln || null,
+          can_code: taggsCanCode || null,
+          funding_stream: taggsFundingStream || null,
+          bbox: bboxValue || null,
+          zoom: mapZoom,
+          limit: 120,
+          normalize: taggsNormalizeData,
+          signal: controller.signal,
+        });
+        const features = Array.isArray(payload?.features) ? payload.features : [];
+        const note = String(payload?.meta?.note ?? "").trim();
+        const noData = features.length === 0 ? "No TAGGS funding data in view." : "";
+        setTaggsMapMessage([note, noData].filter(Boolean).join(" ") || null);
+        setCdcMapMessage(null);
         return payload;
       }
 
@@ -4652,6 +4970,7 @@ export default function App() {
       setUsdaMapDiagnostics(null);
       setFemaMapMessage(null);
       setCdcMapMessage(null);
+      setTaggsMapMessage(null);
 
       if (isHpsaDataSource) {
         const hpsaUrl = new URL(`${API_BASE}/hpsa/counties`);
@@ -4784,6 +5103,7 @@ export default function App() {
       isHpsaDataSource,
       isCmsDataSource,
       isCdcDataSource,
+      isTaggsDataSource,
       isUsdaDataSource,
       isFemaDataSource,
       isAcsMeasureSelected,
@@ -4797,8 +5117,15 @@ export default function App() {
       cdcFiscalYear,
       cdcFundingOffice,
       cdcLowZoomStateFallback,
+      cdcNormalizeData,
       cdcRenderLevel,
       cdcStateFilter,
+      taggsFiscalYear,
+      taggsProgramOffice,
+      taggsAln,
+      taggsCanCode,
+      taggsFundingStream,
+      taggsNormalizeData,
       mapZoom,
       loadCmsSelectionData,
       syncHpsaMetadataFromCountyPayload,
@@ -5099,6 +5426,7 @@ export default function App() {
       center: cdcCenter || null,
       state: cdcStateFilter || null,
       bbox: cdcLegendBbox,
+      normalize: cdcNormalizeData,
       signal,
     });
   }, [
@@ -5111,6 +5439,7 @@ export default function App() {
     cdcCenter,
     cdcFiscalYear,
     cdcFundingOffice,
+    cdcNormalizeData,
     cdcRenderLevel,
     cdcLegendBbox,
     cdcStateFilter,
@@ -5128,7 +5457,7 @@ export default function App() {
       return;
     }
 
-    const legendKey = `legend|cdc|${cdcBasis}|${cdcAppropriationType}|${cdcFundingGeographyMode}|${cdcEffectiveDisplayMode}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}|${cdcLegendBbox ?? "global"}`;
+    const legendKey = `legend|cdc|${cdcBasis}|${cdcAppropriationType}|${cdcFundingGeographyMode}|${cdcEffectiveDisplayMode}|${cdcRenderLevel ?? "county"}|${selectedMeasureId}|${cdcAssistanceType || "all"}|${cdcFiscalYear || "all"}|${cdcAwardingOffice || "all"}|${cdcFundingOffice || "all"}|${cdcCenter || "all"}|${cdcStateFilter || "all"}|${cdcLegendBbox ?? "global"}|normalize:${cdcNormalizeData ? "on" : "off"}`;
     const cachedLegend = getCached(legendKey);
     if (cachedLegend) {
       setCdcLegend(cachedLegend);
@@ -5178,6 +5507,7 @@ export default function App() {
     cdcCenter,
     cdcFiscalYear,
     cdcFundingOffice,
+    cdcNormalizeData,
     cdcRenderLevel,
     cdcLegendBbox,
     cdcStateFilter,
@@ -5186,6 +5516,94 @@ export default function App() {
     isCdcDataSource,
     selectedMeasureId,
     setCached,
+  ]);
+
+  const fetchTaggsLegendPayload = useCallback(async ({ signal } = {}) => {
+    if (!selectedMeasureId) return null;
+    return fetchTaggsStateLegend({
+      apiBase: API_BASE,
+      metric: selectedMeasureId,
+      fiscal_year: taggsFiscalYear || null,
+      program_office: taggsProgramOffice || null,
+      aln: taggsAln || null,
+      can_code: taggsCanCode || null,
+      funding_stream: taggsFundingStream || null,
+      normalize: taggsNormalizeData,
+      signal,
+    });
+  }, [
+    selectedMeasureId,
+    taggsAln,
+    taggsCanCode,
+    taggsFiscalYear,
+    taggsFundingStream,
+    taggsNormalizeData,
+    taggsProgramOffice,
+  ]);
+
+  useEffect(() => {
+    if (!isTaggsDataSource || !selectedMeasureId) {
+      if (taggsLegendAbortRef.current) {
+        taggsLegendAbortRef.current.abort();
+        taggsLegendAbortRef.current = null;
+      }
+      setTaggsLegend(null);
+      setIsTaggsLegendLoading(false);
+      return;
+    }
+
+    const legendKey = `legend|taggs|${selectedMeasureId}|${taggsFiscalYear || "latest"}|${taggsProgramOffice || "all"}|${taggsAln || "all"}|${taggsCanCode || "all"}|${taggsFundingStream || "all"}|normalize:${taggsNormalizeData ? "on" : "off"}`;
+    const cachedLegend = getCached(legendKey);
+    if (cachedLegend) {
+      setTaggsLegend(cachedLegend);
+      return;
+    }
+
+    if (taggsLegendAbortRef.current) {
+      taggsLegendAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    taggsLegendAbortRef.current = controller;
+
+    setIsTaggsLegendLoading(true);
+    fetchTaggsLegendPayload({ signal: controller.signal })
+      .then((data) => {
+        if (!data) return;
+        setCached(legendKey, data);
+        setTaggsLegend(data);
+      })
+      .catch((legendError) => {
+        if (isAbortLikeError(legendError, controller.signal)) {
+          return;
+        }
+        console.error("TAGGS legend fetch failed:", legendError);
+        setTaggsLegend(null);
+      })
+      .finally(() => {
+        if (taggsLegendAbortRef.current === controller) {
+          taggsLegendAbortRef.current = null;
+        }
+        setIsTaggsLegendLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (taggsLegendAbortRef.current === controller) {
+        taggsLegendAbortRef.current = null;
+      }
+    };
+  }, [
+    fetchTaggsLegendPayload,
+    getCached,
+    isTaggsDataSource,
+    selectedMeasureId,
+    setCached,
+    taggsAln,
+    taggsCanCode,
+    taggsFiscalYear,
+    taggsFundingStream,
+    taggsNormalizeData,
+    taggsProgramOffice,
   ]);
 
   const fetchTractsForBbox = useCallback(
@@ -5284,6 +5702,7 @@ export default function App() {
     if (usdaLegendAbortRef.current) usdaLegendAbortRef.current.abort();
     if (femaLegendAbortRef.current) femaLegendAbortRef.current.abort();
     if (cdcLegendAbortRef.current) cdcLegendAbortRef.current.abort();
+    if (taggsLegendAbortRef.current) taggsLegendAbortRef.current.abort();
     if (cdcSearchAbortRef.current) cdcSearchAbortRef.current.abort();
     if (cdcDetailAbortRef.current) cdcDetailAbortRef.current.abort();
     if (cdcTopAbortRef.current) cdcTopAbortRef.current.abort();
@@ -5297,12 +5716,15 @@ export default function App() {
     setUsdaLegend(null);
     setFemaLegend(null);
     setCdcLegend(null);
+    setTaggsLegend(null);
     setIsUsdaLegendLoading(false);
     setIsFemaLegendLoading(false);
     setIsCdcLegendLoading(false);
+    setIsTaggsLegendLoading(false);
     setUsdaMapMessage(null);
     setFemaMapMessage(null);
     setCdcMapMessage(null);
+    setTaggsMapMessage(null);
     setUsdaMapLevel("county");
     setUsdaMapDiagnostics(null);
     setUsdaHeatLayer(null);
@@ -5364,6 +5786,9 @@ export default function App() {
     if (isUsdaDataSource) {
       return;
     }
+    if (isTaggsDataSource) {
+      return;
+    }
     if (isAcsDataSource && !isAcsMeasureSelected) {
       return;
     }
@@ -5397,6 +5822,7 @@ export default function App() {
     isHpsaDataSource,
     isCmsDataSource,
     isUsdaDataSource,
+    isTaggsDataSource,
     isAcsDataSource,
     isAcsMeasureSelected,
     mapZoom,
@@ -5451,6 +5877,7 @@ export default function App() {
       && !isHpsaDataSource
       && !isCmsDataSource
       && !isCdcDataSource
+      && !isTaggsDataSource
       && !isUsdaDataSource
       && !isFemaDataSource
       && !selectedType
@@ -5692,6 +6119,7 @@ export default function App() {
     isHpsaDataSource,
     isCmsDataSource,
     isUsdaDataSource,
+    isTaggsDataSource,
     isFemaDataSource,
     syncHpsaMetadataFromCountyPayload,
     isAcsMeasureSelected,
@@ -5999,6 +6427,69 @@ export default function App() {
         return `${countyLine}<br/>${cmsValueText}<br/>Medicare Fee-for-Service • ${cmsYearText}`;
       }
 
+      if (isTaggsDataSource) {
+        const areaLine = String(
+          pickFirstDefined(
+            featureProps?.state_name,
+            featureProps?.name,
+            featureProps?.state_abbr,
+            "Unknown state"
+          )
+        ).trim();
+        const fiscalYearText = String(
+          pickFirstDefined(featureProps?.fiscal_year, taggsFiscalYear, "")
+        ).trim();
+        const metricLabel = String(
+          pickFirstDefined(
+            featureProps?.metric_label,
+            selectedMeasure?.label,
+            selectedMeasure?.name,
+            selectedMeasureId,
+            "TAGGS metric"
+          )
+        ).trim();
+        const totalFundingValue = toFiniteNumericValue(featureProps?.total_funding);
+        const fundingPerCapitaValue = toFiniteNumericValue(featureProps?.funding_per_capita);
+        const awardCountValue = toFiniteNumericValue(featureProps?.award_count);
+        const uniqueRecipientCountValue = toFiniteNumericValue(featureProps?.unique_recipient_count);
+        const valueText = formatTaggsMetricValue(featureProps?.value, selectedMeasureId);
+        const totalFundingText = totalFundingValue == null
+          ? "No data"
+          : `$${totalFundingValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+        const fundingPerCapitaText = fundingPerCapitaValue == null
+          ? "No data"
+          : `$${fundingPerCapitaValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+        const awardCountText = awardCountValue == null
+          ? "No data"
+          : Math.round(awardCountValue).toLocaleString("en-US");
+        const uniqueRecipientCountText = uniqueRecipientCountValue == null
+          ? "No data"
+          : Math.round(uniqueRecipientCountValue).toLocaleString("en-US");
+        const filterContext = [
+          taggsProgramOffice,
+          taggsAln,
+          taggsCanCode,
+          taggsFundingStream,
+        ]
+          .map((item) => String(item ?? "").trim())
+          .filter(Boolean)
+          .join(" • ");
+        return (
+          `${areaLine}<br/>${metricLabel}: ${valueText}`
+          + `<br/>FY ${fiscalYearText || "N/A"}`
+          + `<br/>Total funding: ${totalFundingText}`
+          + `<br/>Funding per capita: ${fundingPerCapitaText}`
+          + `<br/>Award count: ${awardCountText}`
+          + `<br/>Unique recipients: ${uniqueRecipientCountText}`
+          + (
+            featureProps?.normalization_applied
+              ? `<br/>${String(featureProps?.normalization_status_label ?? "Profile-aligned")}: profile-scope reconstructed and benchmarked to CDC Funding Profiles`
+              : ""
+          )
+          + (filterContext ? `<br/>Filters: ${filterContext}` : "")
+        );
+      }
+
       if (isCdcDataSource) {
         const featureGeoLevel = String(
           featureProps?.geo_level ?? featureProps?.level ?? cdcRenderLevel ?? "county"
@@ -6089,6 +6580,11 @@ export default function App() {
             `${areaLine}<br/>${metricLabel}: ${valueText}`
             + `<br/>${contextLine}`
             + (populationLine ? `<br/>${populationLine}` : "")
+            + (
+              featureProps?.normalization_applied
+                ? `<br/>${String(featureProps?.normalization_status_label ?? "Profile-aligned")}: profile-scope reconstructed and benchmarked to CDC Funding Profiles`
+                : ""
+            )
             + `<br/>${fyPrefix} Obligated: ${obligatedText}`
             + `<br/>Distinct Awards with ${fyPrefix} Transactions: ${distinctText}`
             + `<br/>Transaction Count: ${transactionText}`
@@ -6101,6 +6597,11 @@ export default function App() {
           `${areaLine}<br/>${metricLabel}: ${valueText}`
           + `<br/>${contextLine}`
           + (populationLine ? `<br/>${populationLine}` : "")
+          + (
+            featureProps?.normalization_applied
+              ? `<br/>${String(featureProps?.normalization_status_label ?? "Profile-aligned")}: profile-scope reconstructed and benchmarked to CDC Funding Profiles`
+              : ""
+          )
           + `<br/>Subaward count: ${countText}`
         );
       }
@@ -6191,6 +6692,7 @@ export default function App() {
     [
       isAcsDataSource,
       isCdcDataSource,
+      isTaggsDataSource,
       isCmsDataSource,
       isFemaDataSource,
       isHpsaDataSource,
@@ -6206,6 +6708,11 @@ export default function App() {
       selectedType,
       selectedYear,
       selectedYearWindow,
+      taggsFiscalYear,
+      taggsProgramOffice,
+      taggsAln,
+      taggsCanCode,
+      taggsFundingStream,
       tractsActive,
       usdaRenderLevel,
     ]
@@ -6966,9 +7473,13 @@ export default function App() {
 
   const currentLayerLabel = isCdcDataSource
     ? (cdcRenderLevel === "state" ? "state" : "county")
+    : isTaggsDataSource
+      ? "state"
     : (tractsActive ? "tract" : "county");
   const zoomToSelectedLabel = isCdcDataSource
     ? `Zoom to Selected ${cdcRenderLevel === "state" ? "State" : "County"}`
+    : isTaggsDataSource
+      ? "Zoom to Selected State"
     : tractsActive
       ? "Zoom to Selected Census Tract"
       : "Zoom to Selected County";
@@ -6978,10 +7489,6 @@ export default function App() {
     selectedFeatureProps,
     tractsActive,
   });
-  const handleOpenSelectedProfile = useCallback(() => {
-    if (!selectedProfileTarget?.enabled || !selectedProfileTarget?.href) return;
-    window.open(selectedProfileTarget.href, "_blank", "noopener,noreferrer");
-  }, [selectedProfileTarget]);
   const firstDefined = (...values) => {
     for (const value of values) {
       if (value !== null && value !== undefined) {
@@ -7022,6 +7529,66 @@ export default function App() {
     : selectedGeoToken === "state"
       ? "state"
       : "county";
+  const taggsSelectedStateCode = normalizeStateAbbreviation(
+    firstDefined(
+      selectedFeatureProps?.state_abbr,
+      selectedFeatureProps?.state_code,
+      selectedFeatureProps?.id,
+      selectedFeatureProps?.location_id,
+      selectedFeatureProps?.locationid,
+      ""
+    )
+  );
+  const taggsFundingProfileHref = (() => {
+    if (!isTaggsDataSource || selectedGeoLevel !== "state" || !taggsSelectedStateCode) return null;
+    const params = new URLSearchParams();
+    params.set("state", taggsSelectedStateCode);
+    if (taggsFiscalYear) params.set("fy", String(taggsFiscalYear));
+    if (taggsProgramOffice) params.set("program_office", String(taggsProgramOffice));
+    if (taggsAln) params.set("aln", String(taggsAln));
+    if (taggsCanCode) params.set("can_code", String(taggsCanCode));
+    if (taggsFundingStream) params.set("funding_stream", String(taggsFundingStream));
+    params.set("metric", String(selectedMeasureId || "total_funding"));
+    return `/taggs/funding-profile?${params.toString()}`;
+  })();
+  const taggsFundingProfileTarget = isTaggsDataSource
+    ? {
+      enabled: Boolean(taggsFundingProfileHref),
+      reason: taggsFundingProfileHref
+        ? ""
+        : "Select a state first",
+      geography: "state",
+      id: taggsSelectedStateCode || null,
+      href: taggsFundingProfileHref,
+    }
+    : null;
+  const cdcFundingProfileTarget = isCdcDataSource
+    ? resolveCdcFundingProfileTarget({
+      selectedFeatureProps,
+      stateFilter: cdcStateFilter,
+      basis: cdcBasis,
+      fundingGeographyMode: cdcFundingGeographyMode,
+      appropriationType: cdcAppropriationType,
+      normalized: cdcNormalizeData,
+      assistanceType: cdcBasis === "prime" ? cdcAssistanceType : null,
+      fiscalYear: cdcFiscalYear || null,
+      awardingOffice: cdcAwardingOffice || null,
+      fundingOffice: cdcFundingOffice || null,
+      center: cdcCenter || null,
+      metric: selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "fy_obligated",
+      displayMode: cdcEffectiveDisplayMode,
+    })
+    : null;
+  const mapProfileTarget = isTaggsDataSource
+    ? taggsFundingProfileTarget
+    : isCdcDataSource
+      ? cdcFundingProfileTarget
+      : selectedProfileTarget;
+  const profileButtonCopy = getProfileButtonCopy(selectedDataSource);
+  const handleOpenSelectedProfile = useCallback(() => {
+    if (!mapProfileTarget?.enabled || !mapProfileTarget?.href) return;
+    window.open(mapProfileTarget.href, "_blank", "noopener,noreferrer");
+  }, [mapProfileTarget]);
   const crudeValue = firstDefined(
     selectedFeatureProps?.data_value,
     selectedFeatureProps?.data_value_type_id === "CrdPrv"
@@ -7054,6 +7621,8 @@ export default function App() {
     ? `${HPSA_DOMAIN_LABELS[selectedHpsaDomain] ?? "Primary Care"} HPSA score`
     : isCdcDataSource
       ? String(selectedMeasure?.label ?? selectedMeasure?.name ?? selectedMeasureId ?? "CDC metric")
+    : isTaggsDataSource
+      ? String(selectedMeasure?.label ?? selectedMeasure?.name ?? selectedMeasureId ?? "TAGGS metric")
     : isSviDataSource
       ? getSviLabel(selectedMeasureId)
       : isFemaDataSource
@@ -7084,6 +7653,8 @@ export default function App() {
         ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
         : isCdcDataSource
           ? firstDefined(selectedFeatureProps?.fiscal_year, cdcFiscalYear || null)
+        : isTaggsDataSource
+          ? firstDefined(selectedFeatureProps?.fiscal_year, taggsFiscalYear || null)
         : isCmsDataSource
           ? firstDefined(selectedFeatureProps?.year, selectedYear)
         : firstDefined(selectedFeatureProps?.year, selectedYear);
@@ -7235,6 +7806,42 @@ export default function App() {
         ? "Per-capita values use the app population denominator and are intended for cross-geography comparison."
         : "Subawards reported to entities in this geography."
     );
+  const taggsMetricId = String(selectedMeasureId ?? "").trim();
+  const taggsMetricLabel = String(
+    firstDefined(selectedFeatureProps?.metric_label, selectedMeasureDisplayName, "TAGGS metric")
+  ).trim();
+  const taggsStateName = String(
+    firstDefined(selectedFeatureProps?.state_name, selectedFeatureProps?.name, "")
+  ).trim();
+  const taggsStateCode = String(
+    firstDefined(selectedFeatureProps?.state_abbr, selectedFeatureProps?.state_code, selectedFeatureProps?.id, "")
+  ).trim().toUpperCase();
+  const taggsLocationLine = taggsStateName || taggsStateCode || "Unknown state";
+  const taggsMetricValueText = formatTaggsMetricValue(
+    firstDefined(selectedFeatureProps?.value, selectedFeatureProps?.metric_value, selectedFeatureProps?.data_value),
+    taggsMetricId
+  );
+  const taggsTotalFundingNumeric = toFiniteNumericValue(selectedFeatureProps?.total_funding);
+  const taggsFundingPerCapitaNumeric = toFiniteNumericValue(selectedFeatureProps?.funding_per_capita);
+  const taggsAwardCountNumeric = toFiniteNumericValue(selectedFeatureProps?.award_count);
+  const taggsUniqueRecipientCountNumeric = toFiniteNumericValue(
+    selectedFeatureProps?.unique_recipient_count
+  );
+  const taggsTotalFundingText = taggsTotalFundingNumeric == null
+    ? "No data"
+    : `$${taggsTotalFundingNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const taggsFundingPerCapitaText = taggsFundingPerCapitaNumeric == null
+    ? "No data"
+    : `$${taggsFundingPerCapitaNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const taggsAwardCountText = taggsAwardCountNumeric == null
+    ? "No data"
+    : Math.round(taggsAwardCountNumeric).toLocaleString("en-US");
+  const taggsUniqueRecipientCountText = taggsUniqueRecipientCountNumeric == null
+    ? "No data"
+    : Math.round(taggsUniqueRecipientCountNumeric).toLocaleString("en-US");
+  const taggsSelectedFiscalYear = String(
+    firstDefined(selectedFeatureProps?.fiscal_year, taggsFiscalYear, "")
+  ).trim();
   const cdcSelectedGeoLevel = String(
     firstDefined(selectedFeatureProps?.geo_level, selectedFeatureProps?.level, "")
   ).trim().toLowerCase();
@@ -7712,6 +8319,8 @@ export default function App() {
       )
     : isCdcDataSource
       ? (cdcFiscalYear ? String(cdcFiscalYear) : undefined)
+    : isTaggsDataSource
+      ? (taggsFiscalYear ? String(taggsFiscalYear) : undefined)
     : isAcsDataSource
       ? (selectedYearWindow != null ? String(selectedYearWindow) : undefined)
       : isSviDataSource
@@ -7729,6 +8338,8 @@ export default function App() {
             ? parseYearFromToken(selectedAsOfDateForContext)
           : isCdcDataSource
             ? parseYearFromToken(cdcFiscalYear)
+          : isTaggsDataSource
+            ? parseYearFromToken(taggsFiscalYear)
           : isUsdaDataSource
             ? 2025
           : parseYearFromToken(selectedYear);
@@ -7743,6 +8354,8 @@ export default function App() {
           ? (selectedMeasureId || FEMA_DEFAULT_MEASURE)
           : isCdcDataSource
             ? (selectedMeasureId || CDC_DEFAULT_METRIC_BY_BASIS[cdcBasis] || "fy_obligated")
+          : isTaggsDataSource
+            ? (selectedMeasureId || "total_funding")
           : isUsdaDataSource
             ? (selectedMeasureId || USDA_DEFAULT_VARIABLE)
           : (selectedMeasureId || "PLACES");
@@ -7756,6 +8369,8 @@ export default function App() {
           ? "FEMA_NRI"
           : isCdcDataSource
             ? cdcBasis
+          : isTaggsDataSource
+            ? "TAGGS"
           : isUsdaDataSource
             ? "USDA"
           : isCmsDataSource
@@ -7768,13 +8383,18 @@ export default function App() {
       data_value_type_id: resolvedType,
       zoom: mapZoom,
       bbox,
-      active_layer: isCdcDataSource ? cdcRenderLevel : (tractsActive ? "tract" : "county"),
+      active_layer: isCdcDataSource
+        ? cdcRenderLevel
+        : isTaggsDataSource
+          ? "state"
+          : (tractsActive ? "tract" : "county"),
     };
   }, [
     bbox,
     isAcsDataSource,
     isCmsDataSource,
     isCdcDataSource,
+    isTaggsDataSource,
     isFemaDataSource,
     isHpsaDataSource,
     isSviDataSource,
@@ -7783,6 +8403,7 @@ export default function App() {
     cdcBasis,
     cdcFiscalYear,
     cdcRenderLevel,
+    taggsFiscalYear,
     selectedCmsAgeLevel,
     selectedAsOfDateForContext,
     selectedHpsaDomain,
@@ -7818,6 +8439,12 @@ export default function App() {
             cdcMetric: selectedMeasureId,
             cdcGeography: cdcRenderLevel,
             cdcFiscalYear: parseYearFromToken(cdcFiscalYear),
+          }
+        : isTaggsDataSource
+          ? {
+            cdcMetric: selectedMeasureId,
+            cdcGeography: "state",
+            cdcFiscalYear: parseYearFromToken(taggsFiscalYear),
           }
         : isUsdaDataSource
           ? {
@@ -7862,6 +8489,7 @@ export default function App() {
     isAcsDataSource,
     isCmsDataSource,
     isCdcDataSource,
+    isTaggsDataSource,
     isFemaDataSource,
     isHpsaDataSource,
     isSviDataSource,
@@ -7871,6 +8499,7 @@ export default function App() {
     cdcAppropriationType,
     cdcFiscalYear,
     cdcRenderLevel,
+    taggsFiscalYear,
     selectedCmsAgeLevel,
     selectedAreaNameForContext,
     selectedAsOfDateForContext,
@@ -8504,6 +9133,8 @@ export default function App() {
 
     const targetZoom = isCdcDataSource
       ? (cdcRenderLevel === "state" ? 6.0 : 8.5)
+      : isTaggsDataSource
+        ? 6.0
       : tractsActive
         ? 10.0
         : 9.0;
@@ -8556,6 +9187,7 @@ export default function App() {
     activeFeatures,
     cdcRenderLevel,
     isCdcDataSource,
+    isTaggsDataSource,
     selectedLocationId,
     selectedProps,
     selectActiveFeatureByLocationId,
@@ -8722,6 +9354,33 @@ export default function App() {
         };
       });
     }
+    if (isTaggsDataSource) {
+      const bins = Array.isArray(taggsLegend?.bins) ? taggsLegend.bins : [];
+      if (bins.length > 0) {
+        return bins.map((bin, index) => ({
+          key: `taggs-bin-${bin?.min}-${bin?.max}-${index}`,
+          colorIndex: Number.isFinite(Number(bin?.colorIndex))
+            ? Number(bin.colorIndex)
+            : index,
+          label: String(
+            formatTaggsLegendRange(bin?.min, bin?.max, selectedMeasureId)
+            ?? bin?.label
+            ?? formatRange(bin?.min, bin?.max)
+          ),
+        }));
+      }
+      return breaks.slice(0, -1).map((start, index) => {
+        const end = breaks[index + 1];
+        return {
+          key: `taggs-fallback-${start}-${end}-${index}`,
+          colorIndex: index,
+          label: String(
+            formatTaggsLegendRange(start, end, selectedMeasureId)
+            ?? formatRange(start, end)
+          ),
+        };
+      });
+    }
 
     return breaks.slice(0, -1).map((start, index) => {
       const end = breaks[index + 1];
@@ -8740,6 +9399,7 @@ export default function App() {
     hpsaTierRanges,
     isAcsDataSource,
     isCdcDataSource,
+    isTaggsDataSource,
     isCmsDataSource,
     isFemaDataSource,
     isHpsaDataSource,
@@ -8747,6 +9407,7 @@ export default function App() {
     isUsdaDataSource,
     isUsdaHeatMode,
     selectedMeasureId,
+    taggsLegend,
     sviBins,
     usdaLegend,
   ]);
@@ -8802,6 +9463,66 @@ export default function App() {
     String(firstDefined(femaLegend?.note, femaCatalogMeta?.notes, "")).trim(),
     220
   );
+  const taggsLegendLabel = String(
+    firstDefined(
+      taggsLegend?.legend_label,
+      selectedMeasure?.label,
+      selectedMeasure?.name,
+      selectedMeasureId,
+      "TAGGS funding"
+    )
+  ).trim();
+  const taggsFilterContextLabel = [
+    taggsProgramOffice,
+    taggsAln,
+    taggsCanCode,
+    taggsFundingStream,
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(" • ");
+  const taggsNormalizationConstraintText = selectedMeasureId !== "total_funding" && selectedMeasureId !== "funding_per_capita"
+    ? "Currently available for TAGGS funding amount metrics only."
+    : taggsFilterContextLabel
+      ? "Remove TAGGS subset filters to use profile-aligned normalization."
+      : null;
+  const cdcNormalizationConstraintText = cdcBasis !== "prime"
+    ? "Currently available for USA Spending prime-award obligations only."
+    : selectedMeasureId !== "fy_obligated"
+      ? "Currently available for the Fiscal Year Obligated metric only."
+      : cdcFundingGeographyMode !== "recipient_location"
+        ? "Switch funding geography to recipient location to use profile-aligned normalization."
+        : cdcAppropriationType !== "all"
+          ? "Clear the appropriation-type filter to use profile-aligned normalization."
+          : [cdcAssistanceType, cdcAwardingOffice, cdcFundingOffice, cdcCenter]
+            .map((value) => String(value ?? "").trim())
+            .some(Boolean)
+            ? "Clear USA Spending subset filters to use profile-aligned normalization."
+            : null;
+  const cdcNormalizationApplied = Boolean(cdcLegend?.normalization_applied);
+  const taggsNormalizationApplied = Boolean(taggsLegend?.normalization_applied);
+  const cdcNormalizationStatusLabel = String(cdcLegend?.normalization_status_label ?? "").trim();
+  const taggsNormalizationStatusLabel = String(taggsLegend?.normalization_status_label ?? "").trim();
+  const cdcNormalizationToggleNote = cdcNormalizationApplied
+    ? [
+      "Reconstructed to CDC Funding Profiles scope and benchmarked against observed profile years",
+      cdcNormalizationStatusLabel === "Profile-aligned estimate"
+        ? "Estimated using FY2020-FY2023 profile-scope calibration rules."
+        : cdcNormalizationStatusLabel,
+    ].filter(Boolean).join(" ")
+    : cdcNormalizeData && cdcNormalizationConstraintText
+      ? cdcNormalizationConstraintText
+      : NORMALIZATION_HELP_TEXT;
+  const taggsNormalizationToggleNote = taggsNormalizationApplied
+    ? [
+      "Reconstructed to CDC Funding Profiles scope and benchmarked against observed profile years",
+      taggsNormalizationStatusLabel === "Profile-aligned estimate"
+        ? "Estimated using FY2020-FY2023 profile-scope calibration rules."
+        : taggsNormalizationStatusLabel,
+    ].filter(Boolean).join(" ")
+    : taggsNormalizeData && taggsNormalizationConstraintText
+      ? taggsNormalizationConstraintText
+      : NORMALIZATION_HELP_TEXT;
   const femaLegendLevelText = tractsActive ? "Census tract level" : "County level";
   const usdaHeatPoints = Array.isArray(usdaHeatLayer?.points) ? usdaHeatLayer.points : [];
   const usdaHeatAgg = String(usdaHeatLayer?.agg ?? "median").toLowerCase();
@@ -8847,6 +9568,8 @@ export default function App() {
     ? `Healthcare Access — ${hpsaDomainLabel}`
     : isCdcDataSource
       ? "CDC Funding"
+    : isTaggsDataSource
+      ? "TAGGS Funding"
     : isUsdaDataSource
       ? "USDA Food Environment"
     : isFemaDataSource
@@ -8863,7 +9586,9 @@ export default function App() {
     : isCdcDataSource
       ? `${cdcBasis === "prime" ? "Prime Awards" : "Subawards"} • ${cdcRenderLevel === "state" ? "State" : "County"} • ${
         getCdcAppropriationTypeLabel(cdcAppropriationType)
-      } • FY ${cdcFiscalYear || "All"} • ${cdcFundingGeographyMode === "statewide_allocation" ? "Estimated statewide allocation" : "Recipient location"} • ${cdcEffectiveDisplayMode === "per_capita" ? "Per capita" : "Total"}`
+      } • FY ${cdcFiscalYear || "All"} • ${cdcFundingGeographyMode === "statewide_allocation" ? "Estimated statewide allocation" : "Recipient location"} • ${cdcEffectiveDisplayMode === "per_capita" ? "Per capita" : "Total"}${cdcNormalizationApplied && cdcNormalizationStatusLabel ? ` • ${cdcNormalizationStatusLabel}` : ""}`
+    : isTaggsDataSource
+      ? `State-level • FY ${taggsFiscalYear || "Latest"} • ${taggsLegendLabel}${taggsFilterContextLabel ? ` • ${taggsFilterContextLabel}` : ""}${taggsNormalizationApplied && taggsNormalizationStatusLabel ? ` • ${taggsNormalizationStatusLabel}` : ""}`
     : isUsdaDataSource
       ? `${usdaLegendLabel} (${usdaRenderLevel === "state" ? "State-level" : "County-level"})`
     : isFemaDataSource
@@ -8933,8 +9658,8 @@ export default function App() {
             padding: "12px 14px",
             fontSize: 12,
             maxWidth: "min(560px, calc(100vw - 32px))",
-            maxHeight: isCdcDataSource ? cdcMeasurePanelMaxHeight : undefined,
-            overflowY: isCdcDataSource ? "auto" : undefined,
+            maxHeight: (isCdcDataSource || isTaggsDataSource) ? cdcMeasurePanelMaxHeight : undefined,
+            overflowY: (isCdcDataSource || isTaggsDataSource) ? "auto" : undefined,
             display: "grid",
             gap: 10,
             zIndex: 2200,
@@ -8982,6 +9707,11 @@ export default function App() {
                     setCdcCenter("");
                     setCdcStateFilter("");
                   }
+                  if (nextSource === DATA_SOURCES.TAGGS) {
+                    setTaggsFiscalYear("");
+                    setTaggsProgramOffice("");
+                    setTaggsAln("");
+                  }
                   if (nextSource === DATA_SOURCES.PLACES) {
                     setPlacesMeasureSearch("");
                     setPlacesMeasurePickerOpen(false);
@@ -8992,6 +9722,7 @@ export default function App() {
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
                 <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
                 <option value={DATA_SOURCES.CDC_FUNDING}>CDC Funding</option>
+                <option value={DATA_SOURCES.TAGGS}>TAGGS Funding Profiles</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment</option>
                 <option value={DATA_SOURCES.FEMA_NRI}>FEMA National Risk Index</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
@@ -9254,6 +9985,11 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                <NormalizeDataToggle
+                  value={cdcNormalizeData}
+                  onChange={setCdcNormalizeData}
+                  note={cdcNormalizationToggleNote}
+                />
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>Funding CIO</span>
                   <select
@@ -9269,6 +10005,97 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+              </>
+            ) : null}
+            {isTaggsDataSource ? (
+              <>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Fiscal year</span>
+                  <select
+                    value={taggsFiscalYear}
+                    onChange={(event) => setTaggsFiscalYear(String(event.target.value ?? ""))}
+                    disabled={taggsFiscalYearOptions.length === 0}
+                    style={controlSelectStyle}
+                  >
+                    {taggsFiscalYearOptions.length === 0 ? (
+                      <option value="">Loading fiscal years...</option>
+                    ) : (
+                      taggsFiscalYearOptions.map((value) => (
+                        <option key={`taggs-fy-${value}`} value={String(value)}>
+                          {value}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+                <NormalizeDataToggle
+                  value={taggsNormalizeData}
+                  onChange={setTaggsNormalizeData}
+                  note={taggsNormalizationToggleNote}
+                />
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Program office filter</span>
+                  <select
+                    value={taggsProgramOffice}
+                    onChange={(event) => setTaggsProgramOffice(String(event.target.value ?? ""))}
+                    style={controlSelectStyle}
+                  >
+                    <option value="">All program offices</option>
+                    {(taggsFilterOptions.program_offices ?? []).map((value) => (
+                      <option key={`taggs-program-office-${value}`} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Assistance listing / ALN filter</span>
+                  <select
+                    value={taggsAln}
+                    onChange={(event) => setTaggsAln(String(event.target.value ?? ""))}
+                    style={controlSelectStyle}
+                  >
+                    <option value="">All ALNs</option>
+                    {(taggsFilterOptions.alns ?? []).map((value) => (
+                      <option key={`taggs-aln-${value}`} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Funding stream filter</span>
+                  <select
+                    value={taggsFundingStream}
+                    onChange={(event) => setTaggsFundingStream(String(event.target.value ?? ""))}
+                    style={controlSelectStyle}
+                  >
+                    <option value="">All funding streams</option>
+                    {(taggsFilterOptions.funding_streams ?? []).map((value) => (
+                      <option key={`taggs-funding-stream-${value}`} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Raw CAN filter</span>
+                  <select
+                    value={taggsCanCode}
+                    onChange={(event) => setTaggsCanCode(String(event.target.value ?? ""))}
+                    style={controlSelectStyle}
+                  >
+                    <option value="">All CAN codes</option>
+                    {(taggsFilterOptions.can_codes ?? []).map((value) => (
+                      <option key={`taggs-can-${value}`} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ color: "#475569", fontSize: 11 }}>
+                  Funding stream is the preferred TAGGS interpretation filter. Raw CAN remains available for audit and review.
+                </div>
               </>
             ) : null}
             {isSviDataSource ? (
@@ -9388,6 +10215,19 @@ export default function App() {
                       getCdcAppropriationTypeLabel(cdcAppropriationType)
                     } • FY {cdcFiscalYear || "All"} • {cdcFundingGeographyMode === "statewide_allocation" ? "Estimated statewide allocation" : "Recipient location"} • {cdcEffectiveDisplayMode === "per_capita" ? "Per capita" : "Total"}
 	                </div>
+                  {cdcNormalizationApplied ? (
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#0f766e" }}>
+                      {cdcNormalizationStatusLabel || "Profile-aligned"} • Profile-scope reconstructed and benchmarked to CDC Funding Profiles
+                    </div>
+                  ) : cdcNormalizeData && cdcNormalizationConstraintText ? (
+                    <div style={{ fontSize: 11 }}>
+                      {cdcNormalizationConstraintText}
+                    </div>
+                  ) : null}
+                  <CdcFundingMethodologyControl
+                    apiBase={API_BASE}
+                    fetchSummary={fetchCdcFundingMethodologySummary}
+                  />
                   {cdcBasis === "subaward" && cdcFundingGeographyMode === "statewide_allocation" ? (
                     <div style={{ fontSize: 11 }}>
                       Subawards are not statewide-allocated in this version and remain on reported recipient geography.
@@ -9408,6 +10248,28 @@ export default function App() {
                     </div>
                   ) : null}
 	              </div>
+              ) : isTaggsDataSource ? (
+                <div style={{ display: "grid", gap: 4, color: "#475569" }}>
+                  <div style={{ fontWeight: 600, color: "#0F2D46" }}>TAGGS Funding</div>
+                  <div>
+                    State totals • FY {taggsFiscalYear || "Latest"} • {selectedMeasureDisplayName || "TAGGS metric"}
+                  </div>
+                  {taggsNormalizationApplied ? (
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#0f766e" }}>
+                      {taggsNormalizationStatusLabel || "Profile-aligned"} • Profile-scope reconstructed and benchmarked to CDC Funding Profiles
+                    </div>
+                  ) : taggsNormalizeData && taggsNormalizationConstraintText ? (
+                    <div style={{ fontSize: 11 }}>
+                      {taggsNormalizationConstraintText}
+                    </div>
+                  ) : null}
+                  <div style={{ fontSize: 11 }}>
+                    TAGGS values reflect funding/award actions and may differ from official CDC profile PDF totals.
+                  </div>
+                  <div style={{ fontSize: 11 }}>
+                    Funding profile grouping uses CHIP's effective CAN mapping: CDC-profile-assisted when available, deterministic fallback inference when needed, and unknown buckets for unresolved CANs.
+                  </div>
+                </div>
 	            ) : (
 	              <label style={{ display: "grid", gap: 6 }}>
 	                <span style={{ fontWeight: 600 }}>{isAcsDataSource ? "Year window" : "Year"}</span>
@@ -9493,6 +10355,14 @@ export default function App() {
 	                  <div>FEMA National Risk Index indicator value</div>
 	                  <div style={{ color: "#64748b", fontSize: 11 }}>
 	                    Includes scores, ratings, expected annual loss, and hazard-specific indicators.
+	                  </div>
+	                </div>
+	              ) : isTaggsDataSource ? (
+	                <div style={{ display: "grid", gap: 4 }}>
+	                  <div style={{ fontWeight: 600 }}>Data type</div>
+	                  <div>TAGGS funding/award action metric</div>
+	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                    State-only choropleth for this phase. Use map state selection to open a full funding profile report.
 	                  </div>
 	                </div>
 	              ) : isCdcDataSource ? (
@@ -9611,8 +10481,12 @@ export default function App() {
             zoomToSelectedLabel={zoomToSelectedLabel}
             zoomToSelectedRef={zoomToSelectedButtonRef}
             profileGenerating={profileGenerating || analyzeGenerating || assistantLoading}
-            profileTarget={selectedProfileTarget}
+            profileTarget={mapProfileTarget}
             onOpenProfile={handleOpenSelectedProfile}
+            profileButtonLabel={profileButtonCopy.label}
+            profileButtonTooltipEnabled={profileButtonCopy.tooltipEnabled}
+            profileButtonTooltipDisabled={profileButtonCopy.tooltipDisabled}
+            canAnalyzeSelectedArea={!isTaggsDataSource}
           />
           <SearchBar
             apiBase={API_BASE}
@@ -9820,6 +10694,7 @@ export default function App() {
               || isHpsaChoroplethLoading
               || (isAcsDataSource && isLegendLoading)
               || (isCdcDataSource && isCdcLegendLoading)
+              || (isTaggsDataSource && isTaggsLegendLoading)
               || (isUsdaDataSource && isUsdaLegendLoading)
               || (isFemaDataSource && isFemaLegendLoading)
               ? "Loading..."
@@ -9846,6 +10721,11 @@ export default function App() {
           {isCdcDataSource && cdcLegend ? (
             <div style={{ color: "#64748b" }}>
               n={cdcLegend.n ?? 0}, no data={cdcLegend.noDataCount ?? 0}
+            </div>
+          ) : null}
+          {isTaggsDataSource && taggsLegend ? (
+            <div style={{ color: "#64748b" }}>
+              n={taggsLegend.n ?? 0}, no data={taggsLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isCdcDataSource && cdcNationalSummary ? (
@@ -9885,8 +10765,14 @@ export default function App() {
           {isCdcDataSource && cdcMapMessage ? (
             <div style={{ color: "#475569" }}>{cdcMapMessage}</div>
           ) : null}
+          {isTaggsDataSource && taggsMapMessage ? (
+            <div style={{ color: "#475569" }}>{taggsMapMessage}</div>
+          ) : null}
           {isCdcDataSource && cdcLegend?.note ? (
             <div style={{ color: "#475569" }}>{String(cdcLegend.note)}</div>
+          ) : null}
+          {isTaggsDataSource && taggsLegend?.note ? (
+            <div style={{ color: "#475569" }}>{String(taggsLegend.note)}</div>
           ) : null}
           {isCdcDataSource ? (
             <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 4 }}>
@@ -9901,6 +10787,15 @@ export default function App() {
                   COVID / emergency supplemental funding is identified using official emergency funding codes reported in the source data.
                 </div>
               ) : null}
+            </div>
+          ) : isTaggsDataSource ? (
+            <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 4 }}>
+              <div>
+                TAGGS values reflect award/funding actions and may differ from official CDC funding profile PDFs due to methodology differences.
+              </div>
+              <div>
+                Category and sub-category grouping use CHIP's effective CAN mapping, not a simple Program Office or Assistance Listing Title fallback alone.
+              </div>
             </div>
           ) : null}
           {isFemaDataSource && femaLegendDescription ? (
@@ -9987,6 +10882,11 @@ export default function App() {
                       <p>
                         <strong>Population denominator:</strong> <strong>{cdcPopulationText}</strong>.
                       </p>
+                      {selectedFeatureProps?.normalization_applied ? (
+                        <p>
+                          <strong>{String(selectedFeatureProps?.normalization_status_label ?? "Profile-aligned")}</strong>: profile-scope reconstructed and benchmarked to CDC Funding Profiles.
+                        </p>
+                      ) : null}
 	                  {cdcBasis === "prime" ? (
 	                    <>
 	                      <p>
@@ -10144,6 +11044,38 @@ export default function App() {
                       ) : null}
                     </div>
 	                </>
+              ) : isTaggsDataSource ? (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+                    State • {taggsLocationLine}
+                  </div>
+                  <p>
+                    <strong>{taggsMetricLabel}</strong>: <strong>{taggsMetricValueText}</strong>.
+                  </p>
+                  <p>
+                    <strong>Total funding:</strong> <strong>{taggsTotalFundingText}</strong>.
+                  </p>
+                  <p>
+                    <strong>Funding per capita:</strong> <strong>{taggsFundingPerCapitaText}</strong>.
+                  </p>
+                  <p>
+                    <strong>Award count:</strong> <strong>{taggsAwardCountText}</strong>.
+                  </p>
+                  <p>
+                    <strong>Unique recipients:</strong> <strong>{taggsUniqueRecipientCountText}</strong>.
+                  </p>
+                  <p>
+                    <strong>Fiscal year:</strong> <strong>{taggsSelectedFiscalYear || "N/A"}</strong>.
+                  </p>
+                  {selectedFeatureProps?.normalization_applied ? (
+                    <p>
+                      <strong>{String(selectedFeatureProps?.normalization_status_label ?? "Profile-aligned")}</strong>: profile-scope reconstructed and benchmarked to CDC Funding Profiles.
+                    </p>
+                  ) : null}
+                  <p>
+                    Use <strong>Open Funding Profile</strong> in Map Tools to open the full state report.
+                  </p>
+                </>
 	              ) : isUsdaDataSource ? (
 	                <>
 	                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>

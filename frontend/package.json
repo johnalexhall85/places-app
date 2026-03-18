@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "figma:export": "node scripts/export-figma-assets.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:smoke:usda": "playwright test tests/usda-food-access.smoke.spec.js"
   },
   "dependencies": {
@@ -17,8 +19,12 @@
     "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^24.1.3",
     "playwright": "^1.58.2",
-    "vite": "^5.4.1"
+    "vite": "^5.4.1",
+    "vitest": "^2.1.8"
   }
 }

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Header from "../components/Header";
+import { API_BASE } from "../config/apiBase";
 import "./ProfileReport.css";
-
-const API_BASE = "http://localhost:8000";
 const CHART_PAGE_SIZE = 10;
 
 function toFiniteNumber(value) {

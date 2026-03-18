@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://localhost:8000";
+import { API_BASE as DEFAULT_API_BASE } from "../config/apiBase";
 
 async function parseJsonOrThrow(response, fallbackMessage) {
   if (!response.ok) {

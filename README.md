@@ -186,6 +186,101 @@ python backend/scripts/ingest_cms_ssp.py \
 python backend/scripts/verify_cms_tables.py
 ```
 
+TAGGS redo CSV rebuild ingest (multi-OPDIV exports in `data/taggs/redo`):
+
+```bash
+python backend/scripts/ingest_taggs_redo.py \
+  --input-dir ./data/taggs/redo \
+  --drop-and-recreate \
+  --rebuild-summaries \
+  --rebuild-can-table \
+  --verbose
+```
+
+Reference:
+
+- `backend/app/taggs/CSV_INGEST.md`
+
+USAspending CDC contract prime-transaction ingest (raw immutable rows plus first-pass classification support in `data/usaspending/contracts`):
+
+```bash
+python backend/scripts/ingest_usaspending_contracts.py \
+  --input-dir ./data/usaspending/contracts \
+  --drop-and-recreate \
+  --rebuild-summaries \
+  --verbose
+```
+
+Contract rows are ingested even though CDC Funding Profiles generally exclude contract expenditures, because the CDC profile methodology explicitly includes vaccine purchases provided through the Vaccines for Children program. CHIP therefore preserves every raw contract transaction unchanged and applies profile-relevance logic only in the derived enrichment and summary layers.
+
+Observed federal account lookup / classification rebuild (additive `recon` layer only):
+
+```bash
+cd backend
+python scripts/build_federal_account_lookup.py \
+  --reseed-from-observed \
+  --rebuild-observations \
+  --rebuild-classification \
+  --export-review-csv \
+  --verbose
+```
+
+Why CHIP starts with observed federal account symbols instead of the full public account universe:
+
+- the lookup is seeded only from account symbols actually observed in CHIP's CDC USAspending contracts and assistance data
+- this keeps the workflow deterministic, reviewable, and tightly scoped to the funding sources CHIP needs
+- raw USAspending and TAGGS tables stay unchanged; only additive lookup tables, observation summaries, and derived views are built at this stage
+- if no local account metadata CSV is available, the lookup still builds from observed symbols alone and remains ready for later enrichment
+
+Outputs:
+
+- `recon.federal_account_lookup`
+- `recon.federal_account_observations`
+- `recon.federal_account_classification_rules`
+- `recon.contract_transaction_accounts`
+- `recon.assistance_transaction_accounts`
+- `recon.federal_account_review_export`
+- optional review export at `data/usaspending/review/federal_account_review.csv`
+
+This step prepares the federal account layer for later CDC-profile-aligned normalization and CDC funding profile reconstruction. It does not build final normalization on its own.
+
+CDC profile-scope reconstruction rebuild (additive derived layer only):
+
+```bash
+cd backend
+./.venv/bin/alembic upgrade head
+python scripts/build_profile_scope_layer.py --verbose
+```
+
+This layer classifies USAspending assistance and contract rows into a conservative CDC Funding Profiles candidate universe. It keeps raw source tables untouched, treats contracts as mostly out of scope except likely VFC procurement, uses the federal-account lookup as a core signal, preserves uncertain rows instead of forcing overconfident binary decisions, and writes the summary report to `data/recon/profile_scope_build_summary.json`.
+
+CDC Funding Profiles calibration and reconciliation rebuild:
+
+```bash
+cd backend
+./.venv/bin/alembic upgrade head
+python scripts/build_profile_calibration_layer.py \
+  --fiscal-years 2020 2021 2022 2023 2024 2025 2026 \
+  --source-system usaspending \
+  --include-taggs \
+  --rebuild-normalized-table \
+  --export-summary \
+  --verbose
+```
+
+This step sits on top of `recon.profile_scope_transactions` and related derived layers. It compares reconstructed profile-scope state totals to observed CDC Funding Profiles FY2020-FY2023, writes state-year residuals and driver diagnostics, refreshes the canonical `recon.normalized_state_funding` map table, and exports `data/recon/profile_calibration_summary.json`. CDC profile totals are used only as calibration references; CHIP does not copy them into normalized totals.
+
+Outputs:
+
+- `recon.profile_calibration_cdc_reference` (view)
+- `recon.profile_scope_transaction_diagnostics` (view)
+- `recon.profile_calibration_usaspending_state_year_support` (view)
+- `recon.profile_calibration_taggs_state_year_support` (view)
+- `recon.profile_reconciliation_state_year`
+- `recon.profile_reconciliation_driver_breakdown`
+- `recon.profile_reconciliation_summary`
+- `recon.normalized_state_funding`
+
 Equivalent module entrypoints:
 
 ```bash

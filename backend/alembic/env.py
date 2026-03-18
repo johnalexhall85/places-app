@@ -31,6 +31,10 @@ from app.fema_nri import models as fema_nri_models  # noqa: F401
 from app.usda_food_access import models as usda_food_access_models  # noqa: F401
 from app.usda_food_env import models as usda_food_env_models  # noqa: F401
 from app.cdc_funding import models as cdc_funding_models  # noqa: F401
+from app.usaspending import models as usaspending_models  # noqa: F401
+from app.taggs import models as taggs_models  # noqa: F401
+from app.cdc_profiles import models as cdc_profiles_models  # noqa: F401
+from app.recon import models as recon_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -63,10 +67,36 @@ TARGET_TABLES = {
     "nri_tract",
     "prime_awards",
     "subawards",
+    "raw_awards",
+    "award_funding_summary",
+    "state_funding_summary",
+    "can_classification",
+    "ingestion_runs",
     "prime_state_summary",
     "prime_county_summary",
     "subaward_state_summary",
     "subaward_county_summary",
+    "contract_transactions_raw",
+    "contract_state_year_summary",
+    "contract_federal_account_inventory",
+    "contract_category_rules",
+    "raw_profile_rows",
+    "state_year_totals",
+    "methodology_documents",
+    "cdc_profile_calibration",
+    "normalization_rules_by_year",
+    "normalized_state_funding",
+    "normalization_methodology_log",
+    "federal_account_lookup",
+    "federal_account_observations",
+    "federal_account_classification_rules",
+    "assistance_transaction_accounts",
+    "assistance_transaction_account_summary",
+    "profile_scope_rules",
+    "assistance_transactions_profile_enriched",
+    "contract_transactions_profile_enriched",
+    "profile_scope_transactions",
+    "profile_scope_state_year_summary",
     "alembic_version",
 }
 

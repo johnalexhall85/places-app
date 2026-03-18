@@ -1,0 +1,18 @@
+[Unit]
+Description=PLACES FastAPI backend (demo)
+After=network.target
+
+[Service]
+Type=simple
+User=john
+Group=john
+WorkingDirectory=/home/john/places-app/backend
+EnvironmentFile=-/home/john/places-app/backend/.env
+Environment=PATH=/home/john/places-app/backend/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/john/places-app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

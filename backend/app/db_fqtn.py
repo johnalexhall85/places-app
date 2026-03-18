@@ -4,8 +4,12 @@ from app.db_schemas import (
     ACS_SCHEMA,
     CMS_SCHEMA,
     CDC_FUNDING_SCHEMA,
+    CDC_PROFILES_SCHEMA,
+    USASPENDING_SCHEMA,
+    TAGGS_SCHEMA,
     HRSA_SCHEMA,
     PLACES_SCHEMA,
+    RECON_SCHEMA,
     SCHEMA_BY_SOURCE,
     SVI_SCHEMA,
     FEMA_NRI_SCHEMA,
@@ -63,6 +67,22 @@ def fema_nri_table(name: str) -> str:
 
 def cdc_funding_table(name: str) -> str:
     return fqtn(CDC_FUNDING_SCHEMA, name)
+
+
+def usaspending_table(name: str) -> str:
+    return fqtn(USASPENDING_SCHEMA, name)
+
+
+def taggs_table(name: str) -> str:
+    return fqtn(TAGGS_SCHEMA, name)
+
+
+def cdc_profiles_table(name: str) -> str:
+    return fqtn(CDC_PROFILES_SCHEMA, name)
+
+
+def recon_table(name: str) -> str:
+    return fqtn(RECON_SCHEMA, name)
 
 
 def source_table(source: str, table: str) -> str:

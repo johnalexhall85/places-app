@@ -11,6 +11,11 @@ from app.db import get_db
 router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
 
 
+@router.get("/methodology/summary")
+def get_cdc_funding_methodology_summary():
+    return services.fetch_methodology_display_summary()
+
+
 @router.get("/map")
 def get_cdc_funding_map(
     basis: Literal["prime", "subaward"] = Query(default="prime"),
@@ -33,6 +38,7 @@ def get_cdc_funding_map(
     bbox: str | None = Query(default=None),
     zoom: int = Query(default=6),
     limit: int = Query(default=6000, ge=1, le=50000),
+    normalize: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     office_value = str(office or "").strip() or None
@@ -55,6 +61,7 @@ def get_cdc_funding_map(
         bbox=bbox,
         zoom=zoom,
         limit=limit,
+        normalize=normalize,
     )
 
 
@@ -78,6 +85,7 @@ def get_cdc_funding_legend(
     center: str | None = Query(default=None),
     state: str | None = Query(default=None),
     bbox: str | None = Query(default=None),
+    normalize: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     office_value = str(office or "").strip() or None
@@ -98,6 +106,7 @@ def get_cdc_funding_legend(
         center=center,
         state=state,
         bbox=bbox,
+        normalize=normalize,
     )
 
 
@@ -144,6 +153,164 @@ def get_cdc_funding_filters(
     db: Session = Depends(get_db),
 ):
     return services.list_filter_options(db, basis=basis)
+
+
+@router.get("/profile/summary")
+def get_cdc_state_profile_summary(
+    state: str = Query(..., min_length=2, max_length=2),
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    assistance_type: str | None = Query(default=None),
+    fy: int | None = Query(default=None),
+    normalize: bool = Query(default=False),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or "").strip() or office_value
+    return services.fetch_state_profile_summary(
+        db,
+        state=state,
+        basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fy,
+        normalize=normalize,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
+    )
+
+
+@router.get("/profile/categories")
+def get_cdc_state_profile_categories(
+    state: str = Query(..., min_length=2, max_length=2),
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    assistance_type: str | None = Query(default=None),
+    fy: int | None = Query(default=None),
+    normalize: bool = Query(default=False),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or "").strip() or office_value
+    return services.fetch_state_profile_categories(
+        db,
+        state=state,
+        basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fy,
+        normalize=normalize,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
+    )
+
+
+@router.get("/profile/subcategories")
+def get_cdc_state_profile_subcategories(
+    state: str = Query(..., min_length=2, max_length=2),
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    assistance_type: str | None = Query(default=None),
+    fy: int | None = Query(default=None),
+    normalize: bool = Query(default=False),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or "").strip() or office_value
+    return services.fetch_state_profile_subcategories(
+        db,
+        state=state,
+        basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fy,
+        normalize=normalize,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
+    )
+
+
+@router.get("/profile/details")
+def get_cdc_state_profile_details(
+    state: str = Query(..., min_length=2, max_length=2),
+    basis: Literal["prime", "subaward"] = Query(default="prime"),
+    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
+        default="recipient_location"
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
+        default="all"
+    ),
+    assistance_type: str | None = Query(default=None),
+    fy: int | None = Query(default=None),
+    normalize: bool = Query(default=False),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    center: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=200),
+    sort_by: str = Query(default="amount"),
+    sort_dir: str = Query(default="desc"),
+    db: Session = Depends(get_db),
+):
+    office_value = str(office or "").strip() or None
+    awarding_office_value = str(awarding_office or "").strip() or office_value
+    funding_office_value = str(funding_office or "").strip() or office_value
+    return services.fetch_state_profile_details(
+        db,
+        state=state,
+        basis=basis,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fy,
+        normalize=normalize,
+        awarding_office=awarding_office_value,
+        funding_office=funding_office_value,
+        center=center,
+        q=q,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
 
 @router.get("/search")

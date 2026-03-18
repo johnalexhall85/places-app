@@ -88,6 +88,20 @@ def _parse_defc_entries(raw_code: str) -> list[dict[str, str | None]]:
     return entries
 
 
+def extract_defc_codes(raw_emergency_code: Any) -> tuple[str, ...]:
+    raw_code = _clean_text(raw_emergency_code)
+    if raw_code is None:
+        return ()
+    return tuple(
+        code
+        for code in (
+            _clean_text(entry.get("code"))
+            for entry in _parse_defc_entries(raw_code)
+        )
+        if code
+    )
+
+
 def _covid_subtype_for_entry(entry: dict[str, str | None]) -> str | None:
     code = _clean_text(entry.get("code"))
     if code:

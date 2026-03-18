@@ -2,24 +2,21 @@ import "leaflet/dist/leaflet.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
 import ProfileCounty from "./pages/ProfileCounty";
 import ProfileTract from "./pages/ProfileTract";
+import TaggsFundingProfile from "./pages/TaggsFundingProfile";
 import "./index.css";
-
-function resolveRoute(pathname) {
-  const countyMatch = pathname.match(/^\/profile\/county\/([^/]+)\/?$/i);
-  if (countyMatch) {
-    return { type: "profile-county", id: countyMatch[1] };
-  }
-  const tractMatch = pathname.match(/^\/profile\/tract\/([^/]+)\/?$/i);
-  if (tractMatch) {
-    return { type: "profile-tract", id: tractMatch[1] };
-  }
-  return { type: "map" };
-}
+import { resolveRoute } from "./utils/routeResolver";
 
 function Root() {
   const route = resolveRoute(window.location.pathname);
+  if (route.type === "taggs-funding-profile") {
+    return <TaggsFundingProfile />;
+  }
+  if (route.type === "cdc-state-funding-profile") {
+    return <CdcStateFundingProfile stateCode={route.id} />;
+  }
   if (route.type === "profile-county") {
     return <ProfileCounty countyFips={route.id} />;
   }

@@ -6,6 +6,7 @@ import re
 from datetime import date
 from decimal import Decimal
 from numbers import Real
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -21,6 +22,12 @@ from app.cdc_funding.appropriation import (
     APPROPRIATION_TYPE_UNKNOWN,
 )
 from app.db_fqtn import cdc_funding_table, places_table
+from app.recon.normalization import (
+    build_normalization_note,
+    fetch_state_normalization_lookup,
+    usaspending_normalization_compatibility,
+)
+from app.recon.profile_calibration import METHODOLOGY_VERSION as PROFILE_CALIBRATION_METHODOLOGY_VERSION
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
 PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
@@ -110,6 +117,8 @@ APPROPRIATION_FILTER_LABELS = {
 
 TREND_DEFAULT_START_FY = 2020
 TREND_DEFAULT_END_FY = 2026
+REPO_ROOT = Path(__file__).resolve().parents[3]
+METHODOLOGY_DISPLAY_SUMMARY_PATH = REPO_ROOT / "data" / "recon" / "methodology_display_summary.json"
 
 
 def _current_federal_fiscal_year(*, as_of: date | None = None) -> int:
@@ -119,6 +128,24 @@ def _current_federal_fiscal_year(*, as_of: date | None = None) -> int:
 
 def _latest_completed_federal_fiscal_year(*, as_of: date | None = None) -> int:
     return _current_federal_fiscal_year(as_of=as_of) - 1
+
+
+def fetch_methodology_display_summary() -> dict[str, Any]:
+    if not METHODOLOGY_DISPLAY_SUMMARY_PATH.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Required methodology artifact {METHODOLOGY_DISPLAY_SUMMARY_PATH.name} is missing. "
+                "Rebuild the CDC funding normalization diagnostics."
+            ),
+        )
+    payload = json.loads(METHODOLOGY_DISPLAY_SUMMARY_PATH.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=500,
+            detail="Methodology summary artifact is not a JSON object.",
+        )
+    return payload
 
 
 def _table_exists(db: Session, table_name: str) -> bool:
@@ -1141,6 +1168,15 @@ def list_filter_options(
             for row in states
             if str(row.get("code") or "").strip()
         ],
+        "normalization": {
+            "available": True,
+            "help_text": "Reconstructed to CDC Funding Profiles scope and benchmarked against observed profile years",
+            "supported_basis": ["prime"],
+            "supported_metrics": ["fy_obligated"],
+            "training_years": [2020, 2021, 2022, 2023],
+            "estimated_years": [2024, 2025, 2026],
+            "methodology_version": PROFILE_CALIBRATION_METHODOLOGY_VERSION,
+        },
     }
 
 
@@ -1162,6 +1198,7 @@ def fetch_map_geojson(
     bbox: str | None = None,
     zoom: int = 6,
     limit: int = 6000,
+    normalize: bool = False,
 ) -> dict[str, Any]:
     normalized_basis = _normalize_basis(basis)
     normalized_geography = _normalize_geography(geography)
@@ -1169,6 +1206,7 @@ def fetch_map_geojson(
     normalized_appropriation_type = _normalize_appropriation_type(appropriation_type)
     normalized_metric = _normalize_metric(metric, basis=normalized_basis)
     normalized_display_mode = _normalize_display_mode(display_mode, metric=normalized_metric)
+    normalization_requested = bool(normalize)
     _ensure_required_tables(
         db,
         basis=normalized_basis,
@@ -1179,6 +1217,26 @@ def fetch_map_geojson(
     effective_fiscal_year = fiscal_year
     if normalized_basis == "prime" and effective_fiscal_year is None:
         effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
+    normalization_supported, normalization_reason = usaspending_normalization_compatibility(
+        basis=normalized_basis,
+        metric=normalized_metric,
+        funding_geography_mode=normalized_mode,
+        appropriation_type=normalized_appropriation_type,
+        assistance_type=assistance_type,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+    normalization_lookup = (
+        fetch_state_normalization_lookup(
+            db,
+            source_system="usaspending",
+            fiscal_year=int(effective_fiscal_year),
+        )
+        if normalization_requested and normalization_supported and effective_fiscal_year is not None
+        else {}
+    )
+    normalization_applied = normalization_requested and normalization_supported and bool(normalization_lookup)
 
     metric_column = _metric_column(normalized_basis, normalized_metric)
     effective_mode = (
@@ -1333,7 +1391,41 @@ def fetch_map_geojson(
     for row in rows:
         metric_value = _json_number(row.get("metric_value"))
         metric_per_capita = _json_number(row.get("metric_per_capita"))
-        selected_value = metric_per_capita if normalized_display_mode == "per_capita" else metric_value
+        state_code = str(row.get("state_code") or "").strip().upper()
+        normalization_row = normalization_lookup.get(state_code)
+        normalized_metric_value = None
+        normalized_metric_per_capita = None
+        normalization_factor = None
+        normalized_amount_type = None
+        normalization_status = None
+        confidence_note = None
+        normalization_method = None
+        funding_stream_logic_version = None
+        if normalization_applied and normalization_row:
+            normalization_factor = _json_number(normalization_row.get("normalization_factor"))
+            normalized_amount_type = normalization_row.get("normalized_amount_type")
+            normalization_status = normalization_row.get("status_label")
+            confidence_note = normalization_row.get("confidence_note")
+            normalization_method = normalization_row.get("normalization_method")
+            funding_stream_logic_version = normalization_row.get("funding_stream_logic_version")
+            if normalized_geography == "state":
+                normalized_metric_value = _json_number(normalization_row.get("normalized_amount"))
+            elif metric_value is not None and normalization_factor is not None:
+                normalized_metric_value = float(metric_value) * float(normalization_factor)
+            population_value = _json_number(row.get("population"))
+            if normalized_metric_value is not None and population_value not in (None, 0):
+                normalized_metric_per_capita = float(normalized_metric_value) / float(population_value)
+            elif metric_per_capita is not None and normalization_factor is not None:
+                normalized_metric_per_capita = float(metric_per_capita) * float(normalization_factor)
+        selected_value = (
+            normalized_metric_per_capita
+            if normalization_applied and normalized_display_mode == "per_capita"
+            else normalized_metric_value
+            if normalization_applied
+            else metric_per_capita
+            if normalized_display_mode == "per_capita"
+            else metric_value
+        )
         features.append(
             {
                 "type": "Feature",
@@ -1345,8 +1437,10 @@ def fetch_map_geojson(
                     "state_abbr": row["state_code"],
                     "state_name": row["state_name"],
                     "value": selected_value,
-                    "metric_value": metric_value,
-                    "metric_per_capita": metric_per_capita,
+                    "metric_value": normalized_metric_value if normalization_applied else metric_value,
+                    "metric_per_capita": (
+                        normalized_metric_per_capita if normalization_applied else metric_per_capita
+                    ),
                     "display_mode": normalized_display_mode,
                     "metric": normalized_metric,
                     "metric_label": _metric_label_for_display_mode(
@@ -1364,17 +1458,33 @@ def fetch_map_geojson(
                     "geo_level": normalized_geography,
                     "fiscal_year": effective_fiscal_year,
                     "population": _json_number(row.get("population")),
-                    "funding_per_capita": _json_number(row.get("funding_per_capita")),
-                    "fy_obligated_amount": _json_number(row["fy_obligated_amount"]),
+                    "funding_per_capita": (
+                        normalized_metric_per_capita if normalization_applied else _json_number(row.get("funding_per_capita"))
+                    ),
+                    "raw_metric_value": metric_value,
+                    "raw_metric_per_capita": metric_per_capita,
+                    "fy_obligated_amount": (
+                        normalized_metric_value if normalization_applied else _json_number(row["fy_obligated_amount"])
+                    ),
                     "fy_outlayed_amount_estimated": _json_number(row["fy_outlayed_amount_estimated"]),
                     "transaction_count": int(row["transaction_count"] or 0),
                     "distinct_award_count": int(row["distinct_award_count"] or 0),
-                    "total_funding_amount": _json_number(row["total_funding_amount"]),
+                    "total_funding_amount": (
+                        normalized_metric_value if normalization_applied else _json_number(row["total_funding_amount"])
+                    ),
                     "total_obligated_amount": _json_number(row["total_obligated_amount"]),
                     "total_outlayed_amount": _json_number(row["total_outlayed_amount"]),
                     "award_count": int(row["award_count"] or 0),
                     "total_subaward_amount": _json_number(row["total_subaward_amount"]),
                     "subaward_count": int(row["subaward_count"] or 0),
+                    "normalization_requested": normalization_requested,
+                    "normalization_applied": normalization_applied and normalization_row is not None,
+                    "normalization_factor": normalization_factor,
+                    "normalized_amount_type": normalized_amount_type,
+                    "normalization_method": normalization_method,
+                    "funding_stream_logic_version": funding_stream_logic_version,
+                    "normalization_status_label": normalization_status,
+                    "normalization_confidence_note": confidence_note,
                 },
             }
         )
@@ -1414,6 +1524,28 @@ def fetch_map_geojson(
             "official emergency funding codes reported in the source data."
         )
 
+    if normalization_applied:
+        note = " ".join(
+            part
+            for part in [
+                note,
+                build_normalization_note(
+                    fiscal_year=int(effective_fiscal_year),
+                    normalization_applied=True,
+                    reason=(
+                        "County values preserve the raw within-state distribution and are rescaled to the normalized state total."
+                        if normalized_geography == "county"
+                        else None
+                    ),
+                ),
+            ]
+            if part
+        )
+    elif normalization_requested:
+        note = " ".join(
+            part for part in [note, normalization_reason] if part
+        )
+
     return {
         "type": "FeatureCollection",
         "basis": normalized_basis,
@@ -1436,6 +1568,33 @@ def fetch_map_geojson(
             "geojson_precision": 6,
             "simplify_tolerance_degrees": simplify_degrees,
             "display_mode": normalized_display_mode,
+            "normalization_requested": normalization_requested,
+            "normalization_applied": normalization_applied,
+            "normalization_status_label": (
+                normalization_lookup[next(iter(normalization_lookup))]["status_label"]
+                if normalization_applied and normalization_lookup
+                else None
+            ),
+            "methodology_version": (
+                normalization_lookup[next(iter(normalization_lookup))]["methodology_version"]
+                if normalization_applied and normalization_lookup
+                else None
+            ),
+            "normalized_amount_type": (
+                normalization_lookup[next(iter(normalization_lookup))]["normalized_amount_type"]
+                if normalization_applied and normalization_lookup
+                else None
+            ),
+            "normalization_method": (
+                normalization_lookup[next(iter(normalization_lookup))]["normalization_method"]
+                if normalization_applied and normalization_lookup
+                else None
+            ),
+            "funding_stream_logic_version": (
+                normalization_lookup[next(iter(normalization_lookup))]["funding_stream_logic_version"]
+                if normalization_applied and normalization_lookup
+                else None
+            ),
         },
     }
 
@@ -1456,6 +1615,7 @@ def fetch_legend_stats(
     center: str | None = None,
     state: str | None = None,
     bbox: str | None = None,
+    normalize: bool = False,
 ) -> dict[str, Any]:
     normalized_basis = _normalize_basis(basis)
     normalized_geography = _normalize_geography(geography)
@@ -1463,6 +1623,7 @@ def fetch_legend_stats(
     normalized_appropriation_type = _normalize_appropriation_type(appropriation_type)
     normalized_metric = _normalize_metric(metric, basis=normalized_basis)
     normalized_display_mode = _normalize_display_mode(display_mode, metric=normalized_metric)
+    normalization_requested = bool(normalize)
     _ensure_required_tables(
         db,
         basis=normalized_basis,
@@ -1474,6 +1635,26 @@ def fetch_legend_stats(
     effective_fiscal_year = fiscal_year
     if normalized_basis == "prime" and effective_fiscal_year is None:
         effective_fiscal_year = _latest_prime_transaction_fiscal_year(db)
+    normalization_supported, normalization_reason = usaspending_normalization_compatibility(
+        basis=normalized_basis,
+        metric=normalized_metric,
+        funding_geography_mode=normalized_mode,
+        appropriation_type=normalized_appropriation_type,
+        assistance_type=assistance_type,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+    normalization_lookup = (
+        fetch_state_normalization_lookup(
+            db,
+            source_system="usaspending",
+            fiscal_year=int(effective_fiscal_year),
+        )
+        if normalization_requested and normalization_supported and effective_fiscal_year is not None
+        else {}
+    )
+    normalization_applied = normalization_requested and normalization_supported and bool(normalization_lookup)
 
     metric_column = _metric_column(normalized_basis, normalized_metric)
     effective_mode = (
@@ -1526,6 +1707,7 @@ def fetch_legend_stats(
                 WITH summary AS ({summary_sql})
                 SELECT
                     summary.geography_id,
+                    c.state_abbr AS state_code,
                     summary.metric_value,
                     summary.metric_per_capita,
                     summary.population,
@@ -1587,12 +1769,38 @@ def fetch_legend_stats(
         ).mappings().all()
 
     metric_values = []
+    normalized_visible_dollars = 0.0
+    has_normalized_visible_dollars = False
     for row in rows:
+        state_code = str(
+            row.get("geography_id")
+            if normalized_geography == "state"
+            else row.get("state_code")
+            or ""
+        ).strip().upper()
         raw_value = (
             row.get("metric_per_capita")
             if normalized_display_mode == "per_capita"
             else row.get("metric_value")
         )
+        if normalization_applied and state_code in normalization_lookup:
+            normalized_total = _json_number(normalization_lookup[state_code].get("normalized_amount"))
+            if normalized_geography == "county":
+                factor = _json_number(normalization_lookup[state_code].get("normalization_factor"))
+                if normalized_total is not None and row.get("metric_value") is not None and factor is not None:
+                    normalized_total = float(row.get("metric_value")) * float(factor)
+            if normalized_metric in DOLLAR_METRICS and normalized_total is not None:
+                normalized_visible_dollars += float(normalized_total)
+                has_normalized_visible_dollars = True
+            if normalized_display_mode == "per_capita":
+                population = _json_number(row.get("population"))
+                raw_value = (
+                    float(normalized_total) / float(population)
+                    if normalized_total is not None and population not in (None, 0)
+                    else None
+                )
+            else:
+                raw_value = normalized_total
         if raw_value is None:
             continue
         numeric = float(raw_value)
@@ -1619,6 +1827,8 @@ def fetch_legend_stats(
         )
 
     total_visible_dollars = _sum_column(_metric_column(normalized_basis, normalized_metric))
+    if normalization_applied and normalized_metric == "fy_obligated":
+        total_visible_dollars = normalized_visible_dollars if has_normalized_visible_dollars else None
     if normalized_metric not in DOLLAR_METRICS:
         total_visible_dollars = None
 
@@ -1645,6 +1855,20 @@ def fetch_legend_stats(
             "COVID / emergency supplemental funding is identified using official emergency funding codes "
             "reported in the source data."
         )
+    if normalization_applied:
+        note_parts.append(
+            build_normalization_note(
+                fiscal_year=int(effective_fiscal_year),
+                normalization_applied=True,
+                reason=(
+                    "County values preserve the raw within-state distribution and are rescaled to the normalized state total."
+                    if normalized_geography == "county"
+                    else None
+                ),
+            )
+        )
+    elif normalization_requested and normalization_reason:
+        note_parts.append(normalization_reason)
 
     return {
         "basis": normalized_basis,
@@ -1669,6 +1893,33 @@ def fetch_legend_stats(
         "fiscal_year": effective_fiscal_year,
         "national_summary": national_summary,
         "note": " ".join(note_parts) if note_parts else None,
+        "normalization_requested": normalization_requested,
+        "normalization_applied": normalization_applied,
+        "normalization_status_label": (
+            normalization_lookup[next(iter(normalization_lookup))]["status_label"]
+            if normalization_applied and normalization_lookup
+            else None
+        ),
+        "methodology_version": (
+            normalization_lookup[next(iter(normalization_lookup))]["methodology_version"]
+            if normalization_applied and normalization_lookup
+            else None
+        ),
+        "normalized_amount_type": (
+            normalization_lookup[next(iter(normalization_lookup))]["normalized_amount_type"]
+            if normalization_applied and normalization_lookup
+            else None
+        ),
+        "normalization_method": (
+            normalization_lookup[next(iter(normalization_lookup))]["normalization_method"]
+            if normalization_applied and normalization_lookup
+            else None
+        ),
+        "funding_stream_logic_version": (
+            normalization_lookup[next(iter(normalization_lookup))]["funding_stream_logic_version"]
+            if normalization_applied and normalization_lookup
+            else None
+        ),
     }
 
 
@@ -1742,6 +1993,1059 @@ def fetch_national_summary(
         "fiscal_year": effective_fiscal_year,
         "summary": national_summary,
         "note": " ".join(notes) if notes else None,
+    }
+
+
+def _profile_state_name_from_code(db: Session, state_code: str) -> str:
+    row = db.execute(
+        text(
+            f"""
+            SELECT COALESCE(NULLIF(TRIM(state_name), ''), state_abbr) AS state_name
+            FROM {STATE_BOUNDARY_TABLE}
+            WHERE state_abbr = :state_code
+            LIMIT 1
+            """
+        ),
+        {"state_code": state_code},
+    ).mappings().one_or_none()
+    if row and row.get("state_name"):
+        return str(row["state_name"])
+    return state_code
+
+
+def _profile_population_for_state(db: Session, state_code: str) -> tuple[float | None, str | None]:
+    row = db.execute(
+        text(
+            f"""
+            SELECT population, source_label
+            FROM {POPULATION_VIEW_TABLE}
+            WHERE geography_type = 'state'
+              AND UPPER(state_abbr) = :state_code
+            LIMIT 1
+            """
+        ),
+        {"state_code": state_code},
+    ).mappings().one_or_none()
+    if not row:
+        return None, None
+    population = _json_number(row.get("population"))
+    return (
+        float(population) if population is not None else None,
+        _strip_optional(row.get("source_label")),
+    )
+
+
+def _profile_timeframe_label(
+    *,
+    requested_fiscal_year: int | None,
+    min_fiscal_year: int | None,
+    max_fiscal_year: int | None,
+) -> str:
+    if requested_fiscal_year is not None:
+        return f"Fiscal Year {requested_fiscal_year}"
+    if min_fiscal_year is None and max_fiscal_year is None:
+        return "All available years"
+    if min_fiscal_year is None:
+        return f"Through Fiscal Year {max_fiscal_year}"
+    if max_fiscal_year is None:
+        return f"Starting Fiscal Year {min_fiscal_year}"
+    if min_fiscal_year == max_fiscal_year:
+        return f"Fiscal Year {min_fiscal_year}"
+    return f"Fiscal Years {min_fiscal_year}-{max_fiscal_year}"
+
+
+def _profile_grouping_metadata() -> dict[str, str]:
+    return {
+        "category_label": "Derived category",
+        "subcategory_label": "Derived sub-category",
+        "category_method": (
+            "Derived from CDC center / sub-agency metadata when available, "
+            "with assistance type fallback when center metadata is missing."
+        ),
+        "subcategory_method": (
+            "Derived from funding or awarding office metadata when available, "
+            "with program and assistance title fallback when office metadata is missing."
+        ),
+    }
+
+
+def _profile_methodology_notes(
+    *,
+    basis: str,
+    funding_geography_mode: str,
+    appropriation_type: str,
+    fiscal_year: int | None,
+    state_name: str,
+    normalization_note: str | None = None,
+) -> list[str]:
+    notes = [
+        f"This page summarizes CDC funding obligations for {state_name} using CHIP's CDC funding pipeline.",
+        (
+            "Category and sub-category groupings are inferred from CHIP's public CDC funding metadata, "
+            "not copied from CDC profile PDFs."
+        ),
+        (
+            "Totals may differ from CDC profile PDFs or other federal dashboards because timing, inclusion rules, "
+            "recipient geography, and CHIP methodology can differ."
+        ),
+        (
+            "Award-level rows originate from CHIP's CDC funding records. When normalized mode is active, detail amounts are proportionally rescaled to the normalized state total so the report stays internally consistent."
+        ),
+    ]
+    if basis == "prime":
+        notes.append(
+            "Prime-award totals use summed federal action obligations from filtered CDC prime transaction rows."
+        )
+    else:
+        notes.append(
+            "Subaward totals use filtered CDC subaward amounts reported for recipients in the selected state."
+        )
+    if fiscal_year is not None:
+        notes.append(f"The current report is filtered to Fiscal Year {fiscal_year}.")
+    else:
+        notes.append("No single fiscal year filter is applied, so totals span all currently available fiscal years in CHIP.")
+    if appropriation_type == APPROPRIATION_TYPE_COVID_EMERGENCY:
+        notes.append(
+            "COVID / emergency supplemental funding is identified using official emergency funding codes present in the source data."
+        )
+    if funding_geography_mode == "statewide_allocation" and basis == "prime":
+        notes.append(
+            "The map was launched from estimated statewide allocation mode. That allocation changes county breakout logic, but state profile totals remain state-level obligations."
+        )
+    notes.append(
+        "CHIP's current CDC methodology can include or exclude special transfer, procurement, or other funding streams according to the frozen funding-scope rules used in the pipeline."
+    )
+    if normalization_note:
+        notes.append(normalization_note)
+    return notes
+
+
+def _normalize_profile_detail_sort(sort_by: str | None, sort_dir: str | None) -> tuple[str, str]:
+    allowed_columns = {
+        "category": "award_rows.category",
+        "subcategory": "award_rows.subcategory",
+        "project_title": "award_rows.project_title",
+        "grantee_name": "award_rows.grantee_name",
+        "city": "award_rows.city",
+        "county": "award_rows.county",
+        "amount": "award_rows.amount",
+        "latest_action_date": "award_rows.latest_action_date",
+        "fain": "award_rows.fain",
+    }
+    normalized_sort_by = str(sort_by or "amount").strip().lower()
+    if normalized_sort_by not in allowed_columns:
+        allowed = ", ".join(sorted(allowed_columns))
+        raise HTTPException(status_code=400, detail=f"sort_by must be one of {allowed}")
+    normalized_sort_dir = str(sort_dir or "desc").strip().lower()
+    if normalized_sort_dir not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="sort_dir must be asc or desc")
+    return allowed_columns[normalized_sort_by], normalized_sort_dir
+
+
+def _build_state_profile_award_rows_sql(
+    *,
+    basis: str,
+    state_code: str,
+    funding_geography_mode: str,
+    appropriation_type: str,
+    assistance_type: str | None,
+    fiscal_year: int | None,
+    awarding_office: str | None,
+    funding_office: str | None,
+    center: str | None,
+) -> tuple[str, dict[str, Any], str]:
+    normalized_basis = _normalize_basis(basis)
+    normalized_state_code = _normalize_state_code(state_code)
+    if normalized_state_code is None:
+        raise HTTPException(status_code=400, detail="state must be a 2-letter state code")
+    normalized_mode = _normalize_funding_geography_mode(funding_geography_mode)
+    normalized_appropriation_type = _normalize_appropriation_type(appropriation_type)
+    normalized_fiscal_year = _normalize_optional_fiscal_year(fiscal_year, field_name="fiscal_year")
+    normalized_assistance_type = _strip_optional(assistance_type)
+    normalized_awarding_office = _strip_optional(awarding_office)
+    normalized_funding_office = _strip_optional(funding_office)
+    normalized_center = _strip_optional(center)
+
+    effective_mode = normalized_mode if normalized_basis == "prime" else "recipient_location"
+    params: dict[str, Any] = {"state_code": normalized_state_code}
+
+    if normalized_basis == "prime":
+        where_clauses = [
+            "tx.assistance_award_unique_key IS NOT NULL",
+            "COALESCE(NULLIF(BTRIM(tx.recipient_state_code), ''), NULLIF(BTRIM(p.recipient_state_code), '')) = :state_code",
+        ]
+        if normalized_assistance_type:
+            params["assistance_type"] = normalized_assistance_type
+            where_clauses.append(
+                "COALESCE(NULLIF(BTRIM(tx.assistance_type_description), ''), NULLIF(BTRIM(p.assistance_type_description), '')) = :assistance_type"
+            )
+        if normalized_fiscal_year is not None:
+            params["fiscal_year"] = normalized_fiscal_year
+            where_clauses.append("tx.action_date_fiscal_year = :fiscal_year")
+        if normalized_appropriation_type != APPROPRIATION_FILTER_ALL:
+            params["appropriation_type"] = normalized_appropriation_type
+            where_clauses.append("tx.appropriation_type = :appropriation_type")
+        if normalized_awarding_office:
+            params["awarding_office"] = normalized_awarding_office
+            where_clauses.append(
+                "COALESCE(NULLIF(BTRIM(tx.awarding_office_name), ''), NULLIF(BTRIM(p.awarding_office_name), '')) = :awarding_office"
+            )
+        if normalized_funding_office:
+            params["funding_office"] = normalized_funding_office
+            where_clauses.append(
+                "COALESCE(NULLIF(BTRIM(tx.funding_office_name), ''), NULLIF(BTRIM(p.funding_office_name), '')) = :funding_office"
+            )
+        if normalized_center:
+            params["center"] = normalized_center
+            where_clauses.append(
+                "("
+                "COALESCE(NULLIF(BTRIM(tx.awarding_sub_agency_name), ''), NULLIF(BTRIM(p.awarding_sub_agency_name), '')) = :center "
+                "OR COALESCE(NULLIF(BTRIM(tx.funding_sub_agency_name), ''), NULLIF(BTRIM(p.funding_sub_agency_name), '')) = :center"
+                ")"
+            )
+
+        cte_sql = f"""
+            WITH award_base AS (
+                SELECT
+                    p.unique_key AS record_id,
+                    'prime_award'::text AS record_type,
+                    p.fain,
+                    COALESCE(NULLIF(BTRIM(p.recipient_name), ''), 'Not available') AS grantee_name,
+                    MAX(NULLIF(BTRIM(tx.recipient_city_name), '')) AS city,
+                    COALESCE(
+                        NULLIF(BTRIM(p.recipient_county_name), ''),
+                        MAX(NULLIF(BTRIM(tx.recipient_county_name), ''))
+                    ) AS county,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(tx.recipient_state_name), ''),
+                            NULLIF(BTRIM(p.recipient_state_name), '')
+                        )
+                    ) AS state_name,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(tx.recipient_state_code), ''),
+                            NULLIF(BTRIM(p.recipient_state_code), '')
+                        )
+                    ) AS state_code,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(p.funding_sub_agency_name), ''),
+                            NULLIF(BTRIM(p.awarding_sub_agency_name), ''),
+                            NULLIF(BTRIM(tx.funding_sub_agency_name), ''),
+                            NULLIF(BTRIM(tx.awarding_sub_agency_name), '')
+                        )
+                    ) AS center_name,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(p.funding_office_name), ''),
+                            NULLIF(BTRIM(p.awarding_office_name), ''),
+                            NULLIF(BTRIM(tx.funding_office_name), ''),
+                            NULLIF(BTRIM(tx.awarding_office_name), '')
+                        )
+                    ) AS office_name,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(p.cfda_program_title), ''),
+                            NULLIF(BTRIM(tx.cfda_title), '')
+                        )
+                    ) AS program_title,
+                    MAX(
+                        COALESCE(
+                            NULLIF(BTRIM(tx.transaction_description), ''),
+                            NULLIF(BTRIM(tx.prime_award_base_transaction_description), ''),
+                            NULLIF(BTRIM(p.prime_award_base_transaction_description), ''),
+                            NULLIF(BTRIM(p.cfda_program_title), ''),
+                            NULLIF(BTRIM(p.fain), '')
+                        )
+                    ) AS project_title,
+                    COALESCE(NULLIF(BTRIM(p.assistance_type_description), ''), MAX(NULLIF(BTRIM(tx.assistance_type_description), ''))) AS assistance_type_description,
+                    COALESCE(SUM(COALESCE(tx.federal_action_obligation, 0)), 0)::numeric AS amount,
+                    MIN(tx.action_date_fiscal_year)::integer AS min_fiscal_year,
+                    MAX(tx.action_date_fiscal_year)::integer AS max_fiscal_year,
+                    MAX(tx.action_date) AS latest_action_date,
+                    MAX(p.usaspending_permalink) AS usaspending_permalink,
+                    MAX(p.total_funding_amount) AS lifetime_total_funding_amount
+                FROM {PRIME_TX_TABLE} AS tx
+                LEFT JOIN {PRIME_TABLE} AS p
+                  ON p.unique_key = tx.assistance_award_unique_key
+                WHERE {' AND '.join(where_clauses)}
+                GROUP BY
+                    p.unique_key,
+                    p.fain,
+                    p.recipient_name,
+                    p.recipient_county_name,
+                    p.assistance_type_description
+            ),
+            award_rows AS (
+                SELECT
+                    award_base.record_id,
+                    award_base.record_type,
+                    award_base.fain,
+                    award_base.grantee_name,
+                    award_base.city,
+                    award_base.county,
+                    COALESCE(
+                        NULLIF(BTRIM(award_base.center_name), ''),
+                        NULLIF(BTRIM(award_base.assistance_type_description), ''),
+                        'Unclassified'
+                    ) AS category,
+                    COALESCE(
+                        NULLIF(BTRIM(award_base.office_name), ''),
+                        NULLIF(BTRIM(award_base.program_title), ''),
+                        NULLIF(BTRIM(award_base.assistance_type_description), ''),
+                        'Unspecified'
+                    ) AS subcategory,
+                    COALESCE(
+                        NULLIF(BTRIM(award_base.project_title), ''),
+                        NULLIF(BTRIM(award_base.program_title), ''),
+                        NULLIF(BTRIM(award_base.fain), ''),
+                        award_base.record_id
+                    ) AS project_title,
+                    award_base.amount,
+                    award_base.min_fiscal_year,
+                    award_base.max_fiscal_year,
+                    award_base.latest_action_date,
+                    award_base.state_name,
+                    award_base.state_code,
+                    award_base.usaspending_permalink,
+                    award_base.lifetime_total_funding_amount
+                FROM award_base
+            )
+        """
+        return cte_sql, params, effective_mode
+
+    where_clauses = [
+        "s.subawardee_state_code = :state_code",
+    ]
+    if normalized_fiscal_year is not None:
+        params["fiscal_year"] = normalized_fiscal_year
+        where_clauses.append("s.subaward_action_date_fiscal_year = :fiscal_year")
+    if normalized_appropriation_type != APPROPRIATION_FILTER_ALL:
+        params["appropriation_type"] = normalized_appropriation_type
+        where_clauses.append("s.appropriation_type = :appropriation_type")
+    if normalized_awarding_office:
+        params["awarding_office"] = normalized_awarding_office
+        where_clauses.append("s.prime_award_awarding_office_name = :awarding_office")
+    if normalized_funding_office:
+        params["funding_office"] = normalized_funding_office
+        where_clauses.append("s.prime_award_funding_office_name = :funding_office")
+    if normalized_center:
+        params["center"] = normalized_center
+        where_clauses.append(
+            "("
+            "s.prime_award_awarding_sub_agency_name = :center "
+            "OR s.prime_award_funding_sub_agency_name = :center"
+            ")"
+        )
+
+    cte_sql = f"""
+        WITH award_rows AS (
+            SELECT
+                s.id::text AS record_id,
+                'subaward'::text AS record_type,
+                s.prime_award_fain AS fain,
+                COALESCE(NULLIF(BTRIM(s.subawardee_name), ''), 'Not available') AS grantee_name,
+                NULLIF(BTRIM(s.subawardee_city_name), '') AS city,
+                COALESCE(NULLIF(BTRIM(county.county_name), ''), NULL) AS county,
+                COALESCE(
+                    NULLIF(BTRIM(COALESCE(s.prime_award_funding_sub_agency_name, s.prime_award_awarding_sub_agency_name)), ''),
+                    'Unclassified'
+                ) AS category,
+                COALESCE(
+                    NULLIF(BTRIM(COALESCE(s.prime_award_funding_office_name, s.prime_award_awarding_office_name)), ''),
+                    NULLIF(BTRIM(s.prime_award_base_transaction_description), ''),
+                    NULLIF(BTRIM(s.prime_award_fain), ''),
+                    'Unspecified'
+                ) AS subcategory,
+                COALESCE(
+                    NULLIF(BTRIM(s.subaward_description), ''),
+                    NULLIF(BTRIM(s.prime_award_base_transaction_description), ''),
+                    NULLIF(BTRIM(s.prime_award_fain), ''),
+                    s.subaward_unique_key
+                ) AS project_title,
+                COALESCE(s.subaward_amount, 0)::numeric AS amount,
+                s.subaward_action_date_fiscal_year::integer AS min_fiscal_year,
+                s.subaward_action_date_fiscal_year::integer AS max_fiscal_year,
+                s.subaward_action_date AS latest_action_date,
+                COALESCE(NULLIF(BTRIM(s.subawardee_state_name), ''), NULLIF(BTRIM(s.subaward_primary_place_of_performance_state_name), '')) AS state_name,
+                s.subawardee_state_code AS state_code,
+                s.usaspending_permalink,
+                NULL::numeric AS lifetime_total_funding_amount
+            FROM {SUBAWARD_TABLE} AS s
+            LEFT JOIN {COUNTY_DIM_TABLE} AS county
+              ON county.location_id = s.subawardee_county_fips
+            WHERE {' AND '.join(where_clauses)}
+        )
+    """
+    return cte_sql, params, effective_mode
+
+
+def _build_state_profile_normalization_context(
+    db: Session,
+    *,
+    normalize: bool,
+    state_code: str,
+    basis: str,
+    funding_geography_mode: str,
+    appropriation_type: str,
+    assistance_type: str | None,
+    fiscal_year: int | None,
+    awarding_office: str | None,
+    funding_office: str | None,
+    center: str | None,
+    raw_total_funding: Any,
+) -> dict[str, Any]:
+    normalized_state_code = _normalize_state_code(state_code)
+    if normalized_state_code is None:
+        raise HTTPException(status_code=400, detail="state must be a 2-letter state code")
+    normalized_basis = _normalize_basis(basis)
+    normalized_mode = _normalize_funding_geography_mode(funding_geography_mode)
+    normalized_appropriation_type = _normalize_appropriation_type(appropriation_type)
+    normalized_assistance_type = _strip_optional(assistance_type)
+    normalized_awarding_office = _strip_optional(awarding_office)
+    normalized_funding_office = _strip_optional(funding_office)
+    normalized_center = _strip_optional(center)
+    normalized_fiscal_year = _normalize_optional_fiscal_year(fiscal_year, field_name="fiscal_year")
+    raw_total_amount = _json_number(raw_total_funding)
+    normalization_requested = bool(normalize)
+    normalization_supported = False
+    normalization_reason = None
+    normalization_row = None
+    normalized_total_funding = None
+    normalization_factor = None
+    normalized_amount_type = None
+    normalization_status_label = None
+    normalization_method = None
+    funding_stream_logic_version = None
+    methodology_version = None
+    confidence_note = None
+
+    if normalization_requested:
+        if normalized_fiscal_year is None:
+            normalization_reason = (
+                "Normalized data requires an explicit fiscal year in the shared state funding profile URL."
+            )
+        else:
+            normalization_supported, normalization_reason = usaspending_normalization_compatibility(
+                basis=normalized_basis,
+                metric="fy_obligated",
+                funding_geography_mode=normalized_mode,
+                appropriation_type=normalized_appropriation_type,
+                assistance_type=normalized_assistance_type,
+                awarding_office=normalized_awarding_office,
+                funding_office=normalized_funding_office,
+                center=normalized_center,
+            )
+
+    if normalization_requested and normalization_supported and normalized_fiscal_year is not None:
+        normalization_lookup = fetch_state_normalization_lookup(
+            db,
+            source_system="usaspending",
+            fiscal_year=int(normalized_fiscal_year),
+        )
+        normalization_row = normalization_lookup.get(normalized_state_code)
+        if normalization_row is None:
+            normalization_reason = (
+                f"No normalized CDC funding benchmark is available for {normalized_state_code} "
+                f"in Fiscal Year {normalized_fiscal_year}."
+            )
+        else:
+            normalized_total_funding = _json_number(normalization_row.get("normalized_amount"))
+            normalization_factor = _json_number(normalization_row.get("normalization_factor"))
+            normalized_amount_type = normalization_row.get("normalized_amount_type")
+            normalization_status_label = normalization_row.get("status_label")
+            normalization_method = normalization_row.get("normalization_method")
+            funding_stream_logic_version = normalization_row.get("funding_stream_logic_version")
+            methodology_version = normalization_row.get("methodology_version")
+            confidence_note = normalization_row.get("confidence_note")
+            if normalized_total_funding is None and raw_total_amount is not None and normalization_factor is not None:
+                normalized_total_funding = float(raw_total_amount) * float(normalization_factor)
+
+            if normalized_total_funding is None:
+                normalization_reason = (
+                    f"Normalization metadata for {normalized_state_code} in Fiscal Year {normalized_fiscal_year} "
+                    "did not include a usable state total."
+                )
+            elif raw_total_amount is None:
+                normalization_reason = "The raw state funding total was unavailable, so normalized scaling could not be applied."
+            elif float(raw_total_amount) == 0.0 and float(normalized_total_funding) != 0.0:
+                normalization_reason = (
+                    "The filtered raw state funding total is zero, so the profile cannot be rescaled to a non-zero normalized total."
+                )
+            elif float(raw_total_amount) == 0.0:
+                normalization_factor = 0.0
+            else:
+                normalization_factor = float(normalized_total_funding) / float(raw_total_amount)
+
+    normalization_applied = bool(
+        normalization_requested
+        and normalization_supported
+        and normalized_total_funding is not None
+        and normalization_factor is not None
+        and normalization_reason is None
+    )
+    normalization_note = None
+    if normalization_applied and normalized_fiscal_year is not None:
+        normalization_note = build_normalization_note(
+            fiscal_year=int(normalized_fiscal_year),
+            normalization_applied=True,
+            reason=(
+                "State profile summary, grouped tables, and detail rows preserve the filtered raw award mix "
+                "while rescaling amounts to CHIP's normalized state benchmark."
+            ),
+        )
+    elif normalization_requested and normalization_reason:
+        normalization_note = normalization_reason
+
+    return {
+        "normalization_requested": normalization_requested,
+        "normalization_supported": normalization_supported,
+        "normalization_applied": normalization_applied,
+        "data_mode_label": "Normalized data" if normalization_applied else "Raw obligations",
+        "normalization_note": normalization_note,
+        "normalization_factor": normalization_factor,
+        "normalized_total_funding": normalized_total_funding,
+        "normalized_amount_type": normalized_amount_type,
+        "normalization_status_label": normalization_status_label,
+        "normalization_method": normalization_method,
+        "funding_stream_logic_version": funding_stream_logic_version,
+        "methodology_version": methodology_version,
+        "normalization_confidence_note": confidence_note,
+    }
+
+
+def _apply_state_profile_normalized_amount(value: Any, normalization: dict[str, Any]) -> Any:
+    amount = _json_number(value)
+    if not normalization.get("normalization_applied") or amount is None:
+        return amount
+    factor = _json_number(normalization.get("normalization_factor"))
+    if factor is None:
+        return amount
+    return _json_number(float(amount) * float(factor))
+
+
+def _state_profile_normalization_payload(normalization: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "normalization_requested": bool(normalization.get("normalization_requested")),
+        "normalization_applied": bool(normalization.get("normalization_applied")),
+        "data_mode_label": normalization.get("data_mode_label") or "Raw obligations",
+        "normalization_note": normalization.get("normalization_note"),
+        "normalization_factor": _json_number(normalization.get("normalization_factor")),
+        "normalized_total_funding": _json_number(normalization.get("normalized_total_funding")),
+        "normalized_amount_type": normalization.get("normalized_amount_type"),
+        "normalization_status_label": normalization.get("normalization_status_label"),
+        "normalization_method": normalization.get("normalization_method"),
+        "funding_stream_logic_version": normalization.get("funding_stream_logic_version"),
+        "methodology_version": normalization.get("methodology_version"),
+        "normalization_confidence_note": normalization.get("normalization_confidence_note"),
+    }
+
+
+def fetch_state_profile_summary(
+    db: Session,
+    *,
+    state: str,
+    basis: str = "prime",
+    funding_geography_mode: str = "recipient_location",
+    appropriation_type: str = APPROPRIATION_FILTER_ALL,
+    assistance_type: str | None = None,
+    fiscal_year: int | None = None,
+    normalize: bool = False,
+    awarding_office: str | None = None,
+    funding_office: str | None = None,
+    center: str | None = None,
+) -> dict[str, Any]:
+    _ensure_award_tables(db)
+    cte_sql, params, effective_mode = _build_state_profile_award_rows_sql(
+        basis=basis,
+        state_code=state,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+    state_code = params["state_code"]
+    row = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            SELECT
+                COALESCE(SUM(award_rows.amount), 0)::numeric AS total_funding,
+                COUNT(*)::integer AS detail_row_count,
+                COUNT(DISTINCT COALESCE(NULLIF(BTRIM(award_rows.fain), ''), award_rows.record_id))::integer AS award_count,
+                COUNT(DISTINCT award_rows.category)::integer AS category_count,
+                MIN(award_rows.min_fiscal_year)::integer AS min_fiscal_year,
+                MAX(award_rows.max_fiscal_year)::integer AS max_fiscal_year,
+                MAX(NULLIF(BTRIM(award_rows.state_name), '')) AS state_name
+            FROM award_rows
+            """
+        ),
+        params,
+    ).mappings().one()
+    top_category_row = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            SELECT
+                award_rows.category,
+                SUM(award_rows.amount)::numeric AS amount
+            FROM award_rows
+            GROUP BY award_rows.category
+            ORDER BY amount DESC NULLS LAST, award_rows.category ASC
+            LIMIT 1
+            """
+        ),
+        params,
+    ).mappings().one_or_none()
+
+    state_name = str(row.get("state_name") or "").strip() or _profile_state_name_from_code(db, state_code)
+    population, population_source = _profile_population_for_state(db, state_code)
+    raw_total_funding = _json_number(row.get("total_funding")) or 0.0
+    normalization = _build_state_profile_normalization_context(
+        db,
+        normalize=normalize,
+        state_code=state_code,
+        basis=basis,
+        funding_geography_mode=effective_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+        raw_total_funding=raw_total_funding,
+    )
+    total_funding = (
+        normalization["normalized_total_funding"]
+        if normalization.get("normalization_applied")
+        else raw_total_funding
+    )
+    funding_per_capita = (
+        float(total_funding) / float(population)
+        if population not in (None, 0)
+        else None
+    )
+    requested_fiscal_year = _normalize_optional_fiscal_year(fiscal_year, field_name="fiscal_year")
+    min_fiscal_year = row.get("min_fiscal_year")
+    max_fiscal_year = row.get("max_fiscal_year")
+    timeframe_label = _profile_timeframe_label(
+        requested_fiscal_year=requested_fiscal_year,
+        min_fiscal_year=int(min_fiscal_year) if min_fiscal_year is not None else None,
+        max_fiscal_year=int(max_fiscal_year) if max_fiscal_year is not None else None,
+    )
+
+    return {
+        "basis": _normalize_basis(basis),
+        "state_code": state_code,
+        "state_name": state_name,
+        "fiscal_year": requested_fiscal_year,
+        "timeframe_label": timeframe_label,
+        "funding_geography_mode": effective_mode,
+        "appropriation_type": _normalize_appropriation_type(appropriation_type),
+        "appropriation_type_label": APPROPRIATION_FILTER_LABELS.get(
+            _normalize_appropriation_type(appropriation_type),
+            appropriation_type,
+        ),
+        "assistance_type": _strip_optional(assistance_type),
+        "awarding_office": _strip_optional(awarding_office),
+        "funding_office": _strip_optional(funding_office),
+        "center": _strip_optional(center),
+        "total_funding": float(total_funding),
+        "award_count": int(row.get("award_count") or 0),
+        "detail_row_count": int(row.get("detail_row_count") or 0),
+        "category_count": int(row.get("category_count") or 0),
+        "population": population,
+        "population_source": population_source,
+        "funding_per_capita": _json_number(funding_per_capita),
+        "top_category": (
+            {
+                "name": top_category_row.get("category"),
+                "amount": _apply_state_profile_normalized_amount(top_category_row.get("amount"), normalization),
+            }
+            if top_category_row
+            else None
+        ),
+        "grouping": _profile_grouping_metadata(),
+        "methodology_notes": _profile_methodology_notes(
+            basis=_normalize_basis(basis),
+            funding_geography_mode=effective_mode,
+            appropriation_type=_normalize_appropriation_type(appropriation_type),
+            fiscal_year=requested_fiscal_year,
+            state_name=state_name,
+            normalization_note=normalization.get("normalization_note"),
+        ),
+        **_state_profile_normalization_payload(normalization),
+    }
+
+
+def fetch_state_profile_categories(
+    db: Session,
+    *,
+    state: str,
+    basis: str = "prime",
+    funding_geography_mode: str = "recipient_location",
+    appropriation_type: str = APPROPRIATION_FILTER_ALL,
+    assistance_type: str | None = None,
+    fiscal_year: int | None = None,
+    normalize: bool = False,
+    awarding_office: str | None = None,
+    funding_office: str | None = None,
+    center: str | None = None,
+) -> dict[str, Any]:
+    _ensure_award_tables(db)
+    cte_sql, params, effective_mode = _build_state_profile_award_rows_sql(
+        basis=basis,
+        state_code=state,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+    rows = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            , category_totals AS (
+                SELECT
+                    award_rows.category,
+                    SUM(award_rows.amount)::numeric AS amount,
+                    COUNT(DISTINCT COALESCE(NULLIF(BTRIM(award_rows.fain), ''), award_rows.record_id))::integer AS award_count,
+                    COUNT(DISTINCT award_rows.subcategory)::integer AS subcategory_count
+                FROM award_rows
+                GROUP BY award_rows.category
+            ),
+            totals AS (
+                SELECT COALESCE(SUM(category_totals.amount), 0)::numeric AS total_funding
+                FROM category_totals
+            )
+            SELECT
+                category_totals.category,
+                category_totals.amount,
+                category_totals.award_count,
+                category_totals.subcategory_count,
+                CASE
+                    WHEN totals.total_funding = 0 THEN 0
+                    ELSE (category_totals.amount / totals.total_funding) * 100
+                END AS share_pct
+            FROM category_totals
+            CROSS JOIN totals
+            ORDER BY category_totals.amount DESC NULLS LAST, category_totals.category ASC
+            """
+        ),
+        params,
+    ).mappings().all()
+    raw_total_funding = sum(float(_json_number(row.get("amount")) or 0.0) for row in rows)
+    normalization = _build_state_profile_normalization_context(
+        db,
+        normalize=normalize,
+        state_code=params["state_code"],
+        basis=basis,
+        funding_geography_mode=effective_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+        raw_total_funding=raw_total_funding,
+    )
+    return {
+        "basis": _normalize_basis(basis),
+        "state_code": params["state_code"],
+        "funding_geography_mode": effective_mode,
+        **_state_profile_normalization_payload(normalization),
+        "rows": [
+            {
+                "category": row.get("category"),
+                "amount": _apply_state_profile_normalized_amount(row.get("amount"), normalization),
+                "share_pct": _json_number(row.get("share_pct")),
+                "award_count": int(row.get("award_count") or 0),
+                "subcategory_count": int(row.get("subcategory_count") or 0),
+            }
+            for row in rows
+        ],
+        "grouping": _profile_grouping_metadata(),
+    }
+
+
+def fetch_state_profile_subcategories(
+    db: Session,
+    *,
+    state: str,
+    basis: str = "prime",
+    funding_geography_mode: str = "recipient_location",
+    appropriation_type: str = APPROPRIATION_FILTER_ALL,
+    assistance_type: str | None = None,
+    fiscal_year: int | None = None,
+    normalize: bool = False,
+    awarding_office: str | None = None,
+    funding_office: str | None = None,
+    center: str | None = None,
+) -> dict[str, Any]:
+    _ensure_award_tables(db)
+    cte_sql, params, effective_mode = _build_state_profile_award_rows_sql(
+        basis=basis,
+        state_code=state,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+    rows = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            , subcategory_totals AS (
+                SELECT
+                    award_rows.category,
+                    award_rows.subcategory,
+                    SUM(award_rows.amount)::numeric AS amount,
+                    COUNT(DISTINCT COALESCE(NULLIF(BTRIM(award_rows.fain), ''), award_rows.record_id))::integer AS award_count
+                FROM award_rows
+                GROUP BY award_rows.category, award_rows.subcategory
+            ),
+            category_totals AS (
+                SELECT
+                    subcategory_totals.category,
+                    SUM(subcategory_totals.amount)::numeric AS category_amount
+                FROM subcategory_totals
+                GROUP BY subcategory_totals.category
+            ),
+            grand_total AS (
+                SELECT COALESCE(SUM(subcategory_totals.amount), 0)::numeric AS total_funding
+                FROM subcategory_totals
+            )
+            SELECT
+                subcategory_totals.category,
+                subcategory_totals.subcategory,
+                subcategory_totals.amount,
+                subcategory_totals.award_count,
+                CASE
+                    WHEN grand_total.total_funding = 0 THEN 0
+                    ELSE (subcategory_totals.amount / grand_total.total_funding) * 100
+                END AS share_total_pct,
+                CASE
+                    WHEN category_totals.category_amount = 0 THEN 0
+                    ELSE (subcategory_totals.amount / category_totals.category_amount) * 100
+                END AS share_category_pct
+            FROM subcategory_totals
+            JOIN category_totals
+              ON category_totals.category = subcategory_totals.category
+            CROSS JOIN grand_total
+            ORDER BY subcategory_totals.category ASC, subcategory_totals.amount DESC NULLS LAST, subcategory_totals.subcategory ASC
+            """
+        ),
+        params,
+    ).mappings().all()
+    raw_total_funding = sum(float(_json_number(row.get("amount")) or 0.0) for row in rows)
+    normalization = _build_state_profile_normalization_context(
+        db,
+        normalize=normalize,
+        state_code=params["state_code"],
+        basis=basis,
+        funding_geography_mode=effective_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+        raw_total_funding=raw_total_funding,
+    )
+    return {
+        "basis": _normalize_basis(basis),
+        "state_code": params["state_code"],
+        "funding_geography_mode": effective_mode,
+        **_state_profile_normalization_payload(normalization),
+        "rows": [
+            {
+                "category": row.get("category"),
+                "subcategory": row.get("subcategory"),
+                "amount": _apply_state_profile_normalized_amount(row.get("amount"), normalization),
+                "award_count": int(row.get("award_count") or 0),
+                "share_total_pct": _json_number(row.get("share_total_pct")),
+                "share_category_pct": _json_number(row.get("share_category_pct")),
+            }
+            for row in rows
+        ],
+        "grouping": _profile_grouping_metadata(),
+    }
+
+
+def fetch_state_profile_details(
+    db: Session,
+    *,
+    state: str,
+    basis: str = "prime",
+    funding_geography_mode: str = "recipient_location",
+    appropriation_type: str = APPROPRIATION_FILTER_ALL,
+    assistance_type: str | None = None,
+    fiscal_year: int | None = None,
+    normalize: bool = False,
+    awarding_office: str | None = None,
+    funding_office: str | None = None,
+    center: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+    sort_by: str = "amount",
+    sort_dir: str = "desc",
+) -> dict[str, Any]:
+    _ensure_award_tables(db)
+    normalized_page = int(page)
+    normalized_page_size = int(page_size)
+    if normalized_page < 1:
+        raise HTTPException(status_code=400, detail="page must be >= 1")
+    if normalized_page_size < 1 or normalized_page_size > 200:
+        raise HTTPException(status_code=400, detail="page_size must be between 1 and 200")
+
+    sort_column_sql, normalized_sort_dir = _normalize_profile_detail_sort(sort_by, sort_dir)
+    cte_sql, params, effective_mode = _build_state_profile_award_rows_sql(
+        basis=basis,
+        state_code=state,
+        funding_geography_mode=funding_geography_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+    )
+
+    query_token = str(q or "").strip()
+    detail_filters: list[str] = []
+    if query_token:
+        params["q"] = f"%{query_token.lower()}%"
+        detail_filters.append(
+            "("
+            "LOWER(COALESCE(award_rows.category, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.subcategory, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.project_title, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.grantee_name, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.city, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.county, '')) LIKE :q "
+            "OR LOWER(COALESCE(award_rows.fain, '')) LIKE :q"
+            ")"
+        )
+    where_sql = f"WHERE {' AND '.join(detail_filters)}" if detail_filters else ""
+    params["limit"] = normalized_page_size
+    params["offset"] = (normalized_page - 1) * normalized_page_size
+
+    rows = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            SELECT
+                award_rows.record_id,
+                award_rows.record_type,
+                award_rows.fain,
+                award_rows.category,
+                award_rows.subcategory,
+                award_rows.project_title,
+                award_rows.grantee_name,
+                award_rows.city,
+                award_rows.county,
+                award_rows.amount,
+                award_rows.min_fiscal_year,
+                award_rows.max_fiscal_year,
+                award_rows.latest_action_date,
+                award_rows.state_name,
+                award_rows.state_code,
+                award_rows.usaspending_permalink,
+                award_rows.lifetime_total_funding_amount
+            FROM award_rows
+            {where_sql}
+            ORDER BY {sort_column_sql} {normalized_sort_dir.upper()} NULLS LAST, award_rows.record_id ASC
+            LIMIT :limit
+            OFFSET :offset
+            """
+        ),
+        params,
+    ).mappings().all()
+
+    total_row = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            SELECT COUNT(*)::integer AS total_rows
+            FROM award_rows
+            {where_sql}
+            """
+        ),
+        params,
+    ).mappings().one()
+    profile_total_row = db.execute(
+        text(
+            f"""
+            {cte_sql}
+            SELECT COALESCE(SUM(award_rows.amount), 0)::numeric AS total_funding
+            FROM award_rows
+            """
+        ),
+        {key: value for key, value in params.items() if key not in {"limit", "offset", "q"}},
+    ).mappings().one()
+    normalization = _build_state_profile_normalization_context(
+        db,
+        normalize=normalize,
+        state_code=params["state_code"],
+        basis=basis,
+        funding_geography_mode=effective_mode,
+        appropriation_type=appropriation_type,
+        assistance_type=assistance_type,
+        fiscal_year=fiscal_year,
+        awarding_office=awarding_office,
+        funding_office=funding_office,
+        center=center,
+        raw_total_funding=profile_total_row.get("total_funding"),
+    )
+
+    serialized_rows = []
+    for index, row in enumerate(rows, start=1):
+        serialized_rows.append(
+            {
+                "line_number": params["offset"] + index,
+                "record_id": row.get("record_id"),
+                "record_type": row.get("record_type"),
+                "fain": row.get("fain"),
+                "category": row.get("category"),
+                "subcategory": row.get("subcategory"),
+                "project_title": row.get("project_title"),
+                "grantee_name": row.get("grantee_name"),
+                "city": row.get("city"),
+                "county": row.get("county"),
+                "amount": _apply_state_profile_normalized_amount(row.get("amount"), normalization),
+                "min_fiscal_year": row.get("min_fiscal_year"),
+                "max_fiscal_year": row.get("max_fiscal_year"),
+                "latest_action_date": _serialize_value(row.get("latest_action_date")),
+                "state_name": row.get("state_name"),
+                "state_code": row.get("state_code"),
+                "usaspending_permalink": row.get("usaspending_permalink"),
+                "lifetime_total_funding_amount": _json_number(row.get("lifetime_total_funding_amount")),
+            }
+        )
+
+    return {
+        "basis": _normalize_basis(basis),
+        "state_code": params["state_code"],
+        "funding_geography_mode": effective_mode,
+        "q": query_token or None,
+        "page": normalized_page,
+        "page_size": normalized_page_size,
+        "sort_by": str(sort_by or "amount").strip().lower(),
+        "sort_dir": normalized_sort_dir,
+        "total_rows": int(total_row.get("total_rows") or 0),
+        **_state_profile_normalization_payload(normalization),
+        "rows": serialized_rows,
     }
 
 
