@@ -6,7 +6,7 @@ import {
 import { resolveSelectedAreaProfileTarget } from "./selectedAreaProfileTarget";
 
 describe("cdcFundingProfileTarget", () => {
-  it("enables the CDC state profile from a selected county context", () => {
+  it("builds a state funding profile link from a selected county context", () => {
     const target = resolveCdcFundingProfileTarget({
       selectedFeatureProps: {
         geo_level: "county",
@@ -14,44 +14,46 @@ describe("cdcFundingProfileTarget", () => {
         state_abbr: "AL",
         location_id: "01001",
       },
-      basis: "prime",
-      fundingGeographyMode: "recipient_location",
-      appropriationType: "regular",
-      normalized: true,
       fiscalYear: 2025,
-      fundingOffice: "Office B",
+      metric: "funding_per_capita",
+      fundingType: "emergency_response",
+      cdcCenter: "public_health_preparedness_and_response",
+      mechanism: "cooperative_agreements",
+      recipientType: "state_governments",
+      timeAggregation: "single_fiscal_year",
+      geographyLevel: "county",
     });
 
     expect(target.enabled).toBe(true);
     expect(target.id).toBe("AL");
     expect(target.href).toContain("/cdc-funding/state/AL?");
-    expect(target.href).toContain("fy=2025");
-    expect(target.href).toContain("normalized=true");
-    expect(target.href).toContain("funding_office=Office+B");
+    expect(target.href).toContain("fiscal_year=2025");
+    expect(target.href).toContain("metric=funding_per_capita");
+    expect(target.href).toContain("funding_type=emergency_response");
+    expect(target.href).toContain("cdc_center=public_health_preparedness_and_response");
   });
 
-  it("falls back to the CDC state filter when nothing is selected", () => {
+  it("falls back to the state filter when nothing is selected", () => {
     const target = resolveCdcFundingProfileTarget({
       selectedFeatureProps: null,
       stateFilter: "ga",
-      basis: "subaward",
-      normalized: false,
+      fundingType: "total_cdc_funding",
     });
 
     expect(target.enabled).toBe(true);
     expect(target.id).toBe("GA");
     expect(target.href).toContain("/cdc-funding/state/GA?");
-    expect(target.href).toContain("basis=subaward");
-    expect(target.href).toContain("normalized=false");
+    expect(target.href).toContain("funding_type=total_cdc_funding");
+    expect(target.href).not.toContain("normalized=");
   });
 
-  it("disables the CDC state profile button when no state is inferable", () => {
+  it("disables the CDC state profile button for national geography", () => {
     const target = resolveCdcFundingProfileTarget({
       selectedFeatureProps: {
-        geo_level: "county",
-        county_name: "Unknown County",
+        geo_level: "state",
+        state_abbr: "AL",
       },
-      stateFilter: "",
+      geographyLevel: "national",
     });
 
     expect(target.enabled).toBe(false);
@@ -61,7 +63,6 @@ describe("cdcFundingProfileTarget", () => {
 
   it("keeps non-CDC button labels on other sources", () => {
     expect(getProfileButtonCopy("cdc_funding").label).toBe("Open State Funding Profile");
-    expect(getProfileButtonCopy("taggs").label).toBe("Open Funding Profile");
     expect(getProfileButtonCopy("places").label).toBe("Open County/Tract Profile");
   });
 

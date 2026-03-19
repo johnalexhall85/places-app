@@ -12,77 +12,78 @@ vi.mock("../api/cdcFunding", () => ({
   fetchCdcFundingProfileSummary: vi.fn(),
   fetchCdcFundingProfileCategories: vi.fn(),
   fetchCdcFundingProfileSubcategories: vi.fn(),
-  fetchCdcFundingProfileDetails: vi.fn(),
 }));
 
 const {
   fetchCdcFundingProfileSummary,
   fetchCdcFundingProfileCategories,
   fetchCdcFundingProfileSubcategories,
-  fetchCdcFundingProfileDetails,
 } = await import("../api/cdcFunding");
 
-function pushProfileUrl(normalized = false) {
+function pushProfileUrl() {
   window.history.pushState(
     {},
     "",
-    `/cdc-funding/state/AL?basis=prime&fy=2025&normalized=${normalized ? "true" : "false"}`
+    "/cdc-funding/state/AL?fiscal_year=2025&metric=funding_per_capita&funding_type=emergency_response&cdc_center=public_health_preparedness_and_response&mechanism=cooperative_agreements&recipient_type=state_governments&time_aggregation=single_fiscal_year"
   );
 }
 
-function buildSummaryPayload(normalized = false) {
+function buildSummaryPayload() {
   return {
     state_code: "AL",
     state_name: "Alabama",
     fiscal_year: 2025,
-    timeframe_label: "Fiscal Year 2025",
-    appropriation_type_label: "All funding",
-    total_funding: normalized ? 2469134 : 1234567,
+    timeframe_label: "FY2025",
+    legend_title: "FY2025 CDC Funding Per Capita",
+    total_funding: 1234567,
+    selected_metric: "funding_per_capita",
+    selected_metric_label: "CDC Funding Per Capita",
+    selected_metric_value: 245.72,
     award_count: 12,
-    category_count: 3,
+    contract_award_count: 1,
     population: 5024279,
-    population_source: "Census population estimate",
-    funding_per_capita: normalized ? 491.44 : 245.72,
-    normalization_requested: normalized,
-    normalization_applied: normalized,
-    data_mode_label: normalized ? "Normalized data" : "Raw obligations",
-    normalization_note: normalized
-      ? "Normalized values are calibrated to CHIP's CDC funding profile benchmark."
-      : null,
-    methodology_notes: [
-      normalized
-        ? "This page summarizes normalized CDC funding obligations for Alabama using CHIP's CDC funding pipeline."
-        : "This page summarizes CDC funding obligations for Alabama using CHIP's CDC funding pipeline.",
-    ],
+    funding_per_capita: 245.72,
     grouping: {
-      category_label: "Derived category",
-      category_method: "Derived from CDC center metadata.",
-      subcategory_label: "Derived sub-category",
-      subcategory_method: "Derived from CDC office metadata.",
+      category_method: "TAGGS effective CDC program-area enrichment by ALN/CFDA number, with CDC center-name fallback when no TAGGS match is available.",
+      subcategory_method: "TAGGS effective program-name enrichment by ALN/CFDA number, with USAspending program-title fallback when no TAGGS match is available.",
     },
+    filter_context: {
+      funding_type_label: "Emergency Response Funding",
+      cdc_center_label: "Public Health Preparedness and Response",
+      mechanism_label: "Cooperative Agreements",
+      recipient_type_label: "State Governments",
+      time_aggregation_label: "Single Fiscal Year",
+      legend_title: "FY2025 CDC Funding Per Capita",
+    },
+    methodology_notes: [
+      "State profile totals use the same CHIP funding filter model as the map.",
+    ],
   };
 }
 
-function buildCategoryPayload(normalized = false) {
+function buildCategoryPayload() {
   return {
     rows: [
       {
-        category: "Immunization Services",
-        amount: normalized ? 1800000 : 900000,
+        category: "Public Health Preparedness and Response",
+        category_value: "public_health_preparedness_and_response",
+        amount: 900000,
         share_pct: 72.9,
         award_count: 7,
+        subcategory_count: 3,
       },
     ],
   };
 }
 
-function buildSubcategoryPayload(normalized = false) {
+function buildSubcategoryPayload() {
   return {
     rows: [
       {
-        category: "Immunization Services",
-        subcategory: "Vaccines for Children",
-        amount: normalized ? 1000000 : 500000,
+        category: "Public Health Preparedness and Response",
+        category_value: "public_health_preparedness_and_response",
+        subcategory: "Public Health Emergency Preparedness",
+        amount: 500000,
         share_total_pct: 40.5,
         share_category_pct: 55.6,
         award_count: 4,
@@ -91,116 +92,61 @@ function buildSubcategoryPayload(normalized = false) {
   };
 }
 
-function buildDetailsPayload(normalized = false) {
-  return {
-    total_rows: 1,
-    rows: [
-      {
-        line_number: 1,
-        record_id: "PRIME-1",
-        fain: "NU66IP000001",
-        category: "Immunization Services",
-        subcategory: "Vaccines for Children",
-        project_title: "Childhood vaccination coordination",
-        grantee_name: "Alabama Department of Public Health",
-        city: "Montgomery",
-        county: "Montgomery",
-        amount: normalized ? 1000000 : 500000,
-        latest_action_date: "2025-10-01",
-      },
-    ],
-  };
-}
-
 describe("CdcStateFundingProfile", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushProfileUrl(false);
-    fetchCdcFundingProfileSummary.mockImplementation(async ({ normalize }) => buildSummaryPayload(Boolean(normalize)));
-    fetchCdcFundingProfileCategories.mockImplementation(async ({ normalize }) => buildCategoryPayload(Boolean(normalize)));
-    fetchCdcFundingProfileSubcategories.mockImplementation(async ({ normalize }) => buildSubcategoryPayload(Boolean(normalize)));
-    fetchCdcFundingProfileDetails.mockImplementation(async ({ normalize }) => buildDetailsPayload(Boolean(normalize)));
+    pushProfileUrl();
+    fetchCdcFundingProfileSummary.mockResolvedValue(buildSummaryPayload());
+    fetchCdcFundingProfileCategories.mockResolvedValue(buildCategoryPayload());
+    fetchCdcFundingProfileSubcategories.mockResolvedValue(buildSubcategoryPayload());
   });
 
-  it("renders summary cards, category totals, and detail rows", async () => {
+  it("renders the unified CHIP funding profile content", async () => {
     render(<CdcStateFundingProfile stateCode="AL" />);
 
     expect(await screen.findByText("CDC State Funding Profile")).toBeInTheDocument();
     expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(screen.getByTestId("cdc-profile-mode-badge")).toHaveTextContent("CHIP funding model");
     expect(screen.getAllByText("$1,234,567.00").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("cdc-profile-mode-badge")).toHaveTextContent("Raw obligations");
-
-    expect((await screen.findAllByText("Immunization Services")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Vaccines for Children").length).toBeGreaterThan(0);
-    expect(screen.getByText("Childhood vaccination coordination")).toBeInTheDocument();
-    expect(screen.getByText("Alabama Department of Public Health")).toBeInTheDocument();
+    expect(screen.getAllByText("Public Health Preparedness and Response").length).toBeGreaterThan(0);
+    expect(screen.getByText("Public Health Emergency Preparedness")).toBeInTheDocument();
+    expect(screen.getByText(/USAspending supplies award, subaward, and contract transactions/i)).toBeInTheDocument();
   });
 
-  it("requests the CDC profile APIs with the routed state code and normalized=false", async () => {
+  it("requests the profile APIs with the new filter contract", async () => {
     render(<CdcStateFundingProfile stateCode="AL" />);
 
     await waitFor(() => {
       expect(fetchCdcFundingProfileSummary).toHaveBeenCalledWith(
         expect.objectContaining({
           state: "AL",
-          fy: 2025,
-          basis: "prime",
-          normalize: false,
+          fiscal_year: 2025,
+          metric: "funding_per_capita",
+          funding_type: "emergency_response",
+          cdc_center: "public_health_preparedness_and_response",
+          mechanism: "cooperative_agreements",
+          recipient_type: "state_governments",
+          time_aggregation: "single_fiscal_year",
         })
       );
     });
-    await waitFor(() => {
-      expect(fetchCdcFundingProfileDetails).toHaveBeenCalledWith(
-        expect.objectContaining({
-          state: "AL",
-          page: 1,
-          sort_by: "amount",
-          sort_dir: "desc",
-          normalize: false,
-        })
-      );
-    });
-  });
 
-  it("reads normalized=true from the URL, requests normalized data, and updates the mode badge", async () => {
-    pushProfileUrl(true);
-
-    render(<CdcStateFundingProfile stateCode="AL" />);
-
-    expect(await screen.findByTestId("cdc-profile-mode-badge")).toHaveTextContent("Normalized data");
-    expect(screen.getAllByText("$2,469,134.00").length).toBeGreaterThan(0);
-    expect(screen.getByText("$1,800,000.00")).toBeInTheDocument();
-    expect(screen.getAllByText("$1,000,000.00").length).toBeGreaterThan(0);
-
-    await waitFor(() => {
-      expect(fetchCdcFundingProfileSummary).toHaveBeenCalledWith(
-        expect.objectContaining({
-          state: "AL",
-          normalize: true,
-        })
-      );
-    });
     await waitFor(() => {
       expect(fetchCdcFundingProfileCategories).toHaveBeenCalledWith(
         expect.objectContaining({
           state: "AL",
-          normalize: true,
+          fiscal_year: 2025,
+          funding_type: "emergency_response",
         })
       );
     });
+
     await waitFor(() => {
       expect(fetchCdcFundingProfileSubcategories).toHaveBeenCalledWith(
         expect.objectContaining({
           state: "AL",
-          normalize: true,
-        })
-      );
-    });
-    await waitFor(() => {
-      expect(fetchCdcFundingProfileDetails).toHaveBeenCalledWith(
-        expect.objectContaining({
-          state: "AL",
-          normalize: true,
+          fiscal_year: 2025,
+          funding_type: "emergency_response",
         })
       );
     });

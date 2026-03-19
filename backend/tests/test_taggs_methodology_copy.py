@@ -37,19 +37,18 @@ def test_header_methodology_modal_mentions_funding_scope_normalization() -> None
     assert "taggs_cdc_profile_can_mapping_v2026_03_13" in content
 
 
-def test_taggs_funding_profile_ui_prioritizes_interpreted_label_over_raw_can() -> None:
-    profile_path = PROJECT_ROOT / "frontend" / "src" / "pages" / "TaggsFundingProfile.jsx"
-    content = profile_path.read_text(encoding="utf-8")
+def test_legacy_taggs_profile_route_aliases_to_unified_cdc_profile() -> None:
+    main_path = PROJECT_ROOT / "frontend" / "src" / "main.jsx"
+    content = main_path.read_text(encoding="utf-8")
 
-    assert "Funding Stream / CAN Mapping Breakdown" in content
-    assert "Interpreted label" in content
-    assert "Raw CAN" in content
-    assert "summary?.mapping_notice" in content
+    assert "^\\/taggs\\/funding-profile\\/?$" in content
+    assert "CdcStateFundingProfile" in content
+    assert "new URLSearchParams(window.location.search)" in content
 
 
-def test_taggs_map_filters_prioritize_funding_stream_over_raw_can() -> None:
+def test_cdc_funding_map_copy_describes_taggs_as_enrichment_not_a_separate_map() -> None:
     app_path = PROJECT_ROOT / "frontend" / "src" / "App.jsx"
     content = app_path.read_text(encoding="utf-8")
 
-    assert content.index("Funding stream filter") < content.index("Raw CAN filter")
-    assert "Funding stream is the preferred TAGGS interpretation filter" in content
+    assert "USAspending provides the award and transaction backbone; TAGGS adds CDC program-area enrichment" in content
+    assert "TAGGS Funding Profiles" not in content

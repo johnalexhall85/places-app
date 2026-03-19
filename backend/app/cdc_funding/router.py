@@ -3,12 +3,29 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.params import Param
 from sqlalchemy.orm import Session
 
+from app.cdc_funding import intelligence
 from app.cdc_funding import services
 from app.db import get_db
 
 router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
+
+
+def _resolve_query_value(value):
+    return None if isinstance(value, Param) else value
+
+
+def _resolve_funding_type(funding_type, appropriation_type):
+    effective_funding_type = _resolve_query_value(funding_type)
+    effective_appropriation_type = _resolve_query_value(appropriation_type)
+    if effective_funding_type is None:
+        if effective_appropriation_type in {"covid_emergency", "other_emergency"}:
+            return "emergency_response"
+        if effective_appropriation_type == "regular":
+            return "non_emergency_program"
+    return effective_funding_type
 
 
 @router.get("/methodology/summary")
@@ -18,251 +35,330 @@ def get_cdc_funding_methodology_summary():
 
 @router.get("/map")
 def get_cdc_funding_map(
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    geography: Literal["state", "county"] = Query(default="county"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    metric: str | None = Query(default=None),
-    display_mode: Literal["total", "per_capita"] = Query(default="total"),
-    assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
-    awarding_office: str | None = Query(default=None),
-    funding_office: str | None = Query(default=None),
-    office: str | None = Query(default=None),
+    metric: str | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    geography_level: Literal["county", "state", "national"] | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    geography: Literal["state", "county", "national"] | None = Query(default=None),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
     center: str | None = Query(default=None),
-    state: str | None = Query(default=None),
+    normalize: bool | None = Query(default=None),
     bbox: str | None = Query(default=None),
     zoom: int = Query(default=6),
     limit: int = Query(default=6000, ge=1, le=50000),
-    normalize: bool = Query(default=False),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    display_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    state: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_map_geojson(
+    del zoom, basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state, normalize
+    fiscal_year = _resolve_query_value(fiscal_year)
+    metric = _resolve_query_value(metric)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    geography_level = _resolve_query_value(geography_level)
+    geography = _resolve_query_value(geography)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    bbox = _resolve_query_value(bbox)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_map_geojson(
         db,
-        basis=basis,
-        geography=geography,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        metric=metric,
-        display_mode=display_mode,
-        assistance_type=assistance_type,
         fiscal_year=fiscal_year,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
-        state=state,
+        metric=metric,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        geography_level=geography_level or geography,
+        time_aggregation=time_aggregation,
         bbox=bbox,
-        zoom=zoom,
         limit=limit,
-        normalize=normalize,
     )
 
 
 @router.get("/legend")
 def get_cdc_funding_legend(
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    geography: Literal["state", "county"] = Query(default="county"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    metric: str | None = Query(default=None),
-    display_mode: Literal["total", "per_capita"] = Query(default="total"),
-    assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
+    metric: str | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    geography_level: Literal["county", "state", "national"] | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    geography: Literal["state", "county", "national"] | None = Query(default=None),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    normalize: bool | None = Query(default=None),
+    bbox: str | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    display_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
-    center: str | None = Query(default=None),
     state: str | None = Query(default=None),
-    bbox: str | None = Query(default=None),
-    normalize: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_legend_stats(
+    del basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state, normalize
+    fiscal_year = _resolve_query_value(fiscal_year)
+    metric = _resolve_query_value(metric)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    geography_level = _resolve_query_value(geography_level)
+    geography = _resolve_query_value(geography)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    bbox = _resolve_query_value(bbox)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_legend_stats(
         db,
-        basis=basis,
-        geography=geography,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        metric=metric,
-        display_mode=display_mode,
-        assistance_type=assistance_type,
         fiscal_year=fiscal_year,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
-        state=state,
+        metric=metric,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        geography_level=geography_level or geography,
+        time_aggregation=time_aggregation,
         bbox=bbox,
-        normalize=normalize,
     )
 
 
 @router.get("/national")
 def get_cdc_funding_national_summary(
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    metric: str | None = Query(default=None),
-    display_mode: Literal["total", "per_capita"] = Query(default="total"),
-    assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
+    metric: str | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    display_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
-    center: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_national_summary(
+    del basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office
+    fiscal_year = _resolve_query_value(fiscal_year)
+    metric = _resolve_query_value(metric)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_national_summary(
         db,
-        basis=basis,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        metric=metric,
-        display_mode=display_mode,
-        assistance_type=assistance_type,
         fiscal_year=fiscal_year,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
+        metric=metric,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
     )
 
 
 @router.get("/filters")
 def get_cdc_funding_filters(
-    basis: Literal["all", "prime", "subaward"] = Query(default="all"),
+    basis: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    return services.list_filter_options(db, basis=basis)
+    del basis
+    return intelligence.list_filter_options(db)
 
 
 @router.get("/profile/summary")
 def get_cdc_state_profile_summary(
     state: str = Query(..., min_length=2, max_length=2),
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    assistance_type: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
-    normalize: bool = Query(default=False),
+    metric: str | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    normalize: bool | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
-    center: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_state_profile_summary(
+    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    state = _resolve_query_value(state)
+    fiscal_year = _resolve_query_value(fiscal_year)
+    fy = _resolve_query_value(fy)
+    metric = _resolve_query_value(metric)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_state_profile_summary(
         db,
         state=state,
-        basis=basis,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        assistance_type=assistance_type,
-        fiscal_year=fy,
-        normalize=normalize,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
+        fiscal_year=fiscal_year if fiscal_year is not None else fy,
+        metric=metric,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
     )
 
 
 @router.get("/profile/categories")
 def get_cdc_state_profile_categories(
     state: str = Query(..., min_length=2, max_length=2),
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    assistance_type: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
-    normalize: bool = Query(default=False),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    normalize: bool | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
-    center: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_state_profile_categories(
+    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    state = _resolve_query_value(state)
+    fiscal_year = _resolve_query_value(fiscal_year)
+    fy = _resolve_query_value(fy)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_state_profile_categories(
         db,
         state=state,
-        basis=basis,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        assistance_type=assistance_type,
-        fiscal_year=fy,
-        normalize=normalize,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
+        fiscal_year=fiscal_year if fiscal_year is not None else fy,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
     )
 
 
 @router.get("/profile/subcategories")
 def get_cdc_state_profile_subcategories(
     state: str = Query(..., min_length=2, max_length=2),
-    basis: Literal["prime", "subaward"] = Query(default="prime"),
-    funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
-        default="recipient_location"
-    ),
-    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] = Query(
-        default="all"
-    ),
-    assistance_type: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
-    normalize: bool = Query(default=False),
+    funding_type: str | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    normalize: bool | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
-    center: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    office_value = str(office or "").strip() or None
-    awarding_office_value = str(awarding_office or "").strip() or office_value
-    funding_office_value = str(funding_office or "").strip() or office_value
-    return services.fetch_state_profile_subcategories(
+    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    state = _resolve_query_value(state)
+    fiscal_year = _resolve_query_value(fiscal_year)
+    fy = _resolve_query_value(fy)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_state_profile_subcategories(
         db,
         state=state,
-        basis=basis,
-        funding_geography_mode=funding_geography_mode,
-        appropriation_type=appropriation_type,
-        assistance_type=assistance_type,
-        fiscal_year=fy,
-        normalize=normalize,
-        awarding_office=awarding_office_value,
-        funding_office=funding_office_value,
-        center=center,
+        fiscal_year=fiscal_year if fiscal_year is not None else fy,
+        funding_type=effective_funding_type,
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
     )
 
 

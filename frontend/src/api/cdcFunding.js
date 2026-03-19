@@ -20,53 +20,35 @@ function buildCdcFundingProfileUrl({
   apiBase = DEFAULT_API_BASE,
   endpoint,
   state,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  normalize = false,
-  assistance_type,
-  fy,
-  awarding_office,
-  funding_office,
-  center,
-  q,
-  page,
-  page_size,
-  sort_by,
-  sort_dir,
+  fiscal_year,
+  metric = "total_funding",
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  time_aggregation,
 }) {
   const url = new URL(`${apiBase}/api/cdc/funding/profile/${endpoint}`);
   url.searchParams.set("state", String(state ?? "").trim().toUpperCase());
-  url.searchParams.set("basis", String(basis));
-  url.searchParams.set("funding_geography_mode", String(funding_geography_mode));
-  url.searchParams.set("appropriation_type", String(appropriation_type));
-  url.searchParams.set("normalize", normalize ? "true" : "false");
-  if (Number.isFinite(Number(fy))) {
-    url.searchParams.set("fy", String(Number(fy)));
+  url.searchParams.set("metric", String(metric));
+  url.searchParams.set("funding_type", String(funding_type));
+  if (Number.isFinite(Number(fiscal_year))) {
+    url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
-  setIfPresent(url, "assistance_type", assistance_type);
-  setIfPresent(url, "awarding_office", awarding_office);
-  setIfPresent(url, "funding_office", funding_office);
-  setIfPresent(url, "center", center);
-  setIfPresent(url, "q", q);
-  if (Number.isFinite(Number(page))) {
-    url.searchParams.set("page", String(Number(page)));
-  }
-  if (Number.isFinite(Number(page_size))) {
-    url.searchParams.set("page_size", String(Number(page_size)));
-  }
-  setIfPresent(url, "sort_by", sort_by);
-  setIfPresent(url, "sort_dir", sort_dir);
+  setIfPresent(url, "cdc_center", cdc_center);
+  setIfPresent(url, "program_area", program_area);
+  setIfPresent(url, "mechanism", mechanism);
+  setIfPresent(url, "recipient_type", recipient_type);
+  setIfPresent(url, "time_aggregation", time_aggregation);
   return url;
 }
 
 export async function fetchCdcFundingFilters({
   apiBase = DEFAULT_API_BASE,
-  basis = "all",
   signal,
 } = {}) {
   const url = new URL(`${apiBase}/api/cdc/funding/filters`);
-  url.searchParams.set("basis", String(basis));
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding filters.");
 }
@@ -82,121 +64,96 @@ export async function fetchCdcFundingMethodologySummary({
 
 export async function fetchCdcFundingMap({
   apiBase = DEFAULT_API_BASE,
-  basis = "prime",
-  geography = "county",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  metric = "fy_obligated",
-  display_mode = "total",
-  assistance_type,
   fiscal_year,
-  awarding_office,
-  funding_office,
-  office,
+  metric = "total_funding",
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  geography_level = "county",
+  time_aggregation,
+  geography,
   center,
-  state,
   bbox,
-  zoom,
   limit = 7000,
-  normalize = false,
   signal,
 } = {}) {
   const url = new URL(`${apiBase}/api/cdc/funding/map`);
-  url.searchParams.set("basis", String(basis));
-  url.searchParams.set("geography", String(geography));
-  url.searchParams.set("funding_geography_mode", String(funding_geography_mode));
-  url.searchParams.set("appropriation_type", String(appropriation_type));
+  url.searchParams.set("geography_level", String(geography_level || geography || "county"));
   url.searchParams.set("metric", String(metric));
-  url.searchParams.set("display_mode", String(display_mode));
-  setIfPresent(url, "assistance_type", assistance_type);
+  url.searchParams.set("funding_type", String(funding_type));
   if (Number.isFinite(Number(fiscal_year))) {
     url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
-  setIfPresent(url, "awarding_office", awarding_office);
-  setIfPresent(url, "funding_office", funding_office);
-  setIfPresent(url, "office", office);
-  setIfPresent(url, "center", center);
-  setIfPresent(url, "state", state);
+  setIfPresent(url, "cdc_center", cdc_center || center);
+  setIfPresent(url, "program_area", program_area);
+  setIfPresent(url, "mechanism", mechanism);
+  setIfPresent(url, "recipient_type", recipient_type);
+  setIfPresent(url, "time_aggregation", time_aggregation);
   setIfPresent(url, "bbox", bbox);
-  if (Number.isFinite(Number(zoom))) {
-    url.searchParams.set("zoom", String(Number(zoom)));
-  }
   url.searchParams.set("limit", String(limit));
-  url.searchParams.set("normalize", normalize ? "true" : "false");
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding map.");
 }
 
 export async function fetchCdcFundingLegend({
   apiBase = DEFAULT_API_BASE,
-  basis = "prime",
-  geography = "county",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  metric = "fy_obligated",
-  display_mode = "total",
-  assistance_type,
   fiscal_year,
-  awarding_office,
-  funding_office,
-  office,
+  metric = "total_funding",
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  geography_level = "county",
+  time_aggregation,
+  geography,
   center,
-  state,
   bbox,
-  normalize = false,
   signal,
 } = {}) {
   const url = new URL(`${apiBase}/api/cdc/funding/legend`);
-  url.searchParams.set("basis", String(basis));
-  url.searchParams.set("geography", String(geography));
-  url.searchParams.set("funding_geography_mode", String(funding_geography_mode));
-  url.searchParams.set("appropriation_type", String(appropriation_type));
+  url.searchParams.set("geography_level", String(geography_level || geography || "county"));
   url.searchParams.set("metric", String(metric));
-  url.searchParams.set("display_mode", String(display_mode));
-  setIfPresent(url, "assistance_type", assistance_type);
+  url.searchParams.set("funding_type", String(funding_type));
   if (Number.isFinite(Number(fiscal_year))) {
     url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
-  setIfPresent(url, "awarding_office", awarding_office);
-  setIfPresent(url, "funding_office", funding_office);
-  setIfPresent(url, "office", office);
-  setIfPresent(url, "center", center);
-  setIfPresent(url, "state", state);
+  setIfPresent(url, "cdc_center", cdc_center || center);
+  setIfPresent(url, "program_area", program_area);
+  setIfPresent(url, "mechanism", mechanism);
+  setIfPresent(url, "recipient_type", recipient_type);
+  setIfPresent(url, "time_aggregation", time_aggregation);
   setIfPresent(url, "bbox", bbox);
-  url.searchParams.set("normalize", normalize ? "true" : "false");
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding legend.");
 }
 
 export async function fetchCdcFundingNational({
   apiBase = DEFAULT_API_BASE,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  metric = "fy_obligated",
-  display_mode = "total",
-  assistance_type,
   fiscal_year,
-  awarding_office,
-  funding_office,
-  office,
+  metric = "total_funding",
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  time_aggregation,
   center,
   signal,
 } = {}) {
   const url = new URL(`${apiBase}/api/cdc/funding/national`);
-  url.searchParams.set("basis", String(basis));
-  url.searchParams.set("funding_geography_mode", String(funding_geography_mode));
-  url.searchParams.set("appropriation_type", String(appropriation_type));
   url.searchParams.set("metric", String(metric));
-  url.searchParams.set("display_mode", String(display_mode));
-  setIfPresent(url, "assistance_type", assistance_type);
+  url.searchParams.set("funding_type", String(funding_type));
   if (Number.isFinite(Number(fiscal_year))) {
     url.searchParams.set("fiscal_year", String(Number(fiscal_year)));
   }
-  setIfPresent(url, "awarding_office", awarding_office);
-  setIfPresent(url, "funding_office", funding_office);
-  setIfPresent(url, "office", office);
-  setIfPresent(url, "center", center);
+  setIfPresent(url, "cdc_center", cdc_center || center);
+  setIfPresent(url, "program_area", program_area);
+  setIfPresent(url, "mechanism", mechanism);
+  setIfPresent(url, "recipient_type", recipient_type);
+  setIfPresent(url, "time_aggregation", time_aggregation);
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC national summary.");
 }
@@ -354,30 +311,28 @@ export async function fetchCdcFundingTrend({
 export async function fetchCdcFundingProfileSummary({
   apiBase = DEFAULT_API_BASE,
   state,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  normalize = false,
-  assistance_type,
-  fy,
-  awarding_office,
-  funding_office,
-  center,
+  fiscal_year,
+  metric = "total_funding",
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  time_aggregation,
   signal,
 } = {}) {
   const url = buildCdcFundingProfileUrl({
     apiBase,
     endpoint: "summary",
     state,
-    basis,
-    funding_geography_mode,
-    appropriation_type,
-    normalize,
-    assistance_type,
-    fy,
-    awarding_office,
-    funding_office,
-    center,
+    fiscal_year,
+    metric,
+    funding_type,
+    cdc_center,
+    program_area,
+    mechanism,
+    recipient_type,
+    time_aggregation,
   });
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding profile summary.");
@@ -386,30 +341,26 @@ export async function fetchCdcFundingProfileSummary({
 export async function fetchCdcFundingProfileCategories({
   apiBase = DEFAULT_API_BASE,
   state,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  normalize = false,
-  assistance_type,
-  fy,
-  awarding_office,
-  funding_office,
-  center,
+  fiscal_year,
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  time_aggregation,
   signal,
 } = {}) {
   const url = buildCdcFundingProfileUrl({
     apiBase,
     endpoint: "categories",
     state,
-    basis,
-    funding_geography_mode,
-    appropriation_type,
-    normalize,
-    assistance_type,
-    fy,
-    awarding_office,
-    funding_office,
-    center,
+    fiscal_year,
+    funding_type,
+    cdc_center,
+    program_area,
+    mechanism,
+    recipient_type,
+    time_aggregation,
   });
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding profile categories.");
@@ -418,73 +369,27 @@ export async function fetchCdcFundingProfileCategories({
 export async function fetchCdcFundingProfileSubcategories({
   apiBase = DEFAULT_API_BASE,
   state,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  normalize = false,
-  assistance_type,
-  fy,
-  awarding_office,
-  funding_office,
-  center,
+  fiscal_year,
+  funding_type = "total_cdc_funding",
+  cdc_center,
+  program_area,
+  mechanism,
+  recipient_type,
+  time_aggregation,
   signal,
 } = {}) {
   const url = buildCdcFundingProfileUrl({
     apiBase,
     endpoint: "subcategories",
     state,
-    basis,
-    funding_geography_mode,
-    appropriation_type,
-    normalize,
-    assistance_type,
-    fy,
-    awarding_office,
-    funding_office,
-    center,
+    fiscal_year,
+    funding_type,
+    cdc_center,
+    program_area,
+    mechanism,
+    recipient_type,
+    time_aggregation,
   });
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding profile sub-categories.");
-}
-
-export async function fetchCdcFundingProfileDetails({
-  apiBase = DEFAULT_API_BASE,
-  state,
-  basis = "prime",
-  funding_geography_mode = "recipient_location",
-  appropriation_type = "all",
-  normalize = false,
-  assistance_type,
-  fy,
-  awarding_office,
-  funding_office,
-  center,
-  q,
-  page = 1,
-  page_size = 25,
-  sort_by = "amount",
-  sort_dir = "desc",
-  signal,
-} = {}) {
-  const url = buildCdcFundingProfileUrl({
-    apiBase,
-    endpoint: "details",
-    state,
-    basis,
-    funding_geography_mode,
-    appropriation_type,
-    normalize,
-    assistance_type,
-    fy,
-    awarding_office,
-    funding_office,
-    center,
-    q,
-    page,
-    page_size,
-    sort_by,
-    sort_dir,
-  });
-  const response = await fetch(url, { signal });
-  return parseJsonOrThrow(response, "Failed to load CDC funding profile detail rows.");
 }

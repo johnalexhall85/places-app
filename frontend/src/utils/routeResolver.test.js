@@ -9,8 +9,8 @@ describe("routeResolver", () => {
     });
   });
 
-  it("keeps existing profile routes intact", () => {
-    expect(resolveRoute("/taggs/funding-profile")).toEqual({ type: "taggs-funding-profile" });
+  it("keeps existing county and tract profile routes intact", () => {
+    expect(resolveRoute("/taggs/funding-profile")).toEqual({ type: "map" });
     expect(resolveRoute("/profile/county/01001")).toEqual({ type: "profile-county", id: "01001" });
     expect(resolveRoute("/profile/tract/01001020100")).toEqual({
       type: "profile-tract",
@@ -18,4 +18,3 @@ describe("routeResolver", () => {
     });
   });
 });
-

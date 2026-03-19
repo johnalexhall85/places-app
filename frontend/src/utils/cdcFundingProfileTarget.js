@@ -43,45 +43,41 @@ export function resolveCdcFundingProfileStateCode({ selectedFeatureProps, stateF
 
 export function buildCdcFundingProfileHref({
   stateCode,
-  basis = "prime",
-  fundingGeographyMode = "recipient_location",
-  appropriationType = "all",
-  normalized = false,
-  assistanceType,
   fiscalYear,
-  awardingOffice,
-  fundingOffice,
-  center,
-  metric,
-  displayMode,
+  metric = "total_funding",
+  fundingType = "total_cdc_funding",
+  cdcCenter,
+  programArea,
+  mechanism,
+  recipientType,
+  timeAggregation,
+  geographyLevel,
 } = {}) {
   const normalizedStateCode = normalizeStateCode(stateCode);
   if (!normalizedStateCode) return null;
+  if (String(geographyLevel ?? "").trim().toLowerCase() === "national") {
+    return null;
+  }
   const params = new URLSearchParams();
-  params.set("basis", String(basis || "prime"));
-  params.set("funding_geography_mode", String(fundingGeographyMode || "recipient_location"));
-  params.set("appropriation_type", String(appropriationType || "all"));
-  params.set("normalized", normalized ? "true" : "false");
+  params.set("metric", String(metric || "total_funding"));
+  params.set("funding_type", String(fundingType || "total_cdc_funding"));
   if (Number.isFinite(Number(fiscalYear))) {
-    params.set("fy", String(Number(fiscalYear)));
+    params.set("fiscal_year", String(Number(fiscalYear)));
   }
-  if (String(assistanceType ?? "").trim()) {
-    params.set("assistance_type", String(assistanceType).trim());
+  if (String(cdcCenter ?? "").trim()) {
+    params.set("cdc_center", String(cdcCenter).trim());
   }
-  if (String(awardingOffice ?? "").trim()) {
-    params.set("awarding_office", String(awardingOffice).trim());
+  if (String(programArea ?? "").trim()) {
+    params.set("program_area", String(programArea).trim());
   }
-  if (String(fundingOffice ?? "").trim()) {
-    params.set("funding_office", String(fundingOffice).trim());
+  if (String(mechanism ?? "").trim()) {
+    params.set("mechanism", String(mechanism).trim());
   }
-  if (String(center ?? "").trim()) {
-    params.set("center", String(center).trim());
+  if (String(recipientType ?? "").trim()) {
+    params.set("recipient_type", String(recipientType).trim());
   }
-  if (String(metric ?? "").trim()) {
-    params.set("metric", String(metric).trim());
-  }
-  if (String(displayMode ?? "").trim()) {
-    params.set("display_mode", String(displayMode).trim());
+  if (String(timeAggregation ?? "").trim()) {
+    params.set("time_aggregation", String(timeAggregation).trim());
   }
   return `/cdc-funding/state/${encodeURIComponent(normalizedStateCode)}?${params.toString()}`;
 }
@@ -89,32 +85,28 @@ export function buildCdcFundingProfileHref({
 export function resolveCdcFundingProfileTarget({
   selectedFeatureProps,
   stateFilter,
-  basis = "prime",
-  fundingGeographyMode = "recipient_location",
-  appropriationType = "all",
-  normalized = false,
-  assistanceType,
   fiscalYear,
-  awardingOffice,
-  fundingOffice,
-  center,
-  metric,
-  displayMode,
+  metric = "total_funding",
+  fundingType = "total_cdc_funding",
+  cdcCenter,
+  programArea,
+  mechanism,
+  recipientType,
+  timeAggregation,
+  geographyLevel,
 } = {}) {
   const stateCode = resolveCdcFundingProfileStateCode({ selectedFeatureProps, stateFilter });
   const href = buildCdcFundingProfileHref({
     stateCode,
-    basis,
-    fundingGeographyMode,
-    appropriationType,
-    normalized,
-    assistanceType,
     fiscalYear,
-    awardingOffice,
-    fundingOffice,
-    center,
     metric,
-    displayMode,
+    fundingType,
+    cdcCenter,
+    programArea,
+    mechanism,
+    recipientType,
+    timeAggregation,
+    geographyLevel,
   });
   return {
     enabled: Boolean(href),
@@ -130,13 +122,6 @@ export function getProfileButtonCopy(dataSource) {
     return {
       label: "Open State Funding Profile",
       tooltipEnabled: "Open state CDC funding profile",
-      tooltipDisabled: "Select a state first",
-    };
-  }
-  if (dataSource === "taggs") {
-    return {
-      label: "Open Funding Profile",
-      tooltipEnabled: "Open state TAGGS funding profile",
       tooltipDisabled: "Select a state first",
     };
   }
