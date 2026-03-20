@@ -1,3 +1,8 @@
+import {
+  CDC_DEFAULT_FUNDING_MODE,
+  normalizeCdcFundingMode,
+} from "./cdcFundingMode";
+
 function normalizeStateCode(value) {
   const letters = String(value ?? "").replace(/[^A-Za-z]/g, "").toUpperCase();
   return letters.length === 2 ? letters : "";
@@ -16,22 +21,28 @@ export function resolveCdcFundingProfileStateCode({ selectedFeatureProps, stateF
   const selected = selectedFeatureProps && typeof selectedFeatureProps === "object"
     ? selectedFeatureProps
     : null;
+  const selectedFundingProfile = selected?.funding_profile && typeof selected.funding_profile === "object"
+    ? selected.funding_profile
+    : null;
   const selectedGeoLevel = String(
-    firstDefined(selected?.geo_level, selected?.level, "")
+    firstDefined(selected?.geo_level, selected?.level, selectedFundingProfile?.geography_type, "")
   ).trim().toLowerCase();
   const fromSelection = normalizeStateCode(
     selectedGeoLevel === "state"
       ? firstDefined(
         selected?.state_abbr,
         selected?.state_code,
+        selectedFundingProfile?.state_code,
         selected?.id,
         selected?.location_id,
         selected?.locationid,
+        selectedFundingProfile?.geography_id,
         ""
       )
       : firstDefined(
         selected?.state_abbr,
         selected?.state_code,
+        selectedFundingProfile?.state_code,
         ""
       )
   );
@@ -46,6 +57,7 @@ export function buildCdcFundingProfileHref({
   fiscalYear,
   metric = "total_funding",
   fundingType = "total_cdc_funding",
+  fundingMode = CDC_DEFAULT_FUNDING_MODE,
   cdcCenter,
   programArea,
   mechanism,
@@ -61,8 +73,9 @@ export function buildCdcFundingProfileHref({
   const params = new URLSearchParams();
   params.set("metric", String(metric || "total_funding"));
   params.set("funding_type", String(fundingType || "total_cdc_funding"));
+  params.set("mode", normalizeCdcFundingMode(fundingMode));
   if (Number.isFinite(Number(fiscalYear))) {
-    params.set("fiscal_year", String(Number(fiscalYear)));
+    params.set("fy", String(Number(fiscalYear)));
   }
   if (String(cdcCenter ?? "").trim()) {
     params.set("cdc_center", String(cdcCenter).trim());
@@ -88,6 +101,7 @@ export function resolveCdcFundingProfileTarget({
   fiscalYear,
   metric = "total_funding",
   fundingType = "total_cdc_funding",
+  fundingMode = CDC_DEFAULT_FUNDING_MODE,
   cdcCenter,
   programArea,
   mechanism,
@@ -101,6 +115,7 @@ export function resolveCdcFundingProfileTarget({
     fiscalYear,
     metric,
     fundingType,
+    fundingMode,
     cdcCenter,
     programArea,
     mechanism,
@@ -130,4 +145,15 @@ export function getProfileButtonCopy(dataSource) {
     tooltipEnabled: "Open County/Tract Profile",
     tooltipDisabled: "Select a county or tract first",
   };
+}
+
+export function openProfileTargetInNewTab(
+  profileTarget,
+  openWindow = typeof window !== "undefined" ? window.open : null
+) {
+  if (!profileTarget?.enabled || !profileTarget?.href || typeof openWindow !== "function") {
+    return false;
+  }
+  openWindow(profileTarget.href, "_blank", "noopener,noreferrer");
+  return true;
 }

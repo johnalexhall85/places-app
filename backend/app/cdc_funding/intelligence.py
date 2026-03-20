@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import copy
+import json
 import math
+import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from decimal import Decimal
 from numbers import Real
@@ -11,6 +15,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db_fqtn import cdc_funding_table, places_table, taggs_table, usaspending_table
+from app.recon.normalization import NORMALIZED_TABLE, fetch_state_normalization_lookup
+from app.recon.profile_calibration import METHODOLOGY_VERSION as PROFILE_CALIBRATION_METHODOLOGY_VERSION
+from app.services.chip_funding_model import (
+    FUNDING_MODEL_VERSION,
+    FUNDING_MODE_LABELS,
+    CDCFundingMode,
+    CHIPFundingCacheContext,
+    CHIPFundingModel,
+)
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
 PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
@@ -22,6 +35,8 @@ POPULATION_VIEW_TABLE = places_table("v_geography_population")
 TAGGS_AWARD_SUMMARY_TABLE = taggs_table("award_funding_summary")
 TAGGS_CAN_CLASSIFICATION_TABLE = taggs_table("can_classification")
 CONTRACT_ENRICHED_VIEW = usaspending_table("contract_transactions_enriched")
+INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE = cdc_funding_table("intelligence_state_category_summary")
+INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE = cdc_funding_table("intelligence_state_subcategory_summary")
 
 VALID_METRICS = {
     "total_funding",
@@ -60,6 +75,7 @@ VALID_TIME_AGGREGATIONS = {
     "multi_year_total",
     "multi_year_average",
 }
+VALID_FUNDING_MODES = {mode.value for mode in CDCFundingMode}
 
 PROGRAM_AREA_OPTIONS = [
     {"value": "all", "label": "All CDC Programs"},
@@ -269,11 +285,18 @@ TIME_AGGREGATION_OPTIONS = [
     {"value": "multi_year_average", "label": "Multi-Year Average"},
 ]
 TIME_AGGREGATION_LABELS = {option["value"]: option["label"] for option in TIME_AGGREGATION_OPTIONS}
+FUNDING_MODE_OPTIONS = [
+    {"value": CDCFundingMode.CHIP_NORMALIZED.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value]},
+    {"value": CDCFundingMode.RAW_TOTAL.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.RAW_TOTAL.value]},
+]
 
 DEFAULT_NOTE = (
     "USAspending provides the transactional funding spine. TAGGS contributes ALN-linked CDC program-area "
     "enrichment, naming, and fallback classification when USAspending labels are too coarse on their own."
 )
+CHIP_FUNDING_MODEL = CHIPFundingModel()
+FUNDING_PROFILE_VERSION = "funding_profile_result_v1"
+DEFAULT_FUNDING_MODE = CDCFundingMode.CHIP_NORMALIZED.value
 
 
 @dataclass(frozen=True)
@@ -281,11 +304,85 @@ class FundingFilters:
     fiscal_year: int | None
     metric: str
     funding_type: str
+    funding_mode: str
     program_area: str | None
     mechanism: str | None
     recipient_type: str | None
     geography_level: str
     time_aggregation: str
+
+
+@dataclass(frozen=True)
+class FundingProfileResult:
+    geography_type: str
+    geography_id: str | None
+    geography_name: str | None
+    state_code: str | None
+    state_name: str | None
+    fiscal_year: int | None
+    time_aggregation: str
+    timeframe_label: str
+    funding_mode_requested: str
+    funding_mode_effective: str
+    funding_mode_label: str
+    total_funding: float | None
+    funding_per_capita: float | None
+    funding_per_100k: float | None
+    national_share: float | None
+    raw_total_funding: float | None
+    chip_normalized_funding: float | None
+    raw_funding_per_capita: float | None
+    chip_normalized_funding_per_capita: float | None
+    raw_funding_per_100k: float | None
+    chip_normalized_funding_per_100k: float | None
+    raw_share_of_national: float | None
+    chip_normalized_share_of_national: float | None
+    awards_total: float | None
+    subawards_total: float | None
+    contracts_total: float | None
+    award_count: int
+    subaward_count: int
+    contract_award_count: int
+    population: float | None
+    normalization_supported: bool
+    normalization_applied: bool
+    normalization_note: str | None
+    normalization_factor: float | None
+    normalized_amount_type: str | None
+    normalization_status_label: str | None
+    normalization_method: str | None
+    funding_stream_logic_version: str | None
+    methodology_version: str
+    profile_version: str
+    funding_model_version: str
+    metadata: dict[str, Any]
+
+
+class _ResponseCache:
+    def __init__(self, *, max_size: int = 64, ttl_seconds: int = 300) -> None:
+        self._max_size = max(1, int(max_size))
+        self._ttl_seconds = max(1, int(ttl_seconds))
+        self._cache: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+
+    def get(self, key: str) -> Any | None:
+        cached = self._cache.get(key)
+        if cached is None:
+            return None
+        cached_at, payload = cached
+        if time.time() - cached_at > self._ttl_seconds:
+            self._cache.pop(key, None)
+            return None
+        self._cache.move_to_end(key)
+        return copy.deepcopy(payload)
+
+    def set(self, key: str, payload: Any) -> None:
+        self._cache[key] = (time.time(), copy.deepcopy(payload))
+        self._cache.move_to_end(key)
+        while len(self._cache) > self._max_size:
+            self._cache.popitem(last=False)
+
+
+SUMMARY_RESPONSE_CACHE = _ResponseCache(max_size=128, ttl_seconds=900)
 
 
 def _json_number(value: Any) -> Any:
@@ -346,6 +443,105 @@ def _ensure_required_tables(db: Session) -> None:
         )
 
 
+def _intelligence_summary_tables_available(db: Session) -> bool:
+    return _table_exists(db, INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE) and _table_exists(
+        db,
+        INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE,
+    )
+
+
+def _summary_refresh_signature(db: Session) -> str | None:
+    if not _intelligence_summary_tables_available(db):
+        return None
+    row = db.execute(
+        text(
+            f"""
+            SELECT CONCAT_WS(
+                '|',
+                COALESCE((SELECT MAX(refreshed_at)::text FROM {INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE}), 'none'),
+                COALESCE((SELECT MAX(refreshed_at)::text FROM {INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE}), 'none'),
+                COALESCE(
+                    (
+                        SELECT MAX(refreshed_at)::text
+                        FROM {NORMALIZED_TABLE}
+                        WHERE source_system = 'usaspending'
+                    ),
+                    'none'
+                )
+            ) AS signature
+            """
+        )
+    ).mappings().one()
+    signature = str(row.get("signature") or "").strip()
+    return signature or None
+
+
+def _summary_cache_key(
+    *,
+    scope: str,
+    filters: FundingFilters,
+    include_geometry: bool = False,
+    bbox: str | None = None,
+    limit: int | None = None,
+    state: str | None = None,
+    refresh_signature: str | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "scope": scope,
+            "filters": {
+                "fiscal_year": filters.fiscal_year,
+                "metric": filters.metric,
+                "funding_type": filters.funding_type,
+                "funding_mode": filters.funding_mode,
+                "program_area": filters.program_area,
+                "mechanism": filters.mechanism,
+                "recipient_type": filters.recipient_type,
+                "geography_level": filters.geography_level,
+                "time_aggregation": filters.time_aggregation,
+            },
+            "include_geometry": include_geometry,
+            "bbox": bbox,
+            "limit": limit,
+            "state": state,
+            "refresh_signature": refresh_signature,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _read_cached_summary_payload(
+    db: Session,
+    *,
+    scope: str,
+    filters: FundingFilters,
+    include_geometry: bool = False,
+    bbox: str | None = None,
+    limit: int | None = None,
+    state: str | None = None,
+    loader: Any,
+) -> Any:
+    refresh_signature = _summary_refresh_signature(db)
+    if refresh_signature is None:
+        return loader()
+    cache_key = _summary_cache_key(
+        scope=scope,
+        filters=filters,
+        include_geometry=include_geometry,
+        bbox=bbox,
+        limit=limit,
+        state=state,
+        refresh_signature=refresh_signature,
+    )
+    cached = SUMMARY_RESPONSE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    payload = loader()
+    SUMMARY_RESPONSE_CACHE.set(cache_key, payload)
+    return payload
+
+
 def _strip_optional(value: str | None) -> str | None:
     token = str(value or "").strip()
     return token or None
@@ -364,6 +560,14 @@ def _normalize_funding_type(value: str | None) -> str:
     if token not in VALID_FUNDING_TYPES:
         allowed = ", ".join(sorted(VALID_FUNDING_TYPES))
         raise HTTPException(status_code=400, detail=f"funding_type must be one of {allowed}")
+    return token
+
+
+def _normalize_funding_mode(value: str | None) -> str:
+    token = str(value or DEFAULT_FUNDING_MODE).strip().lower()
+    if token not in VALID_FUNDING_MODES:
+        allowed = ", ".join(sorted(VALID_FUNDING_MODES))
+        raise HTTPException(status_code=400, detail=f"funding_mode must be one of {allowed}")
     return token
 
 
@@ -421,6 +625,7 @@ def _normalize_filters(
     fiscal_year: int | None,
     metric: str | None,
     funding_type: str | None,
+    funding_mode: str | None,
     cdc_center: str | None,
     program_area: str | None,
     mechanism: str | None,
@@ -434,6 +639,7 @@ def _normalize_filters(
         fiscal_year=effective_fiscal_year,
         metric=_normalize_metric(metric),
         funding_type=_normalize_funding_type(funding_type),
+        funding_mode=_normalize_funding_mode(funding_mode),
         program_area=effective_program_area,
         mechanism=_normalize_mechanism(mechanism),
         recipient_type=_normalize_recipient_type(recipient_type),
@@ -623,14 +829,195 @@ def _compute_bins(values: list[float], bins: int = 5) -> list[dict[str, Any]]:
 
 def _metric_value(row: dict[str, Any], metric: str) -> float | None:
     if metric == "total_funding":
-        return _json_number(row.get("total_funding_amount"))
+        return _json_number(row.get("chip_total_funding"))
     if metric == "funding_per_capita":
-        return _json_number(row.get("funding_per_capita"))
+        return _json_number(row.get("chip_per_capita_funding"))
     if metric == "funding_per_100k":
-        return _json_number(row.get("funding_per_100k"))
+        return _json_number(row.get("chip_per_100k_funding"))
     if metric == "share_national":
-        return _json_number(row.get("share_national_pct"))
+        return _json_number(row.get("chip_share_of_national"))
     return None
+
+
+def _profile_metric_value(profile: FundingProfileResult, metric: str) -> float | None:
+    if metric == "total_funding":
+        return profile.total_funding
+    if metric == "funding_per_capita":
+        return profile.funding_per_capita
+    if metric == "funding_per_100k":
+        return profile.funding_per_100k
+    if metric == "share_national":
+        return profile.national_share
+    return None
+
+
+def _chip_cache_context(
+    filters: FundingFilters,
+    *,
+    scope: str,
+    bbox: str | None = None,
+    limit: int | None = None,
+    state: str | None = None,
+) -> CHIPFundingCacheContext:
+    return CHIPFundingCacheContext(
+        scope=scope,
+        geography_level=filters.geography_level,
+        fiscal_year=filters.fiscal_year,
+        time_aggregation=filters.time_aggregation,
+        funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+        bbox=bbox,
+        limit=limit,
+        state=state,
+    )
+
+
+def _funding_profile_metadata(
+    row: dict[str, Any],
+    filters: FundingFilters,
+    *,
+    min_fiscal_year: int | None,
+    max_fiscal_year: int | None,
+) -> dict[str, Any]:
+    return {
+        "metric_context": _filter_context_payload(
+            filters,
+            min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
+        ),
+        "chip_equity_adjusted_metrics": row.get("chip_equity_adjusted_metrics") or {},
+        "funding_mode": {
+            "requested": row.get("funding_mode_requested"),
+            "effective": row.get("funding_mode_effective"),
+            "label": row.get("funding_mode_label"),
+            "normalization_supported": bool(row.get("normalization_supported")),
+            "normalization_applied": bool(row.get("normalization_applied")),
+            "normalization_note": row.get("normalization_note"),
+            "normalization_factor": _json_number(row.get("normalization_factor")),
+            "normalized_amount_type": row.get("normalized_amount_type"),
+            "normalization_status_label": row.get("normalization_status_label"),
+            "normalization_method": row.get("normalization_method"),
+            "funding_stream_logic_version": row.get("funding_stream_logic_version"),
+            "methodology_version": row.get("methodology_version"),
+        },
+        "min_fiscal_year": min_fiscal_year,
+        "max_fiscal_year": max_fiscal_year,
+    }
+
+
+def _funding_profile_result_from_row(
+    row: dict[str, Any],
+    filters: FundingFilters,
+) -> FundingProfileResult:
+    min_fiscal_year = int(row["min_fiscal_year"]) if row.get("min_fiscal_year") is not None else None
+    max_fiscal_year = int(row["max_fiscal_year"]) if row.get("max_fiscal_year") is not None else None
+    return FundingProfileResult(
+        geography_type=filters.geography_level,
+        geography_id=str(row.get("geography_id")) if row.get("geography_id") is not None else None,
+        geography_name=row.get("geography_name"),
+        state_code=row.get("state_code"),
+        state_name=row.get("state_name"),
+        fiscal_year=filters.fiscal_year,
+        time_aggregation=filters.time_aggregation,
+        timeframe_label=_timeframe_label(
+            fiscal_year=filters.fiscal_year,
+            min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
+            time_aggregation=filters.time_aggregation,
+        ),
+        funding_mode_requested=str(row.get("funding_mode_requested") or filters.funding_mode),
+        funding_mode_effective=str(row.get("funding_mode_effective") or filters.funding_mode),
+        funding_mode_label=str(
+            row.get("funding_mode_label")
+            or FUNDING_MODE_LABELS.get(str(row.get("funding_mode_effective") or filters.funding_mode), "CDC funding")
+        ),
+        total_funding=_json_number(row.get("total_funding_amount")),
+        funding_per_capita=_json_number(row.get("funding_per_capita")),
+        funding_per_100k=_json_number(row.get("funding_per_100k")),
+        national_share=_json_number(row.get("share_national_pct")),
+        raw_total_funding=_json_number(row.get("raw_total_funding")),
+        chip_normalized_funding=_json_number(row.get("chip_normalized_funding")),
+        raw_funding_per_capita=_json_number(row.get("raw_funding_per_capita")),
+        chip_normalized_funding_per_capita=_json_number(row.get("chip_normalized_funding_per_capita")),
+        raw_funding_per_100k=_json_number(row.get("raw_funding_per_100k")),
+        chip_normalized_funding_per_100k=_json_number(row.get("chip_normalized_funding_per_100k")),
+        raw_share_of_national=_json_number(row.get("raw_share_of_national")),
+        chip_normalized_share_of_national=_json_number(row.get("chip_normalized_share_of_national")),
+        awards_total=_json_number(row.get("awards_amount")),
+        subawards_total=_json_number(row.get("subawards_amount")),
+        contracts_total=_json_number(row.get("contracts_amount")),
+        award_count=int(row.get("award_count") or 0),
+        subaward_count=int(row.get("subaward_count") or 0),
+        contract_award_count=int(row.get("contract_award_count") or 0),
+        population=_json_number(row.get("population")),
+        normalization_supported=bool(row.get("normalization_supported")),
+        normalization_applied=bool(row.get("normalization_applied")),
+        normalization_note=row.get("normalization_note"),
+        normalization_factor=_json_number(row.get("normalization_factor")),
+        normalized_amount_type=row.get("normalized_amount_type"),
+        normalization_status_label=row.get("normalization_status_label"),
+        normalization_method=row.get("normalization_method"),
+        funding_stream_logic_version=row.get("funding_stream_logic_version"),
+        methodology_version=str(row.get("methodology_version") or PROFILE_CALIBRATION_METHODOLOGY_VERSION),
+        profile_version=FUNDING_PROFILE_VERSION,
+        funding_model_version=str(row.get("funding_model_version") or FUNDING_MODEL_VERSION),
+        metadata=_funding_profile_metadata(
+            row,
+            filters,
+            min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
+        ),
+    )
+
+
+def _serialize_funding_profile_result(profile: FundingProfileResult) -> dict[str, Any]:
+    return {
+        "geography_type": profile.geography_type,
+        "geography_id": profile.geography_id,
+        "geography_name": profile.geography_name,
+        "state_code": profile.state_code,
+        "state_name": profile.state_name,
+        "fiscal_year": profile.fiscal_year,
+        "time_aggregation": profile.time_aggregation,
+        "timeframe_label": profile.timeframe_label,
+        "funding_mode_requested": profile.funding_mode_requested,
+        "funding_mode_effective": profile.funding_mode_effective,
+        "funding_mode_label": profile.funding_mode_label,
+        "total_funding": profile.total_funding,
+        "funding_per_capita": profile.funding_per_capita,
+        "funding_per_100k": profile.funding_per_100k,
+        "national_share": profile.national_share,
+        "raw_total_funding": profile.raw_total_funding,
+        "chip_normalized_funding": profile.chip_normalized_funding,
+        "raw_funding_per_capita": profile.raw_funding_per_capita,
+        "chip_normalized_funding_per_capita": profile.chip_normalized_funding_per_capita,
+        "raw_funding_per_100k": profile.raw_funding_per_100k,
+        "chip_normalized_funding_per_100k": profile.chip_normalized_funding_per_100k,
+        "raw_share_of_national": profile.raw_share_of_national,
+        "chip_normalized_share_of_national": profile.chip_normalized_share_of_national,
+        "awards_total": profile.awards_total,
+        "subawards_total": profile.subawards_total,
+        "contracts_total": profile.contracts_total,
+        "award_count": profile.award_count,
+        "subaward_count": profile.subaward_count,
+        "contract_award_count": profile.contract_award_count,
+        "population": profile.population,
+        "normalization_supported": profile.normalization_supported,
+        "normalization_applied": profile.normalization_applied,
+        "normalization_note": profile.normalization_note,
+        "normalization_factor": profile.normalization_factor,
+        "normalized_amount_type": profile.normalized_amount_type,
+        "normalization_status_label": profile.normalization_status_label,
+        "normalization_method": profile.normalization_method,
+        "funding_stream_logic_version": profile.funding_stream_logic_version,
+        "methodology_version": profile.methodology_version,
+        "profile_version": profile.profile_version,
+        "funding_model_version": profile.funding_model_version,
+        "metadata": profile.metadata,
+    }
 
 
 def _timeframe_label(
@@ -697,6 +1084,15 @@ def _metric_note(metric: str) -> str | None:
     return None
 
 
+def _funding_mode_note(filters: FundingFilters) -> str:
+    if filters.funding_mode == CDCFundingMode.CHIP_NORMALIZED.value:
+        return (
+            "CHIP normalized funding applies the frozen funding-scope reconstruction layer when the active CDC view "
+            "matches the calibrated statewide total contract."
+        )
+    return "Raw total funding displays summed source obligations without CHIP funding-scope normalization."
+
+
 def _time_aggregation_note(time_aggregation: str) -> str | None:
     if time_aggregation == "multi_year_average":
         return "Multi-Year Average divides the filtered funding total by the number of fiscal years represented in the filtered result set."
@@ -706,7 +1102,7 @@ def _time_aggregation_note(time_aggregation: str) -> str | None:
 
 
 def _active_filter_note(filters: FundingFilters) -> str:
-    note_parts = [DEFAULT_NOTE]
+    note_parts = [DEFAULT_NOTE, _funding_mode_note(filters)]
     note_parts.extend(
         part
         for part in (
@@ -742,6 +1138,8 @@ def _filter_context_payload(
         "metric_label": METRIC_LABELS[filters.metric],
         "funding_type": filters.funding_type,
         "funding_type_label": FUNDING_TYPE_LABELS[filters.funding_type],
+        "funding_mode": filters.funding_mode,
+        "funding_mode_label": FUNDING_MODE_LABELS[filters.funding_mode],
         "cdc_center": filters.program_area,
         "cdc_center_label": (
             PROGRAM_AREA_LABELS.get(filters.program_area)
@@ -1018,6 +1416,328 @@ def _filter_conditions(filters: FundingFilters, *, state: str | None = None) -> 
     return "WHERE " + " AND ".join(clauses), params
 
 
+def _summary_table_filter_conditions(
+    filters: FundingFilters,
+    *,
+    alias: str = "s",
+    state: str | None = None,
+) -> tuple[str, dict[str, Any]]:
+    clauses: list[str] = [f"{alias}.state_code IS NOT NULL"]
+    params: dict[str, Any] = {"time_aggregation": filters.time_aggregation}
+
+    if filters.fiscal_year is not None:
+        clauses.append(f"{alias}.fiscal_year = :fiscal_year")
+        params["fiscal_year"] = filters.fiscal_year
+
+    if filters.program_area is not None:
+        clauses.append(f"{alias}.program_area = :program_area")
+        params["program_area"] = filters.program_area
+
+    if filters.mechanism is not None:
+        clauses.append(f"{alias}.mechanism = :mechanism")
+        params["mechanism"] = filters.mechanism
+
+    if filters.recipient_type is not None:
+        clauses.append(f"{alias}.recipient_type = :recipient_type")
+        params["recipient_type"] = filters.recipient_type
+
+    if filters.funding_type == "total_cdc_funding":
+        clauses.append(
+            f"({alias}.component = 'award' OR ({alias}.component = 'contract' AND {alias}.chip_default_include = true))"
+        )
+    elif filters.funding_type == "awards_only":
+        clauses.append(f"{alias}.component IN ('award', 'contract')")
+    elif filters.funding_type == "subawards_only":
+        clauses.append(f"{alias}.component = 'subaward'")
+    elif filters.funding_type == "awards_and_subawards":
+        clauses.append(f"{alias}.component IN ('award', 'subaward', 'contract')")
+    elif filters.funding_type == "emergency_response":
+        clauses.append(f"{alias}.is_emergency = true")
+    elif filters.funding_type == "non_emergency_program":
+        clauses.append(f"{alias}.is_emergency = false")
+
+    if state is not None:
+        params["state_code_filter"] = str(state).strip().upper()
+        clauses.append(f"{alias}.state_code = :state_code_filter")
+
+    return "WHERE " + " AND ".join(clauses), params
+
+
+def _state_summary_query(
+    filters: FundingFilters,
+    *,
+    include_geometry: bool,
+    bbox: str | None = None,
+    limit: int = 200,
+) -> tuple[str, dict[str, Any]]:
+    where_sql, params = _summary_table_filter_conditions(filters, alias="s")
+    params.update(
+        {
+            "limit": max(1, min(int(limit), 500)),
+            "simplify_degrees": 0.04,
+        }
+    )
+    bbox_args = _bbox_params(bbox)
+    if bbox_args is not None:
+        params.update(bbox_args)
+
+    bbox_filter = ""
+    if bbox_args is not None:
+        bbox_filter = (
+            "AND sb.geom && ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326) "
+            "AND ST_Intersects(sb.geom, ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326))"
+        )
+
+    select_geometry = (
+        "ST_AsGeoJSON(ST_SimplifyPreserveTopology(sb.geom, :simplify_degrees), 6)::json AS geometry,"
+        if include_geometry
+        else "NULL::json AS geometry,"
+    )
+    sql = f"""
+        WITH filtered_rows AS (
+            SELECT *
+            FROM {INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE} AS s
+            {where_sql}
+        ),
+        year_stats AS (
+            SELECT
+                COUNT(DISTINCT fiscal_year)::numeric AS year_count,
+                MIN(fiscal_year)::integer AS min_fiscal_year,
+                MAX(fiscal_year)::integer AS max_fiscal_year
+            FROM filtered_rows
+        ),
+        aggregated AS (
+            SELECT
+                s.state_code AS geography_id,
+                MAX(s.state_name) AS geography_name,
+                MAX(s.population)::numeric AS population,
+                COALESCE(SUM(s.amount), 0)::numeric AS total_amount,
+                COALESCE(SUM(s.amount) FILTER (WHERE s.component = 'award'), 0)::numeric AS awards_amount,
+                COALESCE(SUM(s.amount) FILTER (WHERE s.component = 'subaward'), 0)::numeric AS subawards_amount,
+                COALESCE(SUM(s.amount) FILTER (WHERE s.component = 'contract'), 0)::numeric AS contracts_amount,
+                COALESCE(SUM(s.award_count), 0)::integer AS award_count,
+                COALESCE(SUM(s.award_count) FILTER (WHERE s.component = 'subaward'), 0)::integer AS subaward_count,
+                COALESCE(SUM(s.award_count) FILTER (WHERE s.component = 'contract'), 0)::integer AS contract_award_count
+            FROM filtered_rows AS s
+            GROUP BY s.state_code
+        ),
+        adjusted AS (
+            SELECT
+                aggregated.*,
+                year_stats.year_count,
+                year_stats.min_fiscal_year,
+                year_stats.max_fiscal_year,
+                CASE
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
+                        THEN aggregated.total_amount / year_stats.year_count
+                    ELSE aggregated.total_amount
+                END AS adjusted_amount,
+                CASE
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
+                        THEN aggregated.awards_amount / year_stats.year_count
+                    ELSE aggregated.awards_amount
+                END AS adjusted_awards_amount,
+                CASE
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
+                        THEN aggregated.subawards_amount / year_stats.year_count
+                    ELSE aggregated.subawards_amount
+                END AS adjusted_subawards_amount,
+                CASE
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
+                        THEN aggregated.contracts_amount / year_stats.year_count
+                    ELSE aggregated.contracts_amount
+                END AS adjusted_contracts_amount
+            FROM aggregated
+            CROSS JOIN year_stats
+        )
+        SELECT
+            sb.state_abbr AS geography_id,
+            COALESCE(sb.state_name, sb.state_abbr) AS geography_name,
+            sb.state_abbr AS state_code,
+            COALESCE(sb.state_name, sb.state_abbr) AS state_name,
+            adjusted.adjusted_amount AS raw_total_funding_amount,
+            adjusted.adjusted_awards_amount AS awards_amount,
+            adjusted.adjusted_subawards_amount AS subawards_amount,
+            adjusted.adjusted_contracts_amount AS contracts_amount,
+            COALESCE(adjusted.award_count, 0)::integer AS award_count,
+            COALESCE(adjusted.subaward_count, 0)::integer AS subaward_count,
+            COALESCE(adjusted.contract_award_count, 0)::integer AS contract_award_count,
+            adjusted.population,
+            adjusted.min_fiscal_year,
+            adjusted.max_fiscal_year,
+            {select_geometry}
+            COALESCE(adjusted.total_amount, 0)::numeric AS raw_total_amount
+        FROM {STATE_BOUNDARY_TABLE} AS sb
+        LEFT JOIN adjusted
+            ON adjusted.geography_id = sb.state_abbr
+        WHERE sb.geom IS NOT NULL
+          {bbox_filter}
+        ORDER BY sb.state_abbr
+        LIMIT :limit
+    """
+    return sql, params
+
+
+def _build_national_summary_row_from_state_rows(
+    db: Session,
+    *,
+    rows: list[dict[str, Any]],
+    filters: FundingFilters,
+) -> dict[str, Any]:
+    min_fiscal_year = next(
+        (
+            int(row["min_fiscal_year"])
+            for row in rows
+            if row.get("min_fiscal_year") is not None
+        ),
+        None,
+    )
+    max_fiscal_year = next(
+        (
+            int(row["max_fiscal_year"])
+            for row in rows
+            if row.get("max_fiscal_year") is not None
+        ),
+        None,
+    )
+    population = sum(
+        float(_json_number(row.get("population")) or 0.0)
+        for row in rows
+        if _json_number(row.get("population")) is not None
+    ) or None
+    raw_total = sum(
+        float(_json_number(row.get("raw_total_funding")) or 0.0)
+        for row in rows
+        if _json_number(row.get("raw_total_funding")) is not None
+    )
+    normalized_values = [
+        float(value)
+        for value in (
+            _json_number(row.get("chip_normalized_funding"))
+            for row in rows
+        )
+        if value is not None and math.isfinite(float(value))
+    ]
+    normalized_total = sum(normalized_values) if normalized_values else None
+    awards_amount = sum(float(_json_number(row.get("awards_amount")) or 0.0) for row in rows)
+    subawards_amount = sum(float(_json_number(row.get("subawards_amount")) or 0.0) for row in rows)
+    contracts_amount = sum(float(_json_number(row.get("contracts_amount")) or 0.0) for row in rows)
+    award_count = sum(int(row.get("award_count") or 0) for row in rows)
+    subaward_count = sum(int(row.get("subaward_count") or 0) for row in rows)
+    contract_award_count = sum(int(row.get("contract_award_count") or 0) for row in rows)
+    national_filters = FundingFilters(
+        fiscal_year=filters.fiscal_year,
+        metric=filters.metric,
+        funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+        geography_level="national",
+        time_aggregation=filters.time_aggregation,
+    )
+    mode_context = CHIP_FUNDING_MODEL.build_mode_context(
+        db,
+        cache_context=_chip_cache_context(national_filters, scope="national_summary_from_state_summary"),
+    )
+    raw_result = CHIP_FUNDING_MODEL.calculate(
+        total_funding=raw_total,
+        population=population,
+        fiscal_year=filters.fiscal_year,
+        national_total_funding=raw_total,
+    )
+    normalized_result = CHIP_FUNDING_MODEL.calculate(
+        total_funding=normalized_total,
+        population=population,
+        fiscal_year=filters.fiscal_year,
+        national_total_funding=normalized_total,
+    )
+    effective_mode = (
+        CDCFundingMode.CHIP_NORMALIZED.value
+        if filters.funding_mode == CDCFundingMode.CHIP_NORMALIZED.value and normalized_total is not None
+        else CDCFundingMode.RAW_TOTAL.value
+    )
+    selected_result = normalized_result if effective_mode == CDCFundingMode.CHIP_NORMALIZED.value else raw_result
+    payload = CHIP_FUNDING_MODEL._row_payload(
+        raw_result=raw_result,
+        normalized_result=normalized_result,
+        selected_result=selected_result,
+        row={},
+        mode_context=mode_context,
+        row_effective_mode=effective_mode,
+        normalization_row=None,
+        normalization_factor=None,
+        geography_level="national",
+    )
+    return {
+        "geography_id": "US",
+        "geography_name": "United States",
+        "state_code": "US",
+        "state_name": "United States",
+        "raw_total_funding_amount": raw_total,
+        "awards_amount": awards_amount,
+        "subawards_amount": subawards_amount,
+        "contracts_amount": contracts_amount,
+        "award_count": award_count,
+        "subaward_count": subaward_count,
+        "contract_award_count": contract_award_count,
+        "population": population,
+        "min_fiscal_year": min_fiscal_year,
+        "max_fiscal_year": max_fiscal_year,
+        "geometry": None,
+        "raw_total_amount": raw_total,
+        **payload,
+    }
+
+
+def _fetch_state_summary_rows(
+    db: Session,
+    filters: FundingFilters,
+    *,
+    include_geometry: bool,
+    bbox: str | None = None,
+    limit: int = 200,
+    scope: str = "state_summary",
+) -> list[dict[str, Any]]:
+    def load_rows() -> list[dict[str, Any]]:
+        sql, params = _state_summary_query(
+            filters,
+            include_geometry=include_geometry,
+            bbox=bbox,
+            limit=limit,
+        )
+        return [dict(row) for row in db.execute(text(sql), params).mappings().all()]
+
+    rows = _read_cached_summary_payload(
+        db,
+        scope=scope,
+        filters=filters,
+        include_geometry=include_geometry,
+        bbox=bbox,
+        limit=limit,
+        loader=load_rows,
+    )
+    mode_context = CHIP_FUNDING_MODEL.build_mode_context(
+        db,
+        cache_context=_chip_cache_context(
+            filters,
+            scope=scope,
+            bbox=bbox,
+            limit=limit,
+        ),
+    )
+    return CHIP_FUNDING_MODEL.calculate_many(
+        rows,
+        cache_context=_chip_cache_context(
+            filters,
+            scope=scope,
+            bbox=bbox,
+            limit=limit,
+        ),
+        mode_context=mode_context,
+    )
+
+
 def _summary_query(
     filters: FundingFilters,
     *,
@@ -1121,7 +1841,7 @@ def _summary_query(
                 COALESCE(c.county_name, b.name) AS geography_name,
                 c.state_abbr AS state_code,
                 c.state_desc AS state_name,
-                adjusted.adjusted_amount AS total_funding_amount,
+                adjusted.adjusted_amount AS raw_total_funding_amount,
                 adjusted.adjusted_awards_amount AS awards_amount,
                 adjusted.adjusted_subawards_amount AS subawards_amount,
                 adjusted.adjusted_contracts_amount AS contracts_amount,
@@ -1129,18 +1849,6 @@ def _summary_query(
                 adjusted.subaward_count,
                 adjusted.contract_award_count,
                 pop.population::numeric AS population,
-                CASE
-                    WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE adjusted.adjusted_amount / pop.population
-                END AS funding_per_capita,
-                CASE
-                    WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE (adjusted.adjusted_amount / pop.population) * 100000
-                END AS funding_per_100k,
-                CASE
-                    WHEN national_total.total_amount = 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE (adjusted.adjusted_amount / national_total.total_amount) * 100
-                END AS share_national_pct,
                 adjusted.min_fiscal_year,
                 adjusted.max_fiscal_year,
                 {select_geometry}
@@ -1231,7 +1939,7 @@ def _summary_query(
                 COALESCE(sb.state_name, sb.state_abbr) AS geography_name,
                 sb.state_abbr AS state_code,
                 COALESCE(sb.state_name, sb.state_abbr) AS state_name,
-                adjusted.adjusted_amount AS total_funding_amount,
+                adjusted.adjusted_amount AS raw_total_funding_amount,
                 adjusted.adjusted_awards_amount AS awards_amount,
                 adjusted.adjusted_subawards_amount AS subawards_amount,
                 adjusted.adjusted_contracts_amount AS contracts_amount,
@@ -1239,18 +1947,6 @@ def _summary_query(
                 adjusted.subaward_count,
                 adjusted.contract_award_count,
                 pop.population::numeric AS population,
-                CASE
-                    WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE adjusted.adjusted_amount / pop.population
-                END AS funding_per_capita,
-                CASE
-                    WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE (adjusted.adjusted_amount / pop.population) * 100000
-                END AS funding_per_100k,
-                CASE
-                    WHEN national_total.total_amount = 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                    ELSE (adjusted.adjusted_amount / national_total.total_amount) * 100
-                END AS share_national_pct,
                 adjusted.min_fiscal_year,
                 adjusted.max_fiscal_year,
                 {select_geometry}
@@ -1333,7 +2029,7 @@ def _summary_query(
             'United States'::text AS geography_name,
             'US'::text AS state_code,
             'United States'::text AS state_name,
-            adjusted.adjusted_amount AS total_funding_amount,
+            adjusted.adjusted_amount AS raw_total_funding_amount,
             adjusted.adjusted_awards_amount AS awards_amount,
             adjusted.adjusted_subawards_amount AS subawards_amount,
             adjusted.adjusted_contracts_amount AS contracts_amount,
@@ -1341,18 +2037,6 @@ def _summary_query(
             adjusted.subaward_count,
             adjusted.contract_award_count,
             pop.population::numeric AS population,
-            CASE
-                WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                ELSE adjusted.adjusted_amount / pop.population
-            END AS funding_per_capita,
-            CASE
-                WHEN pop.population IS NULL OR pop.population <= 0 OR adjusted.adjusted_amount IS NULL THEN NULL
-                ELSE (adjusted.adjusted_amount / pop.population) * 100000
-            END AS funding_per_100k,
-            CASE
-                WHEN adjusted.adjusted_amount IS NULL THEN NULL
-                ELSE 100::numeric
-            END AS share_national_pct,
             adjusted.min_fiscal_year,
             adjusted.max_fiscal_year,
             {select_geometry}
@@ -1386,14 +2070,69 @@ def _fetch_geography_rows(
     include_geometry: bool,
     bbox: str | None = None,
     limit: int = 6000,
+    scope: str = "map",
+    state: str | None = None,
 ) -> list[dict[str, Any]]:
+    if _intelligence_summary_tables_available(db) and filters.geography_level == "state":
+        return _fetch_state_summary_rows(
+            db,
+            filters,
+            include_geometry=include_geometry,
+            bbox=bbox,
+            limit=limit,
+            scope=scope,
+        )
+    if _intelligence_summary_tables_available(db) and filters.geography_level == "national":
+        state_filters = FundingFilters(
+            fiscal_year=filters.fiscal_year,
+            metric=filters.metric,
+            funding_type=filters.funding_type,
+            funding_mode=filters.funding_mode,
+            program_area=filters.program_area,
+            mechanism=filters.mechanism,
+            recipient_type=filters.recipient_type,
+            geography_level="state",
+            time_aggregation=filters.time_aggregation,
+        )
+        state_rows = _fetch_state_summary_rows(
+            db,
+            state_filters,
+            include_geometry=False,
+            bbox=None,
+            limit=100,
+            scope=f"{scope}_state_rollup",
+        )
+        return [_build_national_summary_row_from_state_rows(db, rows=state_rows, filters=filters)]
+
     sql, params = _summary_query(
         filters,
         include_geometry=include_geometry,
         bbox=bbox,
         limit=limit,
     )
-    return [dict(row) for row in db.execute(text(sql), params).mappings().all()]
+    rows = [dict(row) for row in db.execute(text(sql), params).mappings().all()]
+    mode_context = CHIP_FUNDING_MODEL.build_mode_context(
+        db,
+        cache_context=_chip_cache_context(
+            filters,
+            scope=scope,
+            bbox=bbox,
+            limit=limit,
+            state=state,
+        ),
+    )
+    transformed_rows = CHIP_FUNDING_MODEL.calculate_many(
+        rows,
+        cache_context=_chip_cache_context(
+            filters,
+            scope=scope,
+            bbox=bbox,
+            limit=limit,
+            state=state,
+        ),
+        mode_context=mode_context,
+    )
+    return transformed_rows
 
 
 def _fetch_national_summary_row(db: Session, filters: FundingFilters) -> dict[str, Any]:
@@ -1401,6 +2140,7 @@ def _fetch_national_summary_row(db: Session, filters: FundingFilters) -> dict[st
         fiscal_year=filters.fiscal_year,
         metric=filters.metric,
         funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
         program_area=filters.program_area,
         mechanism=filters.mechanism,
         recipient_type=filters.recipient_type,
@@ -1413,23 +2153,83 @@ def _fetch_national_summary_row(db: Session, filters: FundingFilters) -> dict[st
         include_geometry=False,
         bbox=None,
         limit=1,
+        scope="national_summary",
     )
     return rows[0] if rows else {}
 
 
-def _feature_properties(row: dict[str, Any], filters: FundingFilters) -> dict[str, Any]:
-    value = _metric_value(row, filters.metric)
-    min_fiscal_year = (
-        int(row["min_fiscal_year"])
-        if row.get("min_fiscal_year") is not None
-        else None
+def _build_funding_profiles(
+    db: Session,
+    filters: FundingFilters,
+    *,
+    include_geometry: bool,
+    bbox: str | None = None,
+    limit: int = 6000,
+    scope: str = "map",
+) -> tuple[list[dict[str, Any]], list[FundingProfileResult]]:
+    rows = _fetch_geography_rows(
+        db,
+        filters,
+        include_geometry=include_geometry,
+        bbox=bbox,
+        limit=limit,
+        scope=scope,
     )
-    max_fiscal_year = (
-        int(row["max_fiscal_year"])
-        if row.get("max_fiscal_year") is not None
-        else None
+    return rows, [_funding_profile_result_from_row(row, filters) for row in rows]
+
+
+def _canonical_profile_for_state(
+    db: Session,
+    filters: FundingFilters,
+    *,
+    state_code: str,
+) -> FundingProfileResult:
+    state_filters = FundingFilters(
+        fiscal_year=filters.fiscal_year,
+        metric=filters.metric,
+        funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+        geography_level="state",
+        time_aggregation=filters.time_aggregation,
     )
-    return {
+    rows, profiles = _build_funding_profiles(
+        db,
+        state_filters,
+        include_geometry=False,
+        bbox=None,
+        limit=100,
+        scope="profile_state_lookup",
+    )
+    del rows
+    for profile in profiles:
+        if str(profile.state_code or "").upper() == state_code:
+            return profile
+    raise HTTPException(status_code=404, detail=f"No CDC funding profile found for state {state_code}")
+
+
+def _scaled_amount(value: Any, *, raw_total: float, target_total: float | None) -> float | None:
+    amount = _json_number(value)
+    if amount is None:
+        return None
+    if target_total is None or raw_total <= 0:
+        return amount
+    return _json_number((float(amount) / float(raw_total)) * float(target_total))
+
+
+def _feature_properties(
+    row: dict[str, Any],
+    filters: FundingFilters,
+    *,
+    funding_profile: FundingProfileResult | None = None,
+    include_profile: bool = True,
+    lightweight: bool = False,
+) -> dict[str, Any]:
+    funding_profile = funding_profile or _funding_profile_result_from_row(row, filters)
+    value = _profile_metric_value(funding_profile, filters.metric)
+    properties = {
         "id": row.get("geography_id"),
         "location_id": row.get("geography_id"),
         "name": row.get("geography_name"),
@@ -1443,29 +2243,56 @@ def _feature_properties(row: dict[str, Any], filters: FundingFilters) -> dict[st
         "funding_type_label": FUNDING_TYPE_LABELS[filters.funding_type],
         "fiscal_year": filters.fiscal_year,
         "time_aggregation": filters.time_aggregation,
-        "timeframe_label": _timeframe_label(
-            fiscal_year=filters.fiscal_year,
-            min_fiscal_year=min_fiscal_year,
-            max_fiscal_year=max_fiscal_year,
-            time_aggregation=filters.time_aggregation,
-        ),
-        "total_funding_amount": _json_number(row.get("total_funding_amount")),
-        "funding_per_capita": _json_number(row.get("funding_per_capita")),
-        "funding_per_100k": _json_number(row.get("funding_per_100k")),
-        "share_national_pct": _json_number(row.get("share_national_pct")),
-        "population": _json_number(row.get("population")),
-        "award_count": int(row.get("award_count") or 0),
-        "subaward_count": int(row.get("subaward_count") or 0),
-        "contract_award_count": int(row.get("contract_award_count") or 0),
-        "awards_amount": _json_number(row.get("awards_amount")),
-        "subawards_amount": _json_number(row.get("subawards_amount")),
-        "contracts_amount": _json_number(row.get("contracts_amount")),
-        "metric_context": _filter_context_payload(
-            filters,
-            min_fiscal_year=min_fiscal_year,
-            max_fiscal_year=max_fiscal_year,
-        ),
+        "timeframe_label": funding_profile.timeframe_label,
+        "funding_mode_requested": funding_profile.funding_mode_requested,
+        "funding_mode_effective": funding_profile.funding_mode_effective,
+        "funding_mode_label": funding_profile.funding_mode_label,
+        "total_funding_amount": funding_profile.total_funding,
+        "funding_per_capita": funding_profile.funding_per_capita,
+        "funding_per_100k": funding_profile.funding_per_100k,
+        "share_national_pct": funding_profile.national_share,
+        "population": funding_profile.population,
+        "metric_context": funding_profile.metadata["metric_context"],
+        "methodology_version": funding_profile.methodology_version,
+        "profile_version": funding_profile.profile_version,
+        "funding_model_version": funding_profile.funding_model_version,
     }
+    if include_profile:
+        properties["funding_profile"] = _serialize_funding_profile_result(funding_profile)
+    if lightweight:
+        return properties
+    properties.update(
+        {
+            "raw_total_funding": funding_profile.raw_total_funding,
+            "raw_funding_per_capita": funding_profile.raw_funding_per_capita,
+            "raw_funding_per_100k": funding_profile.raw_funding_per_100k,
+            "raw_share_of_national": funding_profile.raw_share_of_national,
+            "chip_normalized_funding": funding_profile.chip_normalized_funding,
+            "chip_normalized_funding_per_capita": funding_profile.chip_normalized_funding_per_capita,
+            "chip_normalized_funding_per_100k": funding_profile.chip_normalized_funding_per_100k,
+            "chip_normalized_share_of_national": funding_profile.chip_normalized_share_of_national,
+            "chip_total_funding": _json_number(row.get("chip_total_funding")),
+            "chip_per_capita_funding": _json_number(row.get("chip_per_capita_funding")),
+            "chip_per_100k_funding": _json_number(row.get("chip_per_100k_funding")),
+            "chip_share_of_national": _json_number(row.get("chip_share_of_national")),
+            "chip_equity_adjusted_metrics": row.get("chip_equity_adjusted_metrics") or {},
+            "award_count": int(row.get("award_count") or 0),
+            "subaward_count": int(row.get("subaward_count") or 0),
+            "contract_award_count": int(row.get("contract_award_count") or 0),
+            "awards_amount": _json_number(row.get("awards_amount")),
+            "subawards_amount": _json_number(row.get("subawards_amount")),
+            "contracts_amount": _json_number(row.get("contracts_amount")),
+            "normalization_supported": funding_profile.normalization_supported,
+            "normalization_applied": funding_profile.normalization_applied,
+            "normalization_note": funding_profile.normalization_note,
+            "normalization_factor": funding_profile.normalization_factor,
+            "normalized_amount_type": funding_profile.normalized_amount_type,
+            "normalization_status_label": funding_profile.normalization_status_label,
+            "normalization_method": funding_profile.normalization_method,
+            "funding_stream_logic_version": funding_profile.funding_stream_logic_version,
+        }
+    )
+    return properties
 
 
 def _mapping_coverage(db: Session) -> dict[str, Any]:
@@ -1530,7 +2357,7 @@ def list_filter_options(db: Session) -> dict[str, Any]:
             "id": "chip_funding_model",
             "label": "CHIP Funding Model",
             "default": True,
-            "normalization_toggle_removed": True,
+            "funding_mode_controlled": True,
         },
         "fiscal_year_options": [{"value": "all", "label": "All Years"}]
         + [
@@ -1540,6 +2367,8 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         "default_fiscal_year": fiscal_years[0] if fiscal_years else None,
         "metric_options": METRIC_OPTIONS,
         "funding_type_options": FUNDING_TYPE_OPTIONS,
+        "funding_mode_options": FUNDING_MODE_OPTIONS,
+        "default_funding_mode": DEFAULT_FUNDING_MODE,
         "cdc_center_options": PROGRAM_AREA_OPTIONS,
         "mechanism_options": MECHANISM_OPTIONS,
         "recipient_type_options": RECIPIENT_TYPE_OPTIONS,
@@ -1554,7 +2383,8 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         },
         "notes": [
             DEFAULT_NOTE,
-            "The old normalize-data toggle has been removed. Metric and filter controls now express CHIP methodology directly.",
+            "CDC funding supports two explicit modes: raw total funding and CHIP normalized funding.",
+            "CHIP normalized funding uses the frozen funding-scope reconstruction layer only when the request matches the calibrated single-year statewide totals contract.",
             "Emergency vs non-emergency splits come from centralized appropriation-type classification.",
         ],
     }
@@ -1566,6 +2396,7 @@ def fetch_map_geojson(
     fiscal_year: int | None = None,
     metric: str | None = None,
     funding_type: str | None = None,
+    funding_mode: str | None = None,
     cdc_center: str | None = None,
     program_area: str | None = None,
     mechanism: str | None = None,
@@ -1580,6 +2411,7 @@ def fetch_map_geojson(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=funding_type,
+        funding_mode=funding_mode,
         cdc_center=cdc_center,
         program_area=program_area,
         mechanism=mechanism,
@@ -1587,18 +2419,26 @@ def fetch_map_geojson(
         geography_level=geography_level,
         time_aggregation=time_aggregation,
     )
-    rows = _fetch_geography_rows(
+    rows, profiles = _build_funding_profiles(
         db,
         filters,
         include_geometry=True,
         bbox=bbox,
         limit=limit,
+        scope="map",
     )
+    use_lightweight_state_features = filters.geography_level == "state"
     features: list[dict[str, Any]] = []
     metric_values: list[float] = []
-    for row in rows:
-        properties = _feature_properties(row, filters)
-        value = _metric_value(row, filters.metric)
+    for row, profile in zip(rows, profiles, strict=False):
+        properties = _feature_properties(
+            row,
+            filters,
+            funding_profile=profile,
+            include_profile=not use_lightweight_state_features,
+            lightweight=use_lightweight_state_features,
+        )
+        value = _profile_metric_value(profile, filters.metric)
         if value is not None and math.isfinite(float(value)):
             metric_values.append(float(value))
         features.append(
@@ -1626,12 +2466,30 @@ def fetch_map_geojson(
         None,
     )
     national_summary = _fetch_national_summary_row(db, filters)
+    national_profile = _serialize_funding_profile_result(_funding_profile_result_from_row(national_summary, FundingFilters(
+        fiscal_year=filters.fiscal_year,
+        metric=filters.metric,
+        funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+        geography_level="national",
+        time_aggregation=filters.time_aggregation,
+    )))
 
     return {
         "type": "FeatureCollection",
         "features": features,
         "meta": {
-            "note": _active_filter_note(filters),
+            "note": " ".join(
+                part
+                for part in [
+                    national_profile.get("normalization_note"),
+                    _active_filter_note(filters),
+                ]
+                if part
+            ),
             "legend_title": build_legend_title(
                 metric=filters.metric,
                 fiscal_year=filters.fiscal_year,
@@ -1644,14 +2502,27 @@ def fetch_map_geojson(
                 min_fiscal_year=min_fiscal_year,
                 max_fiscal_year=max_fiscal_year,
             ),
+            "funding_mode_requested": filters.funding_mode,
+            "funding_mode_requested_label": FUNDING_MODE_LABELS[filters.funding_mode],
+            "funding_mode_effective": national_profile.get("funding_mode_effective"),
+            "funding_mode_label": national_profile.get("funding_mode_label"),
             "national_summary": {
+                "funding_profile": national_profile,
+                "funding_mode_requested": national_profile.get("funding_mode_requested"),
+                "funding_mode_effective": national_profile.get("funding_mode_effective"),
+                "funding_mode_label": national_profile.get("funding_mode_label"),
+                "raw_total_funding": _json_number(national_summary.get("raw_total_funding")),
+                "chip_normalized_funding": _json_number(national_summary.get("chip_normalized_funding")),
+                "chip_total_funding": _json_number(national_summary.get("chip_total_funding")),
+                "chip_per_capita_funding": _json_number(national_summary.get("chip_per_capita_funding")),
+                "chip_per_100k_funding": _json_number(national_summary.get("chip_per_100k_funding")),
+                "chip_share_of_national": _json_number(national_summary.get("chip_share_of_national")),
                 "total_funding_amount": _json_number(national_summary.get("total_funding_amount")),
                 "funding_per_capita": _json_number(national_summary.get("funding_per_capita")),
                 "funding_per_100k": _json_number(national_summary.get("funding_per_100k")),
                 "share_national_pct": _json_number(national_summary.get("share_national_pct")),
                 "population": _json_number(national_summary.get("population")),
             },
-            "source_blend": list_filter_options(db)["source_blend"],
         },
     }
 
@@ -1662,6 +2533,7 @@ def fetch_legend_stats(
     fiscal_year: int | None = None,
     metric: str | None = None,
     funding_type: str | None = None,
+    funding_mode: str | None = None,
     cdc_center: str | None = None,
     program_area: str | None = None,
     mechanism: str | None = None,
@@ -1675,6 +2547,7 @@ def fetch_legend_stats(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=funding_type,
+        funding_mode=funding_mode,
         cdc_center=cdc_center,
         program_area=program_area,
         mechanism=mechanism,
@@ -1682,21 +2555,22 @@ def fetch_legend_stats(
         geography_level=geography_level,
         time_aggregation=time_aggregation,
     )
-    rows = _fetch_geography_rows(
+    rows, profiles = _build_funding_profiles(
         db,
         filters,
         include_geometry=False,
         bbox=bbox,
         limit=7000,
+        scope="legend",
     )
     metric_values: list[float] = []
     mapped_geographies = 0
     total_visible_dollars = 0.0
-    for row in rows:
-        total_funding = _json_number(row.get("total_funding_amount"))
+    for row, profile in zip(rows, profiles, strict=False):
+        total_funding = profile.total_funding
         if total_funding is not None:
             total_visible_dollars += float(total_funding)
-        value = _metric_value(row, filters.metric)
+        value = _profile_metric_value(profile, filters.metric)
         if value is None:
             continue
         mapped_geographies += 1
@@ -1719,11 +2593,26 @@ def fetch_legend_stats(
         None,
     )
     national_summary = _fetch_national_summary_row(db, filters)
+    national_profile = _serialize_funding_profile_result(_funding_profile_result_from_row(national_summary, FundingFilters(
+        fiscal_year=filters.fiscal_year,
+        metric=filters.metric,
+        funding_type=filters.funding_type,
+        funding_mode=filters.funding_mode,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+        geography_level="national",
+        time_aggregation=filters.time_aggregation,
+    )))
     return {
         "metric": filters.metric,
         "metric_label": METRIC_LABELS[filters.metric],
         "funding_type": filters.funding_type,
         "funding_type_label": FUNDING_TYPE_LABELS[filters.funding_type],
+        "funding_mode_requested": filters.funding_mode,
+        "funding_mode_requested_label": FUNDING_MODE_LABELS[filters.funding_mode],
+        "funding_mode_effective": national_profile.get("funding_mode_effective"),
+        "funding_mode_label": national_profile.get("funding_mode_label"),
         "geography_level": filters.geography_level,
         "time_aggregation": filters.time_aggregation,
         "min": min(metric_values) if metric_values else None,
@@ -1745,8 +2634,18 @@ def fetch_legend_stats(
             min_fiscal_year=min_fiscal_year,
             max_fiscal_year=max_fiscal_year,
         ),
-        "note": _active_filter_note(filters),
+        "note": " ".join(part for part in [national_profile.get("normalization_note"), _active_filter_note(filters)] if part),
         "national_summary": {
+            "funding_profile": national_profile,
+            "funding_mode_requested": national_profile.get("funding_mode_requested"),
+            "funding_mode_effective": national_profile.get("funding_mode_effective"),
+            "funding_mode_label": national_profile.get("funding_mode_label"),
+            "raw_total_funding": _json_number(national_summary.get("raw_total_funding")),
+            "chip_normalized_funding": _json_number(national_summary.get("chip_normalized_funding")),
+            "chip_total_funding": _json_number(national_summary.get("chip_total_funding")),
+            "chip_per_capita_funding": _json_number(national_summary.get("chip_per_capita_funding")),
+            "chip_per_100k_funding": _json_number(national_summary.get("chip_per_100k_funding")),
+            "chip_share_of_national": _json_number(national_summary.get("chip_share_of_national")),
             "total_funding_amount": _json_number(national_summary.get("total_funding_amount")),
             "funding_per_capita": _json_number(national_summary.get("funding_per_capita")),
             "funding_per_100k": _json_number(national_summary.get("funding_per_100k")),
@@ -1762,6 +2661,7 @@ def fetch_national_summary(
     fiscal_year: int | None = None,
     metric: str | None = None,
     funding_type: str | None = None,
+    funding_mode: str | None = None,
     cdc_center: str | None = None,
     program_area: str | None = None,
     mechanism: str | None = None,
@@ -1773,6 +2673,7 @@ def fetch_national_summary(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=funding_type,
+        funding_mode=funding_mode,
         cdc_center=cdc_center,
         program_area=program_area,
         mechanism=mechanism,
@@ -1781,10 +2682,21 @@ def fetch_national_summary(
         time_aggregation=time_aggregation,
     )
     row = _fetch_national_summary_row(db, filters)
+    profile = _funding_profile_result_from_row(row, filters)
     min_fiscal_year = int(row["min_fiscal_year"]) if row.get("min_fiscal_year") is not None else None
     max_fiscal_year = int(row["max_fiscal_year"]) if row.get("max_fiscal_year") is not None else None
     return {
+        "profile": _serialize_funding_profile_result(profile),
         "summary": {
+            "funding_mode_requested": profile.funding_mode_requested,
+            "funding_mode_effective": profile.funding_mode_effective,
+            "funding_mode_label": profile.funding_mode_label,
+            "raw_total_funding": _json_number(row.get("raw_total_funding")),
+            "chip_normalized_funding": _json_number(row.get("chip_normalized_funding")),
+            "chip_total_funding": _json_number(row.get("chip_total_funding")),
+            "chip_per_capita_funding": _json_number(row.get("chip_per_capita_funding")),
+            "chip_per_100k_funding": _json_number(row.get("chip_per_100k_funding")),
+            "chip_share_of_national": _json_number(row.get("chip_share_of_national")),
             "total_funding_amount": _json_number(row.get("total_funding_amount")),
             "funding_per_capita": _json_number(row.get("funding_per_capita")),
             "funding_per_100k": _json_number(row.get("funding_per_100k")),
@@ -1809,7 +2721,7 @@ def fetch_national_summary(
             min_fiscal_year=min_fiscal_year,
             max_fiscal_year=max_fiscal_year,
         ),
-        "note": _active_filter_note(filters),
+        "note": " ".join(part for part in [profile.normalization_note, _active_filter_note(filters)] if part),
     }
 
 
@@ -1819,6 +2731,118 @@ def _profile_state_rows(
     *,
     state: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    if _intelligence_summary_tables_available(db):
+        where_all_sql, params = _summary_table_filter_conditions(filters, alias="s")
+        where_state_sql, state_params = _summary_table_filter_conditions(filters, alias="s", state=state)
+        params = dict(params)
+        state_params = dict(state_params)
+        sql = f"""
+            WITH filtered_all_rows AS (
+                SELECT * FROM {INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE} AS s
+                {where_all_sql}
+            ),
+            filtered_state_rows AS (
+                SELECT * FROM {INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE} AS s
+                {where_state_sql}
+            ),
+            year_stats AS (
+                SELECT
+                    COUNT(DISTINCT fiscal_year)::numeric AS year_count,
+                    MIN(fiscal_year)::integer AS min_fiscal_year,
+                    MAX(fiscal_year)::integer AS max_fiscal_year
+                FROM filtered_all_rows
+            ),
+            national_total AS (
+                SELECT
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                            THEN COALESCE(SUM(filtered_all_rows.amount), 0)::numeric / MAX(year_stats.year_count)
+                        ELSE COALESCE(SUM(filtered_all_rows.amount), 0)::numeric
+                    END AS total_amount
+                FROM filtered_all_rows
+                CROSS JOIN year_stats
+            ),
+            state_total AS (
+                SELECT
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                            THEN COALESCE(SUM(filtered_state_rows.amount), 0)::numeric / MAX(year_stats.year_count)
+                        ELSE COALESCE(SUM(filtered_state_rows.amount), 0)::numeric
+                    END AS total_amount,
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                            THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'award'), 0)::numeric / MAX(year_stats.year_count)
+                        ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'award'), 0)::numeric
+                    END AS awards_amount_raw,
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                            THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::numeric / MAX(year_stats.year_count)
+                        ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::numeric
+                    END AS subawards_amount_raw,
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                            THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::numeric / MAX(year_stats.year_count)
+                        ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::numeric
+                    END AS contracts_amount_raw,
+                    COALESCE(SUM(filtered_state_rows.award_count), 0)::integer AS award_count,
+                    COALESCE(SUM(filtered_state_rows.award_count) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::integer AS subaward_count,
+                    COALESCE(SUM(filtered_state_rows.award_count) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::integer AS contract_award_count
+                FROM filtered_state_rows
+                CROSS JOIN year_stats
+            ),
+            area_rows AS (
+                SELECT
+                    filtered_state_rows.program_area,
+                    filtered_state_rows.program_name,
+                    COALESCE(SUM(filtered_state_rows.award_count), 0)::integer AS award_count,
+                    CASE
+                        WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
+                            THEN COALESCE(SUM(filtered_state_rows.amount), 0)::numeric / year_stats.year_count
+                        ELSE COALESCE(SUM(filtered_state_rows.amount), 0)::numeric
+                    END AS amount
+                FROM filtered_state_rows
+                CROSS JOIN year_stats
+                GROUP BY filtered_state_rows.program_area, filtered_state_rows.program_name, year_stats.year_count
+            )
+            SELECT
+                area_rows.program_area,
+                area_rows.program_name,
+                area_rows.amount,
+                area_rows.award_count,
+                state_total.total_amount AS state_total_amount,
+                state_total.awards_amount_raw,
+                state_total.subawards_amount_raw,
+                state_total.contracts_amount_raw,
+                state_total.award_count AS state_award_count,
+                state_total.subaward_count AS state_subaward_count,
+                state_total.contract_award_count,
+                national_total.total_amount AS national_total_amount,
+                year_stats.min_fiscal_year,
+                year_stats.max_fiscal_year
+            FROM area_rows
+            CROSS JOIN state_total
+            CROSS JOIN national_total
+            CROSS JOIN year_stats
+            ORDER BY area_rows.amount DESC NULLS LAST, area_rows.program_area ASC, area_rows.program_name ASC
+        """
+        rows = [dict(row) for row in db.execute(text(sql), state_params | params).mappings().all()]
+        summary = rows[0] if rows else {}
+        metadata = {
+            "min_fiscal_year": int(summary["min_fiscal_year"]) if summary.get("min_fiscal_year") is not None else None,
+            "max_fiscal_year": int(summary["max_fiscal_year"]) if summary.get("max_fiscal_year") is not None else None,
+        }
+        totals = {
+            "state_total_amount": _json_number(summary.get("state_total_amount")) or 0.0,
+            "awards_amount": _json_number(summary.get("awards_amount_raw")) or 0.0,
+            "subawards_amount": _json_number(summary.get("subawards_amount_raw")) or 0.0,
+            "contracts_amount": _json_number(summary.get("contracts_amount_raw")) or 0.0,
+            "award_count": int(summary.get("state_award_count") or 0),
+            "subaward_count": int(summary.get("state_subaward_count") or 0),
+            "contract_award_count": int(summary.get("contract_award_count") or 0),
+            "national_total_amount": _json_number(summary.get("national_total_amount")) or 0.0,
+        }
+        return rows, totals, metadata
+
     base_cte = _integrated_rows_cte()
     where_all_sql, params = _filter_conditions(filters)
     where_state_sql, state_params = _filter_conditions(filters, state=state)
@@ -1844,8 +2868,8 @@ def _profile_state_rows(
         national_total AS (
             SELECT
                 CASE
-                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
-                        THEN COALESCE(SUM(filtered_all_rows.amount), 0)::numeric / year_stats.year_count
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                        THEN COALESCE(SUM(filtered_all_rows.amount), 0)::numeric / MAX(year_stats.year_count)
                     ELSE COALESCE(SUM(filtered_all_rows.amount), 0)::numeric
                 END AS total_amount
             FROM filtered_all_rows
@@ -1854,23 +2878,23 @@ def _profile_state_rows(
         state_total AS (
             SELECT
                 CASE
-                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
-                        THEN COALESCE(SUM(filtered_state_rows.amount), 0)::numeric / year_stats.year_count
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                        THEN COALESCE(SUM(filtered_state_rows.amount), 0)::numeric / MAX(year_stats.year_count)
                     ELSE COALESCE(SUM(filtered_state_rows.amount), 0)::numeric
                 END AS total_amount,
                 CASE
-                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
-                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'award'), 0)::numeric / year_stats.year_count
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'award'), 0)::numeric / MAX(year_stats.year_count)
                     ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'award'), 0)::numeric
                 END AS awards_amount_raw,
                 CASE
-                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
-                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::numeric / year_stats.year_count
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::numeric / MAX(year_stats.year_count)
                     ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'subaward'), 0)::numeric
                 END AS subawards_amount_raw,
                 CASE
-                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(year_stats.year_count, 0) > 0
-                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::numeric / year_stats.year_count
+                    WHEN :time_aggregation = 'multi_year_average' AND COALESCE(MAX(year_stats.year_count), 0) > 0
+                        THEN COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::numeric / MAX(year_stats.year_count)
                     ELSE COALESCE(SUM(filtered_state_rows.amount) FILTER (WHERE filtered_state_rows.component = 'contract'), 0)::numeric
                 END AS contracts_amount_raw,
                 COUNT(DISTINCT filtered_state_rows.award_key)::integer AS award_count,
@@ -1966,59 +2990,42 @@ def _state_population(db: Session, state_code: str) -> float | None:
     return _json_number(row.get("population"))
 
 
-def fetch_state_profile_summary(
+def _chip_share_value(
+    value: Any,
+    *,
+    national_total_funding: Any,
+    fiscal_year: int | None,
+) -> float | None:
+    return _json_number(
+        CHIP_FUNDING_MODEL.calculate(
+            total_funding=value,
+            national_total_funding=national_total_funding,
+            fiscal_year=fiscal_year,
+        ).share_of_national
+    )
+
+
+def _build_state_profile_summary_payload(
     db: Session,
     *,
-    state: str,
-    fiscal_year: int | None = None,
-    metric: str | None = None,
-    funding_type: str | None = None,
-    cdc_center: str | None = None,
-    program_area: str | None = None,
-    mechanism: str | None = None,
-    recipient_type: str | None = None,
-    time_aggregation: str | None = None,
+    state_code: str,
+    filters: FundingFilters,
+    canonical_profile: FundingProfileResult,
+    rows: list[dict[str, Any]],
+    metadata: dict[str, Any],
+    totals: dict[str, Any],
 ) -> dict[str, Any]:
-    _ensure_required_tables(db)
-    state_code = str(state or "").strip().upper()
-    if len(state_code) != 2:
-        raise HTTPException(status_code=400, detail="state must be a valid 2-letter state code")
-    filters = _normalize_filters(
-        fiscal_year=fiscal_year,
-        metric=metric,
-        funding_type=funding_type,
-        cdc_center=cdc_center,
-        program_area=program_area,
-        mechanism=mechanism,
-        recipient_type=recipient_type,
-        geography_level="state",
-        time_aggregation=time_aggregation,
-    )
-    rows, totals, metadata = _profile_state_rows(db, filters, state=state_code)
-    population = _state_population(db, state_code)
-    total_funding = _json_number(totals["state_total_amount"])
-    funding_per_capita = (
-        (float(total_funding) / float(population))
-        if total_funding is not None and population not in (None, 0)
-        else None
-    )
-    funding_per_100k = (
-        float(funding_per_capita) * 100000
-        if funding_per_capita is not None
-        else None
-    )
-    share_national_pct = (
-        (float(total_funding) / float(totals["national_total_amount"])) * 100
-        if total_funding is not None and float(totals["national_total_amount"] or 0.0) > 0
-        else None
-    )
-    metric_row = {
-        "total_funding_amount": total_funding,
-        "funding_per_capita": _json_number(funding_per_capita),
-        "funding_per_100k": _json_number(funding_per_100k),
-        "share_national_pct": _json_number(share_national_pct),
-    }
     top_area = rows[0] if rows else None
+    raw_state_total = float(totals["state_total_amount"] or 0.0)
+    scaled_top_area_amount = (
+        _scaled_amount(
+            top_area.get("amount"),
+            raw_total=raw_state_total,
+            target_total=canonical_profile.total_funding,
+        )
+        if top_area
+        else None
+    )
     return {
         "state_code": state_code,
         "state_name": _state_name(db, state_code),
@@ -2030,25 +3037,48 @@ def fetch_state_profile_summary(
             max_fiscal_year=metadata["max_fiscal_year"],
             time_aggregation=filters.time_aggregation,
         ),
+        "funding_mode_requested": canonical_profile.funding_mode_requested,
+        "funding_mode_effective": canonical_profile.funding_mode_effective,
+        "funding_mode_label": canonical_profile.funding_mode_label,
         "selected_metric": filters.metric,
         "selected_metric_label": METRIC_LABELS[filters.metric],
-        "selected_metric_value": _metric_value(metric_row, filters.metric),
-        "total_funding": total_funding,
-        "funding_per_capita": _json_number(funding_per_capita),
-        "funding_per_100k": _json_number(funding_per_100k),
-        "share_national_pct": _json_number(share_national_pct),
-        "population": population,
-        "awards_amount": totals["awards_amount"],
-        "subawards_amount": totals["subawards_amount"],
-        "contracts_amount": totals["contracts_amount"],
-        "award_count": totals["award_count"],
-        "subaward_count": totals["subaward_count"],
-        "contract_award_count": totals["contract_award_count"],
+        "selected_metric_value": _profile_metric_value(canonical_profile, filters.metric),
+        "profile": _serialize_funding_profile_result(canonical_profile),
+        "raw_total_funding": canonical_profile.raw_total_funding,
+        "chip_normalized_funding": canonical_profile.chip_normalized_funding,
+        "chip_total_funding": canonical_profile.chip_normalized_funding,
+        "chip_per_capita_funding": canonical_profile.chip_normalized_funding_per_capita,
+        "chip_per_100k_funding": canonical_profile.chip_normalized_funding_per_100k,
+        "chip_share_of_national": canonical_profile.chip_normalized_share_of_national,
+        "chip_equity_adjusted_metrics": canonical_profile.metadata.get("chip_equity_adjusted_metrics") or {},
+        "total_funding": canonical_profile.total_funding,
+        "funding_per_capita": canonical_profile.funding_per_capita,
+        "funding_per_100k": canonical_profile.funding_per_100k,
+        "share_national_pct": canonical_profile.national_share,
+        "population": canonical_profile.population,
+        "awards_amount": canonical_profile.awards_total,
+        "subawards_amount": canonical_profile.subawards_total,
+        "contracts_amount": canonical_profile.contracts_total,
+        "award_count": canonical_profile.award_count,
+        "subaward_count": canonical_profile.subaward_count,
+        "contract_award_count": canonical_profile.contract_award_count,
+        "normalization_supported": canonical_profile.normalization_supported,
+        "normalization_applied": canonical_profile.normalization_applied,
+        "normalization_note": canonical_profile.normalization_note,
+        "normalization_factor": canonical_profile.normalization_factor,
+        "normalized_amount_type": canonical_profile.normalized_amount_type,
+        "normalization_status_label": canonical_profile.normalization_status_label,
+        "normalization_method": canonical_profile.normalization_method,
+        "funding_stream_logic_version": canonical_profile.funding_stream_logic_version,
+        "methodology_version": canonical_profile.methodology_version,
+        "profile_version": canonical_profile.profile_version,
+        "funding_model_version": canonical_profile.funding_model_version,
         "top_program_area": (
             {
                 "value": top_area.get("program_area"),
                 "label": PROGRAM_AREA_LABELS.get(top_area.get("program_area"), "Other / Unclassified"),
-                "amount": _json_number(top_area.get("amount")),
+                "chip_total_funding": scaled_top_area_amount,
+                "amount": scaled_top_area_amount,
             }
             if top_area
             else None
@@ -2072,40 +3102,28 @@ def fetch_state_profile_summary(
             max_fiscal_year=metadata["max_fiscal_year"],
         ),
         "methodology_notes": [
-            DEFAULT_NOTE,
-            "State profile totals use the same CHIP funding filter model as the map.",
-            _funding_type_note(filters.funding_type),
-            _time_aggregation_note(filters.time_aggregation),
+            note
+            for note in [
+                DEFAULT_NOTE,
+                "State profile totals use the same CDC funding mode and filter model as the map.",
+                canonical_profile.normalization_note,
+                _funding_type_note(filters.funding_type),
+                _time_aggregation_note(filters.time_aggregation),
+            ]
+            if note
         ],
     }
 
 
-def fetch_state_profile_categories(
-    db: Session,
+def _build_state_profile_categories_payload(
     *,
-    state: str,
-    fiscal_year: int | None = None,
-    funding_type: str | None = None,
-    cdc_center: str | None = None,
-    program_area: str | None = None,
-    mechanism: str | None = None,
-    recipient_type: str | None = None,
-    time_aggregation: str | None = None,
+    state_code: str,
+    filters: FundingFilters,
+    canonical_profile: FundingProfileResult,
+    rows: list[dict[str, Any]],
+    metadata: dict[str, Any],
+    totals: dict[str, Any],
 ) -> dict[str, Any]:
-    _ensure_required_tables(db)
-    state_code = str(state or "").strip().upper()
-    filters = _normalize_filters(
-        fiscal_year=fiscal_year,
-        metric="total_funding",
-        funding_type=funding_type,
-        cdc_center=cdc_center,
-        program_area=program_area,
-        mechanism=mechanism,
-        recipient_type=recipient_type,
-        geography_level="state",
-        time_aggregation=time_aggregation,
-    )
-    rows, totals, metadata = _profile_state_rows(db, filters, state=state_code)
     by_area: dict[str, dict[str, Any]] = {}
     for row in rows:
         key = str(row.get("program_area") or "other_cdc_programs")
@@ -2123,19 +3141,44 @@ def fetch_state_profile_categories(
         current["award_count"] += int(row.get("award_count") or 0)
         current["program_count"] += 1
 
-    total_amount = float(totals["state_total_amount"] or 0.0)
+    raw_total_amount = float(totals["state_total_amount"] or 0.0)
     category_rows = sorted(
         by_area.values(),
         key=lambda item: (-float(item["amount"]), str(item["label"])),
     )
     return {
         "state_code": state_code,
+        "profile": _serialize_funding_profile_result(canonical_profile),
+        "funding_mode_requested": canonical_profile.funding_mode_requested,
+        "funding_mode_effective": canonical_profile.funding_mode_effective,
+        "funding_mode_label": canonical_profile.funding_mode_label,
+        "methodology_version": canonical_profile.methodology_version,
+        "profile_version": canonical_profile.profile_version,
+        "funding_model_version": canonical_profile.funding_model_version,
         "rows": [
             {
+                "geography_id": canonical_profile.geography_id,
                 "category": row["label"],
                 "category_value": row["program_area"],
-                "amount": _json_number(row["amount"]),
-                "share_pct": (float(row["amount"]) / total_amount) * 100 if total_amount > 0 else 0,
+                "chip_total_funding": _scaled_amount(
+                    row["amount"],
+                    raw_total=raw_total_amount,
+                    target_total=canonical_profile.total_funding,
+                ),
+                "amount": _scaled_amount(
+                    row["amount"],
+                    raw_total=raw_total_amount,
+                    target_total=canonical_profile.total_funding,
+                ),
+                "share_pct": _chip_share_value(
+                    _scaled_amount(
+                        row["amount"],
+                        raw_total=raw_total_amount,
+                        target_total=canonical_profile.total_funding,
+                    ),
+                    national_total_funding=canonical_profile.total_funding,
+                    fiscal_year=filters.fiscal_year,
+                ) or 0,
                 "award_count": int(row["award_count"]),
                 "subcategory_count": int(row["program_count"]),
             }
@@ -2153,59 +3196,71 @@ def fetch_state_profile_categories(
     }
 
 
-def fetch_state_profile_subcategories(
-    db: Session,
+def _build_state_profile_subcategories_payload(
     *,
-    state: str,
-    fiscal_year: int | None = None,
-    funding_type: str | None = None,
-    cdc_center: str | None = None,
-    program_area: str | None = None,
-    mechanism: str | None = None,
-    recipient_type: str | None = None,
-    time_aggregation: str | None = None,
+    state_code: str,
+    filters: FundingFilters,
+    canonical_profile: FundingProfileResult,
+    rows: list[dict[str, Any]],
+    metadata: dict[str, Any],
+    totals: dict[str, Any],
 ) -> dict[str, Any]:
-    _ensure_required_tables(db)
-    state_code = str(state or "").strip().upper()
-    filters = _normalize_filters(
-        fiscal_year=fiscal_year,
-        metric="total_funding",
-        funding_type=funding_type,
-        cdc_center=cdc_center,
-        program_area=program_area,
-        mechanism=mechanism,
-        recipient_type=recipient_type,
-        geography_level="state",
-        time_aggregation=time_aggregation,
-    )
-    rows, totals, metadata = _profile_state_rows(db, filters, state=state_code)
     totals_by_area: dict[str, float] = {}
     for row in rows:
         key = str(row.get("program_area") or "other_cdc_programs")
         totals_by_area[key] = totals_by_area.get(key, 0.0) + float(_json_number(row.get("amount")) or 0.0)
-    total_amount = float(totals["state_total_amount"] or 0.0)
+    raw_total_amount = float(totals["state_total_amount"] or 0.0)
     return {
         "state_code": state_code,
+        "profile": _serialize_funding_profile_result(canonical_profile),
+        "funding_mode_requested": canonical_profile.funding_mode_requested,
+        "funding_mode_effective": canonical_profile.funding_mode_effective,
+        "funding_mode_label": canonical_profile.funding_mode_label,
+        "methodology_version": canonical_profile.methodology_version,
+        "profile_version": canonical_profile.profile_version,
+        "funding_model_version": canonical_profile.funding_model_version,
         "rows": [
             {
+                "geography_id": canonical_profile.geography_id,
                 "category": PROGRAM_AREA_LABELS.get(
                     str(row.get("program_area") or "other_cdc_programs"),
                     "Other / Unclassified",
                 ),
                 "category_value": row.get("program_area"),
                 "subcategory": row.get("program_name"),
-                "amount": _json_number(row.get("amount")),
+                "chip_total_funding": _scaled_amount(
+                    row.get("amount"),
+                    raw_total=raw_total_amount,
+                    target_total=canonical_profile.total_funding,
+                ),
+                "amount": _scaled_amount(
+                    row.get("amount"),
+                    raw_total=raw_total_amount,
+                    target_total=canonical_profile.total_funding,
+                ),
                 "award_count": int(row.get("award_count") or 0),
-                "share_total_pct": (
-                    (float(_json_number(row.get("amount")) or 0.0) / total_amount) * 100
-                    if total_amount > 0
-                    else 0
-                ),
-                "share_category_pct": (
-                    (float(_json_number(row.get("amount")) or 0.0) / totals_by_area[str(row.get("program_area") or "other_cdc_programs")]) * 100
-                    if totals_by_area.get(str(row.get("program_area") or "other_cdc_programs"), 0.0) > 0
-                    else 0
-                ),
+                "share_total_pct": _chip_share_value(
+                    _scaled_amount(
+                        row.get("amount"),
+                        raw_total=raw_total_amount,
+                        target_total=canonical_profile.total_funding,
+                    ),
+                    national_total_funding=canonical_profile.total_funding,
+                    fiscal_year=filters.fiscal_year,
+                ) or 0,
+                "share_category_pct": _chip_share_value(
+                    _scaled_amount(
+                        row.get("amount"),
+                        raw_total=raw_total_amount,
+                        target_total=canonical_profile.total_funding,
+                    ),
+                    national_total_funding=_scaled_amount(
+                        totals_by_area[str(row.get("program_area") or "other_cdc_programs")],
+                        raw_total=raw_total_amount,
+                        target_total=canonical_profile.total_funding,
+                    ),
+                    fiscal_year=filters.fiscal_year,
+                ) or 0,
             }
             for row in rows
         ],
@@ -2218,4 +3273,250 @@ def fetch_state_profile_subcategories(
             min_fiscal_year=metadata["min_fiscal_year"],
             max_fiscal_year=metadata["max_fiscal_year"],
         ),
+    }
+
+
+def fetch_state_profile_overview(
+    db: Session,
+    *,
+    state: str,
+    fiscal_year: int | None = None,
+    metric: str | None = None,
+    funding_type: str | None = None,
+    funding_mode: str | None = None,
+    cdc_center: str | None = None,
+    program_area: str | None = None,
+    mechanism: str | None = None,
+    recipient_type: str | None = None,
+    time_aggregation: str | None = None,
+) -> dict[str, Any]:
+    _ensure_required_tables(db)
+    state_code = str(state or "").strip().upper()
+    if len(state_code) != 2:
+        raise HTTPException(status_code=400, detail="state must be a valid 2-letter state code")
+    filters = _normalize_filters(
+        fiscal_year=fiscal_year,
+        metric=metric,
+        funding_type=funding_type,
+        funding_mode=funding_mode,
+        cdc_center=cdc_center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        geography_level="state",
+        time_aggregation=time_aggregation,
+    )
+    def _load_profile_overview() -> dict[str, Any]:
+        canonical_profile = _canonical_profile_for_state(
+            db,
+            filters,
+            state_code=state_code,
+        )
+        rows, totals, metadata = _profile_state_rows(db, filters, state=state_code)
+        return {
+            "summary": _build_state_profile_summary_payload(
+                db,
+                state_code=state_code,
+                filters=filters,
+                canonical_profile=canonical_profile,
+                rows=rows,
+                metadata=metadata,
+                totals=totals,
+            ),
+            "categories": _build_state_profile_categories_payload(
+                state_code=state_code,
+                filters=filters,
+                canonical_profile=canonical_profile,
+                rows=rows,
+                metadata=metadata,
+                totals=totals,
+            ),
+            "subcategories": _build_state_profile_subcategories_payload(
+                state_code=state_code,
+                filters=filters,
+                canonical_profile=canonical_profile,
+                rows=rows,
+                metadata=metadata,
+                totals=totals,
+            ),
+        }
+
+    return _read_cached_summary_payload(
+        db,
+        scope="state_profile_overview",
+        filters=filters,
+        state=state_code,
+        loader=_load_profile_overview,
+    )
+
+
+def fetch_state_profile_summary(
+    db: Session,
+    *,
+    state: str,
+    fiscal_year: int | None = None,
+    metric: str | None = None,
+    funding_type: str | None = None,
+    funding_mode: str | None = None,
+    cdc_center: str | None = None,
+    program_area: str | None = None,
+    mechanism: str | None = None,
+    recipient_type: str | None = None,
+    time_aggregation: str | None = None,
+) -> dict[str, Any]:
+    return fetch_state_profile_overview(
+        db,
+        state=state,
+        fiscal_year=fiscal_year,
+        metric=metric,
+        funding_type=funding_type,
+        funding_mode=funding_mode,
+        cdc_center=cdc_center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
+    )["summary"]
+
+
+def fetch_state_profile_categories(
+    db: Session,
+    *,
+    state: str,
+    fiscal_year: int | None = None,
+    funding_type: str | None = None,
+    funding_mode: str | None = None,
+    cdc_center: str | None = None,
+    program_area: str | None = None,
+    mechanism: str | None = None,
+    recipient_type: str | None = None,
+    time_aggregation: str | None = None,
+) -> dict[str, Any]:
+    return fetch_state_profile_overview(
+        db,
+        state=state,
+        fiscal_year=fiscal_year,
+        metric="total_funding",
+        funding_type=funding_type,
+        funding_mode=funding_mode,
+        cdc_center=cdc_center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
+    )["categories"]
+
+
+def fetch_state_profile_subcategories(
+    db: Session,
+    *,
+    state: str,
+    fiscal_year: int | None = None,
+    funding_type: str | None = None,
+    funding_mode: str | None = None,
+    cdc_center: str | None = None,
+    program_area: str | None = None,
+    mechanism: str | None = None,
+    recipient_type: str | None = None,
+    time_aggregation: str | None = None,
+) -> dict[str, Any]:
+    return fetch_state_profile_overview(
+        db,
+        state=state,
+        fiscal_year=fiscal_year,
+        metric="total_funding",
+        funding_type=funding_type,
+        funding_mode=funding_mode,
+        cdc_center=cdc_center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
+    )["subcategories"]
+
+
+def _diagnostic_years(db: Session, *, limit: int = 3) -> list[int]:
+    rows = db.execute(
+        text(
+            f"""
+            SELECT DISTINCT fiscal_year
+            FROM {NORMALIZED_TABLE}
+            WHERE source_system = 'usaspending'
+            ORDER BY fiscal_year DESC
+            LIMIT :limit
+            """
+        ),
+        {"limit": max(1, int(limit))},
+    ).mappings().all()
+    return [int(row["fiscal_year"]) for row in rows if row.get("fiscal_year") is not None]
+
+
+def fetch_mode_diagnostics(
+    db: Session,
+    *,
+    fiscal_years: list[int] | None = None,
+    states: list[str] | None = None,
+) -> dict[str, Any]:
+    requested_years = [int(year) for year in (fiscal_years or []) if year is not None]
+    effective_years = requested_years or _diagnostic_years(db, limit=3)
+    effective_states = [
+        str(state).strip().upper()
+        for state in (states or ["AL", "CA", "NY"])
+        if str(state).strip()
+    ]
+    rows: list[dict[str, Any]] = []
+    for fiscal_year in effective_years:
+        lookup = fetch_state_normalization_lookup(
+            db,
+            source_system="usaspending",
+            fiscal_year=fiscal_year,
+        )
+        for state_code in effective_states:
+            row = lookup.get(state_code)
+            if row is None:
+                continue
+            raw_amount = _json_number(row.get("raw_amount"))
+            normalized_amount = _json_number(row.get("normalized_amount"))
+            difference = (
+                normalized_amount - raw_amount
+                if raw_amount is not None and normalized_amount is not None
+                else None
+            )
+            rows.append(
+                {
+                    "state_code": state_code,
+                    "fiscal_year": fiscal_year,
+                    "raw_total_funding": raw_amount,
+                    "chip_normalized_funding": normalized_amount,
+                    "difference": difference,
+                    "excluded_transfer_amount": _json_number(row.get("federal_health_transfer_amount")),
+                    "excluded_procurement_research_international_amount": sum(
+                        float(_json_number(row.get(field)) or 0.0)
+                        for field in (
+                            "procurement_support_scope_amount",
+                            "biomedical_research_amount",
+                            "international_health_assistance_amount",
+                        )
+                    ),
+                    "mixed_conditional_amount": sum(
+                        float(_json_number(row.get(field)) or 0.0)
+                        for field in (
+                            "special_transfer_amount",
+                            "unknown_funding_scope_amount",
+                            "emergency_public_health_amount",
+                        )
+                    ),
+                    "core_public_health_amount": _json_number(row.get("core_public_health_amount")),
+                    "normalization_factor": _json_number(row.get("normalization_factor")),
+                    "normalized_amount_type": row.get("normalized_amount_type"),
+                    "normalization_method": row.get("normalization_method"),
+                    "funding_stream_logic_version": row.get("funding_stream_logic_version"),
+                    "methodology_version": row.get("methodology_version"),
+                }
+            )
+
+    return {
+        "funding_mode": CDCFundingMode.CHIP_NORMALIZED.value,
+        "funding_mode_label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value],
+        "rows": rows,
     }

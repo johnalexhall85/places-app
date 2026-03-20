@@ -598,3 +598,87 @@ class CdcAppropriationClassification(Base):
         Index("cdc_appropriation_classification_raw_code_idx", "raw_emergency_code"),
         {"schema": CDC_FUNDING_SCHEMA},
     )
+
+
+class CdcIntelligenceStateCategorySummary(Base):
+    __tablename__ = "intelligence_state_category_summary"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    state_code = Column(String(2), nullable=False)
+    state_name = Column(Text, nullable=True)
+    fiscal_year = Column(Integer, nullable=True)
+    program_area = Column(Text, nullable=True)
+    mechanism = Column(Text, nullable=True)
+    recipient_type = Column(Text, nullable=True)
+    component = Column(Text, nullable=False)
+    chip_default_include = Column(Boolean, nullable=False, server_default=text("false"))
+    is_emergency = Column(Boolean, nullable=False, server_default=text("false"))
+    amount = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    award_count = Column(Integer, nullable=False, server_default=text("0"))
+    population = Column(Numeric(18, 0), nullable=True)
+    refreshed_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("cdc_intel_state_category_state_idx", "state_code"),
+        Index("cdc_intel_state_category_fiscal_year_idx", "fiscal_year"),
+        Index("cdc_intel_state_category_program_area_idx", "program_area"),
+        Index("cdc_intel_state_category_mechanism_idx", "mechanism"),
+        Index("cdc_intel_state_category_recipient_type_idx", "recipient_type"),
+        Index("cdc_intel_state_category_component_idx", "component"),
+        Index("cdc_intel_state_category_emergency_idx", "is_emergency"),
+        Index(
+            "cdc_intel_state_category_lookup_idx",
+            "state_code",
+            "fiscal_year",
+            "program_area",
+            "mechanism",
+            "recipient_type",
+            "component",
+            "is_emergency",
+            "chip_default_include",
+        ),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )
+
+
+class CdcIntelligenceStateSubcategorySummary(Base):
+    __tablename__ = "intelligence_state_subcategory_summary"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    state_code = Column(String(2), nullable=False)
+    state_name = Column(Text, nullable=True)
+    fiscal_year = Column(Integer, nullable=True)
+    program_area = Column(Text, nullable=True)
+    program_name = Column(Text, nullable=True)
+    mechanism = Column(Text, nullable=True)
+    recipient_type = Column(Text, nullable=True)
+    component = Column(Text, nullable=False)
+    chip_default_include = Column(Boolean, nullable=False, server_default=text("false"))
+    is_emergency = Column(Boolean, nullable=False, server_default=text("false"))
+    amount = Column(Numeric(18, 2), nullable=False, server_default=text("0"))
+    award_count = Column(Integer, nullable=False, server_default=text("0"))
+    population = Column(Numeric(18, 0), nullable=True)
+    refreshed_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("cdc_intel_state_subcategory_state_idx", "state_code"),
+        Index("cdc_intel_state_subcategory_fiscal_year_idx", "fiscal_year"),
+        Index("cdc_intel_state_subcategory_program_area_idx", "program_area"),
+        Index("cdc_intel_state_subcategory_program_name_idx", "program_name"),
+        Index("cdc_intel_state_subcategory_mechanism_idx", "mechanism"),
+        Index("cdc_intel_state_subcategory_recipient_type_idx", "recipient_type"),
+        Index("cdc_intel_state_subcategory_component_idx", "component"),
+        Index("cdc_intel_state_subcategory_emergency_idx", "is_emergency"),
+        Index(
+            "cdc_intel_state_subcategory_lookup_idx",
+            "state_code",
+            "fiscal_year",
+            "program_area",
+            "mechanism",
+            "recipient_type",
+            "component",
+            "is_emergency",
+            "chip_default_include",
+        ),
+        {"schema": CDC_FUNDING_SCHEMA},
+    )

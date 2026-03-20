@@ -38,6 +38,7 @@ def get_cdc_funding_map(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -51,7 +52,6 @@ def get_cdc_funding_map(
         default=None
     ),
     center: str | None = Query(default=None),
-    normalize: bool | None = Query(default=None),
     bbox: str | None = Query(default=None),
     zoom: int = Query(default=6),
     limit: int = Query(default=6000, ge=1, le=50000),
@@ -65,7 +65,7 @@ def get_cdc_funding_map(
     state: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    del zoom, basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state, normalize
+    del zoom, basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state
     fiscal_year = _resolve_query_value(fiscal_year)
     metric = _resolve_query_value(metric)
     cdc_center = _resolve_query_value(cdc_center)
@@ -83,6 +83,7 @@ def get_cdc_funding_map(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -99,6 +100,7 @@ def get_cdc_funding_legend(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -112,7 +114,6 @@ def get_cdc_funding_legend(
         default=None
     ),
     center: str | None = Query(default=None),
-    normalize: bool | None = Query(default=None),
     bbox: str | None = Query(default=None),
     basis: str | None = Query(default=None),
     funding_geography_mode: str | None = Query(default=None),
@@ -124,7 +125,7 @@ def get_cdc_funding_legend(
     state: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    del basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state, normalize
+    del basis, funding_geography_mode, display_mode, assistance_type, awarding_office, funding_office, office, state
     fiscal_year = _resolve_query_value(fiscal_year)
     metric = _resolve_query_value(metric)
     cdc_center = _resolve_query_value(cdc_center)
@@ -142,6 +143,7 @@ def get_cdc_funding_legend(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -157,6 +159,7 @@ def get_cdc_funding_national_summary(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -192,6 +195,7 @@ def get_cdc_funding_national_summary(
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -216,6 +220,7 @@ def get_cdc_state_profile_summary(
     fy: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -227,7 +232,6 @@ def get_cdc_state_profile_summary(
         default=None
     ),
     center: str | None = Query(default=None),
-    normalize: bool | None = Query(default=None),
     basis: str | None = Query(default=None),
     funding_geography_mode: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
@@ -236,7 +240,7 @@ def get_cdc_state_profile_summary(
     office: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    del basis, funding_geography_mode, assistance_type, awarding_office, funding_office, office
     state = _resolve_query_value(state)
     fiscal_year = _resolve_query_value(fiscal_year)
     fy = _resolve_query_value(fy)
@@ -254,6 +258,61 @@ def get_cdc_state_profile_summary(
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         metric=metric,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
+        cdc_center=cdc_center or center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+        time_aggregation=time_aggregation,
+    )
+
+
+@router.get("/profile/overview")
+def get_cdc_state_profile_overview(
+    state: str = Query(..., min_length=2, max_length=2),
+    fiscal_year: int | None = Query(default=None),
+    fy: int | None = Query(default=None),
+    metric: str | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    cdc_center: str | None = Query(default=None),
+    program_area: str | None = Query(default=None),
+    mechanism: str | None = Query(default=None),
+    recipient_type: str | None = Query(default=None),
+    time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
+        default=None
+    ),
+    appropriation_type: Literal["all", "regular", "covid_emergency", "other_emergency", "unknown"] | None = Query(
+        default=None
+    ),
+    center: str | None = Query(default=None),
+    basis: str | None = Query(default=None),
+    funding_geography_mode: str | None = Query(default=None),
+    assistance_type: str | None = Query(default=None),
+    awarding_office: str | None = Query(default=None),
+    funding_office: str | None = Query(default=None),
+    office: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    del basis, funding_geography_mode, assistance_type, awarding_office, funding_office, office
+    state = _resolve_query_value(state)
+    fiscal_year = _resolve_query_value(fiscal_year)
+    fy = _resolve_query_value(fy)
+    metric = _resolve_query_value(metric)
+    cdc_center = _resolve_query_value(cdc_center)
+    program_area = _resolve_query_value(program_area)
+    mechanism = _resolve_query_value(mechanism)
+    recipient_type = _resolve_query_value(recipient_type)
+    time_aggregation = _resolve_query_value(time_aggregation)
+    center = _resolve_query_value(center)
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    return intelligence.fetch_state_profile_overview(
+        db,
+        state=state,
+        fiscal_year=fiscal_year if fiscal_year is not None else fy,
+        metric=metric,
+        funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -268,6 +327,7 @@ def get_cdc_state_profile_categories(
     fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -279,7 +339,6 @@ def get_cdc_state_profile_categories(
         default=None
     ),
     center: str | None = Query(default=None),
-    normalize: bool | None = Query(default=None),
     basis: str | None = Query(default=None),
     funding_geography_mode: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
@@ -288,7 +347,7 @@ def get_cdc_state_profile_categories(
     office: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    del basis, funding_geography_mode, assistance_type, awarding_office, funding_office, office
     state = _resolve_query_value(state)
     fiscal_year = _resolve_query_value(fiscal_year)
     fy = _resolve_query_value(fy)
@@ -304,6 +363,7 @@ def get_cdc_state_profile_categories(
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -318,6 +378,7 @@ def get_cdc_state_profile_subcategories(
     fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -329,7 +390,6 @@ def get_cdc_state_profile_subcategories(
         default=None
     ),
     center: str | None = Query(default=None),
-    normalize: bool | None = Query(default=None),
     basis: str | None = Query(default=None),
     funding_geography_mode: str | None = Query(default=None),
     assistance_type: str | None = Query(default=None),
@@ -338,7 +398,7 @@ def get_cdc_state_profile_subcategories(
     office: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    del basis, funding_geography_mode, assistance_type, normalize, awarding_office, funding_office, office
+    del basis, funding_geography_mode, assistance_type, awarding_office, funding_office, office
     state = _resolve_query_value(state)
     fiscal_year = _resolve_query_value(fiscal_year)
     fy = _resolve_query_value(fy)
@@ -354,6 +414,7 @@ def get_cdc_state_profile_subcategories(
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         funding_type=effective_funding_type,
+        funding_mode=_resolve_query_value(funding_mode),
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -365,6 +426,7 @@ def get_cdc_state_profile_subcategories(
 @router.get("/profile/details")
 def get_cdc_state_profile_details(
     state: str = Query(..., min_length=2, max_length=2),
+    funding_mode: Literal["raw_total", "chip_normalized"] = Query(default="chip_normalized"),
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
         default="recipient_location"
@@ -373,8 +435,8 @@ def get_cdc_state_profile_details(
         default="all"
     ),
     assistance_type: str | None = Query(default=None),
+    fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
-    normalize: bool = Query(default=False),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
@@ -396,8 +458,8 @@ def get_cdc_state_profile_details(
         funding_geography_mode=funding_geography_mode,
         appropriation_type=appropriation_type,
         assistance_type=assistance_type,
-        fiscal_year=fy,
-        normalize=normalize,
+        fiscal_year=fiscal_year if fiscal_year is not None else fy,
+        normalize=_resolve_query_value(funding_mode) != "raw_total",
         awarding_office=awarding_office_value,
         funding_office=funding_office_value,
         center=center,
@@ -522,6 +584,19 @@ def get_cdc_allocation_debug(
         award_id_fain=award_id_fain,
         fiscal_year=fiscal_year,
         limit_counties=limit_counties,
+    )
+
+
+@router.get("/mode-diagnostics")
+def get_cdc_funding_mode_diagnostics(
+    fiscal_year: list[int] | None = Query(default=None),
+    state: list[str] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    return intelligence.fetch_mode_diagnostics(
+        db,
+        fiscal_years=fiscal_year,
+        states=state,
     )
 
 

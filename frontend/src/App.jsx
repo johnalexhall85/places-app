@@ -32,8 +32,17 @@ import { buildMapContext } from "./mapContext";
 import useSelectedAreaProfileTarget from "./hooks/useSelectedAreaProfileTarget";
 import {
   getProfileButtonCopy,
+  openProfileTargetInNewTab,
   resolveCdcFundingProfileTarget,
 } from "./utils/cdcFundingProfileTarget";
+import {
+  CDC_DEFAULT_GEOGRAPHY_LEVEL,
+  buildCdcFundingUrlSearch,
+  CDC_DEFAULT_FUNDING_MODE,
+  CDC_FUNDING_MODE_LABELS,
+  normalizeCdcFundingMode,
+  readCdcFundingUrlState,
+} from "./utils/cdcFundingMode";
 import {
   fetchCmsGvCountyGeo,
   fetchCmsMeasures,
@@ -73,7 +82,6 @@ const DATA_SOURCES = {
 };
 const CDC_DEFAULT_INTELLIGENCE_METRIC = "total_funding";
 const CDC_DEFAULT_FUNDING_TYPE = "total_cdc_funding";
-const CDC_DEFAULT_GEOGRAPHY_LEVEL = "county";
 const USDA_DEFAULT_VARIABLE = "PCT_LACCESS_POP19";
 const FEMA_DEFAULT_MEASURE = "RISK_SCORE";
 const USDA_PLAIN_LABELS = {
@@ -2849,6 +2857,7 @@ export default function App() {
   const [selectedCmsAgeGroup, setSelectedCmsAgeGroup] = useState(CMS_AGE_OPTIONS[0].value);
   const [cdcFiscalYear, setCdcFiscalYear] = useState("");
   const [cdcFundingType, setCdcFundingType] = useState(CDC_DEFAULT_FUNDING_TYPE);
+  const [cdcFundingMode, setCdcFundingMode] = useState(CDC_DEFAULT_FUNDING_MODE);
   const [cdcProgramArea, setCdcProgramArea] = useState("");
   const [cdcMechanism, setCdcMechanism] = useState("");
   const [cdcRecipientType, setCdcRecipientType] = useState("");
@@ -2860,6 +2869,8 @@ export default function App() {
     fiscal_year_options: [],
     default_fiscal_year: null,
     funding_type_options: [],
+    funding_mode_options: [],
+    default_funding_mode: CDC_DEFAULT_FUNDING_MODE,
     cdc_center_options: [],
     mechanism_options: [],
     recipient_type_options: [],
@@ -2895,6 +2906,16 @@ export default function App() {
   const [isTaggsLegendLoading, setIsTaggsLegendLoading] = useState(false);
   const [measures, setMeasures] = useState([]);
   const [selectedMeasureId, setSelectedMeasureId] = useState("CASTHMA");
+  useEffect(() => {
+    const urlState = readCdcFundingUrlState(
+      typeof window !== "undefined" ? window.location.search : ""
+    );
+    if (!urlState) return;
+    setSelectedDataSource(DATA_SOURCES.CDC_FUNDING);
+    setSelectedMeasureId(CDC_DEFAULT_INTELLIGENCE_METRIC);
+    setCdcFundingMode(urlState.fundingMode);
+    setCdcGeographyLevel(urlState.geographyLevel);
+  }, []);
   const [years, setYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [sviYears, setSviYears] = useState(SVI_FALLBACK_YEARS);
@@ -3182,6 +3203,19 @@ export default function App() {
           ? "fema-nri"
         : "places";
   const historySupported = activeDataSource === DATA_SOURCES.PLACES;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const currentSearch = window.location.search.startsWith("?")
+      ? window.location.search.slice(1)
+      : window.location.search;
+    const nextSearch = buildCdcFundingUrlSearch(currentSearch, {
+      activeDataSource,
+      fundingMode: cdcFundingMode,
+    });
+    if (nextSearch === currentSearch) return;
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, [activeDataSource, cdcFundingMode]);
   const tractsActive = !isUsdaDataSource && !isHpsaDataSource && !isCmsDataSource && !isCdcDataSource && !isTaggsDataSource && mapZoom >= TRACT_ZOOM;
   const isUsdaHeatMode = false;
   const activeGeography = tractsActive ? "tract" : "county";
@@ -3237,7 +3271,7 @@ export default function App() {
   const selectedTemporalValue = isHpsaDataSource
     ? selectedHpsaDomain
     : isCdcDataSource
-      ? `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}`
+      ? `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}`
       : isTaggsDataSource
       ? `${selectedMeasureId}|${taggsFiscalYear || "all"}|${taggsProgramOffice || "all"}|${taggsAln || "all"}|${taggsCanCode || "all"}|${taggsFundingStream || "all"}|normalize:${taggsNormalizeData ? "on" : "off"}`
       : isUsdaDataSource
@@ -3285,6 +3319,18 @@ export default function App() {
     ).trim();
     setCdcFiscalYear(defaultFiscalYear);
   }, [cdcFilterOptions?.default_fiscal_year, cdcFiscalYear, cdcFiscalYearOptions, isCdcDataSource]);
+
+  useEffect(() => {
+    if (!isCdcDataSource) {
+      return;
+    }
+    const nextMode = normalizeCdcFundingMode(
+      cdcFundingMode || cdcFilterOptions?.default_funding_mode || CDC_DEFAULT_FUNDING_MODE
+    );
+    if (nextMode !== cdcFundingMode) {
+      setCdcFundingMode(nextMode);
+    }
+  }, [cdcFilterOptions?.default_funding_mode, cdcFundingMode, isCdcDataSource]);
 
   useEffect(() => {
     if (!isTaggsDataSource) {
@@ -4055,6 +4101,8 @@ export default function App() {
             fiscal_year_options: Array.isArray(data?.fiscal_year_options) ? data.fiscal_year_options : [],
             default_fiscal_year: data?.default_fiscal_year ?? null,
             funding_type_options: Array.isArray(data?.funding_type_options) ? data.funding_type_options : [],
+            funding_mode_options: Array.isArray(data?.funding_mode_options) ? data.funding_mode_options : [],
+            default_funding_mode: String(data?.default_funding_mode ?? CDC_DEFAULT_FUNDING_MODE),
             cdc_center_options: Array.isArray(data?.cdc_center_options) ? data.cdc_center_options : [],
             mechanism_options: Array.isArray(data?.mechanism_options) ? data.mechanism_options : [],
             recipient_type_options: Array.isArray(data?.recipient_type_options) ? data.recipient_type_options : [],
@@ -4311,6 +4359,8 @@ export default function App() {
             fiscal_year_options: [],
             default_fiscal_year: null,
             funding_type_options: [],
+            funding_mode_options: [],
+            default_funding_mode: CDC_DEFAULT_FUNDING_MODE,
             cdc_center_options: [],
             mechanism_options: [],
             recipient_type_options: [],
@@ -4651,6 +4701,7 @@ export default function App() {
           metric,
           fiscal_year: cdcFiscalYear || null,
           funding_type: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
+          funding_mode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
           cdc_center: cdcProgramArea || null,
           mechanism: cdcMechanism || null,
           recipient_type: cdcRecipientType || null,
@@ -4921,6 +4972,7 @@ export default function App() {
       isAcsMeasureSelected,
       cdcFiscalYear,
       cdcFundingType,
+      cdcFundingMode,
       cdcProgramArea,
       cdcMechanism,
       cdcRecipientType,
@@ -5223,6 +5275,7 @@ export default function App() {
       metric: selectedMeasureId,
       fiscal_year: cdcFiscalYear || null,
       funding_type: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
+      funding_mode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
       cdc_center: cdcProgramArea || null,
       mechanism: cdcMechanism || null,
       recipient_type: cdcRecipientType || null,
@@ -5233,6 +5286,7 @@ export default function App() {
   }, [
     cdcFiscalYear,
     cdcFundingType,
+    cdcFundingMode,
     cdcProgramArea,
     cdcMechanism,
     cdcRecipientType,
@@ -5253,7 +5307,7 @@ export default function App() {
       return;
     }
 
-    const legendKey = `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`;
+    const legendKey = `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`;
     const cachedLegend = getCached(legendKey);
     if (cachedLegend) {
       setCdcLegend(cachedLegend);
@@ -5296,6 +5350,7 @@ export default function App() {
   }, [
     cdcFiscalYear,
     cdcFundingType,
+    cdcFundingMode,
     cdcProgramArea,
     cdcMechanism,
     cdcRecipientType,
@@ -6274,6 +6329,7 @@ export default function App() {
       }
 
       if (isCdcDataSource) {
+        const fundingProfile = featureProps?.funding_profile ?? {};
         const featureGeoLevel = (() => {
           const value = String(
             featureProps?.geo_level ?? featureProps?.level ?? cdcRenderLevel ?? "county"
@@ -6307,13 +6363,21 @@ export default function App() {
         const value = toFiniteNumericValue(
           pickFirstDefined(featureProps?.value, featureProps?.metric_value, featureProps?.data_value)
         );
-        const totalFundingValue = toFiniteNumericValue(featureProps?.total_funding_amount);
-        const fundingPerCapitaValue = toFiniteNumericValue(
-          pickFirstDefined(featureProps?.funding_per_capita, featureProps?.metric_per_capita)
+        const totalFundingValue = toFiniteNumericValue(
+          pickFirstDefined(fundingProfile?.total_funding, featureProps?.total_funding_amount)
         );
-        const fundingPer100kValue = toFiniteNumericValue(featureProps?.funding_per_100k);
-        const shareNationalValue = toFiniteNumericValue(featureProps?.share_national_pct);
-        const populationValue = toFiniteNumericValue(featureProps?.population);
+        const fundingPerCapitaValue = toFiniteNumericValue(
+          pickFirstDefined(fundingProfile?.funding_per_capita, featureProps?.funding_per_capita, featureProps?.metric_per_capita)
+        );
+        const fundingPer100kValue = toFiniteNumericValue(
+          pickFirstDefined(fundingProfile?.funding_per_100k, featureProps?.funding_per_100k)
+        );
+        const shareNationalValue = toFiniteNumericValue(
+          pickFirstDefined(fundingProfile?.national_share, featureProps?.share_national_pct)
+        );
+        const populationValue = toFiniteNumericValue(
+          pickFirstDefined(fundingProfile?.population, featureProps?.population)
+        );
         const metricId = String(featureProps?.metric ?? selectedMeasureId ?? "").trim();
         const valueText = formatCdcMetricValue(value, metricId);
         const totalFundingText = totalFundingValue == null
@@ -6332,18 +6396,26 @@ export default function App() {
           ? null
           : Math.round(populationValue).toLocaleString("en-US");
         const timeframeLine = String(
-          pickFirstDefined(featureProps?.timeframe_label, featureProps?.metric_context?.legend_title, cdcFiscalYear ? `FY ${cdcFiscalYear}` : "")
+          pickFirstDefined(fundingProfile?.timeframe_label, featureProps?.timeframe_label, featureProps?.metric_context?.legend_title, cdcFiscalYear ? `FY ${cdcFiscalYear}` : "")
         ).trim();
         const programAreaLine = String(
-          pickFirstDefined(featureProps?.metric_context?.cdc_center_label, "")
+          pickFirstDefined(fundingProfile?.metadata?.metric_context?.cdc_center_label, featureProps?.metric_context?.cdc_center_label, "")
         ).trim();
         const fundingTypeLine = String(
-          pickFirstDefined(featureProps?.metric_context?.funding_type_label, "")
+          pickFirstDefined(fundingProfile?.metadata?.metric_context?.funding_type_label, featureProps?.metric_context?.funding_type_label, "")
+        ).trim();
+        const fundingModeLine = String(
+          pickFirstDefined(
+            fundingProfile?.funding_mode_label,
+            featureProps?.funding_mode_label,
+            CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+          )
         ).trim();
         const populationLine = populationText ? `Population denominator: ${populationText}` : null;
         return (
           `${areaLine}<br/>${metricLabel}: ${valueText}`
           + `<br/>Total funding: ${totalFundingText}`
+          + (fundingModeLine ? `<br/>Funding mode: ${fundingModeLine}` : "")
           + `<br/>Funding per capita: ${fundingPerCapitaText}`
           + `<br/>Funding per 100,000: ${fundingPer100kText}`
           + `<br/>Share of national CDC funding: ${shareNationalText}`
@@ -7288,6 +7360,7 @@ export default function App() {
       fiscalYear: cdcFiscalYear || null,
       metric: selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC,
       fundingType: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
+      fundingMode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
       cdcCenter: cdcProgramArea || null,
       mechanism: cdcMechanism || null,
       recipientType: cdcRecipientType || null,
@@ -7298,8 +7371,7 @@ export default function App() {
   const mapProfileTarget = isCdcDataSource ? cdcFundingProfileTarget : selectedProfileTarget;
   const profileButtonCopy = getProfileButtonCopy(activeDataSource);
   const handleOpenSelectedProfile = useCallback(() => {
-    if (!mapProfileTarget?.enabled || !mapProfileTarget?.href) return;
-    window.open(mapProfileTarget.href, "_blank", "noopener,noreferrer");
+    openProfileTargetInNewTab(mapProfileTarget);
   }, [mapProfileTarget]);
   const crudeValue = firstDefined(
     selectedFeatureProps?.data_value,
@@ -7428,14 +7500,26 @@ export default function App() {
     selectedFeatureProps?.metric_value,
     selectedFeatureProps?.data_value
   );
+  const cdcFundingProfile = selectedFeatureProps?.funding_profile ?? {};
+  const cdcFundingModeLabel = String(
+    firstDefined(
+      cdcFundingProfile?.funding_mode_label,
+      selectedFeatureProps?.funding_mode_label,
+      CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+    )
+  ).trim();
   const cdcMetricNumeric = toFiniteNumericValue(cdcMetricValue);
   const cdcMetricId = String(selectedMeasureId ?? "").trim();
   const cdcMetricIsCount = isCdcCountMetric(cdcMetricId);
-  const cdcTotalFundingNumeric = toFiniteNumericValue(selectedFeatureProps?.total_funding_amount);
-  const cdcFundingPerCapitaNumeric = toFiniteNumericValue(
-    firstDefined(selectedFeatureProps?.funding_per_capita, selectedFeatureProps?.metric_per_capita)
+  const cdcTotalFundingNumeric = toFiniteNumericValue(
+    firstDefined(cdcFundingProfile?.total_funding, selectedFeatureProps?.total_funding_amount)
   );
-  const cdcPopulationNumeric = toFiniteNumericValue(selectedFeatureProps?.population);
+  const cdcFundingPerCapitaNumeric = toFiniteNumericValue(
+    firstDefined(cdcFundingProfile?.funding_per_capita, selectedFeatureProps?.funding_per_capita, selectedFeatureProps?.metric_per_capita)
+  );
+  const cdcPopulationNumeric = toFiniteNumericValue(
+    firstDefined(cdcFundingProfile?.population, selectedFeatureProps?.population)
+  );
   const cdcMetricValueText = cdcMetricNumeric == null
     ? "No data"
     : cdcMetricIsCount
@@ -7512,9 +7596,23 @@ export default function App() {
     firstDefined(selectedFeatureProps?.fiscal_year, taggsFiscalYear, "")
   ).trim();
   const cdcNationalSummary = cdcLegend?.national_summary ?? null;
-  const cdcNationalTotalValue = toFiniteNumericValue(cdcNationalSummary?.total_funding_amount);
-  const cdcNationalPerCapitaValue = toFiniteNumericValue(cdcNationalSummary?.funding_per_capita);
-  const cdcNationalPopulationValue = toFiniteNumericValue(cdcNationalSummary?.population);
+  const cdcNationalFundingProfile = cdcNationalSummary?.funding_profile ?? {};
+  const cdcNationalFundingModeLabel = String(
+    firstDefined(
+      cdcNationalFundingProfile?.funding_mode_label,
+      cdcNationalSummary?.funding_mode_label,
+      CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+    )
+  ).trim();
+  const cdcNationalTotalValue = toFiniteNumericValue(
+    firstDefined(cdcNationalFundingProfile?.total_funding, cdcNationalSummary?.total_funding_amount)
+  );
+  const cdcNationalPerCapitaValue = toFiniteNumericValue(
+    firstDefined(cdcNationalFundingProfile?.funding_per_capita, cdcNationalSummary?.funding_per_capita)
+  );
+  const cdcNationalPopulationValue = toFiniteNumericValue(
+    firstDefined(cdcNationalFundingProfile?.population, cdcNationalSummary?.population)
+  );
   const cdcNationalTotalText = cdcNationalTotalValue == null
     ? "No data"
     : `$${cdcNationalTotalValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -7856,7 +7954,7 @@ export default function App() {
         : isFemaDataSource
           ? "FEMA_NRI"
           : isCdcDataSource
-            ? `CDC_FUNDING:${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}`
+            ? `CDC_FUNDING:${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}:${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}`
           : isUsdaDataSource
             ? "USDA"
           : isCmsDataSource
@@ -7885,6 +7983,7 @@ export default function App() {
     mapZoom,
     cdcFiscalYear,
     cdcFundingType,
+    cdcFundingMode,
     cdcRenderLevel,
     selectedCmsAgeLevel,
     selectedAsOfDateForContext,
@@ -7920,6 +8019,7 @@ export default function App() {
             cdcGeography: cdcRenderLevel,
             cdcFiscalYear: parseYearFromToken(cdcFiscalYear),
             cdcFundingType: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
+            cdcFundingMode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
             cdcProgramArea: cdcProgramArea || null,
             cdcMechanism: cdcMechanism || null,
             cdcRecipientType: cdcRecipientType || null,
@@ -7976,6 +8076,7 @@ export default function App() {
     mapZoom,
     cdcFiscalYear,
     cdcFundingType,
+    cdcFundingMode,
     cdcProgramArea,
     cdcMechanism,
     cdcRecipientType,
@@ -8781,6 +8882,7 @@ export default function App() {
                     setSelectedMeasureId(CDC_DEFAULT_INTELLIGENCE_METRIC);
                     setCdcFiscalYear("");
                     setCdcFundingType(CDC_DEFAULT_FUNDING_TYPE);
+                    setCdcFundingMode(CDC_DEFAULT_FUNDING_MODE);
                     setCdcProgramArea("");
                     setCdcMechanism("");
                     setCdcRecipientType("");
@@ -8995,6 +9097,20 @@ export default function App() {
                   >
                     {(cdcFilterOptions.funding_type_options ?? []).map((option) => (
                       <option key={`cdc-funding-type-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Funding mode</span>
+                  <select
+                    value={cdcFundingMode}
+                    onChange={(event) => setCdcFundingMode(normalizeCdcFundingMode(event.target.value))}
+                    style={controlSelectStyle}
+                  >
+                    {(cdcFilterOptions.funding_mode_options ?? []).map((option) => (
+                      <option key={`cdc-funding-mode-${option.value}`} value={option.value}>
                         {option.label}
                       </option>
                     ))}
@@ -9664,6 +9780,7 @@ export default function App() {
           {isCdcDataSource && cdcNationalSummary ? (
             <div style={{ color: "#334155", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 2 }}>
               <div style={{ fontWeight: 600 }}>Nationwide summary</div>
+              <div>Funding mode: {cdcNationalFundingModeLabel}</div>
               <div>Nationwide total funding: {cdcNationalTotalText}</div>
               <div>Nationwide funding per capita: {cdcNationalPerCapitaText}</div>
               <div style={{ color: "#64748b", fontSize: 11 }}>
@@ -9809,6 +9926,9 @@ export default function App() {
 		                    <strong>{cdcSelectedMetricLabel}</strong>: <strong>{cdcMetricValueText}</strong>.
 		                  </p>
 		                  <p><strong>Total funding:</strong> <strong>{cdcTotalFundingText}</strong>.</p>
+		                  {cdcFundingModeLabel ? (
+		                    <p><strong>Funding mode:</strong> <strong>{cdcFundingModeLabel}</strong>.</p>
+		                  ) : null}
 		                  <p><strong>Funding per capita:</strong> <strong>{cdcFundingPerCapitaText}</strong>.</p>
 		                  <p><strong>Population denominator:</strong> <strong>{cdcPopulationText}</strong>.</p>
 		                  {toFiniteNumericValue(selectedFeatureProps?.funding_per_100k) != null ? (

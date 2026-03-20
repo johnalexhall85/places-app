@@ -15,6 +15,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
+from app.cdc_funding import intelligence as cdc_intelligence
 from app.cdc_funding.appropriation import (
     APPROPRIATION_CLASSIFICATION_SOURCE_OFFICIAL,
     APPROPRIATION_CLASSIFIER_VERSION,
@@ -60,7 +61,10 @@ SUBAWARD_COUNTY_SUMMARY_TABLE = cdc_funding_table("subaward_county_summary")
 SUBAWARD_NATIONAL_SUMMARY_TABLE = cdc_funding_table("subaward_national_summary")
 AWARD_SCOPE_CLASSIFICATION_TABLE = cdc_funding_table("award_scope_classification")
 APPROPRIATION_CLASSIFICATION_TABLE = cdc_funding_table("appropriation_classification")
+INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE = cdc_funding_table("intelligence_state_category_summary")
+INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE = cdc_funding_table("intelligence_state_subcategory_summary")
 COUNTY_DIM_TABLE = places_table("dim_county")
+STATE_BOUNDARY_TABLE = places_table("dim_state_boundary")
 POPULATION_VIEW_TABLE = places_table("v_geography_population")
 
 SCOPE_CLASSIFIER_VERSION = "v1"
@@ -1836,6 +1840,8 @@ def _refresh_summary_tables(connection: Any) -> None:
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_STATE_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_COUNTY_SUMMARY_TABLE}"))
     connection.execute(text(f"TRUNCATE TABLE {SUBAWARD_NATIONAL_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE}"))
+    connection.execute(text(f"TRUNCATE TABLE {INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE}"))
 
     connection.execute(
         text(
@@ -2824,6 +2830,128 @@ def _refresh_summary_tables(connection: Any) -> None:
                 s.prime_award_awarding_office_name,
                 s.prime_award_funding_office_name,
                 COALESCE(s.appropriation_type, 'unknown')
+            """
+        )
+    )
+
+    intelligence_rows_cte = cdc_intelligence._integrated_rows_cte()
+    connection.execute(
+        text(
+            f"""
+            {intelligence_rows_cte},
+            state_population AS (
+                SELECT
+                    UPPER(pop.state_abbr) AS state_code,
+                    pop.population::numeric AS population
+                FROM {POPULATION_VIEW_TABLE} AS pop
+                WHERE pop.geography_type = 'state'
+            )
+            INSERT INTO {INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE} (
+                state_code,
+                state_name,
+                fiscal_year,
+                program_area,
+                mechanism,
+                recipient_type,
+                component,
+                chip_default_include,
+                is_emergency,
+                amount,
+                award_count,
+                population,
+                refreshed_at
+            )
+            SELECT
+                rows.state_code,
+                COALESCE(MAX(sb.state_name), rows.state_code) AS state_name,
+                rows.fiscal_year,
+                rows.program_area,
+                rows.mechanism,
+                rows.recipient_type,
+                rows.component,
+                rows.chip_default_include,
+                rows.is_emergency,
+                COALESCE(SUM(rows.amount), 0)::numeric AS amount,
+                COUNT(DISTINCT rows.award_key)::integer AS award_count,
+                MAX(pop.population)::numeric AS population,
+                now()
+            FROM integrated_rows AS rows
+            LEFT JOIN {STATE_BOUNDARY_TABLE} AS sb
+                ON sb.state_abbr = rows.state_code
+            LEFT JOIN state_population AS pop
+                ON pop.state_code = rows.state_code
+            WHERE rows.state_code IS NOT NULL
+            GROUP BY
+                rows.state_code,
+                rows.fiscal_year,
+                rows.program_area,
+                rows.mechanism,
+                rows.recipient_type,
+                rows.component,
+                rows.chip_default_include,
+                rows.is_emergency
+            """
+        )
+    )
+
+    connection.execute(
+        text(
+            f"""
+            {intelligence_rows_cte},
+            state_population AS (
+                SELECT
+                    UPPER(pop.state_abbr) AS state_code,
+                    pop.population::numeric AS population
+                FROM {POPULATION_VIEW_TABLE} AS pop
+                WHERE pop.geography_type = 'state'
+            )
+            INSERT INTO {INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE} (
+                state_code,
+                state_name,
+                fiscal_year,
+                program_area,
+                program_name,
+                mechanism,
+                recipient_type,
+                component,
+                chip_default_include,
+                is_emergency,
+                amount,
+                award_count,
+                population,
+                refreshed_at
+            )
+            SELECT
+                rows.state_code,
+                COALESCE(MAX(sb.state_name), rows.state_code) AS state_name,
+                rows.fiscal_year,
+                rows.program_area,
+                rows.program_name,
+                rows.mechanism,
+                rows.recipient_type,
+                rows.component,
+                rows.chip_default_include,
+                rows.is_emergency,
+                COALESCE(SUM(rows.amount), 0)::numeric AS amount,
+                COUNT(DISTINCT rows.award_key)::integer AS award_count,
+                MAX(pop.population)::numeric AS population,
+                now()
+            FROM integrated_rows AS rows
+            LEFT JOIN {STATE_BOUNDARY_TABLE} AS sb
+                ON sb.state_abbr = rows.state_code
+            LEFT JOIN state_population AS pop
+                ON pop.state_code = rows.state_code
+            WHERE rows.state_code IS NOT NULL
+            GROUP BY
+                rows.state_code,
+                rows.fiscal_year,
+                rows.program_area,
+                rows.program_name,
+                rows.mechanism,
+                rows.recipient_type,
+                rows.component,
+                rows.chip_default_include,
+                rows.is_emergency
             """
         )
     )
