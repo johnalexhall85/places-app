@@ -11,6 +11,7 @@ describe("cdcFundingMode", () => {
   it("normalizes invalid values to the default mode", () => {
     expect(normalizeCdcFundingMode("raw_total")).toBe("raw_total");
     expect(normalizeCdcFundingMode("chip_normalized")).toBe("chip_normalized");
+    expect(normalizeCdcFundingMode("chip_normalized_v1_1")).toBe("chip_normalized_v1_1");
     expect(normalizeCdcFundingMode("bad-value")).toBe(CDC_DEFAULT_FUNDING_MODE);
   });
 
@@ -35,16 +36,16 @@ describe("cdcFundingMode", () => {
     ).toBe("data_source=cdc_funding&funding_mode=raw_total");
 
     expect(
-      buildCdcFundingUrlSearch("data_source=cdc_funding&funding_mode=chip_normalized", {
+      buildCdcFundingUrlSearch("data_source=cdc_funding&funding_mode=chip_normalized_v1_1", {
         activeDataSource: "places",
-        fundingMode: "chip_normalized",
+        fundingMode: "chip_normalized_v1_1",
       })
     ).toBe("");
 
     expect(
       buildCdcFundingUrlSearch("year=2024", {
         activeDataSource: "places",
-        fundingMode: "chip_normalized",
+        fundingMode: "chip_normalized_v1_1",
       })
     ).toBe("year=2024");
   });

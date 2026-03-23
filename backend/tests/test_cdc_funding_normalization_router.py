@@ -162,6 +162,7 @@ def test_cdc_profile_details_router_maps_funding_mode_to_normalize(monkeypatch) 
     assert captured["state"] == "GA"
     assert captured["basis"] == "subaward"
     assert captured["normalize"] is False
+    assert captured["normalization_funding_mode"] == "raw_total"
     assert captured["q"] == "vaccines"
     assert captured["page"] == 2
     assert captured["page_size"] == 50
@@ -188,6 +189,26 @@ def test_cdc_profile_details_router_accepts_fiscal_year_alias(monkeypatch) -> No
     assert payload["rows"] == []
     assert captured["fiscal_year"] == 2024
     assert captured["normalize"] is True
+    assert captured["normalization_funding_mode"] == "chip_normalized"
+
+
+def test_cdc_profile_details_router_defaults_to_v11_normalized_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_fetch_state_profile_details(*_args, **kwargs):
+        captured.update(kwargs)
+        return {"total_rows": 0, "rows": []}
+
+    monkeypatch.setattr(cdc_services, "fetch_state_profile_details", fake_fetch_state_profile_details)
+
+    payload = cdc_router.get_cdc_state_profile_details(
+        state="GA",
+        db=None,
+    )
+
+    assert payload["rows"] == []
+    assert captured["normalize"] is True
+    assert captured["normalization_funding_mode"] == "chip_normalized_v1_1"
 
 
 def test_cdc_mode_diagnostics_router_forwards_filters(monkeypatch) -> None:

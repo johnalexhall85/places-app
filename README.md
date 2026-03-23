@@ -127,6 +127,7 @@ export CMS_SCHEMA=cms
 export USDA_FOOD_ACCESS_SCHEMA=usda_food_access
 export USDA_FOOD_ENV_SCHEMA=usda_food_env
 export FEMA_NRI_SCHEMA=fema_nri
+export ANALYTICS_SCHEMA=analytics
 ```
 
 Quick schema mapping verification:
@@ -280,6 +281,24 @@ Outputs:
 - `recon.profile_reconciliation_driver_breakdown`
 - `recon.profile_reconciliation_summary`
 - `recon.normalized_state_funding`
+
+CHIP v1.1 emergency-classification layer:
+
+```bash
+cd backend
+./.venv/bin/alembic upgrade head
+export CDC_STATE_PROFILE_RAW_SOURCE_VERSION=v1_1_emergency_classification
+python scripts/export_chip_emergency_classification.py \
+  --output-dir ../exports/chip_v11_emergency
+```
+
+This additive layer builds versioned `analytics.*` recipient-classification, transaction-classification, state-profile, centralized-funding, and validation views on top of `recon.profile_scope_transactions`.
+It is intentionally a partial rollout:
+
+- raw state-profile totals can opt into `v1_1_emergency_classification`
+- `chip_normalized` remains on the legacy v1 normalization layer
+
+See [CHIP_V11_EMERGENCY_CLASSIFICATION.md](/home/john/places-app/CHIP_V11_EMERGENCY_CLASSIFICATION.md) for the methodology note, object list, rollout boundary, PHFE handling, and validation views.
 
 Equivalent module entrypoints:
 

@@ -10,6 +10,7 @@ from app.db_schemas import (
     HRSA_SCHEMA,
     PLACES_SCHEMA,
     RECON_SCHEMA,
+    ANALYTICS_SCHEMA,
     SCHEMA_BY_SOURCE,
     SVI_SCHEMA,
     FEMA_NRI_SCHEMA,
@@ -83,6 +84,10 @@ def cdc_profiles_table(name: str) -> str:
 
 def recon_table(name: str) -> str:
     return fqtn(RECON_SCHEMA, name)
+
+
+def analytics_table(name: str) -> str:
+    return fqtn(ANALYTICS_SCHEMA, name)
 
 
 def source_table(source: str, table: str) -> str:

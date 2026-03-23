@@ -28,6 +28,11 @@ from app.recon.normalization import (
     usaspending_normalization_compatibility,
 )
 from app.recon.profile_calibration import METHODOLOGY_VERSION as PROFILE_CALIBRATION_METHODOLOGY_VERSION
+from app.services.chip_funding_model import (
+    CDCFundingMode,
+    FUNDING_MODE_LABELS,
+    normalization_lookup_variant_for_mode,
+)
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
 PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
@@ -2385,6 +2390,7 @@ def _build_state_profile_normalization_context(
     db: Session,
     *,
     normalize: bool,
+    normalization_funding_mode: str | None,
     state_code: str,
     basis: str,
     funding_geography_mode: str,
@@ -2420,11 +2426,13 @@ def _build_state_profile_normalization_context(
     funding_stream_logic_version = None
     methodology_version = None
     confidence_note = None
+    normalized_mode_token = str(normalization_funding_mode or CDCFundingMode.CHIP_NORMALIZED.value).strip().lower()
+    normalized_mode_label = FUNDING_MODE_LABELS.get(normalized_mode_token, "CHIP normalized funding")
 
     if normalization_requested:
         if normalized_fiscal_year is None:
             normalization_reason = (
-                "Normalized data requires an explicit fiscal year in the shared state funding profile URL."
+                f"{normalized_mode_label} requires an explicit fiscal year in the shared state funding profile URL."
             )
         else:
             normalization_supported, normalization_reason = usaspending_normalization_compatibility(
@@ -2443,11 +2451,12 @@ def _build_state_profile_normalization_context(
             db,
             source_system="usaspending",
             fiscal_year=int(normalized_fiscal_year),
+            lookup_variant=normalization_lookup_variant_for_mode(normalized_mode_token),
         )
         normalization_row = normalization_lookup.get(normalized_state_code)
         if normalization_row is None:
             normalization_reason = (
-                f"No normalized CDC funding benchmark is available for {normalized_state_code} "
+                f"No {normalized_mode_label} benchmark is available for {normalized_state_code} "
                 f"in Fiscal Year {normalized_fiscal_year}."
             )
         else:
@@ -2491,8 +2500,11 @@ def _build_state_profile_normalization_context(
             fiscal_year=int(normalized_fiscal_year),
             normalization_applied=True,
             reason=(
-                "State profile summary, grouped tables, and detail rows preserve the filtered raw award mix "
-                "while rescaling amounts to CHIP's normalized state benchmark."
+                (
+                    "State profile summary, grouped tables, and detail rows preserve the filtered raw award mix while rescaling amounts to CHIP's v1.1 emergency-classification state benchmark."
+                    if normalized_mode_token == CDCFundingMode.CHIP_NORMALIZED_V11.value
+                    else "State profile summary, grouped tables, and detail rows preserve the filtered raw award mix while rescaling amounts to CHIP's normalized state benchmark."
+                )
             ),
         )
     elif normalization_requested and normalization_reason:
@@ -2502,7 +2514,7 @@ def _build_state_profile_normalization_context(
         "normalization_requested": normalization_requested,
         "normalization_supported": normalization_supported,
         "normalization_applied": normalization_applied,
-        "data_mode_label": "Normalized data" if normalization_applied else "Raw obligations",
+        "data_mode_label": normalized_mode_label if normalization_applied else "Raw obligations",
         "normalization_note": normalization_note,
         "normalization_factor": normalization_factor,
         "normalized_total_funding": normalized_total_funding,
@@ -2552,6 +2564,7 @@ def fetch_state_profile_summary(
     assistance_type: str | None = None,
     fiscal_year: int | None = None,
     normalize: bool = False,
+    normalization_funding_mode: str | None = None,
     awarding_office: str | None = None,
     funding_office: str | None = None,
     center: str | None = None,
@@ -2608,6 +2621,7 @@ def fetch_state_profile_summary(
     normalization = _build_state_profile_normalization_context(
         db,
         normalize=normalize,
+        normalization_funding_mode=normalization_funding_mode,
         state_code=state_code,
         basis=basis,
         funding_geography_mode=effective_mode,
@@ -2692,6 +2706,7 @@ def fetch_state_profile_categories(
     assistance_type: str | None = None,
     fiscal_year: int | None = None,
     normalize: bool = False,
+    normalization_funding_mode: str | None = None,
     awarding_office: str | None = None,
     funding_office: str | None = None,
     center: str | None = None,
@@ -2745,6 +2760,7 @@ def fetch_state_profile_categories(
     normalization = _build_state_profile_normalization_context(
         db,
         normalize=normalize,
+        normalization_funding_mode=normalization_funding_mode,
         state_code=params["state_code"],
         basis=basis,
         funding_geography_mode=effective_mode,
@@ -2785,6 +2801,7 @@ def fetch_state_profile_subcategories(
     assistance_type: str | None = None,
     fiscal_year: int | None = None,
     normalize: bool = False,
+    normalization_funding_mode: str | None = None,
     awarding_office: str | None = None,
     funding_office: str | None = None,
     center: str | None = None,
@@ -2851,6 +2868,7 @@ def fetch_state_profile_subcategories(
     normalization = _build_state_profile_normalization_context(
         db,
         normalize=normalize,
+        normalization_funding_mode=normalization_funding_mode,
         state_code=params["state_code"],
         basis=basis,
         funding_geography_mode=effective_mode,
@@ -2892,6 +2910,7 @@ def fetch_state_profile_details(
     assistance_type: str | None = None,
     fiscal_year: int | None = None,
     normalize: bool = False,
+    normalization_funding_mode: str | None = None,
     awarding_office: str | None = None,
     funding_office: str | None = None,
     center: str | None = None,
@@ -2997,6 +3016,7 @@ def fetch_state_profile_details(
     normalization = _build_state_profile_normalization_context(
         db,
         normalize=normalize,
+        normalization_funding_mode=normalization_funding_mode,
         state_code=params["state_code"],
         basis=basis,
         funding_geography_mode=effective_mode,

@@ -34,6 +34,9 @@ def _build_row(
     geometry: dict | None = None,
     normalization_note: str | None = None,
 ) -> dict[str, object]:
+    is_normalized = funding_mode_requested in {"chip_normalized", "chip_normalized_v1_1"}
+    normalization_effective = funding_mode_effective in {"chip_normalized", "chip_normalized_v1_1"}
+    is_v11 = funding_mode_effective == "chip_normalized_v1_1"
     return {
         "geography_id": geography_id,
         "geography_name": geography_name,
@@ -59,15 +62,33 @@ def _build_row(
         "funding_mode_requested": funding_mode_requested,
         "funding_mode_effective": funding_mode_effective,
         "funding_mode_label": funding_mode_label,
-        "normalization_supported": funding_mode_requested == "chip_normalized",
-        "normalization_applied": funding_mode_effective == "chip_normalized",
+        "normalization_supported": is_normalized,
+        "normalization_applied": normalization_effective,
         "normalization_note": normalization_note,
-        "normalization_factor": 0.6 if funding_mode_effective == "chip_normalized" else None,
-        "normalized_amount_type": "observed_cdc_profile_aligned" if funding_mode_effective == "chip_normalized" else None,
-        "normalization_status_label": "Profile-aligned" if funding_mode_effective == "chip_normalized" else None,
-        "normalization_method": "funding_scope_reconstruction_calibration_layer" if funding_mode_effective == "chip_normalized" else None,
-        "funding_stream_logic_version": "scope_v5" if funding_mode_effective == "chip_normalized" else None,
-        "methodology_version": "profile_scope_v5" if funding_mode_effective == "chip_normalized" else "raw_pipeline_v1",
+        "normalization_factor": 0.9 if is_v11 else 0.6 if normalization_effective else None,
+        "normalized_amount_type": (
+            "state_profile_v11_emergency_classification_aligned"
+            if is_v11
+            else "observed_cdc_profile_aligned"
+            if normalization_effective
+            else None
+        ),
+        "normalization_status_label": "State-profile aligned v1.1" if is_v11 else "Profile-aligned" if normalization_effective else None,
+        "normalization_method": (
+            "v1_1_emergency_classification_state_profile_alignment"
+            if is_v11
+            else "funding_scope_reconstruction_calibration_layer"
+            if normalization_effective
+            else None
+        ),
+        "funding_stream_logic_version": (
+            "chip_state_profile_v1_1_emergency_classification"
+            if is_v11
+            else "scope_v5"
+            if normalization_effective
+            else None
+        ),
+        "methodology_version": "v1.1" if is_v11 else "profile_scope_v5" if normalization_effective else "raw_pipeline_v1",
         "funding_model_version": "cdc_funding_mode_v1",
         "population": population,
         "award_count": award_count,
@@ -97,6 +118,28 @@ def _build_profile(row: dict[str, object], *, geography_level: str = "state", fu
             time_aggregation="single_fiscal_year",
         ),
     )
+
+
+def test_normalize_funding_mode_defaults_to_v11() -> None:
+    assert intelligence._normalize_funding_mode(None) == "chip_normalized_v1_1"  # noqa: SLF001
+
+
+def test_funding_mode_note_describes_v11_mode() -> None:
+    filters = intelligence.FundingFilters(
+        fiscal_year=2025,
+        metric="total_funding",
+        funding_type="total_cdc_funding",
+        funding_mode="chip_normalized_v1_1",
+        program_area=None,
+        mechanism=None,
+        recipient_type=None,
+        geography_level="state",
+        time_aggregation="single_fiscal_year",
+    )
+
+    note = intelligence._funding_mode_note(filters)  # noqa: SLF001
+
+    assert "v1.1 emergency-classification state-profile benchmark" in note
 
 
 def test_fetch_geography_rows_prefers_state_summary_path(monkeypatch) -> None:
@@ -140,6 +183,13 @@ def test_fetch_geography_rows_prefers_state_summary_path(monkeypatch) -> None:
     assert captured["include_geometry"] is True
     assert captured["scope"] == "map"
     assert captured["filters"].geography_level == "state"
+
+
+def test_intelligence_summary_tables_require_rows(monkeypatch) -> None:
+    monkeypatch.setattr(intelligence, "_table_exists", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(intelligence, "_table_has_rows", lambda _db, table_name: table_name.endswith("subcategory_summary"))
+
+    assert intelligence._intelligence_summary_tables_available(None) is False
 
 
 def test_fetch_map_geojson_uses_requested_funding_mode_for_feature_values(monkeypatch) -> None:

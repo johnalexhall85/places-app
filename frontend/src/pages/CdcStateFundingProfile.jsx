@@ -8,6 +8,7 @@ import {
 import {
   CDC_DEFAULT_FUNDING_MODE,
   CDC_FUNDING_MODE_LABELS,
+  isNormalizedCdcFundingMode,
   normalizeCdcFundingMode,
 } from "../utils/cdcFundingMode";
 import "./CdcStateFundingProfile.css";
@@ -234,9 +235,9 @@ export default function CdcStateFundingProfile({ stateCode }) {
     ?? CDC_FUNDING_MODE_LABELS[query.fundingMode]
     ?? CDC_FUNDING_MODE_LABELS[CDC_DEFAULT_FUNDING_MODE]
   ).trim();
-  const fundingModeClass = String(
+  const fundingModeClass = isNormalizedCdcFundingMode(
     canonicalProfile?.funding_mode_effective ?? summary?.funding_mode_effective ?? query.fundingMode
-  ) === "chip_normalized"
+  )
     ? "is-normalized"
     : "is-raw";
   const fundingModeNote = String(
@@ -313,6 +314,11 @@ export default function CdcStateFundingProfile({ stateCode }) {
   const methodologyNotes = Array.isArray(summary?.methodology_notes)
     ? summary.methodology_notes.filter(Boolean)
     : [];
+  const grouping = summary?.grouping ?? categories?.grouping ?? subcategories?.grouping ?? {};
+  const categoryLabel = String(grouping?.category_label ?? "Program Area").trim() || "Program Area";
+  const subcategoryLabel = String(grouping?.subcategory_label ?? "Program").trim() || "Program";
+  const countLabel = String(grouping?.count_label ?? "Awards").trim() || "Awards";
+  const subgroupCountLabel = String(grouping?.subcategory_count_label ?? "Programs").trim() || "Programs";
 
   function handleDetailSearchSubmit(event) {
     event.preventDefault();
@@ -410,8 +416,8 @@ export default function CdcStateFundingProfile({ stateCode }) {
 
             <section className="cdc-profile-section">
               <SectionTitle
-                title="Program Area Summary"
-                subtitle="Program areas are derived from TAGGS ALN-linked classification first, with CDC metadata fallback when enrichment is unavailable."
+                title={`${categoryLabel} Summary`}
+                subtitle={summary?.grouping?.category_method ?? "Rows are grouped using the active state-profile classification method for this funding view."}
               />
               {isLoadingOverview ? (
                 <div className="cdc-profile-muted">Loading category summary...</div>
@@ -420,11 +426,11 @@ export default function CdcStateFundingProfile({ stateCode }) {
                   <table className="cdc-profile-table">
                     <thead>
                       <tr>
-                        <th>Program area</th>
+                        <th>{categoryLabel}</th>
                         <th>Funding</th>
                         <th>Share of state total</th>
-                        <th>Awards</th>
-                        <th>Programs</th>
+                        <th>{countLabel}</th>
+                        <th>{subgroupCountLabel}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -450,8 +456,8 @@ export default function CdcStateFundingProfile({ stateCode }) {
 
             <section className="cdc-profile-section">
               <SectionTitle
-                title="Program Breakdown"
-                subtitle="Program rows show the enriched program-level view that sits under each CHIP funding program area."
+                title={`${subcategoryLabel} Breakdown`}
+                subtitle={summary?.grouping?.subcategory_method ?? "Subgroup rows summarize the breakdown that sits under each top-level funding category for this state profile."}
               />
               {isLoadingOverview ? (
                 <div className="cdc-profile-muted">Loading subcategory summary...</div>
@@ -467,11 +473,11 @@ export default function CdcStateFundingProfile({ stateCode }) {
                         <table className="cdc-profile-table">
                           <thead>
                             <tr>
-                              <th>Program</th>
+                              <th>{subcategoryLabel}</th>
                               <th>Funding</th>
                               <th>Share of state total</th>
-                              <th>Share of program area</th>
-                              <th>Awards</th>
+                              <th>{`Share of ${categoryLabel.toLowerCase()}`}</th>
+                              <th>{countLabel}</th>
                             </tr>
                           </thead>
                           <tbody>

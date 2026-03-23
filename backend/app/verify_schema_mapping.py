@@ -40,6 +40,20 @@ def main() -> int:
         "svi": "public",
         "hrsa": "public",
         "cms": "cms",
+        "usda_food_access": "usda_food_access",
+        "usda_food_environment": "usda_food_env",
+        "usda_food_env": "usda_food_env",
+        "usda": "usda_food_access",
+        "fema": "fema_nri",
+        "fema_nri": "fema_nri",
+        "fema_national_risk_index": "fema_nri",
+        "cdc": "cdc_funding",
+        "cdc_funding": "cdc_funding",
+        "usaspending": "usaspending",
+        "cdc_profiles": "cdc_profiles",
+        "taggs": "taggs",
+        "recon": "recon",
+        "analytics": "analytics",
     }
     if SCHEMA_BY_SOURCE == default_mapping:
         print("Defaults active: behavior should match existing schema layout.")

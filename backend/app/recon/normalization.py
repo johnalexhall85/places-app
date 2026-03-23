@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.db import DEFAULT_DB_URL
-from app.db_fqtn import cdc_funding_table, cdc_profiles_table, recon_table, taggs_table
+from app.db_fqtn import analytics_table, cdc_funding_table, cdc_profiles_table, recon_table, taggs_table
 from app.recon.funding_streams import (
     ESTIMATED_FISCAL_YEARS,
     FUNDING_STREAM_LOGIC_VERSION,
@@ -35,6 +35,7 @@ CDC_PROFILE_TOTALS_TABLE = cdc_profiles_table("state_year_totals")
 CALIBRATION_TABLE = recon_table("cdc_profile_calibration")
 RULES_TABLE = recon_table("normalization_rules_by_year")
 NORMALIZED_TABLE = recon_table("normalized_state_funding")
+V11_EMERGENCY_NORMALIZED_TABLE = analytics_table("chip_normalized_state_funding_v11_ec")
 METHODOLOGY_LOG_TABLE = recon_table("normalization_methodology_log")
 DEFC_RULES_TABLE = recon_table("defc_classification_rules")
 APPROPRIATION_RULES_TABLE = recon_table("appropriation_type_rules")
@@ -47,6 +48,10 @@ TAGGS_AWARD_SUMMARY_TABLE = taggs_table("award_funding_summary")
 TAGGS_CAN_CLASSIFICATION_TABLE = taggs_table("can_classification")
 CDC_PRIME_AWARDS_TABLE = cdc_funding_table("prime_awards")
 CDC_PRIME_TRANSACTIONS_TABLE = cdc_funding_table("prime_transactions")
+RECON_SCHEMA = "recon"
+
+NORMALIZATION_LOOKUP_VARIANT_LEGACY_V1 = "legacy_v1"
+NORMALIZATION_LOOKUP_VARIANT_V11_EMERGENCY = "v1_1_emergency_classification"
 
 
 def parse_args() -> argparse.Namespace:
@@ -136,6 +141,8 @@ def normalization_status_label(normalized_amount_type: str | None) -> str | None
         return "Profile-aligned"
     if token == NORMALIZED_AMOUNT_TYPE_ESTIMATED:
         return "Profile-aligned estimate"
+    if token == "state_profile_v11_emergency_classification_aligned":
+        return "State-profile aligned v1.1"
     return None
 
 
@@ -227,6 +234,27 @@ def usaspending_normalization_compatibility(
 
 
 def fetch_state_normalization_lookup(
+    db: Session,
+    *,
+    source_system: str,
+    fiscal_year: int,
+    lookup_variant: str = NORMALIZATION_LOOKUP_VARIANT_LEGACY_V1,
+) -> dict[str, dict[str, Any]]:
+    variant = str(lookup_variant or NORMALIZATION_LOOKUP_VARIANT_LEGACY_V1).strip().lower()
+    if variant == NORMALIZATION_LOOKUP_VARIANT_V11_EMERGENCY:
+        return _fetch_v11_emergency_state_normalization_lookup(
+            db,
+            source_system=source_system,
+            fiscal_year=fiscal_year,
+        )
+    return _fetch_legacy_state_normalization_lookup(
+        db,
+        source_system=source_system,
+        fiscal_year=fiscal_year,
+    )
+
+
+def _fetch_legacy_state_normalization_lookup(
     db: Session,
     *,
     source_system: str,
@@ -361,6 +389,195 @@ def fetch_state_normalization_lookup(
             "fiscal_year": int(fiscal_year),
         },
     ).mappings().all()
+    return {
+        str(row["state_code"]).strip().upper(): {
+            **dict(row),
+            "status_label": normalization_status_label(row.get("normalized_amount_type")),
+        }
+        for row in rows
+        if str(row.get("state_code") or "").strip()
+    }
+
+
+def _fetch_v11_emergency_state_normalization_lookup(
+    db: Session,
+    *,
+    source_system: str,
+    fiscal_year: int,
+) -> dict[str, dict[str, Any]]:
+    if str(source_system or "").strip().lower() != SOURCE_USASPENDING:
+        return {}
+    if _table_exists(db, V11_EMERGENCY_NORMALIZED_TABLE):
+        rows = db.execute(
+            text(
+                f"""
+                SELECT
+                    state_code,
+                    raw_amount,
+                    normalized_amount,
+                    normalized_amount_type,
+                    normalization_method,
+                    funding_stream_logic_version,
+                    cdc_profile_reference_amount,
+                    residual_amount,
+                    residual_pct,
+                    calibration_basis,
+                    core_public_health_amount,
+                    emergency_public_health_amount,
+                    federal_health_transfer_amount,
+                    procurement_support_scope_amount,
+                    special_transfer_amount,
+                    other_public_health_amount,
+                    biomedical_research_amount,
+                    international_health_assistance_amount,
+                    unknown_funding_scope_amount,
+                    funding_scope_components_json,
+                    methodology_version,
+                    confidence_note,
+                    refreshed_at,
+                    normalization_factor
+                FROM {V11_EMERGENCY_NORMALIZED_TABLE}
+                WHERE source_system = :source_system
+                  AND fiscal_year = :fiscal_year
+                """
+            ),
+            {
+                "source_system": SOURCE_USASPENDING,
+                "fiscal_year": int(fiscal_year),
+            },
+        ).mappings().all()
+    else:
+        normalized_recipient_name = (
+            "NULLIF(BTRIM(REGEXP_REPLACE("
+            "REGEXP_REPLACE("
+            "REGEXP_REPLACE(UPPER(COALESCE(tx.recipient_name, '')), '[^A-Z0-9]+', ' ', 'g'), "
+            "'(^| )(INCORPORATED|INC|LLC|LTD|CORPORATION|CORP|CO)( |$)', ' ', 'g'"
+            "), "
+            "'\\s+', ' ', 'g'"
+            ")), '')"
+        )
+        rows = db.execute(
+            text(
+                f"""
+                WITH legacy AS (
+                    SELECT
+                        state_code,
+                        raw_amount,
+                        cdc_profile_reference_amount
+                    FROM {NORMALIZED_TABLE}
+                    WHERE source_system = 'usaspending'
+                      AND fiscal_year = :fiscal_year
+                ),
+                classified AS (
+                    SELECT
+                        tx.state_code,
+                        tx.raw_amount,
+                        tx.include_in_profile_scope,
+                        (
+                            POSITION('075-0140' IN COALESCE(tx.federal_account_combination_key, '')) > 0
+                            OR COALESCE(tx.mixed_scope_contains_emergency, false)
+                            OR COALESCE(tx.effective_funding_scope, '') = 'emergency_public_health'
+                        ) AS chip_emergency_flag,
+                        LOWER(COALESCE(tx.recipient_name, '')) ~ '(state of |commonwealth of |department of health|department of public health|state health)' AS is_state_like,
+                        LOWER(COALESCE(tx.recipient_name, '')) ~ '(county|city of |parish|borough|municipal|public health district|local health department|health department)' AS is_local_public_health_like,
+                        LOWER(COALESCE(tx.recipient_name, '')) ~ '(state university|university of |college of medicine|school of public health)' AS is_public_university_like,
+                        (
+                            {normalized_recipient_name} LIKE '%PUBLIC HEALTH FOUNDATION ENTERPRISES%'
+                            OR {normalized_recipient_name} LIKE '%PHFE MANAGEMENT SOLUTIONS%'
+                            OR LOWER(COALESCE(tx.recipient_name, '')) ~ '(fiscal agent|foundation enterprises|phfe management solutions)'
+                        ) AS is_intermediary
+                    FROM {RECON_SCHEMA}.profile_scope_transactions AS tx
+                    WHERE tx.fiscal_year = :fiscal_year
+                      AND NULLIF(BTRIM(tx.state_code), '') IS NOT NULL
+                ),
+                aggregated AS (
+                    SELECT
+                        classified.state_code,
+                        COALESCE(SUM(
+                            CASE
+                                WHEN classified.chip_emergency_flag IS FALSE AND classified.include_in_profile_scope IS TRUE
+                                    THEN classified.raw_amount
+                                WHEN classified.chip_emergency_flag IS TRUE
+                                     AND classified.is_intermediary IS FALSE
+                                     AND (
+                                         classified.is_state_like
+                                         OR classified.is_local_public_health_like
+                                         OR classified.is_public_university_like
+                                     )
+                                    THEN classified.raw_amount
+                                ELSE 0
+                            END
+                        ), 0)::numeric AS normalized_amount,
+                        COALESCE(SUM(
+                            CASE
+                                WHEN classified.chip_emergency_flag IS FALSE AND classified.include_in_profile_scope IS TRUE
+                                    THEN classified.raw_amount
+                                ELSE 0
+                            END
+                        ), 0)::numeric AS core_public_health_amount,
+                        COALESCE(SUM(
+                            CASE
+                                WHEN classified.chip_emergency_flag IS TRUE
+                                     AND classified.is_intermediary IS FALSE
+                                     AND (
+                                         classified.is_state_like
+                                         OR classified.is_local_public_health_like
+                                         OR classified.is_public_university_like
+                                     )
+                                    THEN classified.raw_amount
+                                ELSE 0
+                            END
+                        ), 0)::numeric AS emergency_public_health_amount
+                    FROM classified
+                    GROUP BY classified.state_code
+                )
+                SELECT
+                    aggregated.state_code,
+                    legacy.raw_amount,
+                    aggregated.normalized_amount,
+                    'state_profile_v11_emergency_classification_aligned'::text AS normalized_amount_type,
+                    'v1_1_emergency_classification_state_profile_alignment'::text AS normalization_method,
+                    'chip_state_profile_v1_1_emergency_classification'::text AS funding_stream_logic_version,
+                    legacy.cdc_profile_reference_amount,
+                    (COALESCE(aggregated.normalized_amount, 0) - COALESCE(legacy.raw_amount, 0))::numeric(18, 2) AS residual_amount,
+                    CASE
+                        WHEN legacy.raw_amount IS NULL OR legacy.raw_amount = 0 THEN NULL
+                        ELSE (
+                            (COALESCE(aggregated.normalized_amount, 0) - COALESCE(legacy.raw_amount, 0))
+                            / NULLIF(legacy.raw_amount, 0)
+                        )::numeric(12, 6)
+                    END AS residual_pct,
+                    'v1_1_emergency_classification_state_profile'::text AS calibration_basis,
+                    aggregated.core_public_health_amount,
+                    aggregated.emergency_public_health_amount,
+                    NULL::numeric AS federal_health_transfer_amount,
+                    NULL::numeric AS procurement_support_scope_amount,
+                    NULL::numeric AS special_transfer_amount,
+                    NULL::numeric AS other_public_health_amount,
+                    NULL::numeric AS biomedical_research_amount,
+                    NULL::numeric AS international_health_assistance_amount,
+                    NULL::numeric AS unknown_funding_scope_amount,
+                    jsonb_build_object(
+                        'core_cdc_program_funding', aggregated.core_public_health_amount,
+                        'emergency_distributed_funding', aggregated.emergency_public_health_amount,
+                        'source', 'direct_sql_fallback'
+                    ) AS funding_scope_components_json,
+                    'v1.1'::text AS methodology_version,
+                    'CHIP Normalized Funding v1.1 is using the direct SQL fallback because the analytics normalization view has not been migrated into this database yet.'::text AS confidence_note,
+                    NOW() AS refreshed_at,
+                    CASE
+                        WHEN legacy.raw_amount IS NULL OR legacy.raw_amount = 0 THEN NULL
+                        ELSE aggregated.normalized_amount / NULLIF(legacy.raw_amount, 0)
+                    END AS normalization_factor
+                FROM aggregated
+                LEFT JOIN legacy
+                  ON legacy.state_code = aggregated.state_code
+                """
+            ),
+            {
+                "fiscal_year": int(fiscal_year),
+            },
+        ).mappings().all()
     return {
         str(row["state_code"]).strip().upper(): {
             **dict(row),

@@ -1,6 +1,7 @@
 export const CDC_FUNDING_MODES = {
   RAW_TOTAL: "raw_total",
   CHIP_NORMALIZED: "chip_normalized",
+  CHIP_NORMALIZED_V11: "chip_normalized_v1_1",
 };
 
 export const CDC_GEOGRAPHY_LEVELS = {
@@ -9,18 +10,33 @@ export const CDC_GEOGRAPHY_LEVELS = {
   COUNTY: "county",
 };
 
-export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CHIP_NORMALIZED;
+export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CHIP_NORMALIZED_V11;
 export const CDC_DEFAULT_GEOGRAPHY_LEVEL = CDC_GEOGRAPHY_LEVELS.STATE;
 
 export const CDC_FUNDING_MODE_LABELS = {
   [CDC_FUNDING_MODES.RAW_TOTAL]: "Raw total funding",
-  [CDC_FUNDING_MODES.CHIP_NORMALIZED]: "CHIP normalized funding",
+  [CDC_FUNDING_MODES.CHIP_NORMALIZED]: "CHIP Normalized Funding (Legacy)",
+  [CDC_FUNDING_MODES.CHIP_NORMALIZED_V11]: "CHIP Normalized Funding v1.1",
 };
+
+export function isNormalizedCdcFundingMode(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  return (
+    token === CDC_FUNDING_MODES.CHIP_NORMALIZED
+    || token === CDC_FUNDING_MODES.CHIP_NORMALIZED_V11
+  );
+}
 
 export function normalizeCdcFundingMode(value) {
   const token = String(value ?? "").trim().toLowerCase();
   if (token === CDC_FUNDING_MODES.RAW_TOTAL) {
     return CDC_FUNDING_MODES.RAW_TOTAL;
+  }
+  if (token === CDC_FUNDING_MODES.CHIP_NORMALIZED) {
+    return CDC_FUNDING_MODES.CHIP_NORMALIZED;
+  }
+  if (token === CDC_FUNDING_MODES.CHIP_NORMALIZED_V11) {
+    return CDC_FUNDING_MODES.CHIP_NORMALIZED_V11;
   }
   return CDC_DEFAULT_FUNDING_MODE;
 }

@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.cdc_funding import intelligence
 from app.cdc_funding import services
+from app.cdc_funding import v11_emergency
 from app.db import get_db
 
 router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
+FundingModeQuery = Literal["raw_total", "chip_normalized", "chip_normalized_v1_1"]
 
 
 def _resolve_query_value(value):
@@ -38,7 +40,7 @@ def get_cdc_funding_map(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -100,7 +102,7 @@ def get_cdc_funding_legend(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -159,7 +161,7 @@ def get_cdc_funding_national_summary(
     fiscal_year: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -220,7 +222,7 @@ def get_cdc_state_profile_summary(
     fy: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -274,7 +276,7 @@ def get_cdc_state_profile_overview(
     fy: int | None = Query(default=None),
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -327,7 +329,7 @@ def get_cdc_state_profile_categories(
     fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -378,7 +380,7 @@ def get_cdc_state_profile_subcategories(
     fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
-    funding_mode: Literal["raw_total", "chip_normalized"] | None = Query(default=None),
+    funding_mode: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -426,7 +428,7 @@ def get_cdc_state_profile_subcategories(
 @router.get("/profile/details")
 def get_cdc_state_profile_details(
     state: str = Query(..., min_length=2, max_length=2),
-    funding_mode: Literal["raw_total", "chip_normalized"] = Query(default="chip_normalized"),
+    funding_mode: FundingModeQuery = Query(default="chip_normalized_v1_1"),
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
         default="recipient_location"
@@ -451,6 +453,26 @@ def get_cdc_state_profile_details(
     office_value = str(office or "").strip() or None
     awarding_office_value = str(awarding_office or "").strip() or office_value
     funding_office_value = str(funding_office or "").strip() or office_value
+    resolved_funding_mode = _resolve_query_value(funding_mode) or "chip_normalized_v1_1"
+    emergency_support = v11_emergency.support_status(
+        funding_mode=resolved_funding_mode,
+        funding_type="total_cdc_funding",
+        cdc_center=None,
+        program_area=None,
+        mechanism=None,
+        recipient_type=None,
+    )
+    if emergency_support.enabled and resolved_funding_mode == "raw_total":
+        return v11_emergency.fetch_state_profile_details(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            q=q,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
     return services.fetch_state_profile_details(
         db,
         state=state,
@@ -459,7 +481,8 @@ def get_cdc_state_profile_details(
         appropriation_type=appropriation_type,
         assistance_type=assistance_type,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
-        normalize=_resolve_query_value(funding_mode) != "raw_total",
+        normalize=resolved_funding_mode != "raw_total",
+        normalization_funding_mode=resolved_funding_mode,
         awarding_office=awarding_office_value,
         funding_office=funding_office_value,
         center=center,

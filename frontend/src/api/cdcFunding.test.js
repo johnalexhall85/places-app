@@ -92,6 +92,7 @@ describe("fetchCdcFundingMethodologySummary", () => {
 
       const url = String(fetchMock.mock.calls[0][0]);
       expect(url).toContain("geography_level=state");
+      expect(url).toContain("funding_mode=chip_normalized_v1_1");
     } finally {
       globalThis.fetch = originalFetch;
     }

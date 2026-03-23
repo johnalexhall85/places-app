@@ -15,14 +15,18 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db_fqtn import cdc_funding_table, places_table, taggs_table, usaspending_table
+from app.cdc_funding import v11_emergency
 from app.recon.normalization import NORMALIZED_TABLE, fetch_state_normalization_lookup
 from app.recon.profile_calibration import METHODOLOGY_VERSION as PROFILE_CALIBRATION_METHODOLOGY_VERSION
 from app.services.chip_funding_model import (
+    DEFAULT_FUNDING_MODE,
     FUNDING_MODEL_VERSION,
     FUNDING_MODE_LABELS,
     CDCFundingMode,
     CHIPFundingCacheContext,
     CHIPFundingModel,
+    is_normalized_funding_mode,
+    normalization_lookup_variant_for_mode,
 )
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
@@ -286,8 +290,9 @@ TIME_AGGREGATION_OPTIONS = [
 ]
 TIME_AGGREGATION_LABELS = {option["value"]: option["label"] for option in TIME_AGGREGATION_OPTIONS}
 FUNDING_MODE_OPTIONS = [
-    {"value": CDCFundingMode.CHIP_NORMALIZED.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value]},
+    {"value": CDCFundingMode.CHIP_NORMALIZED_V11.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED_V11.value]},
     {"value": CDCFundingMode.RAW_TOTAL.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.RAW_TOTAL.value]},
+    {"value": CDCFundingMode.CHIP_NORMALIZED.value, "label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value]},
 ]
 
 DEFAULT_NOTE = (
@@ -296,7 +301,6 @@ DEFAULT_NOTE = (
 )
 CHIP_FUNDING_MODEL = CHIPFundingModel()
 FUNDING_PROFILE_VERSION = "funding_profile_result_v1"
-DEFAULT_FUNDING_MODE = CDCFundingMode.CHIP_NORMALIZED.value
 
 
 @dataclass(frozen=True)
@@ -418,6 +422,13 @@ def _table_exists(db: Session, table_name: str) -> bool:
     return row["exists"] is not None
 
 
+def _table_has_rows(db: Session, table_name: str) -> bool:
+    row = db.execute(
+        text(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1) AS has_rows"),
+    ).mappings().one()
+    return bool(row.get("has_rows"))
+
+
 def _ensure_required_tables(db: Session) -> None:
     required = [
         PRIME_TABLE,
@@ -444,9 +455,11 @@ def _ensure_required_tables(db: Session) -> None:
 
 
 def _intelligence_summary_tables_available(db: Session) -> bool:
-    return _table_exists(db, INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE) and _table_exists(
-        db,
-        INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE,
+    return (
+        _table_exists(db, INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE)
+        and _table_exists(db, INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE)
+        and _table_has_rows(db, INTELLIGENCE_STATE_CATEGORY_SUMMARY_TABLE)
+        and _table_has_rows(db, INTELLIGENCE_STATE_SUBCATEGORY_SUMMARY_TABLE)
     )
 
 
@@ -903,6 +916,10 @@ def _funding_profile_metadata(
             "funding_stream_logic_version": row.get("funding_stream_logic_version"),
             "methodology_version": row.get("methodology_version"),
         },
+        "chip_rollout_status": row.get("chip_rollout_status"),
+        "chip_state_profile_source_version": row.get("chip_state_profile_source_version"),
+        "chip_normalization_source_version": row.get("chip_normalization_source_version"),
+        "run_id": row.get("run_id"),
         "min_fiscal_year": min_fiscal_year,
         "max_fiscal_year": max_fiscal_year,
     }
@@ -962,7 +979,7 @@ def _funding_profile_result_from_row(
         normalization_method=row.get("normalization_method"),
         funding_stream_logic_version=row.get("funding_stream_logic_version"),
         methodology_version=str(row.get("methodology_version") or PROFILE_CALIBRATION_METHODOLOGY_VERSION),
-        profile_version=FUNDING_PROFILE_VERSION,
+        profile_version=str(row.get("profile_version") or FUNDING_PROFILE_VERSION),
         funding_model_version=str(row.get("funding_model_version") or FUNDING_MODEL_VERSION),
         metadata=_funding_profile_metadata(
             row,
@@ -1085,9 +1102,13 @@ def _metric_note(metric: str) -> str | None:
 
 
 def _funding_mode_note(filters: FundingFilters) -> str:
+    if filters.funding_mode == CDCFundingMode.CHIP_NORMALIZED_V11.value:
+        return (
+            "CHIP Normalized Funding v1.1 preserves the raw within-state distribution but rescales it to the v1.1 emergency-classification state-profile benchmark."
+        )
     if filters.funding_mode == CDCFundingMode.CHIP_NORMALIZED.value:
         return (
-            "CHIP normalized funding applies the frozen funding-scope reconstruction layer when the active CDC view "
+            "CHIP Normalized Funding (Legacy) applies the frozen funding-scope reconstruction layer when the active CDC view "
             "matches the calibrated statewide total contract."
         )
     return "Raw total funding displays summed source obligations without CHIP funding-scope normalization."
@@ -1653,11 +1674,11 @@ def _build_national_summary_row_from_state_rows(
         national_total_funding=normalized_total,
     )
     effective_mode = (
-        CDCFundingMode.CHIP_NORMALIZED.value
-        if filters.funding_mode == CDCFundingMode.CHIP_NORMALIZED.value and normalized_total is not None
+        filters.funding_mode
+        if is_normalized_funding_mode(filters.funding_mode) and normalized_total is not None
         else CDCFundingMode.RAW_TOTAL.value
     )
-    selected_result = normalized_result if effective_mode == CDCFundingMode.CHIP_NORMALIZED.value else raw_result
+    selected_result = normalized_result if is_normalized_funding_mode(effective_mode) else raw_result
     payload = CHIP_FUNDING_MODEL._row_payload(
         raw_result=raw_result,
         normalized_result=normalized_result,
@@ -2073,6 +2094,24 @@ def _fetch_geography_rows(
     scope: str = "map",
     state: str | None = None,
 ) -> list[dict[str, Any]]:
+    support = v11_emergency.support_status(
+        funding_mode=filters.funding_mode,
+        funding_type=filters.funding_type,
+        cdc_center=filters.program_area,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+    )
+    if filters.geography_level == "state" and support.enabled:
+        return v11_emergency.fetch_state_geography_rows(
+            db,
+            fiscal_year=filters.fiscal_year,
+            funding_type=filters.funding_type,
+            time_aggregation=filters.time_aggregation,
+            include_geometry=include_geometry,
+            bbox=bbox,
+            limit=limit,
+        )
     if _intelligence_summary_tables_available(db) and filters.geography_level == "state":
         return _fetch_state_summary_rows(
             db,
@@ -2136,6 +2175,21 @@ def _fetch_geography_rows(
 
 
 def _fetch_national_summary_row(db: Session, filters: FundingFilters) -> dict[str, Any]:
+    support = v11_emergency.support_status(
+        funding_mode=filters.funding_mode,
+        funding_type=filters.funding_type,
+        cdc_center=filters.program_area,
+        program_area=filters.program_area,
+        mechanism=filters.mechanism,
+        recipient_type=filters.recipient_type,
+    )
+    if support.enabled:
+        return v11_emergency.fetch_national_summary_row(
+            db,
+            fiscal_year=filters.fiscal_year,
+            funding_type=filters.funding_type,
+            time_aggregation=filters.time_aggregation,
+        )
     national_filters = FundingFilters(
         fiscal_year=filters.fiscal_year,
         metric=filters.metric,
@@ -2383,8 +2437,8 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         },
         "notes": [
             DEFAULT_NOTE,
-            "CDC funding supports two explicit modes: raw total funding and CHIP normalized funding.",
-            "CHIP normalized funding uses the frozen funding-scope reconstruction layer only when the request matches the calibrated single-year statewide totals contract.",
+            "CDC funding supports three explicit modes: CHIP Normalized Funding v1.1, raw total funding, and CHIP Normalized Funding (Legacy).",
+            "CHIP Normalized Funding v1.1 rescales the current map distribution to the newest v1.1 emergency-classification state-profile benchmark. The legacy normalized mode remains available for comparison.",
             "Emergency vs non-emergency splits come from centralized appropriation-type classification.",
         ],
     }
@@ -3290,10 +3344,32 @@ def fetch_state_profile_overview(
     recipient_type: str | None = None,
     time_aggregation: str | None = None,
 ) -> dict[str, Any]:
-    _ensure_required_tables(db)
     state_code = str(state or "").strip().upper()
     if len(state_code) != 2:
         raise HTTPException(status_code=400, detail="state must be a valid 2-letter state code")
+    emergency_support = v11_emergency.support_status(
+        funding_mode=funding_mode,
+        funding_type=funding_type,
+        cdc_center=cdc_center,
+        program_area=program_area,
+        mechanism=mechanism,
+        recipient_type=recipient_type,
+    )
+    if emergency_support.enabled:
+        return v11_emergency.fetch_state_profile_overview(
+            db,
+            state=state_code,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=funding_type,
+            funding_mode=funding_mode,
+            cdc_center=cdc_center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )
+    _ensure_required_tables(db)
     filters = _normalize_filters(
         fiscal_year=fiscal_year,
         metric=metric,
@@ -3470,6 +3546,7 @@ def fetch_mode_diagnostics(
             db,
             source_system="usaspending",
             fiscal_year=fiscal_year,
+            lookup_variant=normalization_lookup_variant_for_mode(DEFAULT_FUNDING_MODE),
         )
         for state_code in effective_states:
             row = lookup.get(state_code)
@@ -3516,7 +3593,7 @@ def fetch_mode_diagnostics(
             )
 
     return {
-        "funding_mode": CDCFundingMode.CHIP_NORMALIZED.value,
-        "funding_mode_label": FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value],
+        "funding_mode": DEFAULT_FUNDING_MODE,
+        "funding_mode_label": FUNDING_MODE_LABELS[DEFAULT_FUNDING_MODE],
         "rows": rows,
     }

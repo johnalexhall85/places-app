@@ -14,19 +14,43 @@ from typing import Any, Mapping, Sequence
 
 from sqlalchemy.orm import Session
 
-from app.recon.normalization import build_normalization_note, fetch_state_normalization_lookup
+from app.recon.normalization import (
+    NORMALIZATION_LOOKUP_VARIANT_LEGACY_V1,
+    NORMALIZATION_LOOKUP_VARIANT_V11_EMERGENCY,
+    build_normalization_note,
+    fetch_state_normalization_lookup,
+)
 
 
 class CDCFundingMode(str, Enum):
     RAW_TOTAL = "raw_total"
     CHIP_NORMALIZED = "chip_normalized"
+    CHIP_NORMALIZED_V11 = "chip_normalized_v1_1"
 
 
 FUNDING_MODE_LABELS = {
     CDCFundingMode.RAW_TOTAL.value: "Raw total funding",
-    CDCFundingMode.CHIP_NORMALIZED.value: "CHIP normalized funding",
+    CDCFundingMode.CHIP_NORMALIZED.value: "CHIP Normalized Funding (Legacy)",
+    CDCFundingMode.CHIP_NORMALIZED_V11.value: "CHIP Normalized Funding v1.1",
 }
 FUNDING_MODEL_VERSION = "cdc_funding_mode_v1"
+DEFAULT_FUNDING_MODE = CDCFundingMode.CHIP_NORMALIZED_V11.value
+NORMALIZED_FUNDING_MODES = {
+    CDCFundingMode.CHIP_NORMALIZED.value,
+    CDCFundingMode.CHIP_NORMALIZED_V11.value,
+}
+
+
+def is_normalized_funding_mode(value: str | None) -> bool:
+    token = str(value or "").strip().lower()
+    return token in NORMALIZED_FUNDING_MODES
+
+
+def normalization_lookup_variant_for_mode(value: str | None) -> str:
+    token = str(value or "").strip().lower()
+    if token == CDCFundingMode.CHIP_NORMALIZED_V11.value:
+        return NORMALIZATION_LOOKUP_VARIANT_V11_EMERGENCY
+    return NORMALIZATION_LOOKUP_VARIANT_LEGACY_V1
 
 
 @dataclass(frozen=True)
@@ -93,7 +117,7 @@ class CHIPFundingModel:
         self._cache: OrderedDict[str, tuple[float, list[dict[str, Any]]]] = OrderedDict()
 
     def normalize_funding_mode(self, value: str | None) -> str:
-        token = str(value or CDCFundingMode.CHIP_NORMALIZED.value).strip().lower()
+        token = str(value or DEFAULT_FUNDING_MODE).strip().lower()
         if token not in {mode.value for mode in CDCFundingMode}:
             allowed = ", ".join(mode.value for mode in CDCFundingMode)
             raise ValueError(f"funding_mode must be one of {allowed}")
@@ -144,10 +168,11 @@ class CHIPFundingModel:
             db,
             source_system="usaspending",
             fiscal_year=int(cache_context.fiscal_year),
+            lookup_variant=normalization_lookup_variant_for_mode(requested_mode),
         )
         if not lookup:
             normalization_reason = (
-                f"CHIP normalized funding is unavailable because no reconstructed state benchmarks were found "
+                f"{FUNDING_MODE_LABELS[requested_mode]} is unavailable because no reconstructed state benchmarks were found "
                 f"for FY{int(cache_context.fiscal_year)}."
             )
             return CHIPFundingModeContext(
@@ -173,7 +198,11 @@ class CHIPFundingModel:
             fiscal_year=int(cache_context.fiscal_year),
             normalization_applied=True,
             reason=(
-                "County values preserve the raw within-state distribution and are rescaled by CHIP's normalized state benchmark factor."
+                (
+                    "County values preserve the raw within-state distribution and are rescaled by CHIP's v1.1 emergency-classification state benchmark."
+                    if requested_mode == CDCFundingMode.CHIP_NORMALIZED_V11.value
+                    else "County values preserve the raw within-state distribution and are rescaled by CHIP's normalized state benchmark factor."
+                )
                 if cache_context.geography_level == "county"
                 else None
             ),
@@ -190,8 +219,8 @@ class CHIPFundingModel:
         )
         return CHIPFundingModeContext(
             requested_mode=requested_mode,
-            effective_mode=CDCFundingMode.CHIP_NORMALIZED.value,
-            funding_mode_label=FUNDING_MODE_LABELS[CDCFundingMode.CHIP_NORMALIZED.value],
+            effective_mode=requested_mode,
+            funding_mode_label=FUNDING_MODE_LABELS[requested_mode],
             normalization_supported=True,
             normalization_applied=True,
             normalization_note=normalization_note,
@@ -308,11 +337,11 @@ class CHIPFundingModel:
                 else None
             )
             row_effective_mode = (
-                CDCFundingMode.CHIP_NORMALIZED.value
-                if mode_context.requested_mode == CDCFundingMode.CHIP_NORMALIZED.value and normalized_total is not None
+                mode_context.requested_mode
+                if is_normalized_funding_mode(mode_context.requested_mode) and normalized_total is not None
                 else CDCFundingMode.RAW_TOTAL.value
             )
-            selected_result = normalized_result if row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value else raw_result
+            selected_result = normalized_result if is_normalized_funding_mode(row_effective_mode) else raw_result
             payload.update(
                 self._row_payload(
                     raw_result=raw_result,
@@ -332,12 +361,16 @@ class CHIPFundingModel:
         return copy.deepcopy(output)
 
     def _normalization_support_reason(self, cache_context: CHIPFundingCacheContext) -> str | None:
+        mode_label = FUNDING_MODE_LABELS.get(
+            self.normalize_funding_mode(cache_context.funding_mode),
+            "CHIP normalized funding",
+        )
         if cache_context.fiscal_year is None:
-            return "CHIP normalized funding requires an explicit fiscal year."
+            return f"{mode_label} requires an explicit fiscal year."
         if cache_context.time_aggregation != "single_fiscal_year":
-            return "CHIP normalized funding is only available for single fiscal-year CDC totals."
+            return f"{mode_label} is only available for single fiscal-year CDC totals."
         if cache_context.funding_type != "total_cdc_funding":
-            return "CHIP normalized funding is calibrated to the Total CDC Funding view and is not applied to alternate funding-type slices."
+            return f"{mode_label} is calibrated to the Total CDC Funding view and is not applied to alternate funding-type slices."
         if any(
             str(value or "").strip()
             for value in (
@@ -347,7 +380,7 @@ class CHIPFundingModel:
             )
         ):
             return (
-                "CHIP normalized funding is calibrated to statewide overall CDC totals and is not applied to filtered "
+                f"{mode_label} is calibrated to statewide overall CDC totals and is not applied to filtered "
                 "program-area, mechanism, or recipient-type subsets."
             )
         return None
@@ -409,7 +442,7 @@ class CHIPFundingModel:
         funding_mode_label = FUNDING_MODE_LABELS[row_effective_mode]
         methodology_version = (
             str(normalization_row.get("methodology_version") or "").strip() or None
-            if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+            if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
             else mode_context.methodology_version
         )
         component_payload = self._component_payload(
@@ -437,34 +470,34 @@ class CHIPFundingModel:
             "funding_mode_label": funding_mode_label,
             "funding_mode_requested_label": FUNDING_MODE_LABELS[mode_context.requested_mode],
             "normalization_supported": mode_context.normalization_supported,
-            "normalization_applied": row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value,
+            "normalization_applied": is_normalized_funding_mode(row_effective_mode),
             "normalization_note": mode_context.normalization_note,
             "normalization_reason": mode_context.normalization_reason,
             "normalization_factor": normalization_factor,
             "normalized_amount_type": (
                 normalization_row.get("normalized_amount_type")
-                if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+                if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
                 else None
             ),
             "normalization_status_label": (
                 normalization_row.get("status_label")
-                if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+                if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
                 else None
             ),
             "normalization_method": (
                 normalization_row.get("normalization_method")
-                if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+                if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
                 else mode_context.normalization_method
             ),
             "funding_stream_logic_version": (
                 normalization_row.get("funding_stream_logic_version")
-                if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+                if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
                 else mode_context.funding_stream_logic_version
             ),
             "methodology_version": methodology_version,
             "normalization_confidence_note": (
                 normalization_row.get("confidence_note")
-                if normalization_row is not None and row_effective_mode == CDCFundingMode.CHIP_NORMALIZED.value
+                if normalization_row is not None and is_normalized_funding_mode(row_effective_mode)
                 else mode_context.normalization_confidence_note
             ),
             "funding_model_version": FUNDING_MODEL_VERSION,
@@ -494,7 +527,7 @@ class CHIPFundingModel:
             "international_health_assistance_amount": "international_health_assistance_amount",
             "unknown_funding_scope_amount": "unknown_funding_scope_amount",
         }
-        if row_effective_mode != CDCFundingMode.CHIP_NORMALIZED.value:
+        if not is_normalized_funding_mode(row_effective_mode):
             return {key: None for key in component_fields}
         if geography_level == "state" and normalization_row is not None:
             return {key: _json_number(normalization_row.get(column)) for key, column in component_fields.items()}

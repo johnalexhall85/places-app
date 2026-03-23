@@ -135,3 +135,51 @@ def test_chip_funding_model_scales_counties_with_state_factor(monkeypatch) -> No
     assert transformed[1]["total_funding_amount"] == 90.0
     assert math.isclose(transformed[0]["share_national_pct"], 25.0, rel_tol=1e-9)
     assert math.isclose(transformed[1]["share_national_pct"], 75.0, rel_tol=1e-9)
+
+
+def test_chip_funding_model_supports_v11_normalized_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_lookup(*_args, **kwargs):
+        captured.update(kwargs)
+        return {
+            "AL": {
+                "normalized_amount": 180.0,
+                "normalization_factor": 0.9,
+                "normalized_amount_type": "state_profile_v11_emergency_classification_aligned",
+                "normalization_method": "v1_1_emergency_classification_state_profile_alignment",
+                "funding_stream_logic_version": "chip_state_profile_v1_1_emergency_classification",
+                "status_label": "State-profile aligned v1.1",
+                "methodology_version": "v1.1",
+                "confidence_note": "v1.1 benchmark",
+                "core_public_health_amount": 120.0,
+                "emergency_public_health_amount": 60.0,
+            }
+        }
+
+    monkeypatch.setattr(chip_funding_model, "fetch_state_normalization_lookup", fake_lookup)
+
+    model = CHIPFundingModel()
+    cache_context = CHIPFundingCacheContext(
+        scope="map",
+        geography_level="state",
+        fiscal_year=2025,
+        time_aggregation="single_fiscal_year",
+        funding_type="total_cdc_funding",
+        funding_mode="chip_normalized_v1_1",
+        program_area=None,
+        mechanism=None,
+        recipient_type=None,
+    )
+    mode_context = model.build_mode_context(None, cache_context=cache_context)
+    rows = [{"geography_id": "AL", "state_code": "AL", "raw_total_funding_amount": 200.0, "population": 10.0}]
+
+    transformed = model.calculate_many(rows, cache_context=cache_context, mode_context=mode_context)
+
+    assert captured["lookup_variant"] == "v1_1_emergency_classification"
+    assert mode_context.effective_mode == "chip_normalized_v1_1"
+    assert mode_context.funding_mode_label == "CHIP Normalized Funding v1.1"
+    assert transformed[0]["funding_mode_effective"] == "chip_normalized_v1_1"
+    assert transformed[0]["chip_normalized_funding"] == 180.0
+    assert transformed[0]["total_funding_amount"] == 180.0
+    assert transformed[0]["normalization_status_label"] == "State-profile aligned v1.1"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.db_fqtn import fqtn
+from app.db_fqtn import analytics_table, fqtn
 from app.db_schemas import SCHEMA_BY_SOURCE
 
 
@@ -26,6 +26,7 @@ def test_schema_registry_has_expected_sources() -> None:
         "cdc_profiles",
         "taggs",
         "recon",
+        "analytics",
     }
     assert set(SCHEMA_BY_SOURCE) == expected_sources
     for schema in SCHEMA_BY_SOURCE.values():
@@ -37,6 +38,7 @@ def test_fqtn_allows_valid_identifiers() -> None:
     assert fqtn("public", "dim_county") == "public.dim_county"
     assert fqtn("cms", "gv_fact") == "cms.gv_fact"
     assert fqtn("_custom", "table_01") == "_custom.table_01"
+    assert analytics_table("chip_funding_classification_v11_ec") == "analytics.chip_funding_classification_v11_ec"
 
 
 @pytest.mark.parametrize(

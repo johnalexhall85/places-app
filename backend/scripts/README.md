@@ -16,6 +16,7 @@ Defaults:
 - `TAGGS_SCHEMA=taggs`
 - `CDC_PROFILES_SCHEMA=cdc_profiles`
 - `RECON_SCHEMA=recon`
+- `ANALYTICS_SCHEMA=analytics`
 
 Verify resolved mapping and table access:
 
@@ -208,6 +209,54 @@ Outputs:
   - `cdc_profiles.profile_detail_rows`
   - `cdc_profiles.profile_state_totals`
 
+## Review Uncertain Profile-Scope Transactions
+
+Build a read-only review pack for transactions where `include_in_profile_scope IS NULL`:
+
+```bash
+cd backend
+./.venv/bin/python scripts/review_profile_scope_uncertain.py
+```
+
+Optional flags:
+
+```bash
+cd backend
+./.venv/bin/python scripts/review_profile_scope_uncertain.py \
+  --family-limit 15 \
+  --row-limit 75 \
+  --output-dir ../data/recon/profile_scope_review_pack
+```
+
+Outputs:
+
+## Export CHIP v1.1 Emergency Classification
+
+After the analytics migration is applied, export the additive emergency-classification layer:
+
+```bash
+cd backend
+export CDC_STATE_PROFILE_RAW_SOURCE_VERSION=v1_1_emergency_classification
+python scripts/export_chip_emergency_classification.py \
+  --output-dir ../exports/chip_v11_emergency
+```
+
+Files written:
+
+- `chip_v11_emergency_classification_all.csv`
+- `chip_v11_emergency_state_profile_included.csv`
+- `chip_v11_emergency_centralized.csv`
+
+These exports query the `analytics` views directly instead of re-implementing classification rules in Python.
+
+- `data/recon/profile_scope_review_pack/README.md`
+- `data/recon/profile_scope_review_pack/review_summary.json`
+- `data/recon/profile_scope_review_pack/uncertain_totals_by_year.csv`
+- `data/recon/profile_scope_review_pack/top_uncertain_decision_contexts.csv`
+- `data/recon/profile_scope_review_pack/top_uncertain_buckets.csv`
+- `data/recon/profile_scope_review_pack/top_uncertain_families.csv`
+- family drilldown CSVs under `data/recon/profile_scope_review_pack/families/`
+
 ## Rebuild TAGGS Summaries from CAN Mapping
 
 Refresh downstream TAGGS layers without re-running raw TAGGS CSV ingestion:
@@ -218,12 +267,33 @@ python scripts/rebuild_taggs_from_can_mapping.py --rebuild-normalization
 ```
 
 Outputs:
-
 - `taggs.award_funding_summary`
 - `taggs.state_funding_summary`
 - `recon.normalized_state_funding`
 - `recon.taggs_vs_cdc_profiles`
 - `recon.normalization_methodology_log`
+
+## Export CHIP Funding Audit Package
+
+Build the dated transaction-audit package used to review CHIP inclusion, exclusion, unresolved rows, and source provenance:
+
+```bash
+cd backend
+python scripts/export_chip_funding_audit.py --overwrite
+```
+
+Output directory:
+
+- `exports/chip_funding_audit_export_<YYYYMMDD>/`
+
+Artifacts:
+
+- `chip_model_transactions_included.csv`
+- `chip_model_transactions_excluded.csv`
+- `chip_model_transactions_null_inclusion.csv`
+- `chip_model_data_dictionary.csv`
+- `chip_model_readme_methodology.md`
+- `chip_model_validation_summary.csv`
 
 ## Ingest USAspending CDC Contract Prime Transactions (Schema `usaspending`)
 
@@ -258,6 +328,9 @@ Outputs:
 - `usaspending.contract_transactions_enriched` (view)
 - `usaspending.contract_state_year_summary`
 - `usaspending.contract_federal_account_inventory`
+- `usaspending.contract_category_rules`
+- `usaspending.ingestion_runs`
+- validation and ingestion summary JSON at `data/usaspending/contracts/contracts_ingestion_summary.json`
 
 ## Build CDC Profile-Scope Reconstruction Layer
 
@@ -291,9 +364,6 @@ Method notes:
 - the methodology version is currently `profile_scope_v2_assistance_account_normalization`
 
 This is a reconstruction layer for later calibration against CDC Funding Profiles FY2020-FY2023. It is not a raw source table and it does not copy CDC Funding Profile amounts into USAspending totals.
-- `usaspending.contract_category_rules`
-- `usaspending.ingestion_runs`
-- validation and ingestion summary JSON at `data/usaspending/contracts/contracts_ingestion_summary.json`
 
 ## Build Observed Federal Account Lookup / Classification Layer
 
