@@ -15,7 +15,6 @@ from app.funding_models.constants import (
     DATA_SOURCE_USASPENDING_CONTRACT_TRANSACTIONS,
     DATA_SOURCE_USASPENDING_SUBAWARDS,
     DATA_SOURCE_TAGGS,
-    DISALLOWED_SQL_PATTERNS,
     FUNDING_MODEL_BUILDER_BASE_VIEW,
     FUNDING_MODE_KEY_RE,
     INTERNAL_ID_RE,
@@ -27,6 +26,14 @@ from app.funding_models.constants import (
 from app.funding_models.schemas import FundingModelDraftPayload, RuleCondition, RuleGroup
 
 RELATION_PATTERN = re.compile(r"\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_\.]*)", re.IGNORECASE)
+
+# Matches disallowed DDL/DML keywords followed by any whitespace character.
+# Using \s (not just space) prevents tab/newline bypass (e.g. DROP\tTABLE).
+# Word boundary \b avoids false positives on column names like grant_amount or created_at.
+_DISALLOWED_SQL_KEYWORDS_RE = re.compile(
+    r"\b(insert|update|delete|alter|drop|truncate|grant|revoke|create|comment|vacuum)\s",
+    re.IGNORECASE,
+)
 
 
 def slugify(value: str) -> str:
@@ -100,9 +107,8 @@ def validate_advanced_sql(sql: str | None) -> str | None:
         raise HTTPException(status_code=400, detail="Advanced SQL must begin with SELECT.")
     if "record_key" not in lowered:
         raise HTTPException(status_code=400, detail="Advanced SQL must select record_key.")
-    for disallowed in DISALLOWED_SQL_PATTERNS:
-        if disallowed in lowered:
-            raise HTTPException(status_code=400, detail="Advanced SQL contains disallowed write or DDL keywords.")
+    if _DISALLOWED_SQL_KEYWORDS_RE.search(lowered):
+        raise HTTPException(status_code=400, detail="Advanced SQL contains disallowed write or DDL keywords.")
     relations = {match.group(1).strip() for match in RELATION_PATTERN.finditer(token)}
     unapproved = {relation for relation in relations if relation.lower() not in APPROVED_SQL_RELATIONS}
     if unapproved:

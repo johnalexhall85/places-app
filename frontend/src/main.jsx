@@ -9,6 +9,32 @@ import ProfileTract from "./pages/ProfileTract";
 import "./index.css";
 import { resolveRoute } from "./utils/routeResolver";
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+          <h2>Something went wrong.</h2>
+          <p style={{ color: "#666" }}>
+            {this.state.error?.message || "An unexpected error occurred."}
+          </p>
+          <button onClick={() => window.location.reload()}>Reload page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function Root() {
   const pathname = window.location.pathname;
   if (/^\/taggs\/funding-profile\/?$/i.test(pathname)) {
@@ -33,6 +59,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Root />
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
   </React.StrictMode>
 );

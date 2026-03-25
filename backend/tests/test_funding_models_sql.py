@@ -157,6 +157,78 @@ def test_advanced_sql_validation_rejects_unsafe_keywords() -> None:
         validate_advanced_sql("SELECT record_key FROM analytics.funding_model_builder_base_v1; DROP TABLE analytics.x")
 
 
+def test_advanced_sql_validation_rejects_tab_whitespace_bypass() -> None:
+    # Keyword followed by a tab (not a space) must still be rejected.
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql(
+            "SELECT record_key FROM analytics.funding_model_builder_base_v1 WHERE DROP\tTABLE analytics.x IS NULL"
+        )
+    assert exc_info.value.status_code == 400
+
+
+def test_advanced_sql_validation_rejects_newline_whitespace_bypass() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql(
+            "SELECT record_key FROM analytics.funding_model_builder_base_v1\nDELETE\nFROM analytics.x"
+        )
+    assert exc_info.value.status_code == 400
+
+
+def test_advanced_sql_validation_rejects_grant_keyword() -> None:
+    with pytest.raises(HTTPException):
+        validate_advanced_sql(
+            "SELECT record_key FROM analytics.funding_model_builder_base_v1 GRANT ALL ON analytics.x TO public"
+        )
+
+
+def test_advanced_sql_validation_allows_column_names_containing_keyword_roots() -> None:
+    # Column names like 'created_at' or 'grant_amount' must not be rejected.
+    result = validate_advanced_sql(
+        "SELECT record_key FROM analytics.funding_model_builder_base_v1 WHERE created_at IS NOT NULL"
+    )
+    assert result is not None
+
+
+def test_advanced_sql_validation_requires_select_start() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql("DELETE FROM analytics.funding_model_builder_base_v1 WHERE record_key = 'x'")
+    assert exc_info.value.status_code == 400
+
+
+def test_advanced_sql_validation_requires_record_key() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql("SELECT * FROM analytics.funding_model_builder_base_v1")
+    assert exc_info.value.status_code == 400
+
+
+def test_advanced_sql_validation_rejects_unapproved_relation() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql("SELECT record_key FROM public.dim_county WHERE record_key IS NOT NULL")
+    assert exc_info.value.status_code == 400
+
+
+def test_advanced_sql_validation_allows_valid_sql() -> None:
+    result = validate_advanced_sql(
+        "SELECT record_key FROM analytics.funding_model_builder_base_v1 WHERE fiscal_year = 2024"
+    )
+    assert result == "SELECT record_key FROM analytics.funding_model_builder_base_v1 WHERE fiscal_year = 2024"
+
+
+def test_advanced_sql_validation_strips_trailing_semicolon() -> None:
+    result = validate_advanced_sql(
+        "SELECT record_key FROM analytics.funding_model_builder_base_v1 WHERE fiscal_year = 2024;"
+    )
+    assert result is not None
+
+
+def test_advanced_sql_validation_rejects_multiple_statements() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        validate_advanced_sql(
+            "SELECT record_key FROM analytics.funding_model_builder_base_v1; SELECT * FROM analytics.funding_model_builder_base_v1"
+        )
+    assert exc_info.value.status_code == 400
+
+
 def test_plain_language_summary_mentions_sources_and_rules() -> None:
     summary = build_plain_language_summary(build_payload())
 

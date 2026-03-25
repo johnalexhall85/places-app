@@ -1,3 +1,3 @@
 export function isFundingModelBuilderEnabled() {
-  return true;
+  return import.meta.env.VITE_FUNDING_MODEL_BUILDER_ENABLED !== "false";
 }
