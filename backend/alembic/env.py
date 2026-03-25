@@ -35,6 +35,7 @@ from app.usaspending import models as usaspending_models  # noqa: F401
 from app.taggs import models as taggs_models  # noqa: F401
 from app.cdc_profiles import models as cdc_profiles_models  # noqa: F401
 from app.recon import models as recon_models  # noqa: F401
+from app.funding_models import models as funding_models_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -97,6 +98,10 @@ TARGET_TABLES = {
     "contract_transactions_profile_enriched",
     "profile_scope_transactions",
     "profile_scope_state_year_summary",
+    "funding_profile_models",
+    "funding_profile_versions",
+    "funding_profile_build_runs",
+    "funding_mode_registry",
     "alembic_version",
 }
 

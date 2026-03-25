@@ -7,7 +7,7 @@ import {
 } from "../api/cdcFunding";
 import {
   CDC_DEFAULT_FUNDING_MODE,
-  CDC_FUNDING_MODE_LABELS,
+  getCdcFundingModeLabel,
   isNormalizedCdcFundingMode,
   normalizeCdcFundingMode,
 } from "../utils/cdcFundingMode";
@@ -232,8 +232,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
   const fundingModeLabel = String(
     canonicalProfile?.funding_mode_label
     ?? summary?.funding_mode_label
-    ?? CDC_FUNDING_MODE_LABELS[query.fundingMode]
-    ?? CDC_FUNDING_MODE_LABELS[CDC_DEFAULT_FUNDING_MODE]
+    ?? getCdcFundingModeLabel(query.fundingMode)
   ).trim();
   const fundingModeClass = isNormalizedCdcFundingMode(
     canonicalProfile?.funding_mode_effective ?? summary?.funding_mode_effective ?? query.fundingMode

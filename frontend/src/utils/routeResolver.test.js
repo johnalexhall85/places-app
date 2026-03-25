@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { resolveRoute } from "./routeResolver";
 
 describe("routeResolver", () => {
+  it("matches the funding model builder route", () => {
+    expect(resolveRoute("/funding-model-builder")).toEqual({ type: "funding-model-builder" });
+  });
+
   it("matches the CDC state funding profile route", () => {
     expect(resolveRoute("/cdc-funding/state/AL")).toEqual({
       type: "cdc-state-funding-profile",

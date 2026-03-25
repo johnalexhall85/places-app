@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import logoMonochromeSmall from "../assets/brand/chip-logo-monochrome-dark-small.svg";
 import logoFullColorSmall from "../assets/brand/chip-logo-fullcolor-light-small.svg";
+import { isFundingModelBuilderEnabled } from "../utils/fundingModelBuilderAccess";
 
 const NAV_ITEMS = [
   {
@@ -105,6 +106,11 @@ const NAV_ITEMS = [
     heading: "Help",
     text: "Use Search to locate an area, select a measure in Measure controls, and use the CHIP Intelligence Assistant for guided interpretation.",
   },
+  {
+    id: "funding-model-builder",
+    label: "Funding Model Builder",
+    href: "/funding-model-builder",
+  },
 ];
 
 export default function Header() {
@@ -112,9 +118,14 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoSrc, setLogoSrc] = useState(logoMonochromeSmall);
 
+  const visibleNavItems = useMemo(
+    () => NAV_ITEMS.filter((item) => (item.id === "funding-model-builder" ? isFundingModelBuilderEnabled() : true)),
+    []
+  );
+
   const activeNavItem = useMemo(
-    () => NAV_ITEMS.find((item) => item.id === activeNavId) ?? null,
-    [activeNavId]
+    () => visibleNavItems.find((item) => item.id === activeNavId) ?? null,
+    [activeNavId, visibleNavItems]
   );
 
   useEffect(() => {
@@ -164,15 +175,26 @@ export default function Header() {
         </button>
 
         <nav className={`chip-header-nav ${mobileMenuOpen ? "is-open" : ""}`}>
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="chip-header-link"
-              onClick={() => handleNavClick(item.id)}
-            >
-              {item.label}
-            </button>
+          {visibleNavItems.map((item) => (
+            item.href ? (
+              <a
+                key={item.id}
+                className="chip-header-link"
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <button
+                key={item.id}
+                type="button"
+                className="chip-header-link"
+                onClick={() => handleNavClick(item.id)}
+              >
+                {item.label}
+              </button>
+            )
           ))}
         </nav>
       </header>

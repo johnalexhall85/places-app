@@ -28,6 +28,7 @@ from app.services.chip_funding_model import (
     is_normalized_funding_mode,
     normalization_lookup_variant_for_mode,
 )
+from app.funding_models.registry import list_funding_mode_options
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
 PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
@@ -2421,7 +2422,7 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         "default_fiscal_year": fiscal_years[0] if fiscal_years else None,
         "metric_options": METRIC_OPTIONS,
         "funding_type_options": FUNDING_TYPE_OPTIONS,
-        "funding_mode_options": FUNDING_MODE_OPTIONS,
+        "funding_mode_options": list_funding_mode_options(db),
         "default_funding_mode": DEFAULT_FUNDING_MODE,
         "cdc_center_options": PROGRAM_AREA_OPTIONS,
         "mechanism_options": MECHANISM_OPTIONS,
@@ -2439,6 +2440,7 @@ def list_filter_options(db: Session) -> dict[str, Any]:
             DEFAULT_NOTE,
             "CDC funding supports three explicit modes: CHIP Normalized Funding v1.1, raw total funding, and CHIP Normalized Funding (Legacy).",
             "CHIP Normalized Funding v1.1 rescales the current map distribution to the newest v1.1 emergency-classification state-profile benchmark. The legacy normalized mode remains available for comparison.",
+            "Published custom funding modes appear here after they are locked, built, and activated in the funding mode registry.",
             "Emergency vs non-emergency splits come from centralized appropriation-type classification.",
         ],
     }

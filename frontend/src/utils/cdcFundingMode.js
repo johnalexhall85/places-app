@@ -19,6 +19,8 @@ export const CDC_FUNDING_MODE_LABELS = {
   [CDC_FUNDING_MODES.CHIP_NORMALIZED_V11]: "CHIP Normalized Funding v1.1",
 };
 
+const CUSTOM_FUNDING_MODE_RE = /^[a-z][a-z0-9_]*$/;
+
 export function isNormalizedCdcFundingMode(value) {
   const token = String(value ?? "").trim().toLowerCase();
   return (
@@ -38,7 +40,24 @@ export function normalizeCdcFundingMode(value) {
   if (token === CDC_FUNDING_MODES.CHIP_NORMALIZED_V11) {
     return CDC_FUNDING_MODES.CHIP_NORMALIZED_V11;
   }
+  if (CUSTOM_FUNDING_MODE_RE.test(token)) {
+    return token;
+  }
   return CDC_DEFAULT_FUNDING_MODE;
+}
+
+export function getCdcFundingModeLabel(value, options = []) {
+  const normalized = normalizeCdcFundingMode(value);
+  const staticLabel = CDC_FUNDING_MODE_LABELS[normalized];
+  if (staticLabel) return staticLabel;
+  const optionLabel = (Array.isArray(options) ? options : [])
+    .find((option) => String(option?.value ?? "").trim().toLowerCase() === normalized)?.label;
+  if (optionLabel) return String(optionLabel);
+  return normalized
+    .split("_")
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
 export function normalizeCdcFundingGeographyLevel(value) {

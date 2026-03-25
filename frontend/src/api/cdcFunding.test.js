@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchCdcFundingFilters,
   fetchCdcFundingMap,
   fetchCdcFundingMethodologySummary,
   fetchCdcFundingProfileDetails,
@@ -71,6 +72,35 @@ describe("fetchCdcFundingMethodologySummary", () => {
       expect(url).not.toContain("normalize=");
       expect(url).not.toContain("basis=");
       expect(url).not.toContain("display_mode=");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("preserves published custom funding mode options from the filters response", async () => {
+    const payload = {
+      funding_mode_options: [
+        { value: "chip_normalized_v1_1", label: "CHIP Normalized Funding v1.1" },
+        { value: "chip_v1_1_emergency", label: "CHIP v1.1 Emergency Classification" },
+      ],
+      default_funding_mode: "chip_normalized_v1_1",
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      const result = await fetchCdcFundingFilters({
+        apiBase: "https://example.test",
+      });
+
+      expect(result.funding_mode_options[1]).toEqual({
+        value: "chip_v1_1_emergency",
+        label: "CHIP v1.1 Emergency Classification",
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }

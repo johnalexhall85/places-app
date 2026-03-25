@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.cdc_funding import intelligence as cdc_intelligence
 from app.cdc_funding import router as cdc_router
 from app.cdc_funding import services as cdc_services
+from app.funding_models import runtime as funding_model_runtime
 
 
 def test_cdc_methodology_summary_router_returns_service_payload(monkeypatch) -> None:
@@ -45,6 +46,30 @@ def test_cdc_map_router_forwards_explicit_funding_mode(monkeypatch) -> None:
     assert captured["funding_type"] == "emergency_response"
     assert captured["funding_mode"] == "raw_total"
     assert captured["cdc_center"] == "public_health_preparedness_and_response"
+    assert captured["geography_level"] == "state"
+
+
+def test_cdc_map_router_dispatches_published_custom_funding_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(cdc_router, "is_custom_funding_mode", lambda *_args, **_kwargs: True)
+
+    def fake_fetch_map_geojson(*_args, **kwargs):
+        captured.update(kwargs)
+        return {"type": "FeatureCollection", "features": [], "meta": {"funding_mode_label": "Custom"}}
+
+    monkeypatch.setattr(funding_model_runtime, "fetch_map_geojson", fake_fetch_map_geojson)
+
+    payload = cdc_router.get_cdc_funding_map(
+        fiscal_year=2025,
+        metric="total_funding",
+        funding_mode="chip_v1_1_emergency",
+        geography_level="state",
+        db=None,
+    )
+
+    assert payload["meta"]["funding_mode_label"] == "Custom"
+    assert captured["funding_mode"] == "chip_v1_1_emergency"
     assert captured["geography_level"] == "state"
 
 
@@ -209,6 +234,30 @@ def test_cdc_profile_details_router_defaults_to_v11_normalized_mode(monkeypatch)
     assert payload["rows"] == []
     assert captured["normalize"] is True
     assert captured["normalization_funding_mode"] == "chip_normalized_v1_1"
+
+
+def test_cdc_profile_details_router_dispatches_custom_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(cdc_router, "is_custom_funding_mode", lambda *_args, **_kwargs: True)
+
+    def fake_fetch_state_profile_details(*_args, **kwargs):
+        captured.update(kwargs)
+        return {"total_rows": 0, "rows": [], "funding_mode_effective": "chip_v1_1_emergency"}
+
+    monkeypatch.setattr(funding_model_runtime, "fetch_state_profile_details", fake_fetch_state_profile_details)
+
+    payload = cdc_router.get_cdc_state_profile_details(
+        state="GA",
+        funding_mode="chip_v1_1_emergency",
+        fiscal_year=2025,
+        db=None,
+    )
+
+    assert payload["rows"] == []
+    assert captured["state"] == "GA"
+    assert captured["fiscal_year"] == 2025
+    assert captured["funding_mode"] == "chip_v1_1_emergency"
 
 
 def test_cdc_mode_diagnostics_router_forwards_filters(monkeypatch) -> None:

@@ -26,6 +26,7 @@ from app.usda_food_access.router import router as usda_food_access_router
 from app.usda_food_env.router import router as usda_food_env_router
 from app.cdc_funding.router import router as cdc_funding_router
 from app.taggs.router import router as taggs_router
+from app.funding_models.router import router as funding_models_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -69,3 +70,4 @@ app.include_router(usda_food_access_router)
 app.include_router(usda_food_env_router)
 app.include_router(cdc_funding_router)
 app.include_router(taggs_router)
+app.include_router(funding_models_router)

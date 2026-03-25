@@ -10,9 +10,11 @@ from app.cdc_funding import intelligence
 from app.cdc_funding import services
 from app.cdc_funding import v11_emergency
 from app.db import get_db
+from app.funding_models import runtime as funding_model_runtime
+from app.funding_models.registry import is_custom_funding_mode
 
 router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
-FundingModeQuery = Literal["raw_total", "chip_normalized", "chip_normalized_v1_1"]
+FundingModeQuery = str
 
 
 def _resolve_query_value(value):
@@ -79,13 +81,30 @@ def get_cdc_funding_map(
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
     bbox = _resolve_query_value(bbox)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_map_geojson(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            bbox=bbox,
+            limit=limit,
+        )
     return intelligence.fetch_map_geojson(
         db,
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -139,13 +158,29 @@ def get_cdc_funding_legend(
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
     bbox = _resolve_query_value(bbox)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_legend_stats(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            bbox=bbox,
+        )
     return intelligence.fetch_legend_stats(
         db,
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -191,13 +226,27 @@ def get_cdc_funding_national_summary(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_national_summary(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )
     return intelligence.fetch_national_summary(
         db,
         fiscal_year=fiscal_year,
         metric=metric,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -253,14 +302,29 @@ def get_cdc_state_profile_summary(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )["summary"]
     return intelligence.fetch_state_profile_summary(
         db,
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         metric=metric,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -307,14 +371,29 @@ def get_cdc_state_profile_overview(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )
     return intelligence.fetch_state_profile_overview(
         db,
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         metric=metric,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -359,13 +438,28 @@ def get_cdc_state_profile_categories(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )["categories"]
     return intelligence.fetch_state_profile_categories(
         db,
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -410,13 +504,28 @@ def get_cdc_state_profile_subcategories(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
+    resolved_funding_mode = _resolve_query_value(funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            funding_mode=resolved_funding_mode,
+            cdc_center=cdc_center or center,
+            program_area=program_area,
+            mechanism=mechanism,
+            recipient_type=recipient_type,
+            time_aggregation=time_aggregation,
+        )["subcategories"]
     return intelligence.fetch_state_profile_subcategories(
         db,
         state=state,
         fiscal_year=fiscal_year if fiscal_year is not None else fy,
         funding_type=effective_funding_type,
-        funding_mode=_resolve_query_value(funding_mode),
+        funding_mode=resolved_funding_mode,
         cdc_center=cdc_center or center,
         program_area=program_area,
         mechanism=mechanism,
@@ -454,6 +563,18 @@ def get_cdc_state_profile_details(
     awarding_office_value = str(awarding_office or "").strip() or office_value
     funding_office_value = str(funding_office or "").strip() or office_value
     resolved_funding_mode = _resolve_query_value(funding_mode) or "chip_normalized_v1_1"
+    if is_custom_funding_mode(db, resolved_funding_mode):
+        return funding_model_runtime.fetch_state_profile_details(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_mode=resolved_funding_mode,
+            q=q,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
     emergency_support = v11_emergency.support_status(
         funding_mode=resolved_funding_mode,
         funding_type="total_cdc_funding",

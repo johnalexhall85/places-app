@@ -26,158 +26,211 @@ USASPENDING_SCHEMA = "usaspending"
 CDC_FUNDING_SCHEMA = "cdc_funding"
 
 
+def _get_inspector() -> sa.Inspector:
+    return sa.inspect(op.get_bind())
+
+
+def _table_exists(schema_name: str, table_name: str) -> bool:
+    return _get_inspector().has_table(table_name, schema=schema_name)
+
+
+def _index_exists(schema_name: str, table_name: str, index_name: str) -> bool:
+    return any(
+        index.get("name") == index_name
+        for index in _get_inspector().get_indexes(table_name, schema=schema_name)
+    )
+
+
+def _create_index_if_missing(
+    index_name: str,
+    table_name: str,
+    columns: list[str],
+    *,
+    schema: str,
+    unique: bool = False,
+) -> None:
+    if not _table_exists(schema, table_name):
+        return
+    if _index_exists(schema, table_name, index_name):
+        return
+    op.create_index(index_name, table_name, columns, unique=unique, schema=schema)
+
+
+def _relation_kind(schema_name: str, relation_name: str) -> str | None:
+    bind = op.get_bind()
+    return bind.execute(
+        sa.text(
+            """
+            SELECT c.relkind
+            FROM pg_class AS c
+            JOIN pg_namespace AS n
+              ON n.oid = c.relnamespace
+            WHERE n.nspname = :schema_name
+              AND c.relname = :relation_name
+            LIMIT 1
+            """
+        ),
+        {"schema_name": schema_name, "relation_name": relation_name},
+    ).scalar_one_or_none()
+
+
+def _drop_relation_if_exists(schema_name: str, relation_name: str) -> None:
+    relation_kind = _relation_kind(schema_name, relation_name)
+    if relation_kind == "v":
+        op.execute(f"DROP VIEW IF EXISTS {schema_name}.{relation_name}")
+    elif relation_kind == "m":
+        op.execute(f"DROP MATERIALIZED VIEW IF EXISTS {schema_name}.{relation_name}")
+    elif relation_kind is not None:
+        op.execute(f"DROP TABLE IF EXISTS {schema_name}.{relation_name}")
+
+
 def upgrade() -> None:
     op.execute(f"CREATE SCHEMA IF NOT EXISTS {RECON_SCHEMA}")
 
-    op.create_table(
-        "federal_account_lookup",
-        sa.Column("federal_account_symbol", sa.Text(), nullable=False),
-        sa.Column("agency_identifier", sa.Text(), nullable=True),
-        sa.Column("main_account_code", sa.Text(), nullable=True),
-        sa.Column("sub_account_code", sa.Text(), nullable=True),
-        sa.Column("account_title", sa.Text(), nullable=True),
-        sa.Column("account_title_normalized", sa.Text(), nullable=True),
-        sa.Column("treasury_account_group_hint", sa.Text(), nullable=True),
-        sa.Column("source_metadata_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("observed_in_contracts", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("observed_in_assistance", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("first_fiscal_year", sa.Integer(), nullable=True),
-        sa.Column("last_fiscal_year", sa.Integer(), nullable=True),
-        sa.Column("observed_transaction_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
-        sa.Column("observed_total_obligations", sa.Numeric(precision=18, scale=2), nullable=True),
-        sa.Column("funding_stream_guess", sa.Text(), nullable=True),
-        sa.Column("appropriations_scope_guess", sa.Text(), nullable=True),
-        sa.Column("likely_profile_relevant", sa.Boolean(), nullable=True),
-        sa.Column("likely_vfc_related", sa.Boolean(), nullable=True),
-        sa.Column("likely_emergency_related", sa.Boolean(), nullable=True),
-        sa.Column("likely_arpa_related", sa.Boolean(), nullable=True),
-        sa.Column("likely_regular_appropriation", sa.Boolean(), nullable=True),
-        sa.Column("classification_confidence", sa.Numeric(precision=5, scale=2), nullable=True),
-        sa.Column("classification_method", sa.Text(), nullable=True),
-        sa.Column("classification_notes", sa.Text(), nullable=True),
-        sa.Column("manual_funding_stream", sa.Text(), nullable=True),
-        sa.Column("manual_scope_guess", sa.Text(), nullable=True),
-        sa.Column("manual_profile_relevant", sa.Boolean(), nullable=True),
-        sa.Column("manual_notes", sa.Text(), nullable=True),
-        sa.Column("is_manually_verified", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("effective_funding_stream", sa.Text(), nullable=True),
-        sa.Column("effective_scope_guess", sa.Text(), nullable=True),
-        sa.Column("effective_profile_relevant", sa.Boolean(), nullable=True),
-        sa.Column("effective_classification_method", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.PrimaryKeyConstraint("federal_account_symbol"),
-        schema=RECON_SCHEMA,
-    )
-    op.create_index(
+    if not _table_exists(RECON_SCHEMA, "federal_account_lookup"):
+        op.create_table(
+            "federal_account_lookup",
+            sa.Column("federal_account_symbol", sa.Text(), nullable=False),
+            sa.Column("agency_identifier", sa.Text(), nullable=True),
+            sa.Column("main_account_code", sa.Text(), nullable=True),
+            sa.Column("sub_account_code", sa.Text(), nullable=True),
+            sa.Column("account_title", sa.Text(), nullable=True),
+            sa.Column("account_title_normalized", sa.Text(), nullable=True),
+            sa.Column("treasury_account_group_hint", sa.Text(), nullable=True),
+            sa.Column("source_metadata_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+            sa.Column("observed_in_contracts", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("observed_in_assistance", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("first_fiscal_year", sa.Integer(), nullable=True),
+            sa.Column("last_fiscal_year", sa.Integer(), nullable=True),
+            sa.Column("observed_transaction_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+            sa.Column("observed_total_obligations", sa.Numeric(precision=18, scale=2), nullable=True),
+            sa.Column("funding_stream_guess", sa.Text(), nullable=True),
+            sa.Column("appropriations_scope_guess", sa.Text(), nullable=True),
+            sa.Column("likely_profile_relevant", sa.Boolean(), nullable=True),
+            sa.Column("likely_vfc_related", sa.Boolean(), nullable=True),
+            sa.Column("likely_emergency_related", sa.Boolean(), nullable=True),
+            sa.Column("likely_arpa_related", sa.Boolean(), nullable=True),
+            sa.Column("likely_regular_appropriation", sa.Boolean(), nullable=True),
+            sa.Column("classification_confidence", sa.Numeric(precision=5, scale=2), nullable=True),
+            sa.Column("classification_method", sa.Text(), nullable=True),
+            sa.Column("classification_notes", sa.Text(), nullable=True),
+            sa.Column("manual_funding_stream", sa.Text(), nullable=True),
+            sa.Column("manual_scope_guess", sa.Text(), nullable=True),
+            sa.Column("manual_profile_relevant", sa.Boolean(), nullable=True),
+            sa.Column("manual_notes", sa.Text(), nullable=True),
+            sa.Column("is_manually_verified", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("effective_funding_stream", sa.Text(), nullable=True),
+            sa.Column("effective_scope_guess", sa.Text(), nullable=True),
+            sa.Column("effective_profile_relevant", sa.Boolean(), nullable=True),
+            sa.Column("effective_classification_method", sa.Text(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+            sa.PrimaryKeyConstraint("federal_account_symbol"),
+            schema=RECON_SCHEMA,
+        )
+    _create_index_if_missing(
         "recon_federal_account_lookup_first_fy_idx",
         "federal_account_lookup",
         ["first_fiscal_year"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
-    op.create_index(
+    _create_index_if_missing(
         "recon_federal_account_lookup_last_fy_idx",
         "federal_account_lookup",
         ["last_fiscal_year"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
-    op.create_index(
+    _create_index_if_missing(
         "recon_federal_account_lookup_stream_idx",
         "federal_account_lookup",
         ["effective_funding_stream"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
-    op.create_index(
+    _create_index_if_missing(
         "recon_federal_account_lookup_profile_idx",
         "federal_account_lookup",
         ["effective_profile_relevant"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
 
-    op.create_table(
-        "federal_account_observations",
-        sa.Column("federal_account_symbol", sa.Text(), nullable=False),
-        sa.Column("source_system", sa.Text(), nullable=False),
-        sa.Column("fiscal_year", sa.Integer(), nullable=False),
-        sa.Column("transaction_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
-        sa.Column("total_obligations", sa.Numeric(precision=18, scale=2), nullable=False, server_default=sa.text("0")),
-        sa.Column("awarding_agency_name", sa.Text(), nullable=True),
-        sa.Column("funding_agency_name", sa.Text(), nullable=True),
-        sa.Column("top_psc_or_aln", sa.Text(), nullable=True),
-        sa.Column("top_description_hint", sa.Text(), nullable=True),
-        sa.Column("refreshed_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.PrimaryKeyConstraint(
-            "federal_account_symbol",
-            "source_system",
-            "fiscal_year",
-            name="pk_recon_federal_account_observations",
-        ),
-        schema=RECON_SCHEMA,
-    )
-    op.create_index(
+    if not _table_exists(RECON_SCHEMA, "federal_account_observations"):
+        op.create_table(
+            "federal_account_observations",
+            sa.Column("federal_account_symbol", sa.Text(), nullable=False),
+            sa.Column("source_system", sa.Text(), nullable=False),
+            sa.Column("fiscal_year", sa.Integer(), nullable=False),
+            sa.Column("transaction_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+            sa.Column("total_obligations", sa.Numeric(precision=18, scale=2), nullable=False, server_default=sa.text("0")),
+            sa.Column("awarding_agency_name", sa.Text(), nullable=True),
+            sa.Column("funding_agency_name", sa.Text(), nullable=True),
+            sa.Column("top_psc_or_aln", sa.Text(), nullable=True),
+            sa.Column("top_description_hint", sa.Text(), nullable=True),
+            sa.Column("refreshed_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+            sa.PrimaryKeyConstraint(
+                "federal_account_symbol",
+                "source_system",
+                "fiscal_year",
+                name="pk_recon_federal_account_observations",
+            ),
+            schema=RECON_SCHEMA,
+        )
+    _create_index_if_missing(
         "recon_federal_account_observations_source_idx",
         "federal_account_observations",
         ["source_system"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
-    op.create_index(
+    _create_index_if_missing(
         "recon_federal_account_observations_fy_idx",
         "federal_account_observations",
         ["fiscal_year"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
 
-    op.create_table(
-        "federal_account_classification_rules",
-        sa.Column("rule_id", sa.BigInteger(), autoincrement=True, nullable=False),
-        sa.Column("priority", sa.Integer(), nullable=False),
-        sa.Column("match_field", sa.Text(), nullable=False),
-        sa.Column("match_type", sa.Text(), nullable=False),
-        sa.Column("match_value", sa.Text(), nullable=False),
-        sa.Column("assigned_funding_stream", sa.Text(), nullable=True),
-        sa.Column("assigned_scope_guess", sa.Text(), nullable=True),
-        sa.Column("assigned_profile_relevant", sa.Boolean(), nullable=True),
-        sa.Column("assigned_vfc_related", sa.Boolean(), nullable=True),
-        sa.Column("assigned_emergency_related", sa.Boolean(), nullable=True),
-        sa.Column("assigned_arpa_related", sa.Boolean(), nullable=True),
-        sa.Column("assigned_regular_appropriation", sa.Boolean(), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.PrimaryKeyConstraint("rule_id"),
-        sa.UniqueConstraint(
-            "priority",
-            "match_field",
-            "match_type",
-            "match_value",
-            name="uq_recon_federal_account_classification_rule_match",
-        ),
-        schema=RECON_SCHEMA,
-    )
-    op.create_index(
+    if not _table_exists(RECON_SCHEMA, "federal_account_classification_rules"):
+        op.create_table(
+            "federal_account_classification_rules",
+            sa.Column("rule_id", sa.BigInteger(), autoincrement=True, nullable=False),
+            sa.Column("priority", sa.Integer(), nullable=False),
+            sa.Column("match_field", sa.Text(), nullable=False),
+            sa.Column("match_type", sa.Text(), nullable=False),
+            sa.Column("match_value", sa.Text(), nullable=False),
+            sa.Column("assigned_funding_stream", sa.Text(), nullable=True),
+            sa.Column("assigned_scope_guess", sa.Text(), nullable=True),
+            sa.Column("assigned_profile_relevant", sa.Boolean(), nullable=True),
+            sa.Column("assigned_vfc_related", sa.Boolean(), nullable=True),
+            sa.Column("assigned_emergency_related", sa.Boolean(), nullable=True),
+            sa.Column("assigned_arpa_related", sa.Boolean(), nullable=True),
+            sa.Column("assigned_regular_appropriation", sa.Boolean(), nullable=True),
+            sa.Column("notes", sa.Text(), nullable=True),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+            sa.PrimaryKeyConstraint("rule_id"),
+            sa.UniqueConstraint(
+                "priority",
+                "match_field",
+                "match_type",
+                "match_value",
+                name="uq_recon_federal_account_classification_rule_match",
+            ),
+            schema=RECON_SCHEMA,
+        )
+    _create_index_if_missing(
         "recon_federal_account_classification_rules_priority_idx",
         "federal_account_classification_rules",
         ["priority"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
-    op.create_index(
+    _create_index_if_missing(
         "recon_federal_account_classification_rules_active_idx",
         "federal_account_classification_rules",
         ["is_active"],
-        unique=False,
         schema=RECON_SCHEMA,
     )
 
-    op.execute(f"DROP VIEW IF EXISTS {RECON_SCHEMA}.federal_account_review_export")
-    op.execute(f"DROP VIEW IF EXISTS {RECON_SCHEMA}.assistance_transaction_accounts")
-    op.execute(f"DROP VIEW IF EXISTS {RECON_SCHEMA}.contract_transaction_accounts")
+    _drop_relation_if_exists(RECON_SCHEMA, "federal_account_review_export")
+    _drop_relation_if_exists(RECON_SCHEMA, "assistance_transaction_accounts")
+    _drop_relation_if_exists(RECON_SCHEMA, "contract_transaction_accounts")
 
     op.execute(
         f"""

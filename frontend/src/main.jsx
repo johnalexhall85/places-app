@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
+import FundingModelBuilder from "./pages/FundingModelBuilder";
 import ProfileCounty from "./pages/ProfileCounty";
 import ProfileTract from "./pages/ProfileTract";
 import "./index.css";
@@ -17,6 +18,9 @@ function Root() {
   const route = resolveRoute(window.location.pathname);
   if (route.type === "cdc-state-funding-profile") {
     return <CdcStateFundingProfile stateCode={route.id} />;
+  }
+  if (route.type === "funding-model-builder") {
+    return <FundingModelBuilder />;
   }
   if (route.type === "profile-county") {
     return <ProfileCounty countyFips={route.id} />;

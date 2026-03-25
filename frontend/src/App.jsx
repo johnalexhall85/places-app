@@ -39,7 +39,7 @@ import {
   CDC_DEFAULT_GEOGRAPHY_LEVEL,
   buildCdcFundingUrlSearch,
   CDC_DEFAULT_FUNDING_MODE,
-  CDC_FUNDING_MODE_LABELS,
+  getCdcFundingModeLabel,
   normalizeCdcFundingMode,
   readCdcFundingUrlState,
 } from "./utils/cdcFundingMode";
@@ -6408,7 +6408,7 @@ export default function App() {
           pickFirstDefined(
             fundingProfile?.funding_mode_label,
             featureProps?.funding_mode_label,
-            CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+            getCdcFundingModeLabel(cdcFundingMode, cdcFilterOptions?.funding_mode_options)
           )
         ).trim();
         const populationLine = populationText ? `Population denominator: ${populationText}` : null;
@@ -7505,7 +7505,7 @@ export default function App() {
     firstDefined(
       cdcFundingProfile?.funding_mode_label,
       selectedFeatureProps?.funding_mode_label,
-      CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+      getCdcFundingModeLabel(cdcFundingMode, cdcFilterOptions?.funding_mode_options)
     )
   ).trim();
   const cdcMetricNumeric = toFiniteNumericValue(cdcMetricValue);
@@ -7601,7 +7601,7 @@ export default function App() {
     firstDefined(
       cdcNationalFundingProfile?.funding_mode_label,
       cdcNationalSummary?.funding_mode_label,
-      CDC_FUNDING_MODE_LABELS[normalizeCdcFundingMode(cdcFundingMode)]
+      getCdcFundingModeLabel(cdcFundingMode, cdcFilterOptions?.funding_mode_options)
     )
   ).trim();
   const cdcNationalTotalValue = toFiniteNumericValue(

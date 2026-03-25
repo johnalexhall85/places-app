@@ -3,6 +3,7 @@ import {
   buildCdcFundingUrlSearch,
   CDC_DEFAULT_GEOGRAPHY_LEVEL,
   CDC_DEFAULT_FUNDING_MODE,
+  getCdcFundingModeLabel,
   normalizeCdcFundingMode,
   readCdcFundingUrlState,
 } from "./cdcFundingMode";
@@ -12,7 +13,16 @@ describe("cdcFundingMode", () => {
     expect(normalizeCdcFundingMode("raw_total")).toBe("raw_total");
     expect(normalizeCdcFundingMode("chip_normalized")).toBe("chip_normalized");
     expect(normalizeCdcFundingMode("chip_normalized_v1_1")).toBe("chip_normalized_v1_1");
+    expect(normalizeCdcFundingMode("chip_v1_1_emergency")).toBe("chip_v1_1_emergency");
     expect(normalizeCdcFundingMode("bad-value")).toBe(CDC_DEFAULT_FUNDING_MODE);
+  });
+
+  it("resolves custom funding mode labels from options", () => {
+    expect(
+      getCdcFundingModeLabel("chip_v1_1_emergency", [
+        { value: "chip_v1_1_emergency", label: "CHIP v1.1 Emergency Classification" },
+      ])
+    ).toBe("CHIP v1.1 Emergency Classification");
   });
 
   it("reads CDC funding mode from shareable url state", () => {

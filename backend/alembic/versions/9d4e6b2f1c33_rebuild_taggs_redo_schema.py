@@ -1,7 +1,7 @@
 """expand taggs schema for redo csv rebuild
 
 Revision ID: 9d4e6b2f1c33
-Revises: 6f2a4b9c1d55
+Revises: 9d4e2b7c1a6f
 Create Date: 2026-03-14 20:15:00.000000
 
 """
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "9d4e6b2f1c33"
-down_revision: Union[str, None] = "6f2a4b9c1d55"
+down_revision: Union[str, None] = "9d4e2b7c1a6f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
