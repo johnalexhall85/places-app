@@ -1,36 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import logoMonochromeSmall from "../assets/brand/chip-logo-monochrome-dark-small.svg";
-import logoFullColorSmall from "../assets/brand/chip-logo-fullcolor-light-small.svg";
+import pdoObservatoryMark from "../assets/brand/pdo-observatory-mark.png";
+import { APP_NAME, PRIMARY_BRAND } from "../branding/pdoBrand";
 import { isFundingModelBuilderEnabled } from "../utils/fundingModelBuilderAccess";
 
 const NAV_ITEMS = [
   {
     id: "about",
     label: "About",
-    heading: "About CHIP",
-    text: "Community Health Intelligence Platform (CHIP) helps local teams explore public health patterns and respond with practical action.",
+    heading: "About CHIP by Public Data Observatory",
+    text: "CHIP by Public Data Observatory is a nonpartisan geospatial data platform for public health analysis, planning, and transparent reporting. The platform combines modeled estimates and public administrative records so users can compare place-based patterns with clear source context.",
   },
   {
     id: "data-sources",
     label: "Data Sources",
     heading: "Data Sources",
-    text: "CHIP combines modeled PLACES indicators with additional public datasets so communities can compare risks and context from multiple perspectives.",
+    text: "CHIP integrates modeled CDC PLACES indicators with ACS, SVI, HRSA HPSA, CMS, USDA, FEMA, USAspending, and TAGGS data. Each layer should be interpreted within the scope, geography, and methodology published for that source.",
   },
   {
     id: "methodology",
     label: "Methodology",
-    heading: "Methodology",
-    text: "Each indicator is tied to a documented method and confidence context so decisions can stay transparent and reproducible.",
+    heading: "Methodology and Scope",
+    text: "Each indicator and funding view is tied to a documented source and method. CHIP surfaces derived estimates, reconstruction logic, and confidence context so analytical interpretation remains transparent and reproducible.",
     sections: [
       {
         title: "TAGGS CAN Mapping",
         paragraphs: [
           "CHIP uses CDC Funding Profiles FY2020-FY2023 as a reference dataset to identify the most likely program, category, and sub-category behind TAGGS Common Accounting Numbers (CANs).",
-          "Profile rows are matched deterministically to TAGGS award records using fiscal year, state, grantee, title, amount, and related metadata. Exact project or award identifiers are used when they are available, but raw TAGGS rows are not changed.",
+          "Profile rows are matched deterministically to TAGGS award records using fiscal year, state, grantee, title, amount, and related metadata. Exact project or award identifiers are used when they are available, while raw TAGGS rows remain unchanged.",
         ],
         bullets: [
           "CDC Funding Profiles FY2020-FY2023 are ingested as the reference side of the matcher.",
-          "The TAGGS state CSV exports currently loaded in CHIP begin in FY2021, so direct TAGGS-to-profile matching currently occurs for FY2021-FY2023 when matches are found.",
+          "The TAGGS state CSV exports currently loaded in CHIP begin in FY2021, so direct TAGGS-to-profile matching occurs for FY2021-FY2023 when matching evidence is available.",
           "Each CAN is stored with evidence, confidence, and mapping method so CHIP can distinguish profile-assisted mappings from fallback inference or unresolved CANs.",
         ],
       },
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
           "If a later-year CAN is new or remains unmatched, CHIP falls back to deterministic inference using TAGGS metadata such as Program Office, ALN, Assistance Listing Title, and award text.",
         ],
         bullets: [
-          "FY2024-FY2026 are profile-informed estimates, not official CDC Funding Profile values.",
+          "FY2024-FY2026 values are profile-informed estimates rather than official CDC Funding Profile totals.",
           "Low-confidence CANs can remain in unknown or unclassified buckets instead of being forced into a program category.",
         ],
       },
@@ -55,14 +55,14 @@ const NAV_ITEMS = [
       {
         title: "Funding Scope Framework",
         paragraphs: [
-          "TAGGS, USA Spending, and CDC Funding Profiles measure related but different funding views, so their raw state totals do not line up automatically.",
-          "CHIP now classifies observed federal accounts into funding scopes such as core public health funding, emergency public health funding, federal health financing transfers, procurement support, special transfers, other public health, biomedical research, and international health assistance.",
-          "A verified federal account mapping CSV now overrides fallback agency and ratio heuristics whenever an account has been manually reviewed. Unmapped accounts still fall back to the deterministic rule pipeline.",
-          "This matters because not every CDC-awarded or CDC-associated transaction represents the same kind of public health investment. Core CDC program accounts, emergency response funding, Medicaid-like transfers, biomedical research funding, and international assistance should not be interpreted the same way.",
+          "TAGGS, USAspending, and CDC Funding Profiles measure related but different funding views, so their raw state totals do not align automatically.",
+          "CHIP classifies observed federal accounts into funding scopes such as core public health funding, emergency public health funding, federal health financing transfers, procurement support, special transfers, other public health, biomedical research, and international health assistance.",
+          "A verified federal account mapping CSV overrides fallback agency and ratio heuristics whenever an account has been manually reviewed. Unmapped accounts still fall back to the deterministic rule pipeline.",
+          "This matters because not every CDC-awarded or CDC-associated transaction represents the same funding concept. Core CDC program accounts, emergency response funding, Medicaid-like transfers, biomedical research funding, and international assistance should not be interpreted as equivalent.",
           "When Normalize Data is on, CHIP reconstructs a conservative CDC Funding Profiles reporting scope from public federal data, then compares the reconstructed state totals against observed CDC Funding Profiles for FY2020-FY2023.",
-          "That reconstruction now uses funding-scope classification together with appropriation-related and emergency or disaster coding rather than rewriting raw source records.",
-          "Some USAspending rows list multiple federal accounts in a single raw field. CHIP now distinguishes single-account rows, multi-account same-scope rows, and multi-account mixed-scope rows in the derived interpretation layer.",
-          "When the raw source does not provide an exact per-account split for a mixed-account row, CHIP preserves the raw dollars unchanged but handles the normalized interpretation conservatively instead of fabricating precise splits.",
+          "That reconstruction uses funding-scope classification together with appropriation-related and emergency or disaster coding rather than rewriting raw source records.",
+          "Some USAspending rows list multiple federal accounts in a single raw field. CHIP distinguishes single-account rows, multi-account same-scope rows, and multi-account mixed-scope rows in the derived interpretation layer.",
+          "When the raw source does not provide an exact per-account split for a mixed-account row, CHIP preserves the raw dollars unchanged and applies conservative normalized interpretation rather than fabricating precise splits.",
           "The normalized view keeps raw source tables unchanged. It only adds derived profile-scope classifications, reconciliation diagnostics, and normalized state totals built from the reconstruction layer.",
           "Current normalization version: profile_scope_v5_verified_csv_multi_account_fy2021_diagnostics_calibration_v1 (March 16, 2026). Current TAGGS CAN mapping version: taggs_cdc_profile_can_mapping_v2026_03_13 (March 13, 2026).",
         ],
@@ -85,7 +85,7 @@ const NAV_ITEMS = [
         title: "Caveats",
         paragraphs: [
           "Recipient geography follows the grantee or recipient address used in the source systems, which may differ from where services are ultimately delivered.",
-          "Normalized values are derived reconstructed totals designed to align with CDC Funding Profiles scope. They should not be read as copied CDC profile amounts or as changes to the raw TAGGS or USA Spending records.",
+          "Normalized values are derived reconstructed totals designed to align with CDC Funding Profiles scope. They should not be interpreted as copied CDC profile amounts or as changes to the raw TAGGS or USAspending records.",
         ],
         bullets: [
           "Cross-year comparisons remain imperfect because CDC profile categories and methodology can shift across years.",
@@ -98,13 +98,13 @@ const NAV_ITEMS = [
     id: "download",
     label: "Download",
     heading: "Download",
-    text: "Export options for maps, summary profiles, and supporting visuals are available through the panel actions across the app.",
+    text: "Export actions across the platform provide map captures, profile reports, and print-ready views. Report exports are formatted for analytical review and include geography, source-aware context, and dated output metadata where available.",
   },
   {
     id: "help",
     label: "Help",
     heading: "Help",
-    text: "Use Search to locate an area, select a measure in Measure controls, and use the CHIP Intelligence Assistant for guided interpretation.",
+    text: "Use Search to locate an area, select a measure in the controls panel, and review the legend, methodology notes, and data panels for source-specific interpretation. The assistant can summarize place-based patterns, but estimates and reconstructions should always be reviewed with their methodology notes.",
   },
   {
     id: "funding-model-builder",
@@ -116,7 +116,6 @@ const NAV_ITEMS = [
 export default function Header() {
   const [activeNavId, setActiveNavId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [logoSrc, setLogoSrc] = useState(logoMonochromeSmall);
 
   const visibleNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => (item.id === "funding-model-builder" ? isFundingModelBuilderEnabled() : true)),
@@ -151,17 +150,16 @@ export default function Header() {
         <div className="chip-header-brand">
           <span className="chip-header-logo-wrap">
             <img
-              src={logoSrc}
-              alt="Community Health Intelligence Platform logo"
+              src={pdoObservatoryMark}
+              alt="Public Data Observatory logo"
               className="chip-header-logo"
-              onError={() => {
-                if (logoSrc !== logoFullColorSmall) {
-                  setLogoSrc(logoFullColorSmall);
-                }
-              }}
             />
           </span>
-          <span className="chip-header-wordmark">Community Health Intelligence Platform</span>
+          <span className="chip-header-brand-text">
+            <span className="chip-header-meta">{PRIMARY_BRAND}</span>
+            <span className="chip-header-wordmark">{APP_NAME}</span>
+            <span className="chip-header-subline">Community Health Intelligence Platform (CHIP)</span>
+          </span>
         </div>
 
         <button
@@ -191,6 +189,7 @@ export default function Header() {
                 type="button"
                 className="chip-header-link"
                 onClick={() => handleNavClick(item.id)}
+                aria-expanded={activeNavItem?.id === item.id}
               >
                 {item.label}
               </button>

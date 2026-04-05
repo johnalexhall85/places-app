@@ -1,0 +1,367 @@
+.funding-model-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(227, 173, 90, 0.14), transparent 30%),
+    linear-gradient(180deg, #f7f2e8 0%, #eef2f6 45%, #ffffff 100%);
+  color: #123247;
+}
+
+.funding-model-builder-main {
+  width: min(1500px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+  display: grid;
+  gap: 20px;
+}
+
+.funding-model-builder-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(18, 50, 71, 0.12);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 18px 40px rgba(15, 45, 70, 0.08);
+}
+
+.funding-model-builder-hero h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 1.05;
+}
+
+.funding-model-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: #a24f14;
+}
+
+.funding-model-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.funding-model-hero-actions label,
+.funding-model-form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.funding-model-hero-actions select,
+.funding-model-form-grid input,
+.funding-model-form-grid textarea,
+.funding-model-form-grid select,
+.funding-model-rule-row input,
+.funding-model-rule-row select,
+.funding-model-inline-actions input,
+.funding-model-inline-actions select,
+.funding-model-section textarea {
+  width: 100%;
+  border: 1px solid rgba(18, 50, 71, 0.18);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+  font: inherit;
+  color: #123247;
+}
+
+.funding-model-builder-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr) 290px;
+  gap: 18px;
+  align-items: start;
+}
+
+.funding-model-sidebar,
+.funding-model-main,
+.funding-model-actions {
+  display: grid;
+  gap: 18px;
+}
+
+.funding-model-section {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(18, 50, 71, 0.12);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 12px 32px rgba(15, 45, 70, 0.06);
+  display: grid;
+  gap: 14px;
+}
+
+.funding-model-section h2,
+.funding-model-section h3,
+.funding-model-section h4 {
+  margin: 0;
+}
+
+.funding-model-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.funding-model-alert {
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: #e8f5ef;
+  border: 1px solid #a8d5be;
+  color: #14532d;
+}
+
+.funding-model-alert-error {
+  background: #fcecea;
+  border-color: #e5a39a;
+  color: #8a1c1c;
+}
+
+.funding-model-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.funding-model-form-grid small {
+  color: #496579;
+  font-weight: 500;
+}
+
+.funding-model-checkbox-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.funding-model-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.funding-model-checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.funding-model-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.funding-model-status-draft {
+  background: #e3f2fd;
+  color: #114b7a;
+}
+
+.funding-model-status-locked {
+  background: #fff4d6;
+  color: #8c5b05;
+}
+
+.funding-model-status-built {
+  background: #dff5eb;
+  color: #146a48;
+}
+
+.funding-model-status-published {
+  background: #e5f0ff;
+  color: #1d4ed8;
+}
+
+.funding-model-status-archived {
+  background: #eceff3;
+  color: #556371;
+}
+
+.funding-model-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.funding-model-rule-group {
+  display: grid;
+  gap: 10px;
+}
+
+.funding-model-field-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.funding-model-field-meta {
+  color: #496579;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.funding-model-rule-row,
+.funding-model-rule-branch {
+  border: 1px solid rgba(18, 50, 71, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #f8fbfd;
+}
+
+.funding-model-rule-branch {
+  background: #f3f8fb;
+}
+
+.funding-model-rule-branch-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.funding-model-warning {
+  margin: 0;
+  color: #8a4b0f;
+  font-weight: 600;
+}
+
+.funding-model-warning-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.funding-model-warning-pill {
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #fff6e5;
+  border: 1px solid #f1cb7d;
+  color: #8a4b0f;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.funding-model-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.funding-model-preview-card {
+  border-radius: 16px;
+  padding: 14px;
+  background: #f2f7fb;
+  border: 1px solid rgba(18, 50, 71, 0.1);
+}
+
+.funding-model-preview-label {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #496579;
+}
+
+.funding-model-preview-value {
+  margin-top: 8px;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.funding-model-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.funding-model-table-wrap {
+  overflow: auto;
+}
+
+.funding-model-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.funding-model-table th,
+.funding-model-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(18, 50, 71, 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.funding-model-generated-sql {
+  margin: 0;
+  background: #0d2234;
+  color: #e7f2ff;
+  padding: 16px;
+  border-radius: 18px;
+  overflow: auto;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.funding-model-action-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.funding-model-version-list,
+.funding-model-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.funding-model-version-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 0.86rem;
+  color: #496579;
+}
+
+.funding-model-empty-state,
+.funding-model-rule-value-disabled {
+  color: #5b7082;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1180px) {
+  .funding-model-builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .funding-model-preview-grid,
+  .funding-model-two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .funding-model-builder-main {
+    width: min(100vw - 20px, 100%);
+    padding-top: 18px;
+  }
+
+  .funding-model-builder-hero {
+    padding: 18px;
+    border-radius: 18px;
+    align-items: start;
+    flex-direction: column;
+  }
+}

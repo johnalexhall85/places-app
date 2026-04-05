@@ -1,9 +1,9 @@
 .cdc-profile-page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(23, 139, 139, 0.14), transparent 28%),
-    linear-gradient(180deg, #eef4f7 0%, var(--chip-bg) 42%);
-  color: var(--chip-navy);
+    radial-gradient(circle at top left, rgba(154, 187, 221, 0.18), transparent 30%),
+    linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 46%, #eef4fa 100%);
+  color: var(--pdo-text);
 }
 
 .cdc-profile-main {
@@ -16,17 +16,16 @@
 .cdc-profile-hero,
 .cdc-profile-section,
 .cdc-profile-status {
-  background: #ffffff;
-  border: 1px solid var(--chip-panel-border);
-  border-radius: 14px;
-  box-shadow: var(--chip-panel-shadow);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--pdo-border);
+  border-radius: 22px;
 }
 
 .cdc-profile-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
-  padding: 18px;
+  padding: 22px;
   align-items: start;
   position: relative;
   overflow: hidden;
@@ -35,11 +34,11 @@
 .cdc-profile-hero::after {
   content: "";
   position: absolute;
-  inset: auto -60px -80px auto;
-  width: 240px;
-  height: 240px;
+  inset: auto -40px -60px auto;
+  width: 220px;
+  height: 220px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(15, 45, 70, 0.11) 0%, rgba(15, 45, 70, 0) 72%);
+  background: radial-gradient(circle, rgba(255, 213, 176, 0.3) 0%, rgba(255, 213, 176, 0) 72%);
   pointer-events: none;
 }
 
@@ -48,7 +47,7 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--chip-teal);
+  color: var(--pdo-primary);
 }
 
 .cdc-profile-mode-row {
@@ -67,49 +66,69 @@
 }
 
 .cdc-profile-mode-badge.is-normalized {
-  background: rgba(23, 139, 139, 0.12);
-  border: 1px solid rgba(23, 139, 139, 0.24);
-  color: var(--chip-teal);
+  background: rgba(53, 118, 186, 0.08);
+  border: 1px solid rgba(53, 118, 186, 0.18);
+  color: var(--pdo-primary);
 }
 
 .cdc-profile-mode-badge.is-raw {
-  background: rgba(15, 45, 70, 0.08);
-  border: 1px solid rgba(15, 45, 70, 0.15);
-  color: var(--chip-navy);
+  background: rgba(154, 187, 221, 0.16);
+  border: 1px solid rgba(154, 187, 221, 0.38);
+  color: var(--pdo-text);
 }
 
 .cdc-profile-hero h1 {
   margin: 6px 0 10px;
-  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
-  line-height: 1.08;
+  font-size: clamp(1.6rem, 2.7vw, 2.4rem);
+  line-height: 1.06;
 }
 
 .cdc-profile-subtitle {
   margin: 0 0 14px;
-  max-width: 68ch;
-  color: #496173;
-  line-height: 1.45;
+  max-width: 72ch;
+  color: var(--pdo-text-muted);
+  line-height: 1.55;
 }
 
 .cdc-profile-mode-note {
   margin: 0 0 14px;
-  max-width: 72ch;
-  color: #5d7485;
-  font-size: 0.88rem;
-  line-height: 1.4;
+  max-width: 76ch;
+  color: var(--pdo-text-subtle);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .cdc-profile-hero-amount {
-  font-size: clamp(1.8rem, 3.6vw, 3rem);
-  font-weight: 800;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  font-weight: 700;
   line-height: 1;
-  color: var(--chip-navy);
+  color: var(--pdo-text);
 }
 
 .cdc-profile-hero-label {
   margin-top: 6px;
-  color: #567083;
+  color: var(--pdo-text-muted);
   font-size: 0.92rem;
+}
+
+.cdc-profile-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cdc-profile-hero-meta span,
+.cdc-profile-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--pdo-surface-alt);
+  border: 1px solid var(--pdo-border);
+  color: var(--pdo-text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .cdc-profile-chip-row {
@@ -117,18 +136,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-}
-
-.cdc-profile-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 9px;
-  background: #f4fafb;
-  border: 1px solid #cae5e5;
-  color: #1e4857;
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .cdc-profile-hero-actions {
@@ -150,62 +157,62 @@
 }
 
 .cdc-profile-status-error {
-  border-color: #ef4444;
-  color: #7f1d1d;
-  background: #fff1f2;
+  border-color: rgba(185, 28, 28, 0.18);
+  color: #991b1b;
+  background: rgba(255, 241, 242, 0.95);
 }
 
 .cdc-profile-section {
-  padding: 14px;
+  padding: 16px;
   display: grid;
   gap: 10px;
 }
 
 .cdc-profile-section-title h2 {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.12rem;
 }
 
 .cdc-profile-section-title p {
   margin: 4px 0 0;
-  color: #4b6276;
+  color: var(--pdo-text-muted);
   font-size: 0.9rem;
 }
 
 .cdc-profile-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .cdc-profile-card {
-  border: 1px solid #dbe5ec;
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
+  padding: 14px;
   display: grid;
   gap: 4px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
 .cdc-profile-card-label {
-  color: #546c7f;
+  color: var(--pdo-text-muted);
   font-size: 0.78rem;
 }
 
 .cdc-profile-card-value {
-  font-size: 1.02rem;
-  font-weight: 800;
+  font-size: 1.06rem;
+  font-weight: 700;
 }
 
 .cdc-profile-card-note {
-  color: #5e7587;
-  font-size: 0.77rem;
+  color: var(--pdo-text-subtle);
+  font-size: 0.78rem;
 }
 
 .cdc-profile-table-wrap {
   overflow-x: auto;
-  border: 1px solid #dbe5ec;
-  border-radius: 12px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
 }
 
 .cdc-profile-table {
@@ -216,14 +223,14 @@
 
 .cdc-profile-table th,
 .cdc-profile-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid #ecf1f5;
+  padding: 10px 10px;
+  border-bottom: 1px solid #e7eef5;
   text-align: left;
   vertical-align: top;
 }
 
 .cdc-profile-table th {
-  background: #f5f9fc;
+  background: #f7fafd;
   position: sticky;
   top: 0;
   z-index: 1;
@@ -232,7 +239,7 @@
 .cdc-profile-table-sort {
   border: 0;
   background: transparent;
-  color: var(--chip-navy);
+  color: var(--pdo-text);
   cursor: pointer;
   padding: 0;
   margin: 0;
@@ -241,7 +248,7 @@
 }
 
 .cdc-profile-table-sort:hover {
-  color: var(--chip-teal);
+  color: var(--pdo-primary);
 }
 
 .cdc-profile-accordion-list {
@@ -250,10 +257,10 @@
 }
 
 .cdc-profile-accordion {
-  border: 1px solid #dbe5ec;
-  border-radius: 12px;
-  padding: 8px 10px;
-  background: #fcfdff;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
+  padding: 10px 12px;
+  background: #fbfdff;
 }
 
 .cdc-profile-accordion summary {
@@ -261,7 +268,7 @@
   justify-content: space-between;
   gap: 10px;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .cdc-profile-detail-tools,
@@ -282,17 +289,18 @@
 .cdc-profile-search span {
   font-size: 0.84rem;
   font-weight: 700;
-  color: #486073;
+  color: var(--pdo-text);
 }
 
-.cdc-profile-search input {
+.cdc-profile-search input,
+.cdc-profile-inline-actions select {
   width: 100%;
-  min-height: 38px;
-  border: 1px solid #c7d5df;
-  border-radius: 10px;
+  min-height: 40px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 12px;
   padding: 0 12px;
   font: inherit;
-  color: var(--chip-navy);
+  color: var(--pdo-text);
   background: #ffffff;
 }
 
@@ -304,19 +312,20 @@
 }
 
 .cdc-profile-note-block {
-  border: 1px solid #d6e4ea;
-  border-radius: 12px;
-  background: #f7fbfd;
-  padding: 10px 12px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
+  background: var(--pdo-surface-alt);
+  padding: 12px 14px;
   display: grid;
   gap: 6px;
-  font-size: 0.87rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .cdc-profile-muted,
 .cdc-profile-cell-meta {
   margin: 0;
-  color: #536b7e;
+  color: var(--pdo-text-muted);
   font-size: 0.82rem;
 }
 
@@ -338,28 +347,8 @@
   .cdc-profile-search {
     min-width: 100%;
   }
-}
 
-@media print {
-  .chip-header,
-  .cdc-profile-hero-actions,
-  .chip-nav-modal-backdrop {
-    display: none !important;
-  }
-
-  .cdc-profile-page,
-  .cdc-profile-main,
-  .cdc-profile-hero,
-  .cdc-profile-section,
-  .cdc-profile-card,
-  .cdc-profile-accordion {
-    background: #ffffff !important;
-    box-shadow: none !important;
-  }
-
-  .cdc-profile-main {
+  .cdc-profile-hero-meta span {
     width: 100%;
-    margin: 0;
-    gap: 10px;
   }
 }

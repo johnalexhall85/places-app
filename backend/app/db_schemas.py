@@ -27,6 +27,7 @@ TAGGS_SCHEMA = _schema_from_env("TAGGS_SCHEMA", "taggs")
 CDC_PROFILES_SCHEMA = _schema_from_env("CDC_PROFILES_SCHEMA", "cdc_profiles")
 RECON_SCHEMA = _schema_from_env("RECON_SCHEMA", "recon")
 ANALYTICS_SCHEMA = _schema_from_env("ANALYTICS_SCHEMA", "analytics")
+BUDGET_SCHEMA = _schema_from_env("BUDGET_SCHEMA", "budget")
 
 SCHEMA_BY_SOURCE = {
     "places": PLACES_SCHEMA,
@@ -48,4 +49,5 @@ SCHEMA_BY_SOURCE = {
     "taggs": TAGGS_SCHEMA,
     "recon": RECON_SCHEMA,
     "analytics": ANALYTICS_SCHEMA,
+    "budget": BUDGET_SCHEMA,
 }

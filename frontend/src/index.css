@@ -1,12 +1,31 @@
 :root {
-  --chip-navy: #0f2d46;
-  --chip-slate: #2c5f8a;
-  --chip-teal: #178b8b;
-  --chip-teal-hover: #106f6f;
-  --chip-bg: #f4f6f8;
-  --chip-panel-border: #e3e8ed;
-  --chip-panel-shadow: 0 6px 20px rgba(15, 45, 70, 0.12);
-  --chip-header-height: 56px;
+  --pdo-primary: #3576ba;
+  --pdo-secondary: #9abbdd;
+  --pdo-accent: #ffd5b0;
+  --pdo-background: #f2f6fb;
+  --pdo-surface: #ffffff;
+  --pdo-surface-alt: #f7fafd;
+  --pdo-border: #d7e2ee;
+  --pdo-border-strong: #bfd0e1;
+  --pdo-text: #123247;
+  --pdo-text-muted: #4d6880;
+  --pdo-text-subtle: #627a90;
+  --pdo-overlay-shadow: 0 12px 34px rgba(18, 50, 71, 0.08);
+  --pdo-overlay-shadow-tight: 0 6px 18px rgba(18, 50, 71, 0.08);
+  --chip-legacy-navy: #0f2d46;
+  --chip-legacy-slate: #2c5f8a;
+  --chip-legacy-teal: #178b8b;
+  --chip-header-height: 74px;
+  --chip-footer-height: 108px;
+  --headline-font: "Roboto Slab", Georgia, "Times New Roman", serif;
+  --body-font: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --chip-navy: var(--pdo-text);
+  --chip-slate: var(--pdo-primary);
+  --chip-teal: var(--chip-legacy-teal);
+  --chip-teal-hover: #126f6f;
+  --chip-bg: var(--pdo-background);
+  --chip-panel-border: var(--pdo-border);
+  --chip-panel-shadow: var(--pdo-overlay-shadow-tight);
 }
 
 * {
@@ -17,9 +36,39 @@ html,
 body {
   height: 100%;
   margin: 0;
-  font-family: "Inter", "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--chip-navy);
-  background: var(--chip-bg);
+  color: var(--pdo-text);
+  background:
+    radial-gradient(circle at top left, rgba(154, 187, 221, 0.26), transparent 28%),
+    linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 35%, #edf3f9 100%);
+  font-family: var(--body-font);
+}
+
+body {
+  line-height: 1.5;
+}
+
+a {
+  color: var(--pdo-primary);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: var(--pdo-text);
+  font-family: var(--headline-font);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 #root {
@@ -28,43 +77,92 @@ body {
 
 .app {
   min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   width: 100%;
-  background: var(--chip-bg);
+  background: transparent;
 }
 
 .app-content {
   position: relative;
   width: 100%;
-  height: calc(100vh - var(--chip-header-height));
-  background: var(--chip-bg);
+  height: calc(100vh - var(--chip-header-height) - var(--chip-footer-height));
+  min-height: 420px;
 }
 
 .map-wrapper {
   height: 100%;
-  background: var(--chip-bg);
+  background: linear-gradient(180deg, rgba(242, 246, 251, 0.72), rgba(237, 243, 249, 0.94));
 }
 
 .leaflet-container {
-  background: #d6e1e9;
+  background: #d5e3ef;
+}
+
+.leaflet-control-zoom,
+.leaflet-control-layers {
+  border: 1px solid var(--pdo-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--pdo-overlay-shadow-tight) !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a,
+.leaflet-control-layers-toggle {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: var(--pdo-text) !important;
+  border-bottom-color: var(--pdo-border) !important;
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-control-layers-toggle:hover {
+  background: rgba(53, 118, 186, 0.06) !important;
+}
+
+.leaflet-tooltip.pdo-map-tooltip {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--pdo-border);
+  border-radius: 14px;
+  box-shadow: var(--pdo-overlay-shadow-tight);
+  color: var(--pdo-text);
+  font-family: var(--body-font);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 10px;
+}
+
+.leaflet-tooltip.pdo-map-tooltip::before {
+  border-top-color: var(--pdo-border);
 }
 
 .chip-header {
   position: relative;
   z-index: 2600;
-  height: var(--chip-header-height);
-  background: var(--chip-navy);
-  color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  min-height: var(--chip-header-height);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  color: var(--pdo-text);
+  border-bottom: 1px solid rgba(191, 208, 225, 0.95);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 14px 20px 13px;
+}
+
+.chip-header::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(53, 118, 186, 0), rgba(53, 118, 186, 0.3), rgba(53, 118, 186, 0));
 }
 
 .chip-header-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -72,70 +170,99 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 7px;
-  background: #ffffff;
-  border: 1px solid rgba(227, 232, 237, 0.85);
-  padding: 2px 5px;
-  box-shadow: 0 2px 8px rgba(15, 45, 70, 0.2);
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(242, 246, 251, 0.98), rgba(255, 255, 255, 0.98)),
+    #ffffff;
+  border: 1px solid var(--pdo-border);
+  box-shadow: 0 6px 16px rgba(53, 118, 186, 0.12);
   flex: 0 0 auto;
 }
 
 .chip-header-logo {
-  height: 26px;
-  width: auto;
+  height: 30px;
+  width: 30px;
   display: block;
+  object-fit: contain;
+}
+
+.chip-header-brand-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.chip-header-meta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pdo-primary);
 }
 
 .chip-header-wordmark {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
+  font-family: var(--headline-font);
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--pdo-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: min(48vw, 420px);
+  max-width: min(52vw, 520px);
+}
+
+.chip-header-subline {
+  font-size: 12px;
+  color: var(--pdo-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(52vw, 560px);
 }
 
 .chip-header-nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .chip-header-link {
   background: transparent;
-  color: #dceaf4;
+  color: var(--pdo-text-muted);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 999px;
   text-decoration: none;
   font-size: 13px;
-  font-weight: 600;
-  padding: 7px 10px;
+  font-weight: 700;
+  padding: 8px 11px;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .chip-header-link:hover {
-  background: rgba(23, 139, 139, 0.2);
-  color: #ffffff;
+  background: rgba(53, 118, 186, 0.08);
+  color: var(--pdo-text);
+  border-color: rgba(53, 118, 186, 0.12);
 }
 
 .chip-menu-button {
   display: none;
-  border: 1px solid rgba(220, 234, 244, 0.4);
-  background: transparent;
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 7px 10px;
+  border: 1px solid var(--pdo-border-strong);
+  background: #ffffff;
+  color: var(--pdo-text);
+  border-radius: 999px;
+  padding: 8px 12px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .chip-brand-line {
   position: absolute;
-  top: 8px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2050;
@@ -144,86 +271,87 @@ body {
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: var(--chip-slate);
-  background: rgba(244, 246, 248, 0.93);
-  border: 1px solid var(--chip-panel-border);
+  color: var(--pdo-text-muted);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(191, 208, 225, 0.95);
   border-radius: 999px;
-  box-shadow: 0 3px 12px rgba(15, 45, 70, 0.1);
-  padding: 4px 10px;
+  box-shadow: 0 8px 20px rgba(53, 118, 186, 0.08);
+  padding: 6px 12px;
   white-space: nowrap;
 }
 
-.chip-brand-line span:last-child {
-  color: #587387;
+.chip-brand-line strong {
+  color: var(--pdo-text);
 }
 
-.chip-primary-btn {
-  border: 1px solid var(--chip-teal);
-  background: var(--chip-teal);
+.chip-primary-btn,
+.chip-primary-link {
+  border: 1px solid var(--pdo-primary);
+  background: var(--pdo-primary);
   color: #ffffff;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 999px;
+  padding: 9px 14px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
 }
 
-.chip-primary-btn:hover:not(:disabled) {
-  border-color: var(--chip-teal-hover);
-  background: var(--chip-teal-hover);
+.chip-primary-btn:hover:not(:disabled),
+.chip-primary-link:hover {
+  border-color: #2e69a5;
+  background: #2e69a5;
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .chip-primary-btn:disabled {
   cursor: not-allowed;
   opacity: 0.64;
+  transform: none;
 }
 
 .chip-primary-link {
-  border: 1px solid var(--chip-teal);
-  background: var(--chip-teal);
-  color: #ffffff;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.chip-primary-link:hover {
-  border-color: var(--chip-teal-hover);
-  background: var(--chip-teal-hover);
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .chip-secondary-btn {
-  border: 1px solid var(--chip-slate);
-  background: #ffffff;
-  color: var(--chip-slate);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border: 1px solid var(--pdo-border-strong);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--pdo-text);
+  border-radius: 999px;
+  padding: 9px 14px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .chip-secondary-btn:hover:not(:disabled) {
-  background: rgba(44, 95, 138, 0.08);
+  background: rgba(53, 118, 186, 0.06);
+  border-color: rgba(53, 118, 186, 0.3);
+  color: var(--pdo-primary);
 }
 
 .chip-secondary-btn:disabled,
 .chip-secondary-btn.is-disabled {
   cursor: not-allowed;
   color: #7f95a8;
-  border-color: #b8c6d2;
-  background: #f8fafc;
+  border-color: #cdd8e3;
+  background: #f7fafc;
 }
 
 .measure-controls-panel select optgroup {
   font-weight: 700;
-  color: var(--chip-navy);
+  color: var(--pdo-text);
 }
 
 .measure-controls-panel select optgroup option {
   font-weight: 400;
-  color: var(--chip-navy);
+  color: var(--pdo-text);
 }
 
 .chip-nav-modal-backdrop {
@@ -232,18 +360,20 @@ body {
   z-index: 3000;
   display: grid;
   place-items: center;
-  background: rgba(15, 45, 70, 0.4);
+  background: rgba(18, 50, 71, 0.36);
   padding: 16px;
 }
 
 .chip-nav-modal {
-  width: min(560px, 96vw);
-  background: #ffffff;
-  border: 1px solid var(--chip-panel-border);
-  border-radius: 10px;
-  box-shadow: var(--chip-panel-shadow);
-  padding: 16px;
-  color: var(--chip-navy);
+  width: min(640px, 96vw);
+  max-height: min(84vh, 860px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--pdo-border);
+  border-radius: 20px;
+  box-shadow: var(--pdo-overlay-shadow);
+  padding: 20px;
+  color: var(--pdo-text);
 }
 
 .chip-nav-modal-header {
@@ -251,34 +381,33 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .chip-nav-modal-header h2 {
-  margin: 0;
-  font-size: 18px;
+  font-size: 1.25rem;
 }
 
 .chip-nav-modal p {
   margin: 0;
   font-size: 14px;
-  line-height: 1.45;
-  color: #2c4256;
+  line-height: 1.55;
+  color: var(--pdo-text-muted);
 }
 
 .chip-nav-modal-close {
-  border: 1px solid var(--chip-slate);
+  border: 1px solid var(--pdo-border-strong);
   background: #ffffff;
-  color: var(--chip-slate);
-  border-radius: 8px;
-  padding: 6px 10px;
+  color: var(--pdo-text);
+  border-radius: 999px;
+  padding: 7px 12px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .chip-nav-modal-close:hover {
-  background: rgba(44, 95, 138, 0.08);
+  background: rgba(53, 118, 186, 0.06);
 }
 
 .chip-search-suggestion {
@@ -286,7 +415,7 @@ body {
 }
 
 .chip-search-suggestion:hover {
-  background: rgba(44, 95, 138, 0.08);
+  background: rgba(53, 118, 186, 0.06);
 }
 
 @keyframes search-spin {
@@ -298,8 +427,8 @@ body {
 .search-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(148, 163, 184, 0.55);
-  border-top-color: var(--chip-teal);
+  border: 2px solid rgba(98, 122, 144, 0.35);
+  border-top-color: var(--pdo-primary);
   border-radius: 50%;
   display: inline-block;
   animation: search-spin 0.8s linear infinite;
@@ -307,7 +436,7 @@ body {
 
 .measure-controls-panel,
 .legend-panel {
-  color: var(--chip-navy);
+  color: var(--pdo-text);
 }
 
 .measure-controls-panel select:focus-visible,
@@ -320,15 +449,15 @@ body {
 .chip-primary-btn:focus-visible,
 .chip-secondary-btn:focus-visible,
 .chip-nav-modal-close:focus-visible {
-  outline: 2px solid var(--chip-teal);
+  outline: 2px solid var(--pdo-primary);
   outline-offset: 2px;
 }
 
 .legend-details {
   font-size: 0.85rem;
-  color: #2c4256;
+  color: var(--pdo-text-muted);
   margin-top: 10px;
-  line-height: 1.25rem;
+  line-height: 1.45;
   max-width: 80ch;
   white-space: normal;
   overflow-wrap: break-word;
@@ -336,6 +465,50 @@ body {
 
 .legend-details p {
   margin: 0 0 8px;
+}
+
+.app-footer {
+  min-height: var(--chip-footer-height);
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(191, 208, 225, 0.95);
+  padding: 14px 20px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.app-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.app-footer-block {
+  display: grid;
+  gap: 4px;
+}
+
+.app-footer-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pdo-primary);
+}
+
+.app-footer-block p,
+.app-footer-meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pdo-text-muted);
+}
+
+.app-footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(191, 208, 225, 0.85);
 }
 
 @media (max-width: 1200px) {
@@ -351,21 +524,30 @@ body {
     justify-content: center;
   }
 
+  .chip-header {
+    padding: 12px 16px;
+  }
+
   .chip-header-wordmark {
-    max-width: min(58vw, 320px);
+    max-width: min(56vw, 320px);
+    font-size: 0.96rem;
+  }
+
+  .chip-header-subline {
+    max-width: min(56vw, 320px);
     font-size: 11px;
   }
 
   .chip-header-nav {
     display: none;
     position: absolute;
-    top: calc(var(--chip-header-height) - 1px);
+    top: calc(var(--chip-header-height) - 8px);
     right: 16px;
-    min-width: 190px;
+    min-width: 210px;
     background: #ffffff;
-    border: 1px solid var(--chip-panel-border);
-    border-radius: 10px;
-    box-shadow: var(--chip-panel-shadow);
+    border: 1px solid var(--pdo-border);
+    border-radius: 18px;
+    box-shadow: var(--pdo-overlay-shadow-tight);
     padding: 8px;
     gap: 4px;
     z-index: 2800;
@@ -378,11 +560,24 @@ body {
   .chip-header-link {
     width: 100%;
     text-align: left;
-    color: var(--chip-slate);
+    color: var(--pdo-text);
+    border-radius: 12px;
   }
 
   .chip-header-link:hover {
-    color: var(--chip-slate);
-    background: rgba(44, 95, 138, 0.08);
+    color: var(--pdo-text);
+    background: rgba(53, 118, 186, 0.06);
+  }
+
+  .app-footer {
+    padding: 14px 16px 18px;
+  }
+
+  .app-footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-content {
+    height: calc(100vh - var(--chip-header-height) - 174px);
   }
 }

@@ -13,25 +13,26 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-REPORT_BRANDING_VERSION = "chip_concept_a_v1"
+REPORT_BRANDING_VERSION = "pdo_chip_report_v1"
 
-BRAND_NAME = "Community Health Intelligence Platform"
-BRAND_TAGLINE = "Local Data. Strategic Insight."
-FOOTER_LEFT_TEXT = f"CHIP • {BRAND_TAGLINE}"
+BRAND_NAME = "CHIP by Public Data Observatory"
+BRAND_TAGLINE = "Nonpartisan geospatial data platform for public health analysis"
+FOOTER_LEFT_TEXT = "Public Data Observatory • Nonpartisan analytical reporting"
+FOOTER_SECONDARY_TEXT = "Modeled and administrative sources vary by section. Review source and methodology notes in the report body."
 
-PRIMARY_NAVY_HEX = "#0F2D46"
-SECONDARY_SLATE_BLUE_HEX = "#2C5F8A"
-TEAL_ACCENT_HEX = "#1FA3A3"
-BACKGROUND_NEUTRAL_HEX = "#F4F6F8"
-BODY_TEXT_HEX = "#1f2937"
-CAPTION_TEXT_HEX = "#374151"
-AXIS_TEXT_HEX = "#334155"
-GRIDLINE_HEX = "#E5E7EB"
-TABLE_BORDER_HEX = "#E3E8ED"
-TABLE_HEADER_BG_HEX = "#EEF3F7"
-TABLE_ZEBRA_BG_HEX = "#F9FBFD"
-HEADER_RIGHT_TEXT_HEX = "#E5EDF3"
-FOOTER_TEXT_HEX = "#4B5563"
+PRIMARY_NAVY_HEX = "#3576BA"
+SECONDARY_SLATE_BLUE_HEX = "#9ABBDD"
+TEAL_ACCENT_HEX = "#FFD5B0"
+BACKGROUND_NEUTRAL_HEX = "#F2F6FB"
+BODY_TEXT_HEX = "#123247"
+CAPTION_TEXT_HEX = "#4D6880"
+AXIS_TEXT_HEX = "#627A90"
+GRIDLINE_HEX = "#E7EEF5"
+TABLE_BORDER_HEX = "#D7E2EE"
+TABLE_HEADER_BG_HEX = "#F7FAFD"
+TABLE_ZEBRA_BG_HEX = "#FBFDFF"
+HEADER_RIGHT_TEXT_HEX = "#123247"
+FOOTER_TEXT_HEX = "#4D6880"
 
 PRIMARY_NAVY = colors.HexColor(PRIMARY_NAVY_HEX)
 SECONDARY_SLATE_BLUE = colors.HexColor(SECONDARY_SLATE_BLUE_HEX)
@@ -56,12 +57,14 @@ DOC_BOTTOM_MARGIN = 0.86 * inch
 HEADER_BAR_HEIGHT = 0.56 * inch
 FOOTER_DIVIDER_Y = 0.62 * inch
 FOOTER_TEXT_Y = 0.34 * inch
+FOOTER_SECONDARY_TEXT_Y = 0.21 * inch
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = APP_ROOT / "assets"
 BRAND_ASSETS_DIR = ASSETS_DIR / "brand"
 FONTS_DIR = ASSETS_DIR / "fonts"
 
+LOGO_PDO_MARK_PNG = BRAND_ASSETS_DIR / "pdo-observatory-mark.png"
 LOGO_MONO_SMALL_PNG = BRAND_ASSETS_DIR / "chip-logo-monochrome-dark-small.png"
 LOGO_FALLBACK_SMALL_PNG = BRAND_ASSETS_DIR / "chip-logo-fullcolor-light-small.png"
 
@@ -122,17 +125,22 @@ def chart_font_families() -> list[str]:
     return ["Inter", "Source Sans 3", "DejaVu Sans"]
 
 
+def report_heading_font() -> str:
+    return "Times-Bold"
+
+
 def full_report_styles() -> dict[str, ParagraphStyle]:
     sample_styles = getSampleStyleSheet()
     fonts = reportlab_fonts()
+    heading_font = report_heading_font()
     return {
         "title": ParagraphStyle(
             "ChipFullTitle",
             parent=sample_styles["Title"],
-            fontName=fonts["semibold"],
+            fontName=heading_font,
             fontSize=20,
             leading=24,
-            textColor=PRIMARY_NAVY,
+            textColor=BODY_TEXT,
             spaceAfter=3,
         ),
         "subtitle": ParagraphStyle(
@@ -147,20 +155,20 @@ def full_report_styles() -> dict[str, ParagraphStyle]:
         "h2": ParagraphStyle(
             "ChipFullH2",
             parent=sample_styles["Heading2"],
-            fontName=fonts["semibold"],
+            fontName=heading_font,
             fontSize=13,
             leading=16,
-            textColor=PRIMARY_NAVY,
+            textColor=BODY_TEXT,
             spaceBefore=7,
             spaceAfter=5,
         ),
         "h3": ParagraphStyle(
             "ChipFullH3",
             parent=sample_styles["Heading3"],
-            fontName=fonts["semibold"],
+            fontName=heading_font,
             fontSize=12,
             leading=15,
-            textColor=PRIMARY_NAVY,
+            textColor=BODY_TEXT,
             spaceBefore=3,
             spaceAfter=4,
         ),
@@ -197,14 +205,15 @@ def full_report_styles() -> dict[str, ParagraphStyle]:
 def brief_report_styles() -> dict[str, ParagraphStyle]:
     sample_styles = getSampleStyleSheet()
     fonts = reportlab_fonts()
+    heading_font = report_heading_font()
     return {
         "title": ParagraphStyle(
             "ChipBriefTitle",
             parent=sample_styles["Title"],
-            fontName=fonts["semibold"],
+            fontName=heading_font,
             fontSize=19,
             leading=23,
-            textColor=PRIMARY_NAVY,
+            textColor=BODY_TEXT,
             spaceAfter=3,
         ),
         "subtitle": ParagraphStyle(
@@ -228,10 +237,10 @@ def brief_report_styles() -> dict[str, ParagraphStyle]:
         "h2": ParagraphStyle(
             "ChipBriefH2",
             parent=sample_styles["Heading2"],
-            fontName=fonts["semibold"],
+            fontName=heading_font,
             fontSize=12.5,
             leading=15,
-            textColor=PRIMARY_NAVY,
+            textColor=BODY_TEXT,
             spaceBefore=4,
             spaceAfter=3,
         ),
@@ -295,7 +304,7 @@ def compact_table_style_commands(
 
 @lru_cache(maxsize=1)
 def _logo_reader() -> ImageReader | None:
-    for candidate in (LOGO_MONO_SMALL_PNG, LOGO_FALLBACK_SMALL_PNG):
+    for candidate in (LOGO_PDO_MARK_PNG, LOGO_MONO_SMALL_PNG, LOGO_FALLBACK_SMALL_PNG):
         if not candidate.exists():
             continue
         try:
@@ -309,8 +318,13 @@ def draw_page_chrome(pdf_canvas: canvas.Canvas, page_number: int, page_count: in
     fonts = reportlab_fonts()
     pdf_canvas.saveState()
 
-    pdf_canvas.setFillColor(PRIMARY_NAVY)
+    pdf_canvas.setFillColor(colors.white)
     pdf_canvas.rect(0, PAGE_HEIGHT - HEADER_BAR_HEIGHT, PAGE_WIDTH, HEADER_BAR_HEIGHT, stroke=0, fill=1)
+    pdf_canvas.setFillColor(TEAL_ACCENT)
+    pdf_canvas.rect(0, PAGE_HEIGHT - 0.06 * inch, PAGE_WIDTH, 0.06 * inch, stroke=0, fill=1)
+    pdf_canvas.setStrokeColor(TABLE_BORDER)
+    pdf_canvas.setLineWidth(0.8)
+    pdf_canvas.line(DOC_LEFT_MARGIN, PAGE_HEIGHT - HEADER_BAR_HEIGHT, PAGE_WIDTH - DOC_RIGHT_MARGIN, PAGE_HEIGHT - HEADER_BAR_HEIGHT)
 
     logo_reader = _logo_reader()
     if logo_reader is not None:
@@ -318,7 +332,7 @@ def draw_page_chrome(pdf_canvas: canvas.Canvas, page_number: int, page_count: in
         if logo_width > 0 and logo_height > 0:
             target_height = HEADER_BAR_HEIGHT - 0.12 * inch
             target_width = target_height * (float(logo_width) / float(logo_height))
-            target_width = min(target_width, 1.6 * inch)
+            target_width = min(target_width, 0.7 * inch)
             logo_x = DOC_LEFT_MARGIN
             logo_y = PAGE_HEIGHT - HEADER_BAR_HEIGHT + ((HEADER_BAR_HEIGHT - target_height) / 2.0)
             pdf_canvas.drawImage(
@@ -332,16 +346,23 @@ def draw_page_chrome(pdf_canvas: canvas.Canvas, page_number: int, page_count: in
                 anchor="sw",
             )
     else:
-        pdf_canvas.setFillColor(colors.white)
-        pdf_canvas.setFont(fonts["semibold"], 8.5)
+        pdf_canvas.setFillColor(BODY_TEXT)
+        pdf_canvas.setFont(report_heading_font(), 8.5)
         pdf_canvas.drawString(DOC_LEFT_MARGIN, PAGE_HEIGHT - HEADER_BAR_HEIGHT + 0.18 * inch, "CHIP")
 
+    pdf_canvas.setFillColor(BODY_TEXT)
+    pdf_canvas.setFont(report_heading_font(), 9.0)
+    pdf_canvas.drawString(
+        DOC_LEFT_MARGIN + 0.82 * inch,
+        PAGE_HEIGHT - HEADER_BAR_HEIGHT + 0.23 * inch,
+        BRAND_NAME,
+    )
     pdf_canvas.setFillColor(HEADER_RIGHT_TEXT)
-    pdf_canvas.setFont(fonts["regular"], 8.2)
+    pdf_canvas.setFont(fonts["regular"], 7.9)
     pdf_canvas.drawRightString(
         PAGE_WIDTH - DOC_RIGHT_MARGIN,
         PAGE_HEIGHT - HEADER_BAR_HEIGHT + 0.21 * inch,
-        BRAND_NAME,
+        BRAND_TAGLINE,
     )
 
     pdf_canvas.setStrokeColor(TABLE_BORDER)
@@ -351,6 +372,8 @@ def draw_page_chrome(pdf_canvas: canvas.Canvas, page_number: int, page_count: in
     pdf_canvas.setFillColor(FOOTER_TEXT)
     pdf_canvas.setFont(fonts["regular"], 8.2)
     pdf_canvas.drawString(DOC_LEFT_MARGIN, FOOTER_TEXT_Y, FOOTER_LEFT_TEXT)
+    pdf_canvas.setFont(fonts["regular"], 7.2)
+    pdf_canvas.drawString(DOC_LEFT_MARGIN, FOOTER_SECONDARY_TEXT_Y, FOOTER_SECONDARY_TEXT)
     pdf_canvas.drawRightString(
         PAGE_WIDTH - DOC_RIGHT_MARGIN,
         FOOTER_TEXT_Y,

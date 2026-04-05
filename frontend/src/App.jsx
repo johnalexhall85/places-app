@@ -12,8 +12,10 @@ import {
 } from "react-leaflet";
 import SearchBar from "./SearchBar";
 import AskMapChat from "./components/AskMapChat";
+import Footer from "./components/Footer";
 import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
+import { APP_NAME } from "./branding/pdoBrand";
 import {
   getSviBins,
   getSviLabel,
@@ -184,22 +186,22 @@ const USDA_STATE_LAYER_MAX_ZOOM = 5;
 const COUNTY_RELOAD_ZOOM = 8;
 const BBOX_PRECISION = 4;
 const BIN_COUNT = 5;
-const COLORS = ["#F2FBFB", "#AADDDD", "#7FCACB", "#42A6A8", "#0F2D46"];
-const NO_DATA_COLOR = "#DDE5EB";
+const COLORS = ["#F2F6FB", "#D9E5F2", "#9ABBDD", "#5B90C7", "#3576BA"];
+const NO_DATA_COLOR = "#D7E2EE";
 const USDA_HEAT_LAYER_GRADIENT = {
-  0.10: "#e6f4f1",
-  0.35: "#a8dadc",
-  0.55: "#5fb3b3",
-  0.75: "#2a9d8f",
-  1.0: "#1b4965",
+  0.10: "#f2f6fb",
+  0.35: "#d9e5f2",
+  0.55: "#9abbdd",
+  0.75: "#5b90c7",
+  1.0: "#3576ba",
 };
-const USDA_HEAT_RAMP_CSS = "linear-gradient(to right, #e6f4f1, #a8dadc, #5fb3b3, #2a9d8f, #1b4965)";
+const USDA_HEAT_RAMP_CSS = "linear-gradient(to right, #f2f6fb, #d9e5f2, #9abbdd, #5b90c7, #3576ba)";
 const FEMA_RATING_COLORS = {
-  "Very Low": "#edf8e9",
-  Low: "#bae4b3",
-  Moderate: "#74c476",
-  High: "#31a354",
-  "Very High": "#006d2c",
+  "Very Low": "#f2f6fb",
+  Low: "#d9e5f2",
+  Moderate: "#9abbdd",
+  High: "#5b90c7",
+  "Very High": "#3576ba",
 };
 const HPSA_TIER_COLORS = {
   1: COLORS[0],
@@ -230,6 +232,7 @@ const COUNTY_HOVER_TOOLTIP_OPTIONS = {
   direction: "top",
   opacity: 0.95,
   interactive: false,
+  className: "pdo-map-tooltip",
 };
 const CMS_AGE_OPTIONS = [
   { value: "all", label: "All", apiValue: "All" },
@@ -749,6 +752,11 @@ function formatTooltipMetaLine(valueText, periodText) {
   const safePeriod = String(periodText ?? "").trim();
   if (!safePeriod) return safeValue;
   return `${safeValue} • ${safePeriod}`;
+}
+
+function formatTooltipExplanationLine(value) {
+  const text = String(value ?? "").trim();
+  return text ? `<br/><span style="color:#627A90;">${text}</span>` : "";
 }
 
 function toHpsaStatus(designatedValue, coveragePctValue) {
@@ -1577,12 +1585,12 @@ function UsdaMeasureSelector({
           textAlign: "left",
           padding: "8px 10px",
           borderRadius: 8,
-          border: `1px solid ${isSelected ? "#1d4ed8" : "#dbe3eb"}`,
-          background: isSelected ? "#eff6ff" : "#ffffff",
+          border: `1px solid ${isSelected ? "#3576ba" : "#dbe3eb"}`,
+          background: isSelected ? "#F7FAFD" : "#ffffff",
           cursor: "pointer",
         }}
       >
-        <div style={{ color: "#0f172a", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
+        <div style={{ color: "#123247", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
           {label}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -1593,13 +1601,13 @@ function UsdaMeasureSelector({
             color: "#b45309",
           }) : null}
           {yearValue != null ? renderPill(String(yearValue), {
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1d4ed8",
+            border: "1px solid #D7E2EE",
+            background: "#F7FAFD",
+            color: "#3576ba",
           }) : null}
         </div>
         {description ? (
-          <div style={{ color: "#475569", fontSize: 11 }}>
+          <div style={{ color: "#627A90", fontSize: 11 }}>
             {truncateText(description, 140)}
           </div>
         ) : null}
@@ -1634,7 +1642,7 @@ function UsdaMeasureSelector({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
           {selectedText}
         </span>
-        <span style={{ marginLeft: 8, color: "#64748b", fontSize: 11 }}>▼</span>
+        <span style={{ marginLeft: 8, color: "#627A90", fontSize: 11 }}>▼</span>
       </button>
 
       {isOpen ? (
@@ -1725,7 +1733,7 @@ function UsdaMeasureSelector({
               <div style={{ display: "grid", gap: 6 }}>
                 {recommendedMeasures.length > 0
                   ? recommendedMeasures.map((measure) => renderMeasureButton(measure))
-                  : <div style={{ color: "#64748b", fontSize: 11 }}>No recommended measures match.</div>}
+                  : <div style={{ color: "#627A90", fontSize: 11 }}>No recommended measures match.</div>}
               </div>
             </section>
 
@@ -1734,7 +1742,7 @@ function UsdaMeasureSelector({
               <div style={{ display: "grid", gap: 6 }}>
                 {commonMeasures.length > 0
                   ? commonMeasures.map((measure) => renderMeasureButton(measure))
-                  : <div style={{ color: "#64748b", fontSize: 11 }}>No common county measures available.</div>}
+                  : <div style={{ color: "#627A90", fontSize: 11 }}>No common county measures available.</div>}
               </div>
             </section>
 
@@ -1742,7 +1750,7 @@ function UsdaMeasureSelector({
               <div style={sectionTitleStyle}>By Category</div>
               {categoryGroups.length > 0 ? categoryGroups.map((group, index) => (
                 <details key={`usda-category-${group.category}`} open={index === 0}>
-                  <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 600 }}>
+                  <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 600 }}>
                     {group.category} ({group.measures.length})
                   </summary>
                   <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
@@ -1750,34 +1758,34 @@ function UsdaMeasureSelector({
                   </div>
                 </details>
               )) : (
-                <div style={{ color: "#64748b", fontSize: 11 }}>No category matches.</div>
+                <div style={{ color: "#627A90", fontSize: 11 }}>No category matches.</div>
               )}
             </section>
 
             <details>
-              <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+              <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 700 }}>
                 Archive / Year ({archiveMeasures.length})
               </summary>
               <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
                 {archiveMeasures.length > 0
                   ? archiveMeasures.map((measure) => renderMeasureButton(measure))
-                  : <div style={{ color: "#64748b", fontSize: 11 }}>Enable archive toggle to load more.</div>}
+                  : <div style={{ color: "#627A90", fontSize: 11 }}>Enable archive toggle to load more.</div>}
               </div>
             </details>
 
             <details>
-              <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+              <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 700 }}>
                 State-level measures ({stateMeasures.length})
               </summary>
               <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
                 {stateMeasures.length > 0
                   ? stateMeasures.map((measure) => renderMeasureButton(measure))
-                  : <div style={{ color: "#64748b", fontSize: 11 }}>Enable state-level toggle to load more.</div>}
+                  : <div style={{ color: "#627A90", fontSize: 11 }}>Enable state-level toggle to load more.</div>}
               </div>
             </details>
 
             {!hasAnyMeasures ? (
-              <div style={{ color: "#64748b", fontSize: 11 }}>No USDA measures match the current filters.</div>
+              <div style={{ color: "#627A90", fontSize: 11 }}>No USDA measures match the current filters.</div>
             ) : null}
           </div>
         </div>
@@ -1854,24 +1862,24 @@ function FemaMeasureSelector({
           textAlign: "left",
           padding: "8px 10px",
           borderRadius: 8,
-          border: `1px solid ${isSelected ? "#1d4ed8" : "#dbe3eb"}`,
-          background: isSelected ? "#eff6ff" : "#ffffff",
+          border: `1px solid ${isSelected ? "#3576ba" : "#dbe3eb"}`,
+          background: isSelected ? "#F7FAFD" : "#ffffff",
           cursor: "pointer",
         }}
       >
-        <div style={{ color: "#0f172a", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
+        <div style={{ color: "#123247", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
           {label}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {valueTypeLabel ? renderPill(valueTypeLabel) : null}
           {hazardName ? renderPill(hazardName, {
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1d4ed8",
+            border: "1px solid #D7E2EE",
+            background: "#F7FAFD",
+            color: "#3576ba",
           }) : null}
         </div>
         {description ? (
-          <div style={{ color: "#475569", fontSize: 11 }}>
+          <div style={{ color: "#627A90", fontSize: 11 }}>
             {truncateText(description, 140)}
           </div>
         ) : null}
@@ -1900,7 +1908,7 @@ function FemaMeasureSelector({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
           {selectedText}
         </span>
-        <span style={{ marginLeft: 8, color: "#64748b", fontSize: 11 }}>▼</span>
+        <span style={{ marginLeft: 8, color: "#627A90", fontSize: 11 }}>▼</span>
       </button>
 
       {isOpen ? (
@@ -1960,13 +1968,13 @@ function FemaMeasureSelector({
           <div style={{ maxHeight: 420, overflowY: "auto", display: "grid", gap: 10, paddingRight: 2 }}>
             {groupedMeasures.length > 0 ? groupedMeasures.map((group, groupIndex) => (
               <details key={`fema-group-${group.group}`} open={groupIndex === 0}>
-                <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+                <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 700 }}>
                   {group.group} ({group.count})
                 </summary>
                 <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
                   {group.subgroups.map((subgroup, subgroupIndex) => (
                     <details key={`fema-subgroup-${group.group}-${subgroup.subgroup}`} open={groupIndex === 0 && subgroupIndex === 0}>
-                      <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 600 }}>
+                      <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 600 }}>
                         {subgroup.subgroup} ({subgroup.measures.length})
                       </summary>
                       <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
@@ -1978,7 +1986,7 @@ function FemaMeasureSelector({
               </details>
             )) : null}
             {!hasAnyMeasures ? (
-              <div style={{ color: "#64748b", fontSize: 11 }}>
+              <div style={{ color: "#627A90", fontSize: 11 }}>
                 No FEMA measures match the current search.
               </div>
             ) : null}
@@ -2036,16 +2044,16 @@ function PlacesMeasureSelector({
           textAlign: "left",
           padding: "8px 10px",
           borderRadius: 8,
-          border: `1px solid ${isSelected ? "#1d4ed8" : "#dbe3eb"}`,
-          background: isSelected ? "#eff6ff" : "#ffffff",
+          border: `1px solid ${isSelected ? "#3576ba" : "#dbe3eb"}`,
+          background: isSelected ? "#F7FAFD" : "#ffffff",
           cursor: "pointer",
         }}
       >
-        <div style={{ color: "#0f172a", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
+        <div style={{ color: "#123247", fontWeight: isSelected ? 700 : 600, fontSize: 12 }}>
           {optionLabel}
         </div>
         {description ? (
-          <div style={{ color: "#475569", fontSize: 11 }}>
+          <div style={{ color: "#627A90", fontSize: 11 }}>
             {truncateText(description, 140)}
           </div>
         ) : null}
@@ -2072,7 +2080,7 @@ function PlacesMeasureSelector({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
           {selectedText}
         </span>
-        <span style={{ marginLeft: 8, color: "#64748b", fontSize: 11 }}>▼</span>
+        <span style={{ marginLeft: 8, color: "#627A90", fontSize: 11 }}>▼</span>
       </button>
 
       {isOpen ? (
@@ -2132,7 +2140,7 @@ function PlacesMeasureSelector({
           <div style={{ maxHeight: 420, overflowY: "auto", display: "grid", gap: 10, paddingRight: 2 }}>
             {categoryGroups.length > 0 ? categoryGroups.map((group, index) => (
               <details key={`places-category-${group.category}`} open={index === 0}>
-                <summary style={{ cursor: "pointer", color: "#0f172a", fontWeight: 700 }}>
+                <summary style={{ cursor: "pointer", color: "#123247", fontWeight: 700 }}>
                   {group.category} ({group.measures.length})
                 </summary>
                 <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
@@ -2141,7 +2149,7 @@ function PlacesMeasureSelector({
               </details>
             )) : null}
             {totalVisibleMeasures === 0 ? (
-              <div style={{ color: "#64748b", fontSize: 11 }}>
+              <div style={{ color: "#627A90", fontSize: 11 }}>
                 No PLACES measures match the current search.
               </div>
             ) : null}
@@ -2184,9 +2192,9 @@ function MapToolbar({
     minWidth: 160,
     padding: "0 10px",
     borderRadius: 8,
-    border: "1px solid #C4D2E0",
+    border: "1px solid #BFD0E1",
     background: "#ffffff",
-    color: "#0F2D46",
+    color: "#123247",
     fontSize: 12,
     fontWeight: 600,
   };
@@ -2210,7 +2218,7 @@ function MapToolbar({
           fontSize: 11,
           fontWeight: 700,
           letterSpacing: 0.3,
-          color: "#0F2D46",
+          color: "#123247",
           textTransform: "uppercase",
         }}
       >
@@ -2282,7 +2290,7 @@ function MapToolbar({
           </span>
         </button>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#0F2D46", letterSpacing: 0.2 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#123247", letterSpacing: 0.2 }}>
             Base map
           </span>
           <select
@@ -2315,8 +2323,8 @@ function SviRankBar({ value }) {
           position: "relative",
           height: 12,
           borderRadius: 999,
-          background: "linear-gradient(90deg, #F2FBFB 0%, #42A6A8 65%, #0F2D46 100%)",
-          border: "1px solid #C4D2E0",
+          background: "linear-gradient(90deg, #F2FBFB 0%, #42A6A8 65%, #123247 100%)",
+          border: "1px solid #BFD0E1",
         }}
       >
         {[0.25, 0.5, 0.75].map((tick) => (
@@ -2328,7 +2336,7 @@ function SviRankBar({ value }) {
               left: `${tick * 100}%`,
               width: 1,
               height: 16,
-              background: "#64748b",
+              background: "#627A90",
               opacity: 0.75,
             }}
           />
@@ -2342,7 +2350,7 @@ function SviRankBar({ value }) {
               width: 14,
               height: 14,
               borderRadius: "50%",
-              background: "#0F2D46",
+              background: "#123247",
               border: "2px solid #ffffff",
               boxShadow: "0 0 0 1px rgba(15, 45, 70, 0.3)",
               transform: "translate(-50%, -50%)",
@@ -2355,7 +2363,7 @@ function SviRankBar({ value }) {
           display: "flex",
           justifyContent: "space-between",
           marginTop: 4,
-          color: "#64748b",
+          color: "#627A90",
           fontSize: 11,
           lineHeight: 1.2,
         }}
@@ -2456,7 +2464,7 @@ function MiniHistoryChart({
           y1={marginTop + plotHeight}
           x2={width - marginRight}
           y2={marginTop + plotHeight}
-          stroke="#475569"
+          stroke="#627A90"
           strokeWidth={1}
         />
         <line
@@ -2464,7 +2472,7 @@ function MiniHistoryChart({
           y1={marginTop}
           x2={marginLeft}
           y2={marginTop + plotHeight}
-          stroke="#475569"
+          stroke="#627A90"
           strokeWidth={1}
         />
 
@@ -2475,7 +2483,7 @@ function MiniHistoryChart({
               y1={tick.y}
               x2={width - marginRight}
               y2={tick.y}
-              stroke="#e2e8f0"
+              stroke="#E7EEF5"
               strokeWidth={1}
             />
             <text
@@ -2483,7 +2491,7 @@ function MiniHistoryChart({
               y={tick.y + 3}
               textAnchor="end"
               fontSize={9}
-              fill="#64748b"
+              fill="#627A90"
             >
               {tick.value.toFixed(1)}
             </text>
@@ -2497,7 +2505,7 @@ function MiniHistoryChart({
             y={height - 10}
             textAnchor="middle"
             fontSize={9}
-            fill="#64748b"
+            fill="#627A90"
           >
             {point.year}
           </text>
@@ -2522,7 +2530,7 @@ function MiniHistoryChart({
               cx={point.x}
               cy={yForValue(point.value)}
               r={2.8}
-              fill="#1d4ed8"
+              fill="#3576ba"
             />
           ))}
 
@@ -2547,7 +2555,7 @@ function MiniHistoryChart({
         </text>
       </svg>
       {!hasData ? (
-        <div style={{ fontSize: 11, color: "#64748b" }}>
+        <div style={{ fontSize: 11, color: "#627A90" }}>
           No values available in this period.
         </div>
       ) : null}
@@ -2677,7 +2685,7 @@ function CdcTrendChart({
             y1={marginTop + plotHeight}
             x2={width - marginRight}
             y2={marginTop + plotHeight}
-            stroke="#475569"
+            stroke="#627A90"
             strokeWidth={1}
           />
           <line
@@ -2685,7 +2693,7 @@ function CdcTrendChart({
             y1={marginTop}
             x2={marginLeft}
             y2={marginTop + plotHeight}
-            stroke="#475569"
+            stroke="#627A90"
             strokeWidth={1}
           />
 
@@ -2696,7 +2704,7 @@ function CdcTrendChart({
                 y1={tick.y}
                 x2={width - marginRight}
                 y2={tick.y}
-                stroke="#e2e8f0"
+                stroke="#E7EEF5"
                 strokeWidth={1}
               />
               <text
@@ -2704,7 +2712,7 @@ function CdcTrendChart({
                 y={tick.y + 3}
                 textAnchor="end"
                 fontSize={9}
-                fill="#64748b"
+                fill="#627A90"
               >
                 {formatTickValue(tick.value)}
               </text>
@@ -2717,7 +2725,7 @@ function CdcTrendChart({
               y1={marginTop}
               x2={xForIndex(points.findIndex((point) => point.fiscal_year === selectedPoint.fiscal_year))}
               y2={marginTop + plotHeight}
-              stroke="#0f766e"
+              stroke="#178b8b"
               strokeWidth={1.2}
               strokeDasharray="3 3"
               opacity={0.9}
@@ -2740,7 +2748,7 @@ function CdcTrendChart({
                   width={barWidth}
                   height={barHeight}
                   rx={2}
-                  fill={isSelected ? "#0f766e" : "#2c5f8a"}
+                  fill={isSelected ? "#178b8b" : "#3576ba"}
                   opacity={point.value == null ? 0.2 : 0.88}
                   onMouseMove={() => setHoveredYear(point.fiscal_year)}
                 />
@@ -2767,7 +2775,7 @@ function CdcTrendChart({
                   cx={xForIndex(index)}
                   cy={yForValue(point.value)}
                   r={isSelected ? 4.4 : 3}
-                  fill={isSelected ? "#0f766e" : "#1d4ed8"}
+                  fill={isSelected ? "#178b8b" : "#3576ba"}
                   stroke="#ffffff"
                   strokeWidth={isSelected ? 1.4 : 1}
                   onMouseMove={() => setHoveredYear(point.fiscal_year)}
@@ -2785,7 +2793,7 @@ function CdcTrendChart({
                 y={height - 10}
                 textAnchor="middle"
                 fontSize={9}
-                fill={isSelected ? "#0f766e" : "#64748b"}
+                fill={isSelected ? "#178b8b" : "#627A90"}
                 fontWeight={isSelected ? 700 : 500}
               >
                 {formatCdcYearShortLabel(point.fiscal_year)}
@@ -2827,7 +2835,7 @@ function CdcTrendChart({
         ) : null}
       </div>
       {!hasData ? (
-        <div style={{ fontSize: 11, color: "#64748b" }}>
+        <div style={{ fontSize: 11, color: "#627A90" }}>
           No values available for this fiscal-year range.
         </div>
       ) : null}
@@ -6214,7 +6222,10 @@ export default function App() {
           ),
         });
         const usdaValueText = formatTooltipValue(featureProps?.value, usdaUnitType);
-        return `${areaLine}<br/>${usdaLabel}: ${usdaValueText}`;
+        return (
+          `${areaLine}<br/>${usdaLabel}: ${usdaValueText}`
+          + formatTooltipExplanationLine("USDA Food Environment Atlas indicator for the active geography.")
+        );
       }
 
       if (isFemaDataSource) {
@@ -6253,16 +6264,30 @@ export default function App() {
           extra.push(`Hazard: ${hazardName}`);
         }
         const extraLine = extra.length > 0 ? `<br/>${extra.join(" • ")}` : "";
-        return `${areaLine}<br/>${femaLabel}: ${femaValueText}${extraLine}`;
+        return (
+          `${areaLine}<br/>${femaLabel}: ${femaValueText}${extraLine}`
+          + formatTooltipExplanationLine("FEMA National Risk Index value for planning-oriented comparison.")
+        );
       }
 
       if (isCmsDataSource) {
+        const cmsMeasureLabel = shortenMeasureLabelForTooltip(
+          pickFirstDefined(
+            featureProps?.measure_name,
+            featureProps?.measure,
+            getMeasureDisplayName(selectedMeasure),
+            selectedMeasureId
+          )
+        );
         const cmsUnitType = getCmsUnitType(selectedMeasure);
         const cmsValueText = Boolean(featureProps?.cms_is_suppressed)
           ? "Not shown"
           : formatCmsValue(featureProps?.cms_value, cmsUnitType, { includeUnits: true });
         const cmsYearText = String(featureProps?.year ?? selectedYear ?? "").trim() || "N/A";
-        return `${countyLine}<br/>${cmsValueText}<br/>Medicare Fee-for-Service • ${cmsYearText}`;
+        return (
+          `${countyLine}<br/>${cmsMeasureLabel}<br/>${formatTooltipMetaLine(cmsValueText, cmsYearText)}`
+          + formatTooltipExplanationLine("Medicare Fee-for-Service measure for enrolled beneficiaries; not all residents are represented.")
+        );
       }
 
       if (isTaggsDataSource) {
@@ -6325,6 +6350,7 @@ export default function App() {
               : ""
           )
           + (filterContext ? `<br/>Filters: ${filterContext}` : "")
+          + formatTooltipExplanationLine("TAGGS funding summary for the active fiscal year and selected filters.")
         );
       }
 
@@ -6423,6 +6449,7 @@ export default function App() {
           + (timeframeLine ? `<br/>${timeframeLine}` : "")
           + (programAreaLine && programAreaLine !== "All CDC Programs" ? `<br/>Program area: ${programAreaLine}` : "")
           + (fundingTypeLine && fundingTypeLine !== "Total CDC Funding" ? `<br/>Funding type: ${fundingTypeLine}` : "")
+          + formatTooltipExplanationLine("CDC funding summary for the active geography, funding mode, and filter context.")
         );
       }
 
@@ -6443,7 +6470,10 @@ export default function App() {
           featureProps?.dh_coverage_pct ?? (domain === "dh" ? currentCoveragePct : undefined)
         );
         const statusLine = `Primary: ${pcStatus} • Dental: ${dhStatus} • Mental: ${mhStatus}`;
-        return `${countyLine}<br/>HPSA coverage<br/>${statusLine}`;
+        return (
+          `${countyLine}<br/>HPSA coverage<br/>${statusLine}`
+          + formatTooltipExplanationLine("HRSA shortage designation and county coverage summary.")
+        );
       }
 
       if (isSviDataSource) {
@@ -6461,7 +6491,10 @@ export default function App() {
           ? "No data"
           : `Percentile: ${sviValue.toFixed(sviValue <= 1 ? 2 : 1)}`;
         const sviYearText = String(featureProps?.year ?? selectedSviYear ?? "").trim();
-        return `${countyLine}<br/>${sviLabel}<br/>${formatTooltipMetaLine(percentileText, sviYearText)}`;
+        return (
+          `${countyLine}<br/>${sviLabel}<br/>${formatTooltipMetaLine(percentileText, sviYearText)}`
+          + formatTooltipExplanationLine("Relative percentile rank where higher values indicate higher vulnerability.")
+        );
       }
 
       if (isAcsDataSource) {
@@ -6486,7 +6519,10 @@ export default function App() {
         const acsPeriod = formatYearWindowDisplay(
           featureProps?.year_window ?? selectedYearWindow ?? featureProps?.year ?? ""
         );
-        return `${countyLine}<br/>${acsLabel}<br/>${formatTooltipMetaLine(acsValueText, acsPeriod)}`;
+        return (
+          `${countyLine}<br/>${acsLabel}<br/>${formatTooltipMetaLine(acsValueText, acsPeriod)}`
+          + formatTooltipExplanationLine("ACS-based contextual indicator for the selected geography and period.")
+        );
       }
 
       const placesLabelBase = shortenMeasureLabelForTooltip(
@@ -6507,7 +6543,10 @@ export default function App() {
         "percent"
       );
       const placesYear = String(featureProps?.year ?? selectedYear ?? "").trim();
-      return `${countyLine}<br/>${placesLabel}<br/>${formatTooltipMetaLine(placesValueText, placesYear)}`;
+      return (
+        `${countyLine}<br/>${placesLabel}<br/>${formatTooltipMetaLine(placesValueText, placesYear)}`
+        + formatTooltipExplanationLine("Modeled adult prevalence estimate from CDC PLACES.")
+      );
     },
     [
       isAcsDataSource,
@@ -6548,13 +6587,13 @@ export default function App() {
           if (isUsdaDataSource || isFemaDataSource) {
             layer.setStyle({
               weight: 2,
-              color: "#0f172a",
+              color: "#123247",
               opacity: 1,
               lineJoin: "round",
               lineCap: "round",
             });
           } else {
-            layer.setStyle({ weight: tractsActive ? 1.2 : 2, color: "#0f172a" });
+            layer.setStyle({ weight: tractsActive ? 1.2 : 2, color: "#123247" });
           }
         }
         const tooltipHtml = buildCountyHoverTooltipHtml(featureProps);
@@ -8781,18 +8820,18 @@ export default function App() {
       : null;
   const floatingPanelStyle = {
     background: "#ffffff",
-    border: "1px solid #E3E8ED",
-    borderRadius: 10,
-    boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
+    border: "1px solid #D7E2EE",
+    borderRadius: 18,
+    boxShadow: "0 12px 34px rgba(18, 50, 71, 0.08)",
   };
   const controlSelectStyle = {
     width: "100%",
     minWidth: 0,
-    padding: "7px 9px",
-    borderRadius: 6,
-    border: "1px solid #C4D2E0",
+    padding: "9px 11px",
+    borderRadius: 12,
+    border: "1px solid #BFD0E1",
     background: "#ffffff",
-    color: "#0F2D46",
+    color: "#123247",
     fontSize: 12,
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -8804,10 +8843,10 @@ export default function App() {
     right: 8,
     width: 24,
     height: 24,
-    borderRadius: 6,
-    border: "1px solid #C4D2E0",
+    borderRadius: 999,
+    border: "1px solid #BFD0E1",
     background: "#ffffff",
-    color: "#2C5F8A",
+    color: "#3576BA",
     fontWeight: 700,
     cursor: "pointer",
     lineHeight: "20px",
@@ -8823,8 +8862,8 @@ export default function App() {
         style={{ width: "100vw", height: mapViewportHeight }}
       >
         <div className="chip-brand-line">
-          <span>Community Health Intelligence Platform (CHIP)</span>
-          <span>Local Data. Strategic Insight.</span>
+          <strong>{APP_NAME}</strong>
+          <span>Local data. Strategic Insight.</span>
         </div>
         <div
           ref={measurePanelRef}
@@ -8836,7 +8875,7 @@ export default function App() {
             left: 16,
             right: compactOverlayLayout ? 16 : "auto",
             width: compactOverlayLayout ? "auto" : "min(460px, calc(100vw - 32px))",
-            padding: "12px 14px",
+            padding: "14px 16px",
             fontSize: 12,
             maxWidth: "min(560px, calc(100vw - 32px))",
             maxHeight: (isCdcDataSource || isTaggsDataSource) ? cdcMeasurePanelMaxHeight : undefined,
@@ -8854,8 +8893,8 @@ export default function App() {
         >
           {isMeasurePanelMinimized ? "+" : "\u2212"}
         </button>
-        <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#0F2D46" }}>
-          Measure controls {isCountyLoading || isTractLoading || isUsdaHeatLoading ? "- Loading..." : ""}
+        <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#123247" }}>
+          Analytical controls {isCountyLoading || isTractLoading || isUsdaHeatLoading ? "- updating..." : ""}
         </div>
         {!isMeasurePanelMinimized ? (
           <>
@@ -8920,7 +8959,7 @@ export default function App() {
                     </option>
                   ))}
                 </select>
-                <span style={{ color: "#475569", fontSize: 11 }}>
+                <span style={{ color: "#627A90", fontSize: 11 }}>
                   County-only quartile tiers by designated-county score distribution.
                 </span>
                 {hpsaChoroplethError ? (
@@ -9056,7 +9095,7 @@ export default function App() {
             )}
             {isCdcDataSource ? (
               <>
-                <div style={{ fontWeight: 700, color: "#0F2D46", marginTop: 2 }}>Time</div>
+                <div style={{ fontWeight: 700, color: "#123247", marginTop: 2 }}>Time</div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>Fiscal year</span>
                   <select
@@ -9087,7 +9126,7 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <div style={{ fontWeight: 700, color: "#0F2D46", marginTop: 4 }}>Funding Attributes</div>
+                <div style={{ fontWeight: 700, color: "#123247", marginTop: 4 }}>Funding Attributes</div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>Funding type</span>
                   <select
@@ -9145,7 +9184,7 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <div style={{ fontWeight: 700, color: "#0F2D46", marginTop: 4 }}>Recipient / Program</div>
+                <div style={{ fontWeight: 700, color: "#123247", marginTop: 4 }}>Recipient / Program</div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>CDC Center / Agency Area</span>
                   <select
@@ -9208,8 +9247,8 @@ export default function App() {
               </label>
             ) : (
 	            isUsdaDataSource ? (
-	              <div style={{ display: "grid", gap: 4, color: "#475569" }}>
-	                <div style={{ fontWeight: 600, color: "#0F2D46" }}>Food Environment</div>
+	              <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
+	                <div style={{ fontWeight: 600, color: "#123247" }}>Food Environment</div>
 	                <div>USDA Food Environment Atlas (July 2025).</div>
 	                <div style={{ fontSize: 11 }}>
 	                  Category: {String(selectedMeasure?.category ?? "Other")}
@@ -9224,9 +9263,9 @@ export default function App() {
 	                      alignItems: "center",
 	                      padding: "2px 8px",
 	                      borderRadius: 999,
-	                      border: "1px solid #bfdbfe",
-	                      background: "#eff6ff",
-	                      color: "#1d4ed8",
+	                      border: "1px solid #D7E2EE",
+	                      background: "#F7FAFD",
+	                      color: "#3576BA",
 	                      fontSize: 11,
 	                      fontWeight: 600,
 	                    }}
@@ -9257,8 +9296,8 @@ export default function App() {
                   ) : null}
 	              </div>
 	            ) : isFemaDataSource ? (
-	              <div style={{ display: "grid", gap: 4, color: "#475569" }}>
-	                <div style={{ fontWeight: 600, color: "#0F2D46" }}>FEMA Risk Index</div>
+	              <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
+	                <div style={{ fontWeight: 600, color: "#123247" }}>FEMA Risk Index</div>
 	                <div>
 	                  {String(femaCatalogMeta?.dataset_name ?? "FEMA National Risk Index")}
 	                  {femaCatalogMeta?.dataset_vintage ? ` (${femaCatalogMeta.dataset_vintage})` : ""}
@@ -9276,9 +9315,9 @@ export default function App() {
 	                      alignItems: "center",
 	                      padding: "2px 8px",
 	                      borderRadius: 999,
-	                      border: "1px solid #bfdbfe",
-	                      background: "#eff6ff",
-	                      color: "#1d4ed8",
+	                      border: "1px solid #D7E2EE",
+	                      background: "#F7FAFD",
+	                      color: "#3576BA",
 	                      fontSize: 11,
 	                      fontWeight: 600,
 	                    }}
@@ -9288,8 +9327,8 @@ export default function App() {
 	                </div>
 	              </div>
 	            ) : isCdcDataSource ? (
-	              <div style={{ display: "grid", gap: 4, color: "#475569" }}>
-	                <div style={{ fontWeight: 600, color: "#0F2D46" }}>CDC Funding</div>
+	              <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
+	                <div style={{ fontWeight: 600, color: "#123247" }}>CDC Funding</div>
 	                <div>
 	                  {cdcRenderLevel === "national"
                       ? "National summary"
@@ -9298,10 +9337,10 @@ export default function App() {
                         : "County totals"} • {selectedMeasureDisplayName || "CDC funding metric"} • FY {cdcFiscalYear || "All Years"}
 	                </div>
 	                <div style={{ fontSize: 11 }}>
-	                  CHIP now uses one default funding methodology. USAspending provides the award and transaction backbone; TAGGS adds CDC program-area enrichment where it improves classification and labeling.
+	                  USAspending provides the award and transaction backbone. TAGGS adds CDC program-area enrichment where the source evidence supports classification and labeling.
 	                </div>
 		                <div style={{ fontSize: 11 }}>
-		                  Funding type controls separate total CDC funding, awards, subawards, and emergency versus non-emergency patterns without changing methodology.
+		                  Funding type controls separate total CDC funding, awards, subawards, and emergency versus non-emergency patterns without changing the underlying methodology.
 		                </div>
 	                {cdcFilterOptions?.source_blend?.enrichment_strategy?.aln_match_share_pct ? (
 	                  <div style={{ fontSize: 11 }}>
@@ -9310,13 +9349,13 @@ export default function App() {
 	                ) : null}
 	              </div>
               ) : isTaggsDataSource ? (
-                <div style={{ display: "grid", gap: 4, color: "#475569" }}>
-                  <div style={{ fontWeight: 600, color: "#0F2D46" }}>TAGGS Funding</div>
+                <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
+                  <div style={{ fontWeight: 600, color: "#123247" }}>TAGGS Funding</div>
                   <div>
                     State totals • FY {taggsFiscalYear || "Latest"} • {selectedMeasureDisplayName || "TAGGS metric"}
                   </div>
                   {taggsNormalizationApplied ? (
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#0f766e" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#178B8B" }}>
                       {taggsNormalizationStatusLabel || "Profile-aligned"} • Profile-scope reconstructed and benchmarked to CDC Funding Profiles
                     </div>
                   ) : taggsNormalizeData && taggsNormalizationConstraintText ? (
@@ -9328,7 +9367,7 @@ export default function App() {
                     TAGGS values reflect funding/award actions and may differ from official CDC profile PDF totals.
                   </div>
                   <div style={{ fontSize: 11 }}>
-                    Funding profile grouping uses CHIP's effective CAN mapping: CDC-profile-assisted when available, deterministic fallback inference when needed, and unknown buckets for unresolved CANs.
+                    Funding profile grouping uses CHIP&apos;s effective CAN mapping: CDC-profile-assisted when available, deterministic fallback inference when needed, and unknown buckets for unresolved CANs.
                   </div>
                 </div>
 	            ) : (
@@ -9398,7 +9437,7 @@ export default function App() {
 	                <div style={{ display: "grid", gap: 4 }}>
 	                  <div style={{ fontWeight: 600 }}>Data type</div>
 	                  <div>Medicare Fee-for-Service reported value</div>
-	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                  <div style={{ color: "#627A90", fontSize: 11 }}>
 	                    County-level only (no tracts).
 	                  </div>
 	                </div>
@@ -9406,7 +9445,7 @@ export default function App() {
 	                <div style={{ display: "grid", gap: 4 }}>
 	                  <div style={{ fontWeight: 600 }}>Data type</div>
 	                  <div>USDA Food Environment indicator value</div>
-	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                  <div style={{ color: "#627A90", fontSize: 11 }}>
 	                    Values are selected from USDA variable metadata.
 	                  </div>
 	                </div>
@@ -9414,7 +9453,7 @@ export default function App() {
 	                <div style={{ display: "grid", gap: 4 }}>
 	                  <div style={{ fontWeight: 600 }}>Data type</div>
 	                  <div>FEMA National Risk Index indicator value</div>
-	                  <div style={{ color: "#64748b", fontSize: 11 }}>
+	                  <div style={{ color: "#627A90", fontSize: 11 }}>
 	                    Includes scores, ratings, expected annual loss, and hazard-specific indicators.
 	                  </div>
 	                </div>
@@ -9422,16 +9461,16 @@ export default function App() {
 		                <div style={{ display: "grid", gap: 4 }}>
 		                  <div style={{ fontWeight: 600 }}>Data type</div>
 		                  <div>TAGGS funding/award action metric</div>
-		                  <div style={{ color: "#64748b", fontSize: 11 }}>
+		                  <div style={{ color: "#627A90", fontSize: 11 }}>
 		                    State-only choropleth for this phase. Use map state selection to open a full funding profile report.
 		                  </div>
 		                </div>
 		              ) : isCdcDataSource ? (
 		                <div style={{ display: "grid", gap: 6 }}>
 		                  <div style={{ fontWeight: 600 }}>Data type</div>
-		                  <div>CDC funding intelligence measure</div>
-		                  <div style={{ color: "#64748b", fontSize: 11 }}>
-		                    The map is always powered by the CHIP funding model. Metrics and filters express the active methodology directly.
+		                  <div>CDC funding summary measure</div>
+		                  <div style={{ color: "#627A90", fontSize: 11 }}>
+		                    The map is powered by the CHIP funding model. Metrics and filters express the active methodology directly.
 		                  </div>
 		                </div>
 		              ) : (
@@ -9464,7 +9503,7 @@ export default function App() {
 	              )
 	            ) : null}
             {measures.length === 0 ? null : (
-              <div style={{ color: "#475569" }}>
+              <div style={{ color: "#627A90" }}>
                 {selectedMeasureDisplayName}
               </div>
             )}
@@ -9474,7 +9513,7 @@ export default function App() {
         ) : null}
       </div>
 
-        <div className="map-wrapper" style={{ height: "100%", width: "100%", background: "#F4F6F8" }}>
+        <div className="map-wrapper" style={{ height: "100%", width: "100%", background: "#F2F6FB" }}>
           <MapContainer
             center={DEFAULT_CENTER}
             zoom={DEFAULT_ZOOM}
@@ -9573,10 +9612,13 @@ export default function App() {
                     interactive={false}
                     pane="usda-heat-hover"
                   >
-                    <Tooltip direction="top" opacity={0.95} permanent>
+                    <Tooltip direction="top" opacity={0.95} permanent className="pdo-map-tooltip">
                       <div>{`${usdaLegendLabel}: ${usdaHeatHoverDisplayValue}`}</div>
-                      <div style={{ color: "#475569" }}>
+                      <div style={{ color: "#627A90" }}>
                         Aggregated from {usdaHeatHoverTractCount} tracts
+                      </div>
+                      <div style={{ color: "#627A90" }}>
+                        Density surface scaled to the current view for relative comparison.
                       </div>
                     </Tooltip>
                   </CircleMarker>
@@ -9628,18 +9670,18 @@ export default function App() {
             top: 24,
             right: rightOverlayInset + 8,
             background: "#ffffff",
-            color: "#0F2D46",
-            border: "1px solid #E3E8ED",
+            color: "#123247",
+            border: "1px solid #D7E2EE",
             padding: "10px 16px",
             borderRadius: 999,
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: 0.2,
-            boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
+            boxShadow: "0 12px 30px rgba(18, 50, 71, 0.08)",
             zIndex: 2100,
           }}
         >
-          Loading...
+          Updating data view...
         </div>
       ) : null}
 
@@ -9668,12 +9710,12 @@ export default function App() {
         >
           {isLegendPanelMinimized ? "+" : "\u2212"}
         </button>
-        <div style={{ marginBottom: 8, paddingRight: 30, color: "#0F2D46" }}>
+        <div style={{ marginBottom: 8, paddingRight: 30, color: "#123247" }}>
           <div style={{ fontWeight: 700 }}>
             {legendTitle}
           </div>
           {legendSubtitle ? (
-            <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#627A90", marginTop: 2 }}>
               {legendSubtitle}
             </div>
           ) : null}
@@ -9688,21 +9730,21 @@ export default function App() {
                   height: 10,
                   borderRadius: 999,
                   background: USDA_HEAT_RAMP_CSS,
-                  border: "1px solid #C4D2E0",
+                  border: "1px solid #BFD0E1",
                 }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#475569", fontSize: 11 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#627A90", fontSize: 11 }}>
                 <span>Lower (p10)</span>
                 <span>Higher (p90)</span>
               </div>
-              <div style={{ color: "#475569" }}>
+              <div style={{ color: "#627A90" }}>
                 This heat map shows where tract values are higher or lower in the current view. Zoom in for tract-level boundaries.
               </div>
-              <div style={{ color: "#475569" }}>
+              <div style={{ color: "#627A90" }}>
                 Colors are scaled to the current view to avoid distortion from outliers.
               </div>
               {showUsdaHeatDebug ? (
-                <div style={{ color: "#64748b", fontSize: 11 }}>
+                <div style={{ color: "#627A90", fontSize: 11 }}>
                   points={usdaHeatStats?.pointCount ?? 0}
                   {Number.isFinite(usdaHeatStats?.p10) ? ` • p10=${Number(usdaHeatStats.p10).toFixed(3)}` : ""}
                   {Number.isFinite(usdaHeatStats?.p90) ? ` • p90=${Number(usdaHeatStats.p90).toFixed(3)}` : ""}
@@ -9725,13 +9767,13 @@ export default function App() {
                         height: 12,
                         background: color,
                         borderRadius: 2,
-                        border: "1px solid #C4D2E0",
+                        border: "1px solid #BFD0E1",
                       }}
                     />
                     <span>
                       <div>{row.label}</div>
                       {row.subLabel ? (
-                        <div style={{ color: "#64748b", fontSize: 11 }}>{row.subLabel}</div>
+                        <div style={{ color: "#627A90", fontSize: 11 }}>{row.subLabel}</div>
                       ) : null}
                     </span>
                   </div>
@@ -9756,107 +9798,107 @@ export default function App() {
                   height: 12,
                   background: NO_DATA_COLOR,
                   borderRadius: 2,
-                  border: "1px solid #C4D2E0",
+                  border: "1px solid #BFD0E1",
                 }}
               />
 	              <span>{isCmsDataSource ? "Not shown" : "No data"}</span>
 	            </div>
 	          ) : null}
           {isAcsDataSource && acsLegend ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               n={acsLegend.n ?? 0}, no data={acsLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isCdcDataSource && cdcLegend ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               n={cdcLegend.n ?? 0}, no data={cdcLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isTaggsDataSource && taggsLegend ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               n={taggsLegend.n ?? 0}, no data={taggsLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isCdcDataSource && cdcNationalSummary ? (
-            <div style={{ color: "#334155", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 2 }}>
+            <div style={{ color: "#334155", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 2 }}>
               <div style={{ fontWeight: 600 }}>Nationwide summary</div>
               <div>Funding mode: {cdcNationalFundingModeLabel}</div>
               <div>Nationwide total funding: {cdcNationalTotalText}</div>
               <div>Nationwide funding per capita: {cdcNationalPerCapitaText}</div>
-              <div style={{ color: "#64748b", fontSize: 11 }}>
+              <div style={{ color: "#627A90", fontSize: 11 }}>
                 Population denominator: {cdcNationalPopulationText}
               </div>
             </div>
           ) : null}
           {isUsdaDataSource && usdaLegend ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               n={usdaLegend.n ?? 0}, no data={usdaLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isFemaDataSource && femaLegend ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               n={femaLegend.n ?? 0}, no data={femaLegend.noDataCount ?? 0}
             </div>
           ) : null}
           {isUsdaDataSource && isUsdaHeatMode && usdaHeatLayer ? (
-            <div style={{ color: "#64748b" }}>
+            <div style={{ color: "#627A90" }}>
               cells={Array.isArray(usdaHeatLayer?.points) ? usdaHeatLayer.points.length : 0}
             </div>
           ) : null}
           {isUsdaDataSource && usdaLegendDescription ? (
-            <div style={{ color: "#475569" }}>{usdaLegendDescription}</div>
+            <div style={{ color: "#627A90" }}>{usdaLegendDescription}</div>
           ) : null}
           {isUsdaDataSource && !isUsdaHeatMode ? (
-            <div style={{ color: "#475569" }}>{usdaLegendAggText}</div>
+            <div style={{ color: "#627A90" }}>{usdaLegendAggText}</div>
           ) : null}
           {isUsdaDataSource && usdaMapMessage ? (
-            <div style={{ color: "#475569" }}>{usdaMapMessage}</div>
+            <div style={{ color: "#627A90" }}>{usdaMapMessage}</div>
           ) : null}
           {isCdcDataSource && cdcMapMessage ? (
-            <div style={{ color: "#475569" }}>{cdcMapMessage}</div>
+            <div style={{ color: "#627A90" }}>{cdcMapMessage}</div>
           ) : null}
           {isTaggsDataSource && taggsMapMessage ? (
-            <div style={{ color: "#475569" }}>{taggsMapMessage}</div>
+            <div style={{ color: "#627A90" }}>{taggsMapMessage}</div>
           ) : null}
           {isCdcDataSource && cdcLegend?.note ? (
-            <div style={{ color: "#475569" }}>{String(cdcLegend.note)}</div>
+            <div style={{ color: "#627A90" }}>{String(cdcLegend.note)}</div>
           ) : null}
           {isTaggsDataSource && taggsLegend?.note ? (
-            <div style={{ color: "#475569" }}>{String(taggsLegend.note)}</div>
+            <div style={{ color: "#627A90" }}>{String(taggsLegend.note)}</div>
           ) : null}
           {isCdcDataSource ? (
-            <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 4 }}>
+            <div style={{ color: "#627A90", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 4 }}>
               <div>
-                The CHIP funding model uses USAspending as the transactional backbone and TAGGS as enrichment for CDC center, program-area, and labeling context when match quality supports it.
+                USAspending provides the transactional backbone. TAGGS contributes CDC center, program-area, and labeling enrichment where the available evidence supports classification.
               </div>
               <div>
-                Funding type filters keep one methodology in place while letting users separate awards, subawards, combined activity, and emergency versus non-emergency patterns.
+                Funding type filters keep one methodology in place while allowing the map to separate awards, subawards, combined activity, and emergency versus non-emergency patterns.
               </div>
               <div>
-                Emergency response funding is classified centrally from USAspending emergency fields plus CHIP fallback rules documented in the CDC funding service.
+                Emergency response funding is classified from USAspending emergency fields together with documented fallback rules in the CDC funding service.
               </div>
             </div>
           ) : isTaggsDataSource ? (
-            <div style={{ color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "grid", gap: 4 }}>
+            <div style={{ color: "#627A90", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 4 }}>
               <div>
-                TAGGS values reflect award/funding actions and may differ from official CDC funding profile PDFs due to methodology differences.
+                TAGGS values reflect award and funding actions and may differ from official CDC funding profile PDFs because the source products are not identical.
               </div>
               <div>
-                Category and sub-category grouping use CHIP's effective CAN mapping, not a simple Program Office or Assistance Listing Title fallback alone.
+                Category and sub-category grouping use CHIP&apos;s effective CAN mapping rather than a simple Program Office or Assistance Listing Title fallback alone.
               </div>
             </div>
           ) : null}
           {isFemaDataSource && femaLegendDescription ? (
-            <div style={{ color: "#475569" }}>{femaLegendDescription}</div>
+            <div style={{ color: "#627A90" }}>{femaLegendDescription}</div>
           ) : null}
           {isFemaDataSource && femaLegendNote ? (
-            <div style={{ color: "#475569" }}>{femaLegendNote}</div>
+            <div style={{ color: "#627A90" }}>{femaLegendNote}</div>
           ) : null}
           {isFemaDataSource && femaMapMessage ? (
-            <div style={{ color: "#475569" }}>{femaMapMessage}</div>
+            <div style={{ color: "#627A90" }}>{femaMapMessage}</div>
           ) : null}
 	          {isHpsaDataSource && hpsaQuartiles ? (
-	            <div style={{ color: "#64748b" }}>
+	            <div style={{ color: "#627A90" }}>
 	              designated counties n={hpsaQuartiles.n_counties ?? 0}
 	              {hpsaQuartiles.as_of_date ? `, as-of ${hpsaQuartiles.as_of_date}` : ""}
 	            </div>
@@ -9866,7 +9908,7 @@ export default function App() {
 	              style={{
 	                marginTop: 6,
 	                paddingTop: 8,
-	                borderTop: "1px solid #e2e8f0",
+	                borderTop: "1px solid #E7EEF5",
 	                display: "grid",
 	                gap: 8,
 	                color: "#334155",
@@ -10033,7 +10075,7 @@ export default function App() {
                   {femaMeasureDescription ? (
                     <p>{femaMeasureDescription}</p>
                   ) : null}
-                  <p style={{ color: "#475569" }}>
+                  <p style={{ color: "#627A90" }}>
                     FEMA NRI supports planning and broad comparison, and is not a substitute for local engineering-grade risk assessment.
                   </p>
                 </>
@@ -10115,7 +10157,7 @@ export default function App() {
           style={{
             marginTop: 12,
             paddingTop: 10,
-            borderTop: "1px solid #e2e8f0",
+            borderTop: "1px solid #E7EEF5",
             display: "grid",
             gap: 6,
           }}
@@ -10125,16 +10167,16 @@ export default function App() {
               {isHpsaDataSource ? (
                 <>
                   {selectedGeoLevel !== "county" ? (
-                    <div style={{ color: "#64748b" }}>Select a county to view HPSA details.</div>
+                    <div style={{ color: "#627A90" }}>Select a county to view HPSA details.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>
                         Healthcare Access — {hpsaDomainLabel}
                       </div>
-                      <div style={{ color: "#475569" }}>{hpsaCountyStateLine}</div>
+                      <div style={{ color: "#627A90" }}>{hpsaCountyStateLine}</div>
 
                       {isHpsaDomainDetailsLoading ? (
-                        <div style={{ color: "#64748b" }}>Loading county details...</div>
+                        <div style={{ color: "#627A90" }}>Loading county details...</div>
                       ) : hpsaDomainDetailsError ? (
                         <div style={{ color: "#b91c1c" }}>{hpsaDomainDetailsError}</div>
                       ) : (
@@ -10162,12 +10204,12 @@ export default function App() {
                               {hpsaSeverityLine}
                             </span>
                           </div>
-                          <div style={{ color: "#475569" }}>
+                          <div style={{ color: "#627A90" }}>
                             Federally designated HPSA: {hpsaIsDesignated ? "Yes" : "No"}
                             {!hpsaIsDesignated ? " (Not designated)" : ""}
                           </div>
                           {hpsaIsDesignated ? (
-                            <div style={{ color: "#475569" }}>HPSA score: {hpsaSelectedScoreText}</div>
+                            <div style={{ color: "#627A90" }}>HPSA score: {hpsaSelectedScoreText}</div>
                           ) : null}
 
                           {hpsaIsDesignated ? (
@@ -10199,7 +10241,7 @@ export default function App() {
                               {toFiniteNumericValue(hpsaDomainDetails?.fte) != null ? (
                                 <div>Provider FTE: {hpsaSelectedFteText}</div>
                               ) : null}
-                              <div style={{ color: "#64748b" }}>
+                              <div style={{ color: "#627A90" }}>
                                 A higher ratio generally means fewer providers relative to the population.
                               </div>
                             </div>
@@ -10211,13 +10253,13 @@ export default function App() {
                               <div>Population covered: {hpsaPopulationCoveredText}</div>
                               <div>Coverage: {hpsaCoveragePercentText} of county population</div>
                               {hpsaCoverageInterpretationLine ? (
-                                <div style={{ color: "#64748b" }}>{hpsaCoverageInterpretationLine}</div>
+                                <div style={{ color: "#627A90" }}>{hpsaCoverageInterpretationLine}</div>
                               ) : null}
                             </div>
                           ) : null}
 
-                          <div style={{ display: "grid", gap: 4, color: "#64748b", fontSize: 11 }}>
-                            <div style={{ fontWeight: 600, color: "#475569" }}>How severity is defined</div>
+                          <div style={{ display: "grid", gap: 4, color: "#627A90", fontSize: 11 }}>
+                            <div style={{ fontWeight: 600, color: "#627A90" }}>How severity is defined</div>
                             <div>Quartiles among designated counties (n={hpsaQuartiles?.n_counties ?? 0}).</div>
                             {hpsaTierRanges.map((tierRange) => (
                               <div key={`hpsa-tier-definition-${tierRange.tier}`}>
@@ -10227,7 +10269,7 @@ export default function App() {
                             <div>As of: {hpsaAsOfText ? String(hpsaAsOfText) : "Unknown"}</div>
                           </div>
 
-                          <div style={{ color: "#64748b", fontSize: 11 }}>
+                          <div style={{ color: "#627A90", fontSize: 11 }}>
                             Data Notes: how these values are calculated
                           </div>
                           <details>
@@ -10255,14 +10297,14 @@ export default function App() {
                   style={{
                     marginTop: 6,
                     paddingTop: 8,
-                    borderTop: "1px solid #e2e8f0",
+                    borderTop: "1px solid #E7EEF5",
                     display: "grid",
                     gap: 4,
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>HPSA county coverage</div>
                   {isHpsaLoading ? (
-                    <div style={{ color: "#64748b" }}>Loading HPSA summary...</div>
+                    <div style={{ color: "#627A90" }}>Loading HPSA summary...</div>
                   ) : hpsaError ? (
                     <div style={{ color: "#b91c1c" }}>{hpsaError}</div>
                   ) : hpsaSummary ? (
@@ -10289,7 +10331,7 @@ export default function App() {
                       </details>
                     </>
                   ) : (
-                    <div style={{ color: "#64748b" }}>No HPSA summary available for this county.</div>
+                    <div style={{ color: "#627A90" }}>No HPSA summary available for this county.</div>
                   )}
                 </div>
               ) : null}
@@ -10309,7 +10351,7 @@ export default function App() {
                   style={{
                     marginTop: 6,
                     paddingTop: 8,
-                    borderTop: "1px solid #e2e8f0",
+                    borderTop: "1px solid #E7EEF5",
                     display: "grid",
                     gap: 4,
                   }}
@@ -10329,7 +10371,7 @@ export default function App() {
                     )}
                   </div>
                   {isHistoryLoading ? (
-                    <div style={{ color: "#64748b" }}>Loading history...</div>
+                    <div style={{ color: "#627A90" }}>Loading history...</div>
                   ) : null}
                   {historyError ? (
                     <div style={{ color: "#b91c1c" }}>{historyError}</div>
@@ -10342,7 +10384,7 @@ export default function App() {
                         endYear={HISTORY_END_YEAR}
                         yLabel="Value"
                       />
-                      <div style={{ fontSize: 11, color: "#64748b" }}>
+                      <div style={{ fontSize: 11, color: "#627A90" }}>
                         {historySeries.map((point) => (
                           <span
                             key={`history-summary-${point.year}`}
@@ -10358,7 +10400,7 @@ export default function App() {
               ) : null}
             </>
           ) : (
-            <div style={{ color: "#64748b" }}>Click a {currentLayerLabel}.</div>
+            <div style={{ color: "#627A90" }}>Click a {currentLayerLabel}.</div>
           )}
         </div>
           </>
@@ -10384,6 +10426,7 @@ export default function App() {
         onClose={() => setProfilePanelOpen(false)}
       />
       </div>
+      <Footer />
     </div>
   );
 }

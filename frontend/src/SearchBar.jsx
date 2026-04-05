@@ -363,13 +363,13 @@ export default function SearchBar({
             left: "50%",
             bottom: 74,
             transform: "translateX(-50%)",
-            background: "rgba(127, 29, 29, 0.96)",
+            background: "rgba(18, 50, 71, 0.94)",
             color: "white",
-            borderRadius: 8,
+            borderRadius: 12,
             fontSize: 12,
             fontWeight: 600,
             padding: "8px 12px",
-            boxShadow: "0 6px 16px rgba(15, 23, 42, 0.32)",
+            boxShadow: "0 12px 28px rgba(18, 50, 71, 0.2)",
             maxWidth: "90%",
             textAlign: "center",
             whiteSpace: "nowrap",
@@ -387,9 +387,9 @@ export default function SearchBar({
             right: 0,
             bottom: 58,
             background: "white",
-            borderRadius: 10,
-            border: "1px solid #E3E8ED",
-            boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
+            borderRadius: 18,
+            border: "1px solid #D7E2EE",
+            boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
             overflow: "hidden",
           }}
         >
@@ -400,12 +400,12 @@ export default function SearchBar({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                color: "#334155",
+                color: "#4d6880",
                 fontSize: 13,
               }}
             >
               <span className="search-spinner" />
-              Loading suggestions...
+              Searching geography references...
             </div>
           ) : null}
 
@@ -422,16 +422,16 @@ export default function SearchBar({
                   padding: "10px 14px",
                   textAlign: "left",
                   border: "none",
-                  borderBottom: "1px solid #e2e8f0",
+                  borderBottom: "1px solid #E5EDF5",
                   cursor: "pointer",
                   display: "grid",
                   gap: 2,
                 }}
               >
-                <span style={{ fontSize: 13, color: "#0f172a" }}>
+                <span style={{ fontSize: 13, color: "#123247", fontWeight: 700 }}>
                   {suggestion.label}
                 </span>
-                <span style={{ fontSize: 11, color: "#475569" }}>
+                <span style={{ fontSize: 11, color: "#627A90" }}>
                   {suggestion.subtitle}
                 </span>
               </button>
@@ -442,11 +442,11 @@ export default function SearchBar({
             <div
               style={{
                 padding: "12px 14px",
-                color: "#64748b",
+                color: "#627A90",
                 fontSize: 13,
               }}
             >
-              No suggestions found.
+              No matching counties or places were found.
             </div>
           ) : null}
         </div>
@@ -461,10 +461,10 @@ export default function SearchBar({
           alignItems: "center",
           gap: 8,
           padding: 8,
-          borderRadius: 10,
-          border: "1px solid #E3E8ED",
+          borderRadius: 18,
+          border: "1px solid #D7E2EE",
           background: "#ffffff",
-          boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
+          boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
         }}
       >
         <input
@@ -486,7 +486,7 @@ export default function SearchBar({
               selectSuggestion(suggestions[0]);
             }
           }}
-          placeholder="Search address, ZIP, or county (e.g., Fulton County, GA)"
+          placeholder="Search county, place, or ZIP code"
           aria-label="Search address, ZIP, or county"
           style={{
             width: "100%",
@@ -495,7 +495,7 @@ export default function SearchBar({
             background: "transparent",
             padding: "10px 10px",
             fontSize: 14,
-            color: "#0f172a",
+            color: "#123247",
           }}
         />
 
@@ -506,8 +506,8 @@ export default function SearchBar({
             aria-label="Clear search"
             style={{
               border: "none",
-              background: "rgba(44, 95, 138, 0.12)",
-              color: "#2C5F8A",
+              background: "rgba(53, 118, 186, 0.08)",
+              color: "#3576BA",
               width: 28,
               height: 28,
               borderRadius: 999,

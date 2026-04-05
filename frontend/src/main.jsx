@@ -2,6 +2,7 @@ import "leaflet/dist/leaflet.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { applyDocumentBranding } from "./branding/pdoBrand";
 import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
 import FundingModelBuilder from "./pages/FundingModelBuilder";
 import ProfileCounty from "./pages/ProfileCounty";
@@ -36,6 +37,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function Root() {
+  applyDocumentBranding();
   const pathname = window.location.pathname;
   if (/^\/taggs\/funding-profile\/?$/i.test(pathname)) {
     const params = new URLSearchParams(window.location.search);

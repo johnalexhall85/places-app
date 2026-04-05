@@ -36,6 +36,7 @@ from app.taggs import models as taggs_models  # noqa: F401
 from app.cdc_profiles import models as cdc_profiles_models  # noqa: F401
 from app.recon import models as recon_models  # noqa: F401
 from app.funding_models import models as funding_models_models  # noqa: F401
+from app.budget import models as budget_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -102,6 +103,8 @@ TARGET_TABLES = {
     "funding_profile_versions",
     "funding_profile_build_runs",
     "funding_mode_registry",
+    "cdc_budget_tracker_raw",
+    "cdc_budget_source_registry_raw",
     "alembic_version",
 }
 

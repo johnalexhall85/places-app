@@ -1,37 +1,76 @@
 .profile-report-page {
   min-height: 100vh;
-  background: var(--chip-bg);
-  color: var(--chip-navy);
+  background:
+    radial-gradient(circle at top left, rgba(154, 187, 221, 0.18), transparent 30%),
+    linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 44%, #eef4fa 100%);
+  color: var(--pdo-text);
 }
 
 .profile-report-main {
-  width: min(1200px, calc(100vw - 32px));
-  margin: 18px auto 30px;
+  width: min(1240px, calc(100vw - 32px));
+  margin: 20px auto 30px;
   display: grid;
   gap: 16px;
+}
+
+.profile-report-header,
+.profile-status,
+.profile-section {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--pdo-border);
+  border-radius: 22px;
 }
 
 .profile-report-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
-  background: #ffffff;
-  border: 1px solid var(--chip-panel-border);
-  border-radius: 12px;
-  box-shadow: var(--chip-panel-shadow);
-  padding: 18px;
+  gap: 16px;
+  padding: 22px;
+}
+
+.profile-report-header-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-report-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pdo-primary);
 }
 
 .profile-report-header h1 {
-  margin: 0 0 6px;
-  font-size: 1.35rem;
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1.04;
 }
 
 .profile-report-header p {
   margin: 0;
-  color: #41576b;
+  color: var(--pdo-text-muted);
   font-size: 0.95rem;
+}
+
+.profile-report-meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-report-meta-strip span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--pdo-border);
+  background: var(--pdo-surface-alt);
+  padding: 5px 10px;
+  color: var(--pdo-text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .profile-report-actions {
@@ -49,46 +88,39 @@
 }
 
 .profile-status {
-  background: #ffffff;
-  border: 1px solid var(--chip-panel-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  padding: 13px 16px;
 }
 
 .profile-status-error {
-  border-color: #ef4444;
-  color: #7f1d1d;
-  background: #fef2f2;
+  border-color: rgba(185, 28, 28, 0.18);
+  color: #991b1b;
+  background: rgba(255, 241, 242, 0.95);
 }
 
 .profile-section {
-  background: #ffffff;
-  border: 1px solid var(--chip-panel-border);
-  border-radius: 12px;
-  box-shadow: var(--chip-panel-shadow);
-  padding: 16px;
+  padding: 18px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .profile-section-heading h2 {
   margin: 0;
-  font-size: 1.12rem;
+  font-size: 1.18rem;
 }
 
 .profile-section-heading p {
   margin: 4px 0 0;
-  color: #4b6276;
-  font-size: 0.9rem;
+  color: var(--pdo-text-muted);
+  font-size: 0.92rem;
 }
 
 .profile-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .profile-grid-2 {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .profile-grid-3 {
@@ -96,29 +128,55 @@
 }
 
 .profile-card {
-  border: 1px solid #dbe5ec;
-  border-radius: 10px;
-  padding: 11px;
-  background: #ffffff;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   display: grid;
   gap: 8px;
 }
 
+.profile-card-hero {
+  background:
+    radial-gradient(circle at top right, rgba(255, 213, 176, 0.26), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%);
+}
+
+.profile-card-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pdo-primary);
+}
+
 .profile-card h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
+}
+
+.profile-card-hero-value {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pdo-text);
+}
+
+.profile-card-note {
+  color: var(--pdo-text-muted);
+  font-size: 0.82rem;
 }
 
 .profile-card-row {
-  border-top: 1px dashed #d5e2ea;
+  border-top: 1px solid #e7eef5;
   padding-top: 8px;
   display: grid;
   gap: 6px;
 }
 
 .profile-card-row-title {
-  font-size: 0.86rem;
-  font-weight: 600;
+  font-size: 0.87rem;
+  font-weight: 700;
 }
 
 .profile-pill-grid {
@@ -127,15 +185,15 @@
 }
 
 .profile-pill {
-  border: 1px solid #dbe5ec;
-  border-radius: 9px;
-  padding: 8px 9px;
-  background: #f8fbfd;
+  border: 1px solid var(--pdo-border);
+  border-radius: 14px;
+  padding: 10px;
+  background: var(--pdo-surface-alt);
 }
 
 .profile-pill-label {
   font-size: 0.76rem;
-  color: #4e6679;
+  color: var(--pdo-text-muted);
 }
 
 .profile-pill-value {
@@ -145,7 +203,7 @@
 }
 
 .profile-pill-note {
-  color: #4e6679;
+  color: var(--pdo-text-muted);
   font-size: 0.78rem;
   margin-top: 4px;
 }
@@ -160,24 +218,25 @@
   display: grid;
   gap: 4px;
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #223747;
+  font-weight: 700;
+  color: var(--pdo-text);
 }
 
 .profile-tools input,
 .profile-tools select {
-  border: 1px solid #c4d2e0;
-  border-radius: 8px;
-  padding: 7px 9px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 12px;
+  padding: 8px 10px;
   font: inherit;
   min-width: 220px;
   background: #ffffff;
+  color: var(--pdo-text);
 }
 
 .profile-table-wrap {
   overflow-x: auto;
-  border: 1px solid #dbe5ec;
-  border-radius: 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 18px;
 }
 
 .profile-table {
@@ -188,8 +247,8 @@
 
 .profile-table th,
 .profile-table td {
-  border-bottom: 1px solid #ecf1f5;
-  padding: 8px;
+  border-bottom: 1px solid #e7eef5;
+  padding: 9px 10px;
   text-align: left;
   vertical-align: top;
 }
@@ -197,7 +256,7 @@
 .profile-table th {
   position: sticky;
   top: 0;
-  background: #f5f9fc;
+  background: #f7fafd;
   font-weight: 700;
   z-index: 1;
 }
@@ -211,13 +270,13 @@
 
 .profile-paragraph {
   margin: 0;
-  line-height: 1.5;
-  color: #243b4d;
+  line-height: 1.6;
+  color: #314b61;
 }
 
 .profile-muted {
-  color: #4e6679;
-  font-size: 0.86rem;
+  color: var(--pdo-text-muted);
+  font-size: 0.87rem;
 }
 
 .profile-accordion-list {
@@ -226,9 +285,10 @@
 }
 
 .profile-accordion {
-  border: 1px solid #dbe5ec;
-  border-radius: 10px;
-  padding: 8px 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: #fbfdff;
 }
 
 .profile-accordion summary {
@@ -260,8 +320,8 @@
 }
 
 .profile-bars-track {
-  height: 7px;
-  background: #e8eff4;
+  height: 8px;
+  background: #e6edf5;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -273,7 +333,7 @@
 
 .profile-bars-label,
 .profile-bars-value {
-  color: #365062;
+  color: #446176;
   white-space: nowrap;
 }
 
@@ -282,23 +342,23 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  border-top: 1px dashed #d5e2ea;
+  border-top: 1px solid #e7eef5;
   padding-top: 6px;
 }
 
 .profile-metric-row span {
-  color: #4e6679;
+  color: var(--pdo-text-muted);
   font-size: 0.84rem;
 }
 
 .profile-metric-row strong {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .profile-notes-accordion {
-  border: 1px solid #dbe5ec;
-  border-radius: 10px;
-  padding: 8px 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 16px;
+  padding: 10px 12px;
   background: #fbfdff;
 }
 
@@ -311,54 +371,26 @@
   margin-top: 8px;
   display: grid;
   gap: 6px;
-  color: #2d4558;
+  color: #314b61;
   font-size: 0.84rem;
 }
 
 @media (max-width: 820px) {
   .profile-report-main {
     width: calc(100vw - 18px);
-    margin: 10px auto 20px;
+    margin: 10px auto 22px;
   }
 
   .profile-report-header {
     flex-direction: column;
   }
 
-  .profile-report-actions {
+  .profile-report-meta-strip {
+    gap: 6px;
+  }
+
+  .profile-report-meta-strip span {
     width: 100%;
-  }
-}
-
-@media print {
-  body,
-  .profile-report-page,
-  .profile-report-main,
-  .profile-section,
-  .profile-card,
-  .profile-accordion,
-  .profile-notes-accordion {
-    background: #ffffff !important;
-    box-shadow: none !important;
-  }
-
-  .chip-header,
-  .profile-report-actions,
-  .chip-nav-modal-backdrop {
-    display: none !important;
-  }
-
-  .profile-report-main {
-    width: 100%;
-    margin: 0;
-    gap: 10px;
-  }
-
-  .profile-page-break {
-    page-break-before: always;
-  }
-
-  .profile-table th {
-    position: static;
+    justify-content: center;
   }
 }

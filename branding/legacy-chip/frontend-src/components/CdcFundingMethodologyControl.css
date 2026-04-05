@@ -1,0 +1,257 @@
+.cdc-methodology-control {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cdc-methodology-trigger-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdc-methodology-trigger-copy {
+  font-size: 11px;
+  color: #475569;
+}
+
+.cdc-methodology-chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cdc-methodology-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid #c4d2e0;
+  background: #ffffff;
+  color: var(--chip-slate);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cdc-methodology-chip.is-success {
+  border-color: rgba(13, 148, 136, 0.25);
+  background: rgba(20, 184, 166, 0.1);
+  color: #0f766e;
+}
+
+.cdc-methodology-chip.is-neutral {
+  border-color: rgba(44, 95, 138, 0.18);
+  background: rgba(44, 95, 138, 0.06);
+  color: var(--chip-slate);
+}
+
+.cdc-methodology-modal {
+  width: min(760px, 96vw);
+  max-height: min(84vh, 920px);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cdc-methodology-modal-header {
+  padding: 18px 20px 14px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--chip-panel-border);
+  background:
+    linear-gradient(180deg, rgba(23, 139, 139, 0.1) 0%, rgba(255, 255, 255, 0) 100%),
+    #ffffff;
+}
+
+.cdc-methodology-modal-header h2 {
+  margin: 2px 0 0;
+}
+
+.cdc-methodology-eyebrow {
+  color: var(--chip-teal);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cdc-methodology-modal-body {
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+  display: grid;
+  gap: 18px;
+}
+
+.cdc-methodology-modal-body p {
+  margin: 0;
+}
+
+.cdc-methodology-state {
+  border-radius: 12px;
+  border: 1px solid #d7e2ec;
+  background: #f8fbfc;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #334155;
+}
+
+.cdc-methodology-state.is-error {
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(254, 242, 242, 0.9);
+  color: #991b1b;
+}
+
+.cdc-methodology-hero {
+  display: grid;
+  gap: 10px;
+}
+
+.cdc-methodology-hero h3,
+.cdc-methodology-section h3,
+.cdc-methodology-explainer-card h3,
+.cdc-methodology-production-note h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--chip-navy);
+}
+
+.cdc-methodology-hero-copy,
+.cdc-methodology-section-copy,
+.cdc-methodology-explainer-card p,
+.cdc-methodology-production-note p {
+  color: #334155;
+  line-height: 1.5;
+}
+
+.cdc-methodology-version-card {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d7e2ec;
+  background: #f8fbfc;
+}
+
+.cdc-methodology-version-card dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.cdc-methodology-version-card dd {
+  margin: 6px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chip-navy);
+  word-break: break-word;
+}
+
+.cdc-methodology-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.cdc-methodology-stat-card {
+  border-radius: 12px;
+  border: 1px solid #d7e2ec;
+  background: #ffffff;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.cdc-methodology-stat-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.cdc-methodology-stat-value {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--chip-navy);
+}
+
+.cdc-methodology-explainer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.cdc-methodology-explainer-card,
+.cdc-methodology-production-note {
+  border-radius: 12px;
+  border: 1px solid #d7e2ec;
+  background: #ffffff;
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.cdc-methodology-section {
+  display: grid;
+  gap: 10px;
+}
+
+.cdc-methodology-family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.cdc-methodology-family-card {
+  border-radius: 12px;
+  border: 1px solid rgba(23, 139, 139, 0.18);
+  background: rgba(23, 139, 139, 0.08);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.cdc-methodology-family-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--chip-navy);
+}
+
+.cdc-methodology-family-meta {
+  font-size: 12px;
+  color: #475569;
+}
+
+.cdc-methodology-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: #334155;
+}
+
+.cdc-methodology-list li {
+  line-height: 1.45;
+}
+
+.cdc-methodology-production-note {
+  border-color: rgba(44, 95, 138, 0.18);
+  background: rgba(44, 95, 138, 0.05);
+}
+
+@media (max-width: 640px) {
+  .cdc-methodology-modal-header,
+  .cdc-methodology-modal-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .cdc-methodology-stat-value {
+    font-size: 22px;
+  }
+}

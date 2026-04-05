@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { API_BASE } from "../config/apiBase";
 import {
@@ -313,6 +314,18 @@ export default function CdcStateFundingProfile({ stateCode }) {
   const methodologyNotes = Array.isArray(summary?.methodology_notes)
     ? summary.methodology_notes.filter(Boolean)
     : [];
+  const reportDateLabel = formatDate(
+    canonicalProfile?.latest_action_date_max
+    ?? summary?.latest_action_date_max
+    ?? summary?.latest_action_date
+    ?? ""
+  );
+  const reportVersionLabel = String(
+    canonicalProfile?.funding_mode_effective
+    ?? summary?.funding_mode_effective
+    ?? query.fundingMode
+    ?? "not_available"
+  ).trim();
   const grouping = summary?.grouping ?? categories?.grouping ?? subcategories?.grouping ?? {};
   const categoryLabel = String(grouping?.category_label ?? "Program Area").trim() || "Program Area";
   const subcategoryLabel = String(grouping?.subcategory_label ?? "Program").trim() || "Program";
@@ -354,7 +367,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
       <main className="cdc-profile-main">
         <header className="cdc-profile-hero">
           <div className="cdc-profile-hero-copy">
-            <div className="cdc-profile-kicker">CHIP funding intelligence</div>
+            <div className="cdc-profile-kicker">CHIP by Public Data Observatory</div>
             <div className="cdc-profile-mode-row">
               <span className={`cdc-profile-mode-badge ${fundingModeClass}`} data-testid="cdc-profile-mode-badge">
                 {fundingModeLabel}
@@ -362,7 +375,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
             </div>
             <h1>CDC State Funding Profile</h1>
             <p className="cdc-profile-subtitle">
-              {stateName} funding summarized from CHIP&apos;s unified CDC funding model, with USAspending as the transactional backbone and TAGGS used for CDC program-area enrichment.
+              {stateName} funding summarized for analytical review using CHIP&apos;s source-aware CDC funding model. USAspending provides the transactional backbone and TAGGS contributes program-area enrichment where matching evidence supports it.
             </p>
             {fundingModeNote ? <p className="cdc-profile-mode-note">{fundingModeNote}</p> : null}
             <div className="cdc-profile-hero-amount">
@@ -370,6 +383,11 @@ export default function CdcStateFundingProfile({ stateCode }) {
             </div>
             <div className="cdc-profile-hero-label">
               {summary?.legend_title ?? "Filtered CDC funding total"}
+            </div>
+            <div className="cdc-profile-hero-meta">
+              <span>Last Updated: {reportDateLabel}</span>
+              <span>Version: {reportVersionLabel}</span>
+              <span>Data Sources: USAspending and TAGGS</span>
             </div>
             <div className="cdc-profile-chip-row">
               <span className="cdc-profile-chip">{stateName}</span>
@@ -388,7 +406,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
           </aside>
         </header>
 
-        {isLoadingOverview ? <div className="cdc-profile-status">Loading CDC state funding summary...</div> : null}
+        {isLoadingOverview ? <div className="cdc-profile-status">Loading PDO funding report...</div> : null}
         {overviewError ? <div className="cdc-profile-status cdc-profile-status-error">{overviewError}</div> : null}
 
         {!overviewError ? (
@@ -666,12 +684,24 @@ export default function CdcStateFundingProfile({ stateCode }) {
 
             <section className="cdc-profile-section">
               <SectionTitle
+                title="Data Sources"
+                subtitle="Primary sources and scope notes for this state funding report."
+              />
+              <div className="cdc-profile-note-block">
+                <div>USAspending supplies award, subaward, and contract transaction records.</div>
+                <div>TAGGS contributes CDC center, program-area, and ALN-linked enrichment where the source evidence supports classification.</div>
+                <div>Reported values may reflect filtered summaries, modeled grouping logic, or reconstructed scope alignment rather than source-system financial statements.</div>
+              </div>
+            </section>
+
+            <section className="cdc-profile-section">
+              <SectionTitle
                 title="Method Notes"
-                subtitle="How the unified CDC funding map combines USAspending and TAGGS."
+                subtitle="How the CHIP funding model combines USAspending and TAGGS."
               />
               <div className="cdc-profile-note-block">
                 <div>
-                  USAspending supplies award, subaward, and contract transactions. TAGGS contributes ALN-linked CDC center and program-area enrichment so the funding map behaves like an intelligence layer instead of a raw transaction dump.
+                  USAspending supplies award, subaward, and contract transactions. TAGGS contributes ALN-linked CDC center and program-area enrichment so the funding map can be interpreted as a source-aware analytical layer rather than a raw transaction dump.
                 </div>
                 {summary?.grouping?.category_method ? (
                   <div>{summary.grouping.category_method}</div>
@@ -691,6 +721,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
           </>
         ) : null}
       </main>
+      <Footer />
     </div>
   );
 }

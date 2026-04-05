@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
+import Footer from "../components/Footer";
 import Header from "../components/Header";
 import {
   archiveFundingModel,
@@ -626,10 +627,10 @@ export default function FundingModelBuilder() {
       <main className="funding-model-builder-main">
         <header className="funding-model-builder-hero">
           <div>
-            <div className="funding-model-kicker">Governed methodology tooling</div>
+            <div className="funding-model-kicker">Public Data Observatory governance tooling</div>
             <h1>Funding Model Builder</h1>
             <p>
-              Draft, version, preview, lock, build, and publish funding methodology profiles as structured JSON.
+              Draft, version, preview, lock, build, and publish structured funding methodology profiles for CHIP by Public Data Observatory.
             </p>
           </div>
           <div className="funding-model-hero-actions">
@@ -1049,6 +1050,7 @@ export default function FundingModelBuilder() {
           </aside>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

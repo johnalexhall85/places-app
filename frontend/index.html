@@ -3,16 +3,100 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CHIP by Public Data Observatory is a nonpartisan geospatial data platform for modeled and administrative public health analysis, planning, and transparent reporting."
+    />
+    <link rel="icon" type="image/png" href="/pdo-favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <title>Community Health Intelligence Platform</title>
+    <title>CHIP by Public Data Observatory</title>
+    <style>
+      #root {
+        min-height: 100vh;
+      }
+
+      .app-shell-loading {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(circle at top left, rgba(154, 187, 221, 0.22), transparent 28%),
+          linear-gradient(180deg, #f7fbff 0%, #f2f6fb 42%, #edf3f9 100%);
+        color: #123247;
+        font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .app-shell-loading-card {
+        width: min(420px, 100%);
+        border: 1px solid #d7e2ee;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 18px 44px rgba(18, 50, 71, 0.08);
+        padding: 24px;
+        text-align: left;
+      }
+
+      .app-shell-loading-kicker {
+        margin: 0 0 10px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #3576ba;
+      }
+
+      .app-shell-loading-title {
+        margin: 0 0 8px;
+        font-family: "Roboto Slab", Georgia, "Times New Roman", serif;
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        line-height: 1.08;
+      }
+
+      .app-shell-loading-copy {
+        margin: 0 0 14px;
+        color: #4d6880;
+        line-height: 1.5;
+      }
+
+      .app-shell-loading-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #4d6880;
+        font-size: 13px;
+      }
+
+      .app-shell-loading-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #3576ba;
+        box-shadow: 0 0 0 8px rgba(53, 118, 186, 0.08);
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-shell-loading">
+        <div class="app-shell-loading-card">
+          <p class="app-shell-loading-kicker">Public Data Observatory</p>
+          <h1 class="app-shell-loading-title">CHIP by Public Data Observatory</h1>
+          <p class="app-shell-loading-copy">
+            Loading the flagship data platform for geospatial public health analysis and planning.
+          </p>
+          <div class="app-shell-loading-status">
+            <span class="app-shell-loading-dot"></span>
+            <span>Preparing map layers and analytical context</span>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,0 +1,365 @@
+.cdc-profile-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(23, 139, 139, 0.14), transparent 28%),
+    linear-gradient(180deg, #eef4f7 0%, var(--chip-bg) 42%);
+  color: var(--chip-navy);
+}
+
+.cdc-profile-main {
+  width: min(1280px, calc(100vw - 28px));
+  margin: 18px auto 28px;
+  display: grid;
+  gap: 14px;
+}
+
+.cdc-profile-hero,
+.cdc-profile-section,
+.cdc-profile-status {
+  background: #ffffff;
+  border: 1px solid var(--chip-panel-border);
+  border-radius: 14px;
+  box-shadow: var(--chip-panel-shadow);
+}
+
+.cdc-profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 18px;
+  align-items: start;
+  position: relative;
+  overflow: hidden;
+}
+
+.cdc-profile-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -60px -80px auto;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 45, 70, 0.11) 0%, rgba(15, 45, 70, 0) 72%);
+  pointer-events: none;
+}
+
+.cdc-profile-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--chip-teal);
+}
+
+.cdc-profile-mode-row {
+  margin-top: 10px;
+}
+
+.cdc-profile-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cdc-profile-mode-badge.is-normalized {
+  background: rgba(23, 139, 139, 0.12);
+  border: 1px solid rgba(23, 139, 139, 0.24);
+  color: var(--chip-teal);
+}
+
+.cdc-profile-mode-badge.is-raw {
+  background: rgba(15, 45, 70, 0.08);
+  border: 1px solid rgba(15, 45, 70, 0.15);
+  color: var(--chip-navy);
+}
+
+.cdc-profile-hero h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  line-height: 1.08;
+}
+
+.cdc-profile-subtitle {
+  margin: 0 0 14px;
+  max-width: 68ch;
+  color: #496173;
+  line-height: 1.45;
+}
+
+.cdc-profile-mode-note {
+  margin: 0 0 14px;
+  max-width: 72ch;
+  color: #5d7485;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.cdc-profile-hero-amount {
+  font-size: clamp(1.8rem, 3.6vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--chip-navy);
+}
+
+.cdc-profile-hero-label {
+  margin-top: 6px;
+  color: #567083;
+  font-size: 0.92rem;
+}
+
+.cdc-profile-chip-row {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cdc-profile-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #f4fafb;
+  border: 1px solid #cae5e5;
+  color: #1e4857;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cdc-profile-hero-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+  min-width: 180px;
+}
+
+.cdc-profile-link-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cdc-profile-status {
+  padding: 12px 14px;
+}
+
+.cdc-profile-status-error {
+  border-color: #ef4444;
+  color: #7f1d1d;
+  background: #fff1f2;
+}
+
+.cdc-profile-section {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.cdc-profile-section-title h2 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.cdc-profile-section-title p {
+  margin: 4px 0 0;
+  color: #4b6276;
+  font-size: 0.9rem;
+}
+
+.cdc-profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.cdc-profile-card {
+  border: 1px solid #dbe5ec;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+}
+
+.cdc-profile-card-label {
+  color: #546c7f;
+  font-size: 0.78rem;
+}
+
+.cdc-profile-card-value {
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.cdc-profile-card-note {
+  color: #5e7587;
+  font-size: 0.77rem;
+}
+
+.cdc-profile-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #dbe5ec;
+  border-radius: 12px;
+}
+
+.cdc-profile-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.cdc-profile-table th,
+.cdc-profile-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #ecf1f5;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cdc-profile-table th {
+  background: #f5f9fc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.cdc-profile-table-sort {
+  border: 0;
+  background: transparent;
+  color: var(--chip-navy);
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+}
+
+.cdc-profile-table-sort:hover {
+  color: var(--chip-teal);
+}
+
+.cdc-profile-accordion-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cdc-profile-accordion {
+  border: 1px solid #dbe5ec;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fcfdff;
+}
+
+.cdc-profile-accordion summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.cdc-profile-detail-tools,
+.cdc-profile-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cdc-profile-search {
+  display: grid;
+  gap: 5px;
+  min-width: min(480px, 100%);
+}
+
+.cdc-profile-search span {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #486073;
+}
+
+.cdc-profile-search input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #c7d5df;
+  border-radius: 10px;
+  padding: 0 12px;
+  font: inherit;
+  color: var(--chip-navy);
+  background: #ffffff;
+}
+
+.cdc-profile-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.cdc-profile-note-block {
+  border: 1px solid #d6e4ea;
+  border-radius: 12px;
+  background: #f7fbfd;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.87rem;
+}
+
+.cdc-profile-muted,
+.cdc-profile-cell-meta {
+  margin: 0;
+  color: #536b7e;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .cdc-profile-main {
+    width: calc(100vw - 16px);
+    margin: 10px auto 20px;
+  }
+
+  .cdc-profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .cdc-profile-hero-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cdc-profile-search {
+    min-width: 100%;
+  }
+}
+
+@media print {
+  .chip-header,
+  .cdc-profile-hero-actions,
+  .chip-nav-modal-backdrop {
+    display: none !important;
+  }
+
+  .cdc-profile-page,
+  .cdc-profile-main,
+  .cdc-profile-hero,
+  .cdc-profile-section,
+  .cdc-profile-card,
+  .cdc-profile-accordion {
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .cdc-profile-main {
+    width: 100%;
+    margin: 0;
+    gap: 10px;
+  }
+}

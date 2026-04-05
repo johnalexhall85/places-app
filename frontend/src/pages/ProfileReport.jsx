@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { API_BASE } from "../config/apiBase";
 import "./ProfileReport.css";
@@ -27,11 +28,17 @@ function formatCi(low, high, unit) {
   return `${formatValue(lowValue, unit)} to ${formatValue(highValue, unit)}`;
 }
 
+function formatTimestampLabel(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "Not available";
+  return text.replace("T", " ").replace("Z", "").slice(0, 19);
+}
+
 function compareBarData(local, state, us) {
   const points = [
-    { key: "local", label: "Local", value: toFiniteNumber(local), color: "#178b8b" },
-    { key: "state", label: "State", value: toFiniteNumber(state), color: "#2c5f8a" },
-    { key: "us", label: "U.S.", value: toFiniteNumber(us), color: "#0f2d46" },
+    { key: "local", label: "Local", value: toFiniteNumber(local), color: "#3576ba" },
+    { key: "state", label: "State", value: toFiniteNumber(state), color: "#5b90c7" },
+    { key: "us", label: "U.S.", value: toFiniteNumber(us), color: "#123247" },
   ];
   const valid = points.filter((point) => point.value != null);
   const max = valid.length > 0 ? Math.max(...valid.map((point) => Math.abs(point.value))) : 0;
@@ -151,6 +158,25 @@ function ProfileReport({ geography, geoId }) {
   const narrative = bundle?.narrative?.executive_summary ?? {};
   const methodology = bundle?.methodology ?? {};
   const dataNotes = Array.isArray(bundle?.data_notes) ? bundle.data_notes : [];
+  const primaryIndicator = (Array.isArray(places.top_concerns) ? places.top_concerns : [])[0] ?? null;
+  const profileTimestamp = formatTimestampLabel(
+    bundle?.generated_at ?? bundle?.updated_at ?? bundle?.last_updated ?? geo?.as_of_date ?? ""
+  );
+  const profileVersionLabel = String(bundle?.version_label ?? "PDO analytical profile").trim();
+  const dataSources = [
+    Array.isArray(places.measures) && places.measures.length > 0
+      ? "CDC PLACES modeled estimates"
+      : null,
+    Array.isArray(acs.factors) && acs.factors.length > 0
+      ? "American Community Survey contextual indicators"
+      : null,
+    svi?.overall
+      ? "CDC/ATSDR Social Vulnerability Index"
+      : null,
+    hpsa?.available
+      ? "HRSA Health Professional Shortage Area data"
+      : null,
+  ].filter(Boolean);
 
   const filteredPlacesMeasures = useMemo(() => {
     const measures = Array.isArray(places.measures) ? [...places.measures] : [];
@@ -191,7 +217,7 @@ function ProfileReport({ geography, geoId }) {
     return Array.from(groups.entries()).map(([category, measures]) => ({ category, measures }));
   }, [filteredPlacesMeasures]);
 
-  const title = `${geo?.name ?? geoId} — Community Health Profile`;
+  const title = `${geo?.name ?? geoId} Profile`;
   const subheader = geo?.state_abbr
     ? `${geo?.level === "tract" ? "Tract" : "County"}, ${geo.state_abbr}`
     : geo?.level === "tract"
@@ -206,9 +232,15 @@ function ProfileReport({ geography, geoId }) {
       <Header />
       <main className="profile-report-main" data-testid={isReady ? "profile-ready" : undefined}>
         <header className="profile-report-header">
-          <div>
+          <div className="profile-report-header-copy">
+            <div className="profile-report-kicker">CHIP by Public Data Observatory</div>
             <h1>{title}</h1>
             <p>{subheader}</p>
+            <div className="profile-report-meta-strip">
+              <span>Last Updated: {profileTimestamp}</span>
+              <span>Version: {profileVersionLabel}</span>
+              <span>Data Source: Multi-source analytical profile</span>
+            </div>
           </div>
           <div className="profile-report-actions">
             <a className="chip-primary-btn profile-action-link" href={pdfHref} target="_blank" rel="noreferrer">
@@ -220,26 +252,52 @@ function ProfileReport({ geography, geoId }) {
           </div>
         </header>
 
-        {isLoading ? <div className="profile-status">Loading profile report...</div> : null}
+        {isLoading ? <div className="profile-status">Loading PDO location report...</div> : null}
         {error ? <div className="profile-status profile-status-error">{error}</div> : null}
 
         {isReady ? (
           <>
             <section className="profile-section">
               <SectionHeading
-                title="Executive Summary"
-                subtitle="Deterministic key takeaways derived from available PLACES, ACS, SVI, and HPSA data."
+                title="Analytical Summary"
+                subtitle="Modeled and administrative indicators summarized for analytical review and planning."
               />
+              <div className="profile-grid profile-grid-2">
+                <article className="profile-card profile-card-hero">
+                  <div className="profile-card-eyebrow">Key indicator</div>
+                  <h3>
+                    {primaryIndicator?.short_question_text
+                      || primaryIndicator?.measure
+                      || primaryIndicator?.measure_id
+                      || "Primary indicator not available"}
+                  </h3>
+                  <div className="profile-card-hero-value">
+                    {primaryIndicator ? formatValue(primaryIndicator.local?.value, primaryIndicator.unit) : "Not available"}
+                  </div>
+                  <div className="profile-card-note">
+                    State: {primaryIndicator ? formatValue(primaryIndicator.comparisons?.state?.value, primaryIndicator.unit) : "Not available"}
+                    {" • "}
+                    U.S.: {primaryIndicator ? formatValue(primaryIndicator.comparisons?.us?.value, primaryIndicator.unit) : "Not available"}
+                  </div>
+                </article>
+                <article className="profile-card">
+                  <div className="profile-card-eyebrow">Context</div>
+                  <h3>Interpretation notes</h3>
+                  <p className="profile-paragraph">
+                    {narrative.how_factors_connect
+                      || "This location brief summarizes available indicators for comparative review. Values may reflect modeled estimates and should be interpreted alongside the cited source and methodology notes."}
+                  </p>
+                </article>
+              </div>
               <ul className="profile-list">
                 {(Array.isArray(narrative.key_takeaways) ? narrative.key_takeaways : []).map((bullet) => (
                   <li key={bullet}>{bullet}</li>
                 ))}
               </ul>
-              <p className="profile-paragraph">{narrative.how_factors_connect}</p>
             </section>
 
             <section className="profile-section profile-page-break">
-              <SectionHeading title="Snapshot Visuals" subtitle="Top concerns and benchmark context." />
+              <SectionHeading title="Key Indicators" subtitle="Selected charts and benchmark context for the current geography." />
               <div className="profile-grid profile-grid-2">
                 <article className="profile-card">
                   <h3>PLACES Top Concerns vs Benchmarks</h3>
@@ -323,8 +381,8 @@ function ProfileReport({ geography, geoId }) {
 
             <section className="profile-section profile-page-break">
               <SectionHeading
-                title="PLACES Measures"
-                subtitle="All available measures for the selected geography and default PLACES snapshot."
+                title="PLACES Measure Catalog"
+                subtitle="All available measures for the selected geography and the default PLACES release snapshot."
               />
               <div className="profile-tools">
                 <label>
@@ -400,8 +458,8 @@ function ProfileReport({ geography, geoId }) {
 
             <section className="profile-section profile-page-break">
               <SectionHeading
-                title="ACS Non-Medical / Community Factors"
-                subtitle="Local ACS factors with benchmark comparisons when available."
+                title="ACS Contextual Indicators"
+                subtitle="Local ACS factors with state and national comparison points where available."
               />
               <div className="profile-grid profile-grid-2">
                 {(Array.isArray(acs.factors) ? acs.factors : []).map((factor) => (
@@ -422,7 +480,7 @@ function ProfileReport({ geography, geoId }) {
             <section className="profile-section profile-page-break">
               <SectionHeading
                 title="SVI"
-                subtitle="Higher percentile = higher vulnerability. SVI values are relative percentiles."
+                subtitle="Higher percentile values indicate higher relative social vulnerability."
               />
               {svi.overall ? (
                 <div className="profile-grid profile-grid-2">
@@ -461,7 +519,7 @@ function ProfileReport({ geography, geoId }) {
             </section>
 
             <section className="profile-section profile-page-break">
-              <SectionHeading title="HRSA HPSA" subtitle="Provider access designations and shortage severity context." />
+              <SectionHeading title="HRSA HPSA" subtitle="Provider access designations and shortage severity context for this geography." />
               {hpsa.available ? (
                 <div className="profile-grid profile-grid-3">
                   {Object.values(hpsa.domains ?? {}).map((domain) => (
@@ -517,6 +575,19 @@ function ProfileReport({ geography, geoId }) {
             </section>
 
             <section className="profile-section profile-page-break">
+              <SectionHeading title="Data Sources" subtitle="Primary sources represented in this profile." />
+              {dataSources.length > 0 ? (
+                <ul className="profile-list">
+                  {dataSources.map((source) => (
+                    <li key={source}>{source}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="profile-muted">Source metadata were not available in this response.</div>
+              )}
+            </section>
+
+            <section className="profile-section profile-page-break">
               <SectionHeading title="Methodology" subtitle="Short structured methods summary by data source." />
               {["places", "acs", "svi", "hpsa"].map((key) => (
                 <article className="profile-card" key={`method-${key}`}>
@@ -541,6 +612,7 @@ function ProfileReport({ geography, geoId }) {
           </>
         ) : null}
       </main>
+      <Footer />
     </div>
   );
 }

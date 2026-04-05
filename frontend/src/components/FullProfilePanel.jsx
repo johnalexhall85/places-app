@@ -226,8 +226,8 @@ export default function FullProfilePanel({
         height: "100%",
         width: "min(460px, 92vw)",
         background: "#ffffff",
-        borderLeft: "1px solid #E3E8ED",
-        boxShadow: "-10px 0 20px rgba(15, 45, 70, 0.12)",
+        borderLeft: "1px solid #D7E2EE",
+        boxShadow: "-12px 0 30px rgba(18, 50, 71, 0.09)",
         zIndex: 2400,
         display: "grid",
         gridTemplateRows: "auto 1fr",
@@ -235,8 +235,8 @@ export default function FullProfilePanel({
     >
       <div
         style={{
-          borderBottom: "1px solid #E3E8ED",
-          padding: "14px 16px",
+          borderBottom: "1px solid #D7E2EE",
+          padding: "16px 18px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -244,8 +244,11 @@ export default function FullProfilePanel({
         }}
       >
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Full profile</div>
-          <div style={{ fontSize: 12, color: "#475569" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3576BA" }}>
+            PDO location brief
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>CHIP by Public Data Observatory</div>
+          <div style={{ fontSize: 12, color: "#627A90", marginTop: 2 }}>
             {location?.name ?? profileId} ({location?.state_abbr ?? "Not available"})
           </div>
         </div>
@@ -254,17 +257,17 @@ export default function FullProfilePanel({
             value={pdfTemplate}
             onChange={(event) => setPdfTemplate(event.target.value)}
             style={{
-              padding: "8px 8px",
-              borderRadius: 6,
-              border: "1px solid #C4D2E0",
+              padding: "9px 10px",
+              borderRadius: 12,
+              border: "1px solid #BFD0E1",
               background: "#ffffff",
-              color: "#0F2D46",
+              color: "#123247",
               fontWeight: 600,
               fontSize: 12,
             }}
           >
             <option value="full">Full Profile (PDF)</option>
-            <option value="brief">Policy Brief (PDF)</option>
+            <option value="brief">PDO Brief (PDF)</option>
           </select>
           <a
             href={pdfHref}
@@ -272,8 +275,8 @@ export default function FullProfilePanel({
             rel="noreferrer"
             className="chip-primary-link"
             style={{
-              padding: "8px 10px",
-              borderRadius: 6,
+              padding: "8px 12px",
+              borderRadius: 999,
               fontWeight: 600,
               fontSize: 12,
               textDecoration: "none",
@@ -287,8 +290,8 @@ export default function FullProfilePanel({
             onClick={onClose}
             className="chip-secondary-btn"
             style={{
-              padding: "8px 10px",
-              borderRadius: 6,
+              padding: "8px 12px",
+              borderRadius: 999,
               fontWeight: 600,
               fontSize: 12,
             }}
@@ -298,40 +301,40 @@ export default function FullProfilePanel({
         </div>
       </div>
 
-      <div style={{ overflowY: "auto", padding: 16, display: "grid", gap: 16 }}>
-        {isLoading ? <div style={{ color: "#64748b", fontSize: 12 }}>Loading profile...</div> : null}
+      <div style={{ overflowY: "auto", padding: 18, display: "grid", gap: 16 }}>
+        {isLoading ? <div style={{ color: "#627A90", fontSize: 12 }}>Loading location brief...</div> : null}
         {error ? <div style={{ color: "#b91c1c", fontSize: 12 }}>{error}</div> : null}
         {!isLoading && !error && profile ? (
           <>
-            <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
               {summary || "Summary unavailable."}
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Key stats</div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Key indicators</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <tbody>
                   <tr>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Measure</td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6, background: "#F7FAFD" }}>Measure</td>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {places?.short_question_text ?? places?.measure ?? places?.measure_id ?? "Not available"}
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Year</td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6, background: "#F7FAFD" }}>Last Updated</td>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {places?.year ?? "Not available"}
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Location value</td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6, background: "#F7FAFD" }}>Location value</td>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {formatValue(places?.location_value, "%")}
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>US percentile</td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6, background: "#F7FAFD" }}>National percentile</td>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {`${ordinal(references?.us_percentile)} percentile`}
                     </td>
                   </tr>
@@ -340,41 +343,41 @@ export default function FullProfilePanel({
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Comparisons</div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Benchmark comparisons</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr>
-                    <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>Metric</th>
-                    <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>Location</th>
-                    <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>State</th>
-                    <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>US</th>
+                    <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>Metric</th>
+                    <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>Local</th>
+                    <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>State</th>
+                    <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>U.S.</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>PLACES</td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>PLACES</td>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {formatValue(placesComparison?.location_value, "%")}
                     </td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {formatValue(placesComparison?.state_mean, "%")}
                     </td>
-                    <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                    <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                       {formatValue(placesComparison?.us_mean, "%")}
                     </td>
                   </tr>
                   {acsPrimary && typeof acsPrimary === "object" ? (
                     <tr>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {acsPrimary?.measure ?? acsPrimary?.measure_id ?? "ACS"}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatValue(acsPrimary?.location_value)}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatValue(acsPrimary?.state_mean)}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatValue(acsPrimary?.us_mean)}
                       </td>
                     </tr>
@@ -391,42 +394,42 @@ export default function FullProfilePanel({
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr>
-                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                      <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>
                         Type
                       </th>
-                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                      <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>
                         Coverage
                       </th>
-                      <th style={{ border: "1px solid #e2e8f0", padding: 6, textAlign: "left" }}>
+                      <th style={{ border: "1px solid #E5EDF5", padding: 6, textAlign: "left", background: "#F7FAFD" }}>
                         Population covered
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Primary Care</td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>Primary Care</td>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatPercent(hpsa?.primary_care?.coverage_pct)}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatInt(hpsa?.primary_care?.population_covered)}
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Mental Health</td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>Mental Health</td>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatPercent(hpsa?.mental_health?.coverage_pct)}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatInt(hpsa?.mental_health?.population_covered)}
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>Dental</td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>Dental</td>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatPercent(hpsa?.dental?.coverage_pct)}
                       </td>
-                      <td style={{ border: "1px solid #e2e8f0", padding: 6 }}>
+                      <td style={{ border: "1px solid #E5EDF5", padding: 6 }}>
                         {formatInt(hpsa?.dental?.population_covered)}
                       </td>
                     </tr>
@@ -480,19 +483,19 @@ export default function FullProfilePanel({
                 <div style={{ fontWeight: 700, fontSize: 13 }}>Charts</div>
                 {chartEntries.map((chart) => (
                   <div key={chart.name} style={{ display: "grid", gap: 4 }}>
-                    <div style={{ fontSize: 12, color: "#334155" }}>
+                            <div style={{ fontSize: 12, color: "#334155" }}>
                       {chart.name.replaceAll("_", " ")}
                     </div>
                     <img
                       src={chart.url}
                       alt={chart.name}
-                      style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 6 }}
+                      style={{ width: "100%", border: "1px solid #E5EDF5", borderRadius: 12 }}
                     />
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ color: "#64748b", fontSize: 12 }}>No charts available for this profile.</div>
+              <div style={{ color: "#627A90", fontSize: 12 }}>No charts are available for this location brief.</div>
             )}
           </>
         ) : null}

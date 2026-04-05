@@ -204,10 +204,10 @@ export default function AskMapChat({
     right: 8,
     width: 24,
     height: 24,
-    borderRadius: 6,
-    border: "1px solid #C4D2E0",
+    borderRadius: 999,
+    border: "1px solid #BFD0E1",
     background: "#ffffff",
-    color: "#2C5F8A",
+    color: "#3576BA",
     fontWeight: 700,
     cursor: "pointer",
     lineHeight: "20px",
@@ -234,10 +234,10 @@ export default function AskMapChat({
         width: compactLayout ? "auto" : 360,
         maxHeight: isMinimized ? "none" : (compactLayout ? "34vh" : "46vh"),
         background: "white",
-        borderRadius: 10,
-        border: "1px solid #E3E8ED",
-        boxShadow: "0 6px 20px rgba(15, 45, 70, 0.12)",
-        padding: 12,
+        borderRadius: 18,
+        border: "1px solid #D7E2EE",
+        boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
+        padding: 14,
         display: "grid",
         gap: 8,
         zIndex: 2100,
@@ -247,36 +247,36 @@ export default function AskMapChat({
         type="button"
         aria-label={
           isMinimized
-            ? "Expand CHIP Intelligence Assistant"
-            : "Minimize CHIP Intelligence Assistant"
+            ? "Expand CHIP analysis assistant"
+            : "Minimize CHIP analysis assistant"
         }
         onClick={() => setIsMinimized((current) => !current)}
         style={panelToggleButtonStyle}
       >
         {isMinimized ? "+" : "\u2212"}
       </button>
-      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#0F2D46" }}>
-        CHIP Intelligence Assistant
+      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#123247" }}>
+        CHIP analysis assistant
       </div>
       {!isMinimized ? (
         <>
       <div
         ref={messagesContainerRef}
         style={{
-          border: "1px solid #E3E8ED",
-          borderRadius: 8,
+          border: "1px solid #D7E2EE",
+          borderRadius: 14,
           padding: 8,
           minHeight: 120,
           maxHeight: "28vh",
           overflowY: "auto",
           display: "grid",
           gap: 8,
-          background: "#F8FBFC",
+          background: "#F7FAFD",
         }}
       >
         {assistantMessages.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            Ask a plain-language question about a place. CHIP can highlight the area and summarize what the data means.
+          <div style={{ color: "#627A90", fontSize: 12, lineHeight: 1.5 }}>
+            Ask a place-based question about the current geography. CHIP summarizes modeled and administrative signals using the active data layer and source context.
           </div>
         ) : (
           assistantMessages.map((message, index) => (
@@ -285,9 +285,9 @@ export default function AskMapChat({
               style={{
                 justifySelf: message.role === "user" ? "end" : "start",
                 maxWidth: "95%",
-                background: message.role === "user" ? "#E6F6F6" : "white",
-                border: "1px solid #E3E8ED",
-                borderRadius: 8,
+                background: message.role === "user" ? "#F2F6FB" : "white",
+                border: "1px solid #D7E2EE",
+                borderRadius: 14,
                 padding: "8px 10px",
                 fontSize: 12,
               }}
@@ -306,9 +306,9 @@ export default function AskMapChat({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 4,
-                            background: "#EDF7F8",
-                            border: "1px solid #BFDDE2",
-                            color: "#0F2D46",
+                            background: "#F2F6FB",
+                            border: "1px solid #D7E2EE",
+                            color: "#123247",
                             borderRadius: 999,
                             fontSize: 11,
                             lineHeight: 1.2,
@@ -321,7 +321,7 @@ export default function AskMapChat({
                       ) : null}
 
                       {message.contextSummary.title ? (
-                        <div style={{ fontWeight: 700, color: "#0F2D46" }}>
+                        <div style={{ fontWeight: 700, color: "#123247" }}>
                           {String(message.contextSummary.title)}
                         </div>
                       ) : null}
@@ -348,7 +348,7 @@ export default function AskMapChat({
                       ) : null}
 
                       {message.contextSummary.methodology ? (
-                        <div style={{ color: "#475569", fontSize: 11 }}>
+                        <div style={{ color: "#627A90", fontSize: 11 }}>
                           Methodology: {String(message.contextSummary.methodology)}
                         </div>
                       ) : null}
@@ -405,7 +405,7 @@ export default function AskMapChat({
         )}
 
         {assistantLoading ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>Thinking...</div>
+          <div style={{ color: "#627A90", fontSize: 12 }}>Reviewing the current data context...</div>
         ) : null}
       </div>
 
@@ -419,7 +419,7 @@ export default function AskMapChat({
         style={{ display: "grid", gap: 8 }}
       >
         <textarea
-          placeholder="e.g., What should local leaders focus on in Fulton County, GA?"
+          placeholder="e.g., Summarize the main signals for Fulton County, Georgia."
           value={assistantInput}
           onChange={(event) => onAssistantInputChange(event.target.value)}
           onKeyDown={(event) => {
@@ -432,11 +432,11 @@ export default function AskMapChat({
           }}
           disabled={assistantLoading}
           rows={3}
-          aria-label="Ask the CHIP Intelligence Assistant"
+          aria-label="Ask the CHIP analysis assistant"
           style={{
             padding: "8px 10px",
-            borderRadius: 8,
-            border: "1px solid #C4D2E0",
+            borderRadius: 14,
+            border: "1px solid #BFD0E1",
             fontSize: 12,
             width: "100%",
             minHeight: 74,
@@ -449,13 +449,13 @@ export default function AskMapChat({
           disabled={assistantLoading || assistantInput.trim().length === 0}
           className="chip-primary-btn"
           style={{
-            borderRadius: 8,
+            borderRadius: 999,
             padding: "8px 10px",
             fontWeight: 700,
             fontSize: 12,
           }}
         >
-          {assistantLoading ? "Asking..." : "Ask"}
+          {assistantLoading ? "Analyzing..." : "Ask"}
         </button>
       </form>
         </>

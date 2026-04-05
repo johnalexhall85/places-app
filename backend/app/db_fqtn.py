@@ -11,6 +11,7 @@ from app.db_schemas import (
     PLACES_SCHEMA,
     RECON_SCHEMA,
     ANALYTICS_SCHEMA,
+    BUDGET_SCHEMA,
     SCHEMA_BY_SOURCE,
     SVI_SCHEMA,
     FEMA_NRI_SCHEMA,
@@ -88,6 +89,10 @@ def recon_table(name: str) -> str:
 
 def analytics_table(name: str) -> str:
     return fqtn(ANALYTICS_SCHEMA, name)
+
+
+def budget_table(name: str) -> str:
+    return fqtn(BUDGET_SCHEMA, name)
 
 
 def source_table(source: str, table: str) -> str:
