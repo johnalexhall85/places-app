@@ -23,6 +23,10 @@ USDA_FOOD_ENV_SCHEMA = _schema_from_env("USDA_FOOD_ENV_SCHEMA", "usda_food_env")
 FEMA_NRI_SCHEMA = _schema_from_env("FEMA_NRI_SCHEMA", "fema_nri")
 CDC_FUNDING_SCHEMA = _schema_from_env("CDC_FUNDING_SCHEMA", "cdc_funding")
 USASPENDING_SCHEMA = _schema_from_env("USASPENDING_SCHEMA", "usaspending")
+USASPENDING_FED_ACCOUNT_SCHEMA = _schema_from_env(
+    "USASPENDING_FED_ACCOUNT_SCHEMA",
+    "usaspending_fed_account",
+)
 TAGGS_SCHEMA = _schema_from_env("TAGGS_SCHEMA", "taggs")
 CDC_PROFILES_SCHEMA = _schema_from_env("CDC_PROFILES_SCHEMA", "cdc_profiles")
 RECON_SCHEMA = _schema_from_env("RECON_SCHEMA", "recon")
@@ -45,6 +49,7 @@ SCHEMA_BY_SOURCE = {
     "cdc": CDC_FUNDING_SCHEMA,
     "cdc_funding": CDC_FUNDING_SCHEMA,
     "usaspending": USASPENDING_SCHEMA,
+    "usaspending_fed_account": USASPENDING_FED_ACCOUNT_SCHEMA,
     "cdc_profiles": CDC_PROFILES_SCHEMA,
     "taggs": TAGGS_SCHEMA,
     "recon": RECON_SCHEMA,

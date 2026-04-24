@@ -12,6 +12,7 @@ from app.db_schemas import (
     RECON_SCHEMA,
     ANALYTICS_SCHEMA,
     BUDGET_SCHEMA,
+    USASPENDING_FED_ACCOUNT_SCHEMA,
     SCHEMA_BY_SOURCE,
     SVI_SCHEMA,
     FEMA_NRI_SCHEMA,
@@ -73,6 +74,10 @@ def cdc_funding_table(name: str) -> str:
 
 def usaspending_table(name: str) -> str:
     return fqtn(USASPENDING_SCHEMA, name)
+
+
+def usaspending_fed_account_table(name: str) -> str:
+    return fqtn(USASPENDING_FED_ACCOUNT_SCHEMA, name)
 
 
 def taggs_table(name: str) -> str:

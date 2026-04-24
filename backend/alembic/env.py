@@ -32,6 +32,7 @@ from app.usda_food_access import models as usda_food_access_models  # noqa: F401
 from app.usda_food_env import models as usda_food_env_models  # noqa: F401
 from app.cdc_funding import models as cdc_funding_models  # noqa: F401
 from app.usaspending import models as usaspending_models  # noqa: F401
+from app.usaspending_fed_account import models as usaspending_fed_account_models  # noqa: F401
 from app.taggs import models as taggs_models  # noqa: F401
 from app.cdc_profiles import models as cdc_profiles_models  # noqa: F401
 from app.recon import models as recon_models  # noqa: F401
@@ -75,6 +76,11 @@ TARGET_TABLES = {
     "state_funding_summary",
     "can_classification",
     "ingestion_runs",
+    "raw_file_registry",
+    "dim_federal_account",
+    "fact_account_balance",
+    "fact_account_pa_oc",
+    "fact_award_account_breakdown",
     "prime_state_summary",
     "prime_county_summary",
     "subaward_state_summary",

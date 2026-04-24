@@ -23,6 +23,7 @@ def test_schema_registry_has_expected_sources() -> None:
         "cdc",
         "cdc_funding",
         "usaspending",
+        "usaspending_fed_account",
         "cdc_profiles",
         "taggs",
         "recon",
