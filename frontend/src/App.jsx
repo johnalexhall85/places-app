@@ -39,11 +39,17 @@ import {
 } from "./utils/cdcFundingProfileTarget";
 import {
   CDC_DEFAULT_GEOGRAPHY_LEVEL,
+  CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE,
   buildCdcFundingUrlSearch,
   CDC_DEFAULT_FUNDING_MODE,
   getCdcFundingModeLabel,
+  isCanonicalCdcFundingMode,
+  isBudgetGroundedCdcFundingMode,
+  normalizeCdcFiscalYearToken,
   normalizeCdcFundingMode,
   readCdcFundingUrlState,
+  resolveCdcFiscalYearSelection,
+  resolveCdcRequestGeographyLevel,
 } from "./utils/cdcFundingMode";
 import {
   fetchCmsGvCountyGeo,
@@ -84,6 +90,12 @@ const DATA_SOURCES = {
 };
 const CDC_DEFAULT_INTELLIGENCE_METRIC = "total_funding";
 const CDC_DEFAULT_FUNDING_TYPE = "total_cdc_funding";
+const CDC_SCOPED_FUNDING_TYPE_OPTIONS = [
+  { value: "total_cdc_funding", label: "All" },
+  { value: "discretionary_only", label: "Discretionary" },
+  { value: "mandatory_only", label: "Mandatory" },
+];
+const CDC_BUDGET_GROUNDED_EMPTY_STATE_MESSAGE = "No results match the current funding filters.";
 const USDA_DEFAULT_VARIABLE = "PCT_LACCESS_POP19";
 const FEMA_DEFAULT_MEASURE = "RISK_SCORE";
 const USDA_PLAIN_LABELS = {
@@ -2871,6 +2883,12 @@ export default function App() {
   const [cdcRecipientType, setCdcRecipientType] = useState("");
   const [cdcGeographyLevel, setCdcGeographyLevel] = useState(CDC_DEFAULT_GEOGRAPHY_LEVEL);
   const [cdcTimeAggregation, setCdcTimeAggregation] = useState("");
+  const [cdcIncludeMandatory, setCdcIncludeMandatory] = useState(null);
+  const [cdcIncludeEmergency, setCdcIncludeEmergency] = useState(null);
+  const [cdcIncludeSupplemental, setCdcIncludeSupplemental] = useState(null);
+  const [cdcIncludePphf, setCdcIncludePphf] = useState(null);
+  const [cdcIncludeTransfers, setCdcIncludeTransfers] = useState(null);
+  const [cdcReviewMode, setCdcReviewMode] = useState("");
   const [cdcMapMessage, setCdcMapMessage] = useState(null);
   const [cdcFilterOptions, setCdcFilterOptions] = useState({
     metric_options: [],
@@ -2879,6 +2897,10 @@ export default function App() {
     funding_type_options: [],
     funding_mode_options: [],
     default_funding_mode: CDC_DEFAULT_FUNDING_MODE,
+    canonical_filter_defaults: null,
+    canonical_review_mode_options: [],
+    budget_grounded_scope_filter_defaults: null,
+    budget_grounded_review_mode_options: [],
     cdc_center_options: [],
     mechanism_options: [],
     recipient_type_options: [],
@@ -3247,10 +3269,21 @@ export default function App() {
   const usdaRenderLevel = isUsdaDataSource
     ? (usdaRequestLevel || usdaMapLevel || usdaSelectedLevel)
     : null;
-  const cdcRenderLevel = isCdcDataSource
-    ? (cdcGeographyLevel || CDC_DEFAULT_GEOGRAPHY_LEVEL)
+  const cdcSelectedLevel = String(
+    cdcGeographyLevel || CDC_DEFAULT_GEOGRAPHY_LEVEL
+  ).trim().toLowerCase();
+  const cdcLowZoomStateFallback = isCdcDataSource
+    && cdcSelectedLevel === "county"
+    && resolveCdcRequestGeographyLevel(cdcSelectedLevel, mapZoom) === "state";
+  const cdcRequestLevel = isCdcDataSource
+    ? resolveCdcRequestGeographyLevel(cdcSelectedLevel, mapZoom)
     : null;
-  const cdcLowZoomStateFallback = false;
+  const cdcRenderLevel = isCdcDataSource
+    ? (cdcRequestLevel || CDC_DEFAULT_GEOGRAPHY_LEVEL)
+    : null;
+  const isCanonicalCdcMode = isCanonicalCdcFundingMode(cdcFundingMode);
+  const isBudgetGroundedCdcMode = isBudgetGroundedCdcFundingMode(cdcFundingMode);
+  const usesScopedCdcFilters = isCanonicalCdcMode || isBudgetGroundedCdcMode;
   useEffect(() => {
     if (selectedDataSource !== DATA_SOURCES.TAGGS) {
       return;
@@ -3262,6 +3295,134 @@ export default function App() {
       ? cdcFilterOptions.fiscal_year_options
       : [];
   }, [cdcFilterOptions.fiscal_year_options]);
+  const cdcCanonicalDefaults = useMemo(() => {
+    const defaults = cdcFilterOptions?.canonical_filter_defaults;
+    return defaults && typeof defaults === "object"
+      ? defaults
+      : {};
+  }, [cdcFilterOptions?.canonical_filter_defaults]);
+  const cdcBudgetGroundedDefaults = useMemo(() => {
+    const defaults = cdcFilterOptions?.budget_grounded_scope_filter_defaults;
+    return defaults && typeof defaults === "object"
+      ? defaults
+      : {};
+  }, [cdcFilterOptions?.budget_grounded_scope_filter_defaults]);
+  const cdcCanonicalYearTokens = useMemo(() => {
+    const availability = cdcCanonicalDefaults.available_fiscal_years_by_geography;
+    const geographyAvailability = availability && typeof availability === "object"
+      ? availability
+      : {};
+    const level = String(cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL).trim().toLowerCase();
+    const years = Array.isArray(geographyAvailability[level])
+      ? geographyAvailability[level]
+      : Array.isArray(cdcCanonicalDefaults.available_fiscal_years)
+        ? cdcCanonicalDefaults.available_fiscal_years
+        : [];
+    return years
+      .map((value) => normalizeCdcFiscalYearToken(value))
+      .filter(Boolean);
+  }, [
+    cdcCanonicalDefaults.available_fiscal_years,
+    cdcCanonicalDefaults.available_fiscal_years_by_geography,
+    cdcRenderLevel,
+  ]);
+  const cdcBudgetGroundedYearTokens = useMemo(() => (
+    Array.isArray(cdcBudgetGroundedDefaults.available_fiscal_years)
+      ? cdcBudgetGroundedDefaults.available_fiscal_years
+        .map((value) => normalizeCdcFiscalYearToken(value))
+        .filter(Boolean)
+      : []
+  ), [cdcBudgetGroundedDefaults.available_fiscal_years]);
+  const cdcVisibleFiscalYearOptions = useMemo(() => {
+    if (isCanonicalCdcMode) {
+      if (cdcCanonicalYearTokens.length === 0) {
+        return cdcFiscalYearOptions;
+      }
+      return cdcFiscalYearOptions.filter((option) => {
+        const value = String(option?.value ?? "").trim();
+        return value === "all" || cdcCanonicalYearTokens.includes(value);
+      });
+    }
+    if (isBudgetGroundedCdcMode && cdcBudgetGroundedYearTokens.length > 0) {
+      return cdcFiscalYearOptions.filter((option) => {
+        const value = String(option?.value ?? "").trim();
+        return value === "all" || cdcBudgetGroundedYearTokens.includes(value);
+      });
+    }
+    return cdcFiscalYearOptions;
+  }, [
+    cdcBudgetGroundedYearTokens,
+    cdcCanonicalYearTokens,
+    cdcFiscalYearOptions,
+    isBudgetGroundedCdcMode,
+    isCanonicalCdcMode,
+  ]);
+  const effectiveCdcDefaults = usesScopedCdcFilters
+    ? (isCanonicalCdcMode ? cdcCanonicalDefaults : cdcBudgetGroundedDefaults)
+    : {};
+  const effectiveCdcIncludeMandatory = usesScopedCdcFilters
+    ? (
+      cdcFundingType === "discretionary_only"
+        ? false
+        : cdcFundingType === "mandatory_only"
+          ? true
+          : (cdcIncludeMandatory ?? Boolean(effectiveCdcDefaults.include_mandatory ?? true))
+    )
+    : (cdcIncludeMandatory ?? Boolean(effectiveCdcDefaults.include_mandatory ?? true));
+  const effectiveCdcIncludeEmergency = cdcIncludeEmergency ?? Boolean(effectiveCdcDefaults.include_emergency ?? false);
+  const effectiveCdcIncludeSupplemental = cdcIncludeSupplemental ?? Boolean(effectiveCdcDefaults.include_supplemental ?? false);
+  const effectiveCdcIncludePphf = cdcIncludePphf ?? Boolean(effectiveCdcDefaults.include_pphf ?? true);
+  const effectiveCdcIncludeTransfers = cdcIncludeTransfers ?? Boolean(effectiveCdcDefaults.include_transfers ?? true);
+  const effectiveCdcReviewMode = String(
+    cdcReviewMode
+    || effectiveCdcDefaults.review_mode
+    || CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE
+  ).trim();
+  const cdcReviewModeOptions = usesScopedCdcFilters
+    ? (
+      isCanonicalCdcMode
+        ? (cdcFilterOptions.canonical_review_mode_options ?? [])
+        : (cdcFilterOptions.budget_grounded_review_mode_options ?? [])
+    )
+    : [];
+  const resolvedCdcFiscalYear = useMemo(() => {
+    const selectedValue = String(cdcFiscalYear ?? "").trim();
+    if (isCanonicalCdcMode) {
+      return resolveCdcFiscalYearSelection({
+        selectedValue,
+        defaultValue: cdcCanonicalDefaults.default_fiscal_year,
+        availableValues: cdcCanonicalYearTokens,
+      });
+    }
+    if (isBudgetGroundedCdcMode) {
+      return resolveCdcFiscalYearSelection({
+        selectedValue,
+        defaultValue: cdcBudgetGroundedDefaults.default_fiscal_year,
+        availableValues: cdcBudgetGroundedYearTokens,
+      });
+    }
+    const optionValues = cdcFiscalYearOptions
+      .map((option) => normalizeCdcFiscalYearToken(option?.value, { allowAll: true }))
+      .filter(Boolean);
+    return resolveCdcFiscalYearSelection({
+      selectedValue,
+      defaultValue: cdcFilterOptions?.default_fiscal_year,
+      availableValues: optionValues,
+    });
+  }, [
+    cdcCanonicalDefaults.default_fiscal_year,
+    cdcCanonicalYearTokens,
+    cdcBudgetGroundedDefaults.default_fiscal_year,
+    cdcBudgetGroundedYearTokens,
+    cdcFilterOptions?.default_fiscal_year,
+    cdcFiscalYear,
+    cdcFiscalYearOptions,
+    isBudgetGroundedCdcMode,
+    isCanonicalCdcMode,
+  ]);
+  const cdcFundingTypeOptions = usesScopedCdcFilters
+    ? CDC_SCOPED_FUNDING_TYPE_OPTIONS
+    : (cdcFilterOptions.funding_type_options ?? []);
   const taggsFiscalYearOptions = useMemo(() => {
     const tokens = (taggsFilterOptions.fiscal_years ?? [])
       .map((value) => String(value ?? "").trim())
@@ -3279,7 +3440,11 @@ export default function App() {
   const selectedTemporalValue = isHpsaDataSource
     ? selectedHpsaDomain
     : isCdcDataSource
-      ? `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}`
+      ? (
+        usesScopedCdcFilters
+          ? `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|mandatory:${effectiveCdcIncludeMandatory ? "on" : "off"}|emergency:${effectiveCdcIncludeEmergency ? "on" : "off"}|supplemental:${effectiveCdcIncludeSupplemental ? "on" : "off"}|pphf:${effectiveCdcIncludePphf ? "on" : "off"}|transfers:${effectiveCdcIncludeTransfers ? "on" : "off"}|review:${effectiveCdcReviewMode || CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE}|${cdcTimeAggregation || "default"}`
+          : `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}`
+      )
       : isTaggsDataSource
       ? `${selectedMeasureId}|${taggsFiscalYear || "all"}|${taggsProgramOffice || "all"}|${taggsAln || "all"}|${taggsCanCode || "all"}|${taggsFundingStream || "all"}|normalize:${taggsNormalizeData ? "on" : "off"}`
       : isUsdaDataSource
@@ -3309,24 +3474,21 @@ export default function App() {
     if (!isCdcDataSource) {
       return;
     }
-    if (cdcFiscalYearOptions.length === 0) {
+    if (cdcVisibleFiscalYearOptions.length === 0) {
       if (cdcFiscalYear) {
         setCdcFiscalYear("");
       }
       return;
     }
-    const optionValues = cdcFiscalYearOptions
-      .map((option) => String(option?.value ?? "").trim())
+    const optionValues = cdcVisibleFiscalYearOptions
+      .map((option) => normalizeCdcFiscalYearToken(option?.value, { allowAll: true }))
       .filter(Boolean);
-    const normalizedSelection = String(cdcFiscalYear ?? "").trim();
+    const normalizedSelection = normalizeCdcFiscalYearToken(cdcFiscalYear, { allowAll: true });
     if (normalizedSelection && optionValues.includes(normalizedSelection)) {
       return;
     }
-    const defaultFiscalYear = String(
-      cdcFilterOptions?.default_fiscal_year ?? optionValues.find((value) => value !== "all") ?? optionValues[0] ?? ""
-    ).trim();
-    setCdcFiscalYear(defaultFiscalYear);
-  }, [cdcFilterOptions?.default_fiscal_year, cdcFiscalYear, cdcFiscalYearOptions, isCdcDataSource]);
+    setCdcFiscalYear(resolvedCdcFiscalYear);
+  }, [cdcFiscalYear, cdcVisibleFiscalYearOptions, isCdcDataSource, resolvedCdcFiscalYear]);
 
   useEffect(() => {
     if (!isCdcDataSource) {
@@ -3339,6 +3501,22 @@ export default function App() {
       setCdcFundingMode(nextMode);
     }
   }, [cdcFilterOptions?.default_funding_mode, cdcFundingMode, isCdcDataSource]);
+
+  useEffect(() => {
+    if (!isCdcDataSource) {
+      return;
+    }
+    const validFundingTypes = cdcFundingTypeOptions
+      .map((option) => String(option?.value ?? "").trim())
+      .filter(Boolean);
+    if (validFundingTypes.length === 0) {
+      return;
+    }
+    if (validFundingTypes.includes(cdcFundingType)) {
+      return;
+    }
+    setCdcFundingType(validFundingTypes[0] ?? CDC_DEFAULT_FUNDING_TYPE);
+  }, [cdcFundingType, cdcFundingTypeOptions, isCdcDataSource]);
 
   useEffect(() => {
     if (!isTaggsDataSource) {
@@ -4111,6 +4289,20 @@ export default function App() {
             funding_type_options: Array.isArray(data?.funding_type_options) ? data.funding_type_options : [],
             funding_mode_options: Array.isArray(data?.funding_mode_options) ? data.funding_mode_options : [],
             default_funding_mode: String(data?.default_funding_mode ?? CDC_DEFAULT_FUNDING_MODE),
+            canonical_filter_defaults: (
+              data?.canonical_filter_defaults
+              && typeof data.canonical_filter_defaults === "object"
+            ) ? data.canonical_filter_defaults : null,
+            canonical_review_mode_options: Array.isArray(data?.canonical_review_mode_options)
+              ? data.canonical_review_mode_options
+              : [],
+            budget_grounded_scope_filter_defaults: (
+              data?.budget_grounded_scope_filter_defaults
+              && typeof data.budget_grounded_scope_filter_defaults === "object"
+            ) ? data.budget_grounded_scope_filter_defaults : null,
+            budget_grounded_review_mode_options: Array.isArray(data?.budget_grounded_review_mode_options)
+              ? data.budget_grounded_review_mode_options
+              : [],
             cdc_center_options: Array.isArray(data?.cdc_center_options) ? data.cdc_center_options : [],
             mechanism_options: Array.isArray(data?.mechanism_options) ? data.mechanism_options : [],
             recipient_type_options: Array.isArray(data?.recipient_type_options) ? data.recipient_type_options : [],
@@ -4369,6 +4561,10 @@ export default function App() {
             funding_type_options: [],
             funding_mode_options: [],
             default_funding_mode: CDC_DEFAULT_FUNDING_MODE,
+            canonical_filter_defaults: null,
+            canonical_review_mode_options: [],
+            budget_grounded_scope_filter_defaults: null,
+            budget_grounded_review_mode_options: [],
             cdc_center_options: [],
             mechanism_options: [],
             recipient_type_options: [],
@@ -4707,14 +4903,20 @@ export default function App() {
           apiBase: API_BASE,
           geography_level: cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL,
           metric,
-          fiscal_year: cdcFiscalYear || null,
+          fiscal_year: resolvedCdcFiscalYear || null,
           funding_type: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
           funding_mode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
+          include_mandatory: usesScopedCdcFilters ? effectiveCdcIncludeMandatory : null,
+          include_emergency: usesScopedCdcFilters ? effectiveCdcIncludeEmergency : null,
+          include_supplemental: usesScopedCdcFilters ? effectiveCdcIncludeSupplemental : null,
+          include_pphf: usesScopedCdcFilters ? effectiveCdcIncludePphf : null,
+          include_transfers: usesScopedCdcFilters ? effectiveCdcIncludeTransfers : null,
+          review_mode: usesScopedCdcFilters ? effectiveCdcReviewMode : null,
           cdc_center: cdcProgramArea || null,
           mechanism: cdcMechanism || null,
           recipient_type: cdcRecipientType || null,
           time_aggregation: cdcTimeAggregation || null,
-          bbox: bboxValue || null,
+          bbox: cdcRenderLevel === "county" ? (bboxValue || null) : null,
           limit: (cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL) === "national"
             ? 1
             : (cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL) === "state"
@@ -4724,7 +4926,14 @@ export default function App() {
         });
         const features = Array.isArray(payload?.features) ? payload.features : [];
         const note = String(payload?.meta?.note ?? "").trim();
-        const noData = features.length === 0 ? "No CDC funding data in view." : "";
+        const mappedGeographies = Number(
+          payload?.meta?.mapped_geographies
+          ?? features.filter((feature) => {
+            const value = feature?.properties?.value;
+            return value !== null && value !== undefined;
+          }).length
+        );
+        const noData = mappedGeographies === 0 ? CDC_BUDGET_GROUNDED_EMPTY_STATE_MESSAGE : "";
         setCdcMapMessage([note, noData].filter(Boolean).join(" ") || null);
         return payload;
       }
@@ -4986,6 +5195,14 @@ export default function App() {
       cdcRecipientType,
       cdcTimeAggregation,
       cdcRenderLevel,
+      effectiveCdcIncludeEmergency,
+      effectiveCdcIncludeMandatory,
+      effectiveCdcIncludePphf,
+      effectiveCdcIncludeSupplemental,
+      effectiveCdcIncludeTransfers,
+      effectiveCdcReviewMode,
+      usesScopedCdcFilters,
+      resolvedCdcFiscalYear,
       taggsFiscalYear,
       taggsProgramOffice,
       taggsAln,
@@ -5273,7 +5490,7 @@ export default function App() {
     tractsActive,
   ]);
 
-  const cdcLegendBbox = bbox;
+  const cdcLegendBbox = cdcRenderLevel === "county" ? bbox : null;
 
   const fetchCdcLegendPayload = useCallback(async ({ signal } = {}) => {
     if (!selectedMeasureId) return null;
@@ -5281,9 +5498,15 @@ export default function App() {
       apiBase: API_BASE,
       geography_level: cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL,
       metric: selectedMeasureId,
-      fiscal_year: cdcFiscalYear || null,
+      fiscal_year: resolvedCdcFiscalYear || null,
       funding_type: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
       funding_mode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
+      include_mandatory: usesScopedCdcFilters ? effectiveCdcIncludeMandatory : null,
+      include_emergency: usesScopedCdcFilters ? effectiveCdcIncludeEmergency : null,
+      include_supplemental: usesScopedCdcFilters ? effectiveCdcIncludeSupplemental : null,
+      include_pphf: usesScopedCdcFilters ? effectiveCdcIncludePphf : null,
+      include_transfers: usesScopedCdcFilters ? effectiveCdcIncludeTransfers : null,
+      review_mode: usesScopedCdcFilters ? effectiveCdcReviewMode : null,
       cdc_center: cdcProgramArea || null,
       mechanism: cdcMechanism || null,
       recipient_type: cdcRecipientType || null,
@@ -5292,7 +5515,14 @@ export default function App() {
       signal,
     });
   }, [
-    cdcFiscalYear,
+    effectiveCdcIncludeEmergency,
+    effectiveCdcIncludeMandatory,
+    effectiveCdcIncludePphf,
+    effectiveCdcIncludeSupplemental,
+    effectiveCdcIncludeTransfers,
+    effectiveCdcReviewMode,
+    usesScopedCdcFilters,
+    resolvedCdcFiscalYear,
     cdcFundingType,
     cdcFundingMode,
     cdcProgramArea,
@@ -5315,7 +5545,9 @@ export default function App() {
       return;
     }
 
-    const legendKey = `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${cdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`;
+    const legendKey = usesScopedCdcFilters
+      ? `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|mandatory:${effectiveCdcIncludeMandatory ? "on" : "off"}|emergency:${effectiveCdcIncludeEmergency ? "on" : "off"}|supplemental:${effectiveCdcIncludeSupplemental ? "on" : "off"}|pphf:${effectiveCdcIncludePphf ? "on" : "off"}|transfers:${effectiveCdcIncludeTransfers ? "on" : "off"}|review:${effectiveCdcReviewMode || CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`
+      : `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`;
     const cachedLegend = getCached(legendKey);
     if (cachedLegend) {
       setCdcLegend(cachedLegend);
@@ -5356,7 +5588,14 @@ export default function App() {
       }
     };
   }, [
-    cdcFiscalYear,
+    effectiveCdcIncludeEmergency,
+    effectiveCdcIncludeMandatory,
+    effectiveCdcIncludePphf,
+    effectiveCdcIncludeSupplemental,
+    effectiveCdcIncludeTransfers,
+    effectiveCdcReviewMode,
+    usesScopedCdcFilters,
+    resolvedCdcFiscalYear,
     cdcFundingType,
     cdcFundingMode,
     cdcProgramArea,
@@ -7396,7 +7635,7 @@ export default function App() {
     ? resolveCdcFundingProfileTarget({
       selectedFeatureProps,
       stateFilter: null,
-      fiscalYear: cdcFiscalYear || null,
+      fiscalYear: resolvedCdcFiscalYear || null,
       metric: selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC,
       fundingType: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
       fundingMode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
@@ -7404,6 +7643,12 @@ export default function App() {
       mechanism: cdcMechanism || null,
       recipientType: cdcRecipientType || null,
       timeAggregation: cdcTimeAggregation || null,
+      includeMandatory: usesScopedCdcFilters ? effectiveCdcIncludeMandatory : null,
+      includeEmergency: usesScopedCdcFilters ? effectiveCdcIncludeEmergency : null,
+      includeSupplemental: usesScopedCdcFilters ? effectiveCdcIncludeSupplemental : null,
+      includePphf: usesScopedCdcFilters ? effectiveCdcIncludePphf : null,
+      includeTransfers: usesScopedCdcFilters ? effectiveCdcIncludeTransfers : null,
+      reviewMode: usesScopedCdcFilters ? effectiveCdcReviewMode : null,
       geographyLevel: cdcRenderLevel || CDC_DEFAULT_GEOGRAPHY_LEVEL,
     })
     : null;
@@ -7471,11 +7716,11 @@ export default function App() {
       hpsaChoropleth?.quartiles?.as_of_date
     )
     : isAcsDataSource
-      ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
+        ? firstDefined(selectedFeatureProps?.year_window, selectedYearWindow)
       : isSviDataSource
         ? firstDefined(selectedFeatureProps?.year, selectedSviYear)
         : isCdcDataSource
-          ? firstDefined(selectedFeatureProps?.fiscal_year, cdcFiscalYear || null)
+          ? firstDefined(selectedFeatureProps?.fiscal_year, resolvedCdcFiscalYear || null)
         : isTaggsDataSource
           ? firstDefined(selectedFeatureProps?.fiscal_year, taggsFiscalYear || null)
         : isCmsDataSource
@@ -9099,12 +9344,12 @@ export default function App() {
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 600 }}>Fiscal year</span>
                   <select
-                    value={cdcFiscalYear}
+                    value={resolvedCdcFiscalYear}
                     onChange={(event) => setCdcFiscalYear(String(event.target.value ?? ""))}
-                    disabled={cdcFiscalYearOptions.length === 0}
+                    disabled={cdcVisibleFiscalYearOptions.length === 0}
                     style={controlSelectStyle}
                   >
-                    {cdcFiscalYearOptions.map((option) => (
+                    {cdcVisibleFiscalYearOptions.map((option) => (
                       <option key={`cdc-fy-${option.value}`} value={String(option.value)}>
                         {option.label}
                       </option>
@@ -9134,7 +9379,7 @@ export default function App() {
                     onChange={(event) => setCdcFundingType(String(event.target.value ?? CDC_DEFAULT_FUNDING_TYPE))}
                     style={controlSelectStyle}
                   >
-                    {(cdcFilterOptions.funding_type_options ?? []).map((option) => (
+                    {cdcFundingTypeOptions.map((option) => (
                       <option key={`cdc-funding-type-${option.value}`} value={option.value}>
                         {option.label}
                       </option>
@@ -9169,52 +9414,108 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>Funding mechanism</span>
-                  <select
-                    value={cdcMechanism}
-                    onChange={(event) => setCdcMechanism(String(event.target.value ?? ""))}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All mechanisms</option>
-                    {(cdcFilterOptions.mechanism_options ?? []).map((option) => (
-                      <option key={`cdc-mechanism-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div style={{ fontWeight: 700, color: "#123247", marginTop: 4 }}>Recipient / Program</div>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>CDC Center / Agency Area</span>
-                  <select
-                    value={cdcProgramArea}
-                    onChange={(event) => setCdcProgramArea(String(event.target.value ?? ""))}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All CDC Programs</option>
-                    {(cdcFilterOptions.cdc_center_options ?? []).map((option) => (
-                      <option key={`cdc-center-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 600 }}>Recipient type</span>
-                  <select
-                    value={cdcRecipientType}
-                    onChange={(event) => setCdcRecipientType(String(event.target.value ?? ""))}
-                    style={controlSelectStyle}
-                  >
-                    <option value="">All recipients</option>
-                    {(cdcFilterOptions.recipient_type_options ?? []).map((option) => (
-                      <option key={`cdc-recipient-type-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {usesScopedCdcFilters ? (
+                  <>
+                    <div style={{ fontWeight: 700, color: "#123247", marginTop: 4 }}>Funding Scope Filters</div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={effectiveCdcIncludeEmergency}
+                          onChange={(event) => setCdcIncludeEmergency(event.target.checked)}
+                        />
+                        <span>Include emergency</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={effectiveCdcIncludeSupplemental}
+                          onChange={(event) => setCdcIncludeSupplemental(event.target.checked)}
+                        />
+                        <span>Include other supplemental</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={effectiveCdcIncludePphf}
+                          onChange={(event) => setCdcIncludePphf(event.target.checked)}
+                        />
+                        <span>Include PPHF</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={effectiveCdcIncludeTransfers}
+                          onChange={(event) => setCdcIncludeTransfers(event.target.checked)}
+                        />
+                        <span>Include transfers</span>
+                      </label>
+                    </div>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 600 }}>Review mode</span>
+                      <select
+                        value={effectiveCdcReviewMode}
+                        onChange={(event) => setCdcReviewMode(String(event.target.value ?? ""))}
+                        style={controlSelectStyle}
+                      >
+                        {cdcReviewModeOptions.map((option) => (
+                          <option key={`cdc-review-mode-${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 600 }}>Funding mechanism</span>
+                      <select
+                        value={cdcMechanism}
+                        onChange={(event) => setCdcMechanism(String(event.target.value ?? ""))}
+                        style={controlSelectStyle}
+                      >
+                        <option value="">All mechanisms</option>
+                        {(cdcFilterOptions.mechanism_options ?? []).map((option) => (
+                          <option key={`cdc-mechanism-${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div style={{ fontWeight: 700, color: "#123247", marginTop: 4 }}>Recipient / Program</div>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 600 }}>CDC Center / Agency Area</span>
+                      <select
+                        value={cdcProgramArea}
+                        onChange={(event) => setCdcProgramArea(String(event.target.value ?? ""))}
+                        style={controlSelectStyle}
+                      >
+                        <option value="">All CDC Programs</option>
+                        {(cdcFilterOptions.cdc_center_options ?? []).map((option) => (
+                          <option key={`cdc-center-${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 600 }}>Recipient type</span>
+                      <select
+                        value={cdcRecipientType}
+                        onChange={(event) => setCdcRecipientType(String(event.target.value ?? ""))}
+                        style={controlSelectStyle}
+                      >
+                        <option value="">All recipients</option>
+                        {(cdcFilterOptions.recipient_type_options ?? []).map((option) => (
+                          <option key={`cdc-recipient-type-${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
               </>
             ) : null}
             {isSviDataSource ? (

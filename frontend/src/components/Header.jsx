@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import pdoObservatoryMark from "../assets/brand/pdo-observatory-mark.png";
 import { APP_NAME, PRIMARY_BRAND } from "../branding/pdoBrand";
+import { useDemoAccess } from "../demoAccess/DemoAccessGate";
 import { isFundingModelBuilderEnabled } from "../utils/fundingModelBuilderAccess";
 
 const NAV_ITEMS = [
@@ -116,6 +117,7 @@ const NAV_ITEMS = [
 export default function Header() {
   const [activeNavId, setActiveNavId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { hasAccess, logout } = useDemoAccess();
 
   const visibleNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => (item.id === "funding-model-builder" ? isFundingModelBuilderEnabled() : true)),
@@ -142,6 +144,12 @@ export default function Header() {
   const handleNavClick = (id) => {
     setActiveNavId(id);
     setMobileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    setActiveNavId(null);
+    setMobileMenuOpen(false);
+    logout();
   };
 
   return (
@@ -195,6 +203,15 @@ export default function Header() {
               </button>
             )
           ))}
+          {hasAccess ? (
+            <button
+              type="button"
+              className="chip-header-link chip-header-logout"
+              onClick={handleLogout}
+            >
+              Log out
+            </button>
+          ) : null}
         </nav>
       </header>
 

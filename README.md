@@ -64,6 +64,34 @@ Expected response:
 
 Then open `http://localhost:5173` in your browser.
 
+## Demo access gate
+
+CHIP uses a lightweight demo access gate before loading the app. Configure these backend environment variables before starting FastAPI:
+
+```bash
+export DEMO_ACCESS_ENABLED=true
+export DEMO_ACCESS_SESSION_SECRET="$(openssl rand -hex 32)"
+export DEMO_ACCESS_CODE_PEPPER="$(openssl rand -hex 32)"
+export DEMO_ACCESS_ADMIN_SECRET="$(openssl rand -hex 24)"
+export DEMO_ACCESS_SESSION_TTL_DAYS=7
+export DEMO_ACCESS_COOKIE_SECURE=false
+```
+
+Run migrations, then create the first code:
+
+```bash
+cd backend
+alembic upgrade head
+python scripts/create_demo_access_code.py \
+  --label "First demo code" \
+  --recipient-name "Demo User" \
+  --recipient-email "demo@example.com" \
+  --organization "Example Org" \
+  --created-by "admin"
+```
+
+The script prints the plaintext code once. The admin page is available at `/demo-access-admin` and requires `DEMO_ACCESS_ADMIN_SECRET`.
+
 ## Optional: one-command startup (`dev-start.sh`)
 
 If you prefer:

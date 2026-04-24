@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE,
   buildCdcFundingUrlSearch,
   CDC_DEFAULT_GEOGRAPHY_LEVEL,
   CDC_DEFAULT_FUNDING_MODE,
+  CDC_STATE_LAYER_MAX_ZOOM,
   getCdcFundingModeLabel,
+  isCanonicalCdcFundingMode,
+  isBudgetGroundedCdcFundingMode,
+  normalizeCdcFiscalYearToken,
   normalizeCdcFundingMode,
   readCdcFundingUrlState,
+  resolveCdcFiscalYearSelection,
+  resolveCdcRequestGeographyLevel,
 } from "./cdcFundingMode";
 
 describe("cdcFundingMode", () => {
@@ -13,8 +20,19 @@ describe("cdcFundingMode", () => {
     expect(normalizeCdcFundingMode("raw_total")).toBe("raw_total");
     expect(normalizeCdcFundingMode("chip_normalized")).toBe("chip_normalized");
     expect(normalizeCdcFundingMode("chip_normalized_v1_1")).toBe("chip_normalized_v1_1");
+    expect(normalizeCdcFundingMode("canonical_v1")).toBe("canonical_v1");
+    expect(normalizeCdcFundingMode("budget_grounded_v1")).toBe("budget_grounded_v1");
     expect(normalizeCdcFundingMode("chip_v1_1_emergency")).toBe("chip_v1_1_emergency");
     expect(normalizeCdcFundingMode("bad-value")).toBe(CDC_DEFAULT_FUNDING_MODE);
+  });
+
+  it("recognizes the canonical and budget-grounded funding modes explicitly", () => {
+    expect(CDC_DEFAULT_FUNDING_MODE).toBe("canonical_v1");
+    expect(CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE).toBe("all_master_universe");
+    expect(isCanonicalCdcFundingMode("canonical_v1")).toBe(true);
+    expect(isCanonicalCdcFundingMode("chip_normalized_v1_1")).toBe(false);
+    expect(isBudgetGroundedCdcFundingMode("budget_grounded_v1")).toBe(true);
+    expect(isBudgetGroundedCdcFundingMode("chip_normalized_v1_1")).toBe(false);
   });
 
   it("resolves custom funding mode labels from options", () => {
@@ -58,5 +76,36 @@ describe("cdcFundingMode", () => {
         fundingMode: "chip_normalized_v1_1",
       })
     ).toBe("year=2024");
+  });
+
+  it("falls back to state requests for county mode at low zoom", () => {
+    expect(resolveCdcRequestGeographyLevel("county", CDC_STATE_LAYER_MAX_ZOOM)).toBe("state");
+    expect(resolveCdcRequestGeographyLevel("county", CDC_STATE_LAYER_MAX_ZOOM + 1)).toBe("county");
+    expect(resolveCdcRequestGeographyLevel("state", 3)).toBe("state");
+    expect(resolveCdcRequestGeographyLevel("national", 3)).toBe("national");
+  });
+
+  it("normalizes fiscal year tokens and ignores invalid defaults", () => {
+    expect(normalizeCdcFiscalYearToken(null)).toBe("");
+    expect(normalizeCdcFiscalYearToken("")).toBe("");
+    expect(normalizeCdcFiscalYearToken("0")).toBe("");
+    expect(normalizeCdcFiscalYearToken("2025")).toBe("2025");
+    expect(normalizeCdcFiscalYearToken("all", { allowAll: true })).toBe("all");
+
+    expect(
+      resolveCdcFiscalYearSelection({
+        selectedValue: "",
+        defaultValue: 0,
+        availableValues: ["all", 2025, 2024],
+      })
+    ).toBe("2025");
+
+    expect(
+      resolveCdcFiscalYearSelection({
+        selectedValue: "all",
+        defaultValue: 2025,
+        availableValues: ["all", 2025, 2024],
+      })
+    ).toBe("all");
   });
 });

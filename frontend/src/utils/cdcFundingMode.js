@@ -1,7 +1,9 @@
 export const CDC_FUNDING_MODES = {
+  CANONICAL_V1: "canonical_v1",
   RAW_TOTAL: "raw_total",
   CHIP_NORMALIZED: "chip_normalized",
   CHIP_NORMALIZED_V11: "chip_normalized_v1_1",
+  BUDGET_GROUNDED_V1: "budget_grounded_v1",
 };
 
 export const CDC_GEOGRAPHY_LEVELS = {
@@ -10,13 +12,18 @@ export const CDC_GEOGRAPHY_LEVELS = {
   COUNTY: "county",
 };
 
-export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CHIP_NORMALIZED_V11;
+export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CANONICAL_V1;
 export const CDC_DEFAULT_GEOGRAPHY_LEVEL = CDC_GEOGRAPHY_LEVELS.STATE;
+export const CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE = "all_master_universe";
+export const CDC_DEFAULT_CANONICAL_REVIEW_MODE = CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE;
+export const CDC_STATE_LAYER_MAX_ZOOM = 5;
 
 export const CDC_FUNDING_MODE_LABELS = {
+  [CDC_FUNDING_MODES.CANONICAL_V1]: "Canonical CDC Funding",
   [CDC_FUNDING_MODES.RAW_TOTAL]: "Raw total funding",
   [CDC_FUNDING_MODES.CHIP_NORMALIZED]: "CHIP Normalized Funding (Legacy)",
   [CDC_FUNDING_MODES.CHIP_NORMALIZED_V11]: "CHIP Normalized Funding v1.1",
+  [CDC_FUNDING_MODES.BUDGET_GROUNDED_V1]: "Budget-grounded funding",
 };
 
 const CUSTOM_FUNDING_MODE_RE = /^[a-z][a-z0-9_]*$/;
@@ -29,8 +36,21 @@ export function isNormalizedCdcFundingMode(value) {
   );
 }
 
+export function isCanonicalCdcFundingMode(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  return token === CDC_FUNDING_MODES.CANONICAL_V1;
+}
+
+export function isBudgetGroundedCdcFundingMode(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  return token === CDC_FUNDING_MODES.BUDGET_GROUNDED_V1;
+}
+
 export function normalizeCdcFundingMode(value) {
   const token = String(value ?? "").trim().toLowerCase();
+  if (token === CDC_FUNDING_MODES.CANONICAL_V1) {
+    return CDC_FUNDING_MODES.CANONICAL_V1;
+  }
   if (token === CDC_FUNDING_MODES.RAW_TOTAL) {
     return CDC_FUNDING_MODES.RAW_TOTAL;
   }
@@ -39,6 +59,9 @@ export function normalizeCdcFundingMode(value) {
   }
   if (token === CDC_FUNDING_MODES.CHIP_NORMALIZED_V11) {
     return CDC_FUNDING_MODES.CHIP_NORMALIZED_V11;
+  }
+  if (token === CDC_FUNDING_MODES.BUDGET_GROUNDED_V1) {
+    return CDC_FUNDING_MODES.BUDGET_GROUNDED_V1;
   }
   if (CUSTOM_FUNDING_MODE_RE.test(token)) {
     return token;
@@ -69,6 +92,51 @@ export function normalizeCdcFundingGeographyLevel(value) {
     return CDC_GEOGRAPHY_LEVELS.COUNTY;
   }
   return CDC_DEFAULT_GEOGRAPHY_LEVEL;
+}
+
+export function normalizeCdcFiscalYearToken(value, { allowAll = false } = {}) {
+  const token = String(value ?? "").trim().toLowerCase();
+  if (!token) return "";
+  if (allowAll && token === "all") return "all";
+  const numeric = Number(token);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    return "";
+  }
+  return String(numeric);
+}
+
+export function resolveCdcFiscalYearSelection({
+  selectedValue,
+  defaultValue,
+  availableValues = [],
+} = {}) {
+  const normalizedAvailable = Array.from(
+    new Set(
+      (Array.isArray(availableValues) ? availableValues : [])
+        .map((value) => normalizeCdcFiscalYearToken(value, { allowAll: true }))
+        .filter(Boolean)
+    )
+  );
+  const normalizedSelected = normalizeCdcFiscalYearToken(selectedValue, { allowAll: true });
+  if (normalizedSelected && normalizedAvailable.includes(normalizedSelected)) {
+    return normalizedSelected;
+  }
+  const actualYears = normalizedAvailable.filter((value) => value !== "all");
+  const normalizedDefault = normalizeCdcFiscalYearToken(defaultValue);
+  if (normalizedDefault && actualYears.includes(normalizedDefault)) {
+    return normalizedDefault;
+  }
+  return actualYears[0] ?? (normalizedAvailable.includes("all") ? "all" : "");
+}
+
+export function resolveCdcRequestGeographyLevel(geographyLevel, mapZoom) {
+  const normalizedLevel = normalizeCdcFundingGeographyLevel(geographyLevel);
+  if (normalizedLevel !== CDC_GEOGRAPHY_LEVELS.COUNTY) {
+    return normalizedLevel;
+  }
+  return Number(mapZoom) <= CDC_STATE_LAYER_MAX_ZOOM
+    ? CDC_GEOGRAPHY_LEVELS.STATE
+    : CDC_GEOGRAPHY_LEVELS.COUNTY;
 }
 
 export function readCdcFundingUrlState(search) {

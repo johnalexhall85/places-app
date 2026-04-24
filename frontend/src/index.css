@@ -248,6 +248,11 @@ textarea {
   border-color: rgba(53, 118, 186, 0.12);
 }
 
+.chip-header-logout {
+  border-color: rgba(23, 139, 139, 0.24);
+  color: var(--chip-legacy-teal);
+}
+
 .chip-menu-button {
   display: none;
   border: 1px solid var(--pdo-border-strong);
@@ -258,6 +263,334 @@ textarea {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.demo-access-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(247, 250, 253, 0.96), rgba(242, 246, 251, 0.88)),
+    var(--pdo-background);
+}
+
+.demo-access-panel {
+  width: min(100%, 420px);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  box-shadow: var(--pdo-overlay-shadow);
+  padding: 32px;
+  display: grid;
+  gap: 14px;
+}
+
+.demo-access-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.demo-access-brand,
+.demo-access-kicker,
+.demo-access-footnote {
+  margin: 0;
+  color: var(--pdo-text-muted);
+}
+
+.demo-access-brand {
+  color: var(--pdo-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.demo-access-kicker {
+  font-size: 14px;
+}
+
+.demo-access-panel h1 {
+  font-size: clamp(2rem, 5vw, 2.7rem);
+  line-height: 1.05;
+}
+
+.demo-access-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.demo-access-form label,
+.demo-admin-create-form label,
+.demo-admin-secret-form label {
+  color: var(--pdo-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.demo-access-form input,
+.demo-admin-create-form input,
+.demo-admin-create-form textarea,
+.demo-admin-secret-form input {
+  width: 100%;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--pdo-text);
+  padding: 11px 12px;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.demo-access-form input:focus,
+.demo-admin-create-form input:focus,
+.demo-admin-create-form textarea:focus,
+.demo-admin-secret-form input:focus {
+  border-color: var(--pdo-primary);
+  box-shadow: 0 0 0 3px rgba(53, 118, 186, 0.14);
+}
+
+.demo-access-form button,
+.demo-admin-create-form button,
+.demo-admin-secret-form button,
+.demo-admin-section-heading button,
+.demo-admin-table button {
+  border: 1px solid rgba(23, 139, 139, 0.28);
+  border-radius: 8px;
+  background: var(--chip-legacy-teal);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 11px 14px;
+}
+
+.demo-access-form button:disabled,
+.demo-admin-create-form button:disabled,
+.demo-admin-secret-form button:disabled,
+.demo-admin-section-heading button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.demo-access-error,
+.demo-admin-error {
+  margin: 0;
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  border-radius: 8px;
+  background: rgba(254, 242, 242, 0.95);
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.demo-access-footnote {
+  border-top: 1px solid var(--pdo-border);
+  font-size: 12px;
+  padding-top: 12px;
+}
+
+.demo-admin-page {
+  min-height: 100vh;
+  background: var(--pdo-background);
+  color: var(--pdo-text);
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.demo-admin-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  background: #ffffff;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  box-shadow: var(--pdo-overlay-shadow-tight);
+  padding: 18px;
+}
+
+.demo-admin-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.demo-admin-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.demo-admin-title p {
+  margin: 0 0 2px;
+  color: var(--pdo-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.demo-admin-title h1 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.demo-admin-secret-form {
+  width: min(100%, 460px);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.demo-admin-secret-form label {
+  grid-column: 1 / -1;
+}
+
+.demo-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.demo-admin-summary div,
+.demo-admin-section {
+  background: #ffffff;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  box-shadow: var(--pdo-overlay-shadow-tight);
+}
+
+.demo-admin-summary div {
+  padding: 16px;
+}
+
+.demo-admin-summary span {
+  display: block;
+  color: var(--chip-legacy-teal);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.demo-admin-summary p {
+  margin: 6px 0 0;
+  color: var(--pdo-text-muted);
+  font-weight: 700;
+}
+
+.demo-admin-section {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.demo-admin-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.demo-admin-section-heading h2 {
+  font-size: 1.25rem;
+}
+
+.demo-admin-new-code {
+  margin: 0;
+  border: 1px solid rgba(23, 139, 139, 0.24);
+  border-radius: 8px;
+  background: rgba(23, 139, 139, 0.08);
+  color: var(--pdo-text);
+  padding: 8px 10px;
+}
+
+.demo-admin-create-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.demo-admin-create-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.demo-admin-wide {
+  grid-column: 1 / -1;
+}
+
+.demo-admin-create-form button {
+  align-self: end;
+}
+
+.demo-admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+}
+
+.demo-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+  background: #ffffff;
+}
+
+.demo-admin-table th,
+.demo-admin-table td {
+  border-bottom: 1px solid var(--pdo-border);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.demo-admin-table th {
+  background: var(--pdo-surface-alt);
+  color: var(--pdo-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-admin-table td span {
+  display: block;
+  color: var(--pdo-text-muted);
+  font-size: 12px;
+}
+
+.demo-admin-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.demo-admin-table button,
+.demo-admin-section-heading button {
+  padding: 8px 10px;
+}
+
+@media (max-width: 760px) {
+  .demo-access-panel {
+    padding: 24px;
+  }
+
+  .demo-admin-page {
+    padding: 14px;
+  }
+
+  .demo-admin-header,
+  .demo-admin-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .demo-admin-secret-form,
+  .demo-admin-summary,
+  .demo-admin-create-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chip-brand-line {

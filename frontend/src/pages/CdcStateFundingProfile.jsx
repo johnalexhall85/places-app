@@ -14,6 +14,14 @@ import {
 } from "../utils/cdcFundingMode";
 import "./CdcStateFundingProfile.css";
 
+function parseBooleanParam(params, key) {
+  const raw = String(params.get(key) ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return null;
+}
+
 function parseQueryParams() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = new URLSearchParams(search);
@@ -31,6 +39,12 @@ function parseQueryParams() {
     mechanism: String(params.get("mechanism") ?? "").trim() || null,
     recipientType: String(params.get("recipient_type") ?? "").trim() || null,
     timeAggregation: String(params.get("time_aggregation") ?? "").trim() || null,
+    includeMandatory: parseBooleanParam(params, "include_mandatory"),
+    includeEmergency: parseBooleanParam(params, "include_emergency"),
+    includeSupplemental: parseBooleanParam(params, "include_supplemental"),
+    includePphf: parseBooleanParam(params, "include_pphf"),
+    includeTransfers: parseBooleanParam(params, "include_transfers"),
+    reviewMode: String(params.get("review_mode") ?? "").trim() || null,
   };
 }
 
@@ -118,7 +132,18 @@ export default function CdcStateFundingProfile({ stateCode }) {
     setDetailPageSize(25);
     setDetailSortBy("amount");
     setDetailSortDir("desc");
-  }, [normalizedStateCode, query.fiscalYear, query.fundingMode]);
+  }, [
+    normalizedStateCode,
+    query.fiscalYear,
+    query.fundingMode,
+    query.fundingType,
+    query.includeMandatory,
+    query.includeEmergency,
+    query.includeSupplemental,
+    query.includePphf,
+    query.includeTransfers,
+    query.reviewMode,
+  ]);
 
   useEffect(() => {
     if (!hasState) {
@@ -143,6 +168,12 @@ export default function CdcStateFundingProfile({ stateCode }) {
       mechanism: query.mechanism,
       recipient_type: query.recipientType,
       time_aggregation: query.timeAggregation,
+      include_mandatory: query.includeMandatory,
+      include_emergency: query.includeEmergency,
+      include_supplemental: query.includeSupplemental,
+      include_pphf: query.includePphf,
+      include_transfers: query.includeTransfers,
+      review_mode: query.reviewMode,
       signal: controller.signal,
     })
       .then((overviewPayload) => {
@@ -173,6 +204,12 @@ export default function CdcStateFundingProfile({ stateCode }) {
     query.programArea,
     query.recipientType,
     query.timeAggregation,
+    query.includeMandatory,
+    query.includeEmergency,
+    query.includeSupplemental,
+    query.includePphf,
+    query.includeTransfers,
+    query.reviewMode,
   ]);
 
   useEffect(() => {
@@ -190,7 +227,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
       apiBase: API_BASE,
       state: normalizedStateCode,
       fiscal_year: query.fiscalYear,
+      funding_type: query.fundingType,
       funding_mode: query.fundingMode,
+      include_mandatory: query.includeMandatory,
+      include_emergency: query.includeEmergency,
+      include_supplemental: query.includeSupplemental,
+      include_pphf: query.includePphf,
+      include_transfers: query.includeTransfers,
+      review_mode: query.reviewMode,
       q: detailQuery,
       page: detailPage,
       page_size: detailPageSize,
@@ -216,7 +260,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
     hasState,
     normalizedStateCode,
     query.fiscalYear,
+    query.fundingType,
     query.fundingMode,
+    query.includeMandatory,
+    query.includeEmergency,
+    query.includeSupplemental,
+    query.includePphf,
+    query.includeTransfers,
+    query.reviewMode,
     detailPage,
     detailPageSize,
     detailQuery,

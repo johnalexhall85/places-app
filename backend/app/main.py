@@ -27,8 +27,12 @@ from app.usda_food_env.router import router as usda_food_env_router
 from app.cdc_funding.router import router as cdc_funding_router
 from app.taggs.router import router as taggs_router
 from app.funding_models.router import router as funding_models_router
+from app.demo_access.middleware import DemoAccessMiddleware
+from app.demo_access.router import router as demo_access_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
+
+app.add_middleware(DemoAccessMiddleware)
 
 app.add_middleware(
     GZipMiddleware,
@@ -41,7 +45,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -71,3 +75,4 @@ app.include_router(usda_food_env_router)
 app.include_router(cdc_funding_router)
 app.include_router(taggs_router)
 app.include_router(funding_models_router)
+app.include_router(demo_access_router)

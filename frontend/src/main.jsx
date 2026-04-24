@@ -3,12 +3,18 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { applyDocumentBranding } from "./branding/pdoBrand";
+import { API_BASE } from "./config/apiBase";
+import DemoAccessGate from "./demoAccess/DemoAccessGate";
+import { installDemoAccessFetchCredentials } from "./demoAccess/api";
 import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
+import DemoAccessAdmin from "./pages/DemoAccessAdmin";
 import FundingModelBuilder from "./pages/FundingModelBuilder";
 import ProfileCounty from "./pages/ProfileCounty";
 import ProfileTract from "./pages/ProfileTract";
 import "./index.css";
 import { resolveRoute } from "./utils/routeResolver";
+
+installDemoAccessFetchCredentials(API_BASE);
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -39,24 +45,28 @@ class ErrorBoundary extends React.Component {
 function Root() {
   applyDocumentBranding();
   const pathname = window.location.pathname;
+  if (/^\/demo-access-admin\/?$/i.test(pathname)) {
+    return <DemoAccessAdmin />;
+  }
+  let routedPage = null;
   if (/^\/taggs\/funding-profile\/?$/i.test(pathname)) {
     const params = new URLSearchParams(window.location.search);
-    return <CdcStateFundingProfile stateCode={params.get("state") ?? ""} />;
+    routedPage = <CdcStateFundingProfile stateCode={params.get("state") ?? ""} />;
+    return <DemoAccessGate>{routedPage}</DemoAccessGate>;
   }
   const route = resolveRoute(window.location.pathname);
   if (route.type === "cdc-state-funding-profile") {
-    return <CdcStateFundingProfile stateCode={route.id} />;
+    routedPage = <CdcStateFundingProfile stateCode={route.id} />;
+  } else if (route.type === "funding-model-builder") {
+    routedPage = <FundingModelBuilder />;
+  } else if (route.type === "profile-county") {
+    routedPage = <ProfileCounty countyFips={route.id} />;
+  } else if (route.type === "profile-tract") {
+    routedPage = <ProfileTract tractGeoid={route.id} />;
+  } else {
+    routedPage = <App />;
   }
-  if (route.type === "funding-model-builder") {
-    return <FundingModelBuilder />;
-  }
-  if (route.type === "profile-county") {
-    return <ProfileCounty countyFips={route.id} />;
-  }
-  if (route.type === "profile-tract") {
-    return <ProfileTract tractGeoid={route.id} />;
-  }
-  return <App />;
+  return <DemoAccessGate>{routedPage}</DemoAccessGate>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

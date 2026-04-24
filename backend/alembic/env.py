@@ -37,6 +37,7 @@ from app.cdc_profiles import models as cdc_profiles_models  # noqa: F401
 from app.recon import models as recon_models  # noqa: F401
 from app.funding_models import models as funding_models_models  # noqa: F401
 from app.budget import models as budget_models  # noqa: F401
+from app.demo_access import models as demo_access_models  # noqa: F401
 target_metadata = Base.metadata
 
 TARGET_TABLES = {
@@ -105,6 +106,16 @@ TARGET_TABLES = {
     "funding_mode_registry",
     "cdc_budget_tracker_raw",
     "cdc_budget_source_registry_raw",
+    "cdc_budget_classification_v1",
+    "cdc_budget_classification_rule_registry",
+    "cdc_budget_spending_bridge_v1",
+    "cdc_budget_spending_bridge_rule_registry",
+    "cdc_budget_spending_bridge_resolution_v1",
+    "cdc_budget_spending_bridge_resolution_rule_registry",
+    "cdc_budget_spending_bridge_analyst_action_v1",
+    "cdc_budget_spending_bridge_analyst_reason_registry",
+    "demo_access_codes",
+    "demo_access_events",
     "alembic_version",
 }
 

@@ -61,6 +61,7 @@ curl -I http://<server-ip>/
 
 # Backend through Nginx reverse proxy
 curl http://<server-ip>/api/health
+curl http://<server-ip>/api/cdc/funding/filters
 
 # Confirm backend is not listening on public interfaces
 ss -ltnp | rg ':80|:8000'

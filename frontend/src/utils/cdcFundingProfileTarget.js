@@ -63,6 +63,12 @@ export function buildCdcFundingProfileHref({
   mechanism,
   recipientType,
   timeAggregation,
+  includeMandatory,
+  includeEmergency,
+  includeSupplemental,
+  includePphf,
+  includeTransfers,
+  reviewMode,
   geographyLevel,
 } = {}) {
   const normalizedStateCode = normalizeStateCode(stateCode);
@@ -92,6 +98,24 @@ export function buildCdcFundingProfileHref({
   if (String(timeAggregation ?? "").trim()) {
     params.set("time_aggregation", String(timeAggregation).trim());
   }
+  if (includeMandatory !== null && includeMandatory !== undefined) {
+    params.set("include_mandatory", includeMandatory ? "true" : "false");
+  }
+  if (includeEmergency !== null && includeEmergency !== undefined) {
+    params.set("include_emergency", includeEmergency ? "true" : "false");
+  }
+  if (includeSupplemental !== null && includeSupplemental !== undefined) {
+    params.set("include_supplemental", includeSupplemental ? "true" : "false");
+  }
+  if (includePphf !== null && includePphf !== undefined) {
+    params.set("include_pphf", includePphf ? "true" : "false");
+  }
+  if (includeTransfers !== null && includeTransfers !== undefined) {
+    params.set("include_transfers", includeTransfers ? "true" : "false");
+  }
+  if (String(reviewMode ?? "").trim()) {
+    params.set("review_mode", String(reviewMode).trim());
+  }
   return `/cdc-funding/state/${encodeURIComponent(normalizedStateCode)}?${params.toString()}`;
 }
 
@@ -107,6 +131,12 @@ export function resolveCdcFundingProfileTarget({
   mechanism,
   recipientType,
   timeAggregation,
+  includeMandatory,
+  includeEmergency,
+  includeSupplemental,
+  includePphf,
+  includeTransfers,
+  reviewMode,
   geographyLevel,
 } = {}) {
   const stateCode = resolveCdcFundingProfileStateCode({ selectedFeatureProps, stateFilter });
@@ -121,6 +151,12 @@ export function resolveCdcFundingProfileTarget({
     mechanism,
     recipientType,
     timeAggregation,
+    includeMandatory,
+    includeEmergency,
+    includeSupplemental,
+    includePphf,
+    includeTransfers,
+    reviewMode,
     geographyLevel,
   });
   return {

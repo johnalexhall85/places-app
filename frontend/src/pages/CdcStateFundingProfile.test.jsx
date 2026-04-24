@@ -34,6 +34,22 @@ function pushShortProfileUrl() {
   );
 }
 
+function pushBudgetGroundedProfileUrl() {
+  window.history.pushState(
+    {},
+    "",
+    "/cdc-funding/state/AL?fy=2024&metric=total_funding&funding_type=mandatory_only&mode=budget_grounded_v1&include_mandatory=true&include_emergency=false&include_supplemental=true&include_pphf=true&include_transfers=false&review_mode=all_master_universe"
+  );
+}
+
+function pushCanonicalProfileUrl() {
+  window.history.pushState(
+    {},
+    "",
+    "/cdc-funding/state/AL?fy=2025&metric=total_funding&funding_type=mandatory_only&mode=canonical_v1&include_mandatory=true&include_emergency=false&include_supplemental=true&include_pphf=true&include_transfers=false&review_mode=all_master_universe"
+  );
+}
+
 function buildSummaryPayload() {
   return {
     state_code: "AL",
@@ -281,6 +297,84 @@ describe("CdcStateFundingProfile", () => {
           state: "AL",
           fiscal_year: 2022,
           funding_mode: "raw_total",
+        })
+      );
+    });
+  });
+
+  it("preserves budget-grounded scope filters when loading the profile", async () => {
+    pushCanonicalProfileUrl();
+    render(<CdcStateFundingProfile stateCode="AL" />);
+
+    await waitFor(() => {
+      expect(fetchCdcFundingProfileOverview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: "AL",
+          fiscal_year: 2025,
+          funding_type: "mandatory_only",
+          funding_mode: "canonical_v1",
+          include_mandatory: true,
+          include_emergency: false,
+          include_supplemental: true,
+          include_pphf: true,
+          include_transfers: false,
+          review_mode: "all_master_universe",
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchCdcFundingProfileDetails).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: "AL",
+          fiscal_year: 2025,
+          funding_type: "mandatory_only",
+          funding_mode: "canonical_v1",
+          include_mandatory: true,
+          include_emergency: false,
+          include_supplemental: true,
+          include_pphf: true,
+          include_transfers: false,
+          review_mode: "all_master_universe",
+        })
+      );
+    });
+  });
+
+  it("preserves budget-grounded scope filters when loading the debug profile mode", async () => {
+    pushBudgetGroundedProfileUrl();
+    render(<CdcStateFundingProfile stateCode="AL" />);
+
+    await waitFor(() => {
+      expect(fetchCdcFundingProfileOverview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: "AL",
+          fiscal_year: 2024,
+          funding_type: "mandatory_only",
+          funding_mode: "budget_grounded_v1",
+          include_mandatory: true,
+          include_emergency: false,
+          include_supplemental: true,
+          include_pphf: true,
+          include_transfers: false,
+          review_mode: "all_master_universe",
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchCdcFundingProfileDetails).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: "AL",
+          fiscal_year: 2024,
+          funding_type: "mandatory_only",
+          funding_mode: "budget_grounded_v1",
+          include_mandatory: true,
+          include_emergency: false,
+          include_supplemental: true,
+          include_pphf: true,
+          include_transfers: false,
+          review_mode: "all_master_universe",
         })
       );
     });

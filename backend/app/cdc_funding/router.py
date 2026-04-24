@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.cdc_funding import intelligence
 from app.cdc_funding import services
+from app.cdc_funding import budget_grounded
+from app.cdc_funding import canonical
 from app.cdc_funding import v11_emergency
 from app.db import get_db
 from app.funding_models import runtime as funding_model_runtime
@@ -32,6 +34,16 @@ def _resolve_funding_type(funding_type, appropriation_type):
     return effective_funding_type
 
 
+def _resolve_requested_funding_model(funding_model, funding_mode):
+    resolved_model = _resolve_query_value(funding_model)
+    if resolved_model is not None:
+        return resolved_model
+    resolved_mode = _resolve_query_value(funding_mode)
+    if resolved_mode is not None:
+        return resolved_mode
+    return canonical.FUNDING_MODEL_KEY
+
+
 @router.get("/methodology/summary")
 def get_cdc_funding_methodology_summary():
     return services.fetch_methodology_display_summary()
@@ -43,10 +55,17 @@ def get_cdc_funding_map(
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     geography_level: Literal["county", "state", "national"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
@@ -81,8 +100,41 @@ def get_cdc_funding_map(
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
     bbox = _resolve_query_value(bbox)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_map_geojson(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+            bbox=bbox,
+            limit=limit,
+        )
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_map_geojson(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+            limit=limit,
+        )
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_map_geojson(
             db,
@@ -122,10 +174,17 @@ def get_cdc_funding_legend(
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     geography_level: Literal["county", "state", "national"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
@@ -158,8 +217,39 @@ def get_cdc_funding_legend(
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
     bbox = _resolve_query_value(bbox)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_legend_stats(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+            bbox=bbox,
+        )
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_legend_stats(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_legend_stats(
             db,
@@ -197,10 +287,17 @@ def get_cdc_funding_national_summary(
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
     ),
@@ -226,8 +323,36 @@ def get_cdc_funding_national_summary(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_national_summary(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_national_summary(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_national_summary(
             db,
@@ -272,10 +397,17 @@ def get_cdc_state_profile_summary(
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
     ),
@@ -302,8 +434,38 @@ def get_cdc_state_profile_summary(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["summary"]
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["summary"]
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_state_profile_overview(
             db,
@@ -341,10 +503,17 @@ def get_cdc_state_profile_overview(
     metric: str | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
     ),
@@ -371,8 +540,38 @@ def get_cdc_state_profile_overview(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_state_profile_overview(
             db,
@@ -409,10 +608,17 @@ def get_cdc_state_profile_categories(
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
     ),
@@ -438,8 +644,38 @@ def get_cdc_state_profile_categories(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["categories"]
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["categories"]
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_state_profile_overview(
             db,
@@ -475,10 +711,17 @@ def get_cdc_state_profile_subcategories(
     fy: int | None = Query(default=None),
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
+    funding_model: FundingModeQuery | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
     recipient_type: str | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     time_aggregation: Literal["single_fiscal_year", "multi_year_total", "multi_year_average"] | None = Query(
         default=None
     ),
@@ -504,8 +747,38 @@ def get_cdc_state_profile_subcategories(
     recipient_type = _resolve_query_value(recipient_type)
     time_aggregation = _resolve_query_value(time_aggregation)
     center = _resolve_query_value(center)
-    resolved_funding_mode = _resolve_query_value(funding_mode)
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["subcategories"]
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric="total_funding",
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+        )["subcategories"]
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_state_profile_overview(
             db,
@@ -537,7 +810,9 @@ def get_cdc_state_profile_subcategories(
 @router.get("/profile/details")
 def get_cdc_state_profile_details(
     state: str = Query(..., min_length=2, max_length=2),
-    funding_mode: FundingModeQuery = Query(default="chip_normalized_v1_1"),
+    funding_mode: FundingModeQuery = Query(default=canonical.FUNDING_MODEL_KEY),
+    funding_model: FundingModeQuery | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
         default="recipient_location"
@@ -548,6 +823,12 @@ def get_cdc_state_profile_details(
     assistance_type: str | None = Query(default=None),
     fiscal_year: int | None = Query(default=None),
     fy: int | None = Query(default=None),
+    include_mandatory: bool | None = Query(default=None),
+    include_emergency: bool | None = Query(default=None),
+    include_supplemental: bool | None = Query(default=None),
+    include_pphf: bool | None = Query(default=None),
+    include_transfers: bool | None = Query(default=None),
+    review_mode: Literal["analyst_only", "trusted_auto", "all_master_universe"] | None = Query(default=None),
     awarding_office: str | None = Query(default=None),
     funding_office: str | None = Query(default=None),
     office: str | None = Query(default=None),
@@ -562,7 +843,44 @@ def get_cdc_state_profile_details(
     office_value = str(office or "").strip() or None
     awarding_office_value = str(awarding_office or "").strip() or office_value
     funding_office_value = str(funding_office or "").strip() or office_value
-    resolved_funding_mode = _resolve_query_value(funding_mode) or "chip_normalized_v1_1"
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode) or canonical.FUNDING_MODEL_KEY
+    effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if canonical.is_canonical_mode(resolved_funding_mode):
+        return canonical.fetch_state_profile_details(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_type=effective_funding_type,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+            q=q,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+    if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        return budget_grounded.fetch_state_profile_details(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_type=effective_funding_type,
+            include_mandatory=_resolve_query_value(include_mandatory),
+            include_emergency=_resolve_query_value(include_emergency),
+            include_supplemental=_resolve_query_value(include_supplemental),
+            include_pphf=_resolve_query_value(include_pphf),
+            include_transfers=_resolve_query_value(include_transfers),
+            review_mode=_resolve_query_value(review_mode),
+            q=q,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
     if is_custom_funding_mode(db, resolved_funding_mode):
         return funding_model_runtime.fetch_state_profile_details(
             db,

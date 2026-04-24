@@ -106,6 +106,28 @@ describe("fetchCdcFundingMethodologySummary", () => {
     }
   });
 
+  it("requests the canonical CDC filters path without duplicating /api", async () => {
+    const payload = { metric_options: [], fiscal_year_options: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchCdcFundingFilters({
+        apiBase: "https://example.test/api",
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toBe("https://example.test/api/cdc/funding/filters");
+      expect(url).not.toContain("/api/api/cdc/funding/filters");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("defaults the CDC funding map geography to state", async () => {
     const payload = { type: "FeatureCollection", features: [] };
     const fetchMock = vi.fn().mockResolvedValue({
@@ -122,7 +144,91 @@ describe("fetchCdcFundingMethodologySummary", () => {
 
       const url = String(fetchMock.mock.calls[0][0]);
       expect(url).toContain("geography_level=state");
-      expect(url).toContain("funding_mode=chip_normalized_v1_1");
+      expect(url).toContain("funding_mode=canonical_v1");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("threads canonical scope filters into map requests", async () => {
+    const payload = { type: "FeatureCollection", features: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchCdcFundingMap({
+        apiBase: "https://example.test",
+        fiscal_year: 2025,
+        funding_mode: "canonical_v1",
+        funding_type: "mandatory_only",
+        include_mandatory: true,
+        include_emergency: false,
+        include_supplemental: true,
+        include_pphf: false,
+        include_transfers: true,
+        review_mode: "all_master_universe",
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toContain("funding_mode=canonical_v1");
+      expect(url).toContain("funding_type=mandatory_only");
+      expect(url).toContain("include_mandatory=true");
+      expect(url).toContain("include_emergency=false");
+      expect(url).toContain("include_supplemental=true");
+      expect(url).toContain("include_pphf=false");
+      expect(url).toContain("include_transfers=true");
+      expect(url).toContain("review_mode=all_master_universe");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("deduplicates a production /api base when building CDC funding URLs", async () => {
+    const payload = { type: "FeatureCollection", features: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchCdcFundingMap({
+        apiBase: "https://example.test/api",
+        fiscal_year: 2025,
+        geography_level: "county",
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toContain("https://example.test/api/cdc/funding/map");
+      expect(url).not.toContain("/api/api/cdc/funding/map");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("does not serialize fiscal_year=0 when the year is unset", async () => {
+    const payload = { type: "FeatureCollection", features: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchCdcFundingMap({
+        apiBase: "https://example.test",
+        fiscal_year: null,
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).not.toContain("fiscal_year=0");
+      expect(url).not.toContain("fiscal_year=");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -258,7 +364,14 @@ describe("fetchCdcFundingMethodologySummary", () => {
         apiBase: "https://example.test",
         state: "AL",
         fiscal_year: 2025,
+        funding_type: "discretionary_only",
         funding_mode: "raw_total",
+        include_mandatory: false,
+        include_emergency: true,
+        include_supplemental: false,
+        include_pphf: true,
+        include_transfers: false,
+        review_mode: "analyst_only",
         page: 2,
         page_size: 50,
         sort_by: "category",
@@ -270,7 +383,14 @@ describe("fetchCdcFundingMethodologySummary", () => {
       expect(url).toContain("/api/cdc/funding/profile/details?");
       expect(url).toContain("state=AL");
       expect(url).toContain("fiscal_year=2025");
+      expect(url).toContain("funding_type=discretionary_only");
       expect(url).toContain("funding_mode=raw_total");
+      expect(url).toContain("include_mandatory=false");
+      expect(url).toContain("include_emergency=true");
+      expect(url).toContain("include_supplemental=false");
+      expect(url).toContain("include_pphf=true");
+      expect(url).toContain("include_transfers=false");
+      expect(url).toContain("review_mode=analyst_only");
       expect(url).toContain("page=2");
       expect(url).toContain("page_size=50");
       expect(url).toContain("sort_by=category");

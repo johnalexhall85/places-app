@@ -17,9 +17,14 @@ describe("cdcFundingProfileTarget", () => {
       fiscalYear: 2022,
       metric: "total_funding",
       fundingType: "total_cdc_funding",
-      fundingMode: "chip_normalized",
+      fundingMode: "canonical_v1",
       cdcCenter: "public_health_preparedness_and_response",
       timeAggregation: "multi_year_total",
+      includeEmergency: false,
+      includeSupplemental: false,
+      includePphf: true,
+      includeTransfers: true,
+      reviewMode: "all_master_universe",
       geographyLevel: "state",
     });
 
@@ -29,9 +34,14 @@ describe("cdcFundingProfileTarget", () => {
     expect(target.href).toContain("fy=2022");
     expect(target.href).toContain("metric=total_funding");
     expect(target.href).toContain("funding_type=total_cdc_funding");
-    expect(target.href).toContain("mode=chip_normalized");
+    expect(target.href).toContain("mode=canonical_v1");
     expect(target.href).toContain("cdc_center=public_health_preparedness_and_response");
     expect(target.href).toContain("time_aggregation=multi_year_total");
+    expect(target.href).toContain("include_emergency=false");
+    expect(target.href).toContain("include_supplemental=false");
+    expect(target.href).toContain("include_pphf=true");
+    expect(target.href).toContain("include_transfers=true");
+    expect(target.href).toContain("review_mode=all_master_universe");
   });
 
   it("uses the selected county's state when county selection is the active CDC pattern", () => {
