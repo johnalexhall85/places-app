@@ -6,8 +6,10 @@ import {
   CDC_DEFAULT_FUNDING_MODE,
   CDC_STATE_LAYER_MAX_ZOOM,
   getCdcFundingModeLabel,
+  isChipAccountClassificationCdcFundingMode,
   isCanonicalCdcFundingMode,
   isBudgetGroundedCdcFundingMode,
+  isVisibleCdcFundingMode,
   normalizeCdcFiscalYearToken,
   normalizeCdcFundingMode,
   readCdcFundingUrlState,
@@ -17,6 +19,8 @@ import {
 
 describe("cdcFundingMode", () => {
   it("normalizes invalid values to the default mode", () => {
+    expect(normalizeCdcFundingMode("chip_account_classification_v1")).toBe("chip_account_classification_v1");
+    expect(normalizeCdcFundingMode("chip_legacy")).toBe("chip_legacy");
     expect(normalizeCdcFundingMode("raw_total")).toBe("raw_total");
     expect(normalizeCdcFundingMode("chip_normalized")).toBe("chip_normalized");
     expect(normalizeCdcFundingMode("chip_normalized_v1_1")).toBe("chip_normalized_v1_1");
@@ -26,9 +30,13 @@ describe("cdcFundingMode", () => {
     expect(normalizeCdcFundingMode("bad-value")).toBe(CDC_DEFAULT_FUNDING_MODE);
   });
 
-  it("recognizes the canonical and budget-grounded funding modes explicitly", () => {
-    expect(CDC_DEFAULT_FUNDING_MODE).toBe("canonical_v1");
+  it("recognizes the default, visible, canonical, and budget-grounded funding modes explicitly", () => {
+    expect(CDC_DEFAULT_FUNDING_MODE).toBe("chip_account_classification_v1");
     expect(CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE).toBe("all_master_universe");
+    expect(isChipAccountClassificationCdcFundingMode("chip_account_classification_v1")).toBe(true);
+    expect(isVisibleCdcFundingMode("chip_account_classification_v1")).toBe(true);
+    expect(isVisibleCdcFundingMode("chip_legacy")).toBe(true);
+    expect(isVisibleCdcFundingMode("canonical_v1")).toBe(false);
     expect(isCanonicalCdcFundingMode("canonical_v1")).toBe(true);
     expect(isCanonicalCdcFundingMode("chip_normalized_v1_1")).toBe(false);
     expect(isBudgetGroundedCdcFundingMode("budget_grounded_v1")).toBe(true);

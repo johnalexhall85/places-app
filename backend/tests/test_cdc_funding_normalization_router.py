@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.cdc_funding import intelligence as cdc_intelligence
 from app.cdc_funding import budget_grounded
+from app.cdc_funding import chip_v1
 from app.cdc_funding import canonical
 from app.cdc_funding import router as cdc_router
 from app.cdc_funding import services as cdc_services
@@ -61,7 +62,7 @@ def test_cdc_map_router_forwards_explicit_funding_mode(monkeypatch) -> None:
     assert captured["geography_level"] == "state"
 
 
-def test_cdc_map_router_defaults_to_canonical_mode(monkeypatch) -> None:
+def test_cdc_map_router_defaults_to_chip_account_classification_mode(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(cdc_router, "is_custom_funding_mode", lambda *_args, **_kwargs: False)
@@ -71,10 +72,10 @@ def test_cdc_map_router_defaults_to_canonical_mode(monkeypatch) -> None:
         return {
             "type": "FeatureCollection",
             "features": [],
-            "meta": {"funding_mode_label": canonical.FUNDING_MODEL_LABEL},
+            "meta": {"funding_mode_label": chip_v1.FUNDING_MODEL_LABEL},
         }
 
-    monkeypatch.setattr(canonical, "fetch_map_geojson", fake_fetch_map_geojson)
+    monkeypatch.setattr(chip_v1, "fetch_map_geojson", fake_fetch_map_geojson)
 
     payload = cdc_router.get_cdc_funding_map(
         fiscal_year=2026,
@@ -91,15 +92,9 @@ def test_cdc_map_router_defaults_to_canonical_mode(monkeypatch) -> None:
         db=None,
     )
 
-    assert payload["meta"]["funding_mode_label"] == canonical.FUNDING_MODEL_LABEL
+    assert payload["meta"]["funding_mode_label"] == chip_v1.FUNDING_MODEL_LABEL
     assert captured["fiscal_year"] == 2026
     assert captured["funding_type"] == "mandatory_only"
-    assert captured["include_mandatory"] is True
-    assert captured["include_emergency"] is False
-    assert captured["include_supplemental"] is False
-    assert captured["include_pphf"] is True
-    assert captured["include_transfers"] is True
-    assert captured["review_mode"] == "all_master_universe"
     assert captured["geography_level"] == "state"
     assert captured["bbox"] == "-125,24,-66,49"
 
@@ -271,7 +266,7 @@ def test_cdc_public_filters_route_exists_and_returns_shape(monkeypatch) -> None:
             "metric_options": [],
             "fiscal_year_options": [{"value": "2025", "label": "FY2025"}],
             "default_fiscal_year": 2025,
-            "default_funding_mode": canonical.FUNDING_MODEL_KEY,
+            "default_funding_mode": chip_v1.FUNDING_MODEL_KEY,
         },
     )
 
@@ -281,7 +276,7 @@ def test_cdc_public_filters_route_exists_and_returns_shape(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["default_fiscal_year"] == 2025
-    assert payload["default_funding_mode"] == canonical.FUNDING_MODEL_KEY
+    assert payload["default_funding_mode"] == chip_v1.FUNDING_MODEL_KEY
 
 
 def test_cdc_profile_summary_router_forwards_new_state_filters(monkeypatch) -> None:
@@ -405,7 +400,7 @@ def test_cdc_profile_details_router_accepts_fiscal_year_alias(monkeypatch) -> No
     assert captured["normalization_funding_mode"] == "chip_normalized"
 
 
-def test_cdc_profile_details_router_defaults_to_canonical_mode(monkeypatch) -> None:
+def test_cdc_profile_details_router_defaults_to_chip_account_classification_mode(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     def fake_fetch_state_profile_details(*_args, **kwargs):
@@ -413,7 +408,7 @@ def test_cdc_profile_details_router_defaults_to_canonical_mode(monkeypatch) -> N
         return {"total_rows": 0, "rows": []}
 
     monkeypatch.setattr(cdc_router, "is_custom_funding_mode", lambda *_args, **_kwargs: False)
-    monkeypatch.setattr(canonical, "fetch_state_profile_details", fake_fetch_state_profile_details)
+    monkeypatch.setattr(chip_v1, "fetch_state_profile_details", fake_fetch_state_profile_details)
 
     payload = cdc_router.get_cdc_state_profile_details(
         state="GA",

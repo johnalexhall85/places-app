@@ -81,6 +81,7 @@ TARGET_TABLES = {
     "fact_account_balance",
     "fact_account_pa_oc",
     "fact_award_account_breakdown",
+    "chip_account_classification",
     "prime_state_summary",
     "prime_county_summary",
     "subaward_state_summary",

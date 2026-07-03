@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Column,
     Date,
@@ -229,3 +230,92 @@ class FedAwardAccountBreakdown(Base):
         {"schema": USASPENDING_FED_ACCOUNT_SCHEMA},
     )
 
+
+class ChipAccountClassification(Base):
+    __tablename__ = "chip_account_classification"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fiscal_year = Column(Integer, nullable=False)
+    federal_account_id = Column(
+        Integer,
+        ForeignKey(
+            f"{USASPENDING_FED_ACCOUNT_SCHEMA}.dim_federal_account.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+    normalized_account_key = Column(Text, nullable=False)
+    federal_account_name = Column(Text, nullable=True)
+    agency_name = Column(Text, nullable=True)
+    bureau_name = Column(Text, nullable=True)
+    is_cdc_related = Column(Boolean, nullable=False, server_default=text("false"))
+    cdc_scope_category = Column(Text, nullable=False, server_default=text("'unknown_review'"))
+    funding_scope = Column(Text, nullable=False, server_default=text("'unknown'"))
+    include_in_chip_baseline = Column(Boolean, nullable=False, server_default=text("false"))
+    include_in_chip_emergency = Column(Boolean, nullable=False, server_default=text("false"))
+    include_in_chip_total = Column(Boolean, nullable=False, server_default=text("false"))
+    include_in_public_map = Column(Boolean, nullable=False, server_default=text("false"))
+    review_status = Column(Text, nullable=False, server_default=text("'candidate'"))
+    confidence = Column(Numeric, nullable=True)
+    classification_reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    source = Column(Text, nullable=False, server_default=text("'rule_based_candidate'"))
+    classification_version = Column(
+        Text,
+        nullable=False,
+        server_default=text("'chip_account_classification_v1'"),
+    )
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint(
+            "cdc_scope_category IN ("
+            "'cdc_core', "
+            "'cdc_transfer', "
+            "'cdc_emergency', "
+            "'cdc_business_support', "
+            "'cdc_atdsr', "
+            "'cdc_niosh', "
+            "'non_cdc_hhs', "
+            "'unknown_review'"
+            ")",
+            name="ck_chip_account_classification_cdc_scope_category",
+        ),
+        CheckConstraint(
+            "funding_scope IN ("
+            "'regular_appropriation', "
+            "'emergency_supplemental', "
+            "'pphf', "
+            "'transfer', "
+            "'mandatory', "
+            "'business_support', "
+            "'reimbursable', "
+            "'unknown'"
+            ")",
+            name="ck_chip_account_classification_funding_scope",
+        ),
+        CheckConstraint(
+            "review_status IN ('candidate', 'needs_review', 'reviewed', 'rejected')",
+            name="ck_chip_account_classification_review_status",
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
+            name="ck_chip_account_classification_confidence",
+        ),
+        UniqueConstraint(
+            "fiscal_year",
+            "normalized_account_key",
+            "classification_version",
+            name="uq_chip_account_classification_year_key_version",
+        ),
+        Index("chip_account_classification_fy_idx", "fiscal_year"),
+        Index("chip_account_classification_key_idx", "normalized_account_key"),
+        Index("chip_account_classification_is_cdc_idx", "is_cdc_related"),
+        Index("chip_account_classification_cdc_scope_idx", "cdc_scope_category"),
+        Index("chip_account_classification_funding_scope_idx", "funding_scope"),
+        Index("chip_account_classification_baseline_idx", "include_in_chip_baseline"),
+        Index("chip_account_classification_public_map_idx", "include_in_public_map"),
+        Index("chip_account_classification_review_status_idx", "review_status"),
+        {"schema": USASPENDING_FED_ACCOUNT_SCHEMA},
+    )

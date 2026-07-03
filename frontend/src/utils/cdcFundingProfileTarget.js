@@ -68,7 +68,14 @@ export function buildCdcFundingProfileHref({
   includeSupplemental,
   includePphf,
   includeTransfers,
+  includePendingReview,
   reviewMode,
+  fundingScopePreset,
+  awardType,
+  emergencySupplementalScope,
+  reviewStatus,
+  transfersScope,
+  dataSourceScope,
   geographyLevel,
 } = {}) {
   const normalizedStateCode = normalizeStateCode(stateCode);
@@ -113,8 +120,29 @@ export function buildCdcFundingProfileHref({
   if (includeTransfers !== null && includeTransfers !== undefined) {
     params.set("include_transfers", includeTransfers ? "true" : "false");
   }
+  if (includePendingReview !== null && includePendingReview !== undefined) {
+    params.set("include_pending_review", includePendingReview ? "true" : "false");
+  }
   if (String(reviewMode ?? "").trim()) {
     params.set("review_mode", String(reviewMode).trim());
+  }
+  if (String(fundingScopePreset ?? "").trim()) {
+    params.set("funding_scope_preset", String(fundingScopePreset).trim());
+  }
+  if (String(awardType ?? "").trim()) {
+    params.set("award_type", String(awardType).trim());
+  }
+  if (String(emergencySupplementalScope ?? "").trim()) {
+    params.set("emergency_supplemental_scope", String(emergencySupplementalScope).trim());
+  }
+  if (String(reviewStatus ?? "").trim()) {
+    params.set("review_status", String(reviewStatus).trim());
+  }
+  if (String(transfersScope ?? "").trim()) {
+    params.set("transfers_scope", String(transfersScope).trim());
+  }
+  if (String(dataSourceScope ?? "").trim()) {
+    params.set("data_source_scope", String(dataSourceScope).trim());
   }
   return `/cdc-funding/state/${encodeURIComponent(normalizedStateCode)}?${params.toString()}`;
 }
@@ -136,7 +164,14 @@ export function resolveCdcFundingProfileTarget({
   includeSupplemental,
   includePphf,
   includeTransfers,
+  includePendingReview,
   reviewMode,
+  fundingScopePreset,
+  awardType,
+  emergencySupplementalScope,
+  reviewStatus,
+  transfersScope,
+  dataSourceScope,
   geographyLevel,
 } = {}) {
   const stateCode = resolveCdcFundingProfileStateCode({ selectedFeatureProps, stateFilter });
@@ -156,7 +191,14 @@ export function resolveCdcFundingProfileTarget({
     includeSupplemental,
     includePphf,
     includeTransfers,
+    includePendingReview,
     reviewMode,
+    fundingScopePreset,
+    awardType,
+    emergencySupplementalScope,
+    reviewStatus,
+    transfersScope,
+    dataSourceScope,
     geographyLevel,
   });
   return {

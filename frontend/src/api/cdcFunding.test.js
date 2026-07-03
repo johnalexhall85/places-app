@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchCdcFundingFilters,
+  fetchCdcFundingLegend,
   fetchCdcFundingMap,
   fetchCdcFundingMethodologySummary,
   fetchCdcFundingProfileDetails,
@@ -144,7 +145,102 @@ describe("fetchCdcFundingMethodologySummary", () => {
 
       const url = String(fetchMock.mock.calls[0][0]);
       expect(url).toContain("geography_level=state");
-      expect(url).toContain("funding_mode=canonical_v1");
+      expect(url).toContain("funding_mode=chip_account_classification_v1");
+      expect(url).toContain("fiscal_year=2023");
+      expect(url).toContain("funding_scope_preset=regular_grants_coops");
+      expect(url).toContain("award_type=grants_coops");
+      expect(url).toContain("emergency_supplemental_scope=exclude");
+      expect(url).toContain("include_pending_review=true");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("serializes default CHIP v1 scope filters into map requests", async () => {
+    const payload = { type: "FeatureCollection", features: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchCdcFundingMap({
+        apiBase: "https://example.test",
+        fiscal_year: 2023,
+        funding_mode: "chip_account_classification_v1",
+        funding_scope_preset: "regular_grants_coops",
+        award_type: "grants_coops",
+        emergency_supplemental_scope: "exclude",
+        review_status: "reviewed_plus_needs_review",
+        include_pphf: true,
+        transfers_scope: "cdc_relevant_only",
+        data_source_scope: "combined",
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toContain("geography_level=state");
+      expect(url).toContain("funding_mode=chip_account_classification_v1");
+      expect(url).toContain("fiscal_year=2023");
+      expect(url).toContain("funding_scope_preset=regular_grants_coops");
+      expect(url).toContain("award_type=grants_coops");
+      expect(url).toContain("emergency_supplemental_scope=exclude");
+      expect(url).toContain("review_status=reviewed_plus_needs_review");
+      expect(url).toContain("include_pphf=true");
+      expect(url).toContain("transfers_scope=cdc_relevant_only");
+      expect(url).toContain("data_source_scope=combined");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("serializes matching CHIP v1 scope filters into legend and profile requests", async () => {
+    const payload = { rows: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    const scope = {
+      apiBase: "https://example.test",
+      fiscal_year: 2023,
+      funding_mode: "chip_account_classification_v1",
+      funding_scope_preset: "regular_grants_coops",
+      award_type: "grants_coops",
+      emergency_supplemental_scope: "exclude",
+      review_status: "reviewed_plus_needs_review",
+      include_pphf: true,
+      transfers_scope: "cdc_relevant_only",
+      data_source_scope: "combined",
+    };
+
+    try {
+      await fetchCdcFundingLegend(scope);
+      await fetchCdcFundingProfileOverview({ ...scope, state: "AL" });
+      await fetchCdcFundingProfileDetails({ ...scope, state: "AL" });
+
+      const legendUrl = String(fetchMock.mock.calls[0][0]);
+      const profileUrl = String(fetchMock.mock.calls[1][0]);
+      const detailsUrl = String(fetchMock.mock.calls[2][0]);
+      for (const url of [legendUrl, profileUrl, detailsUrl]) {
+        expect(url).toContain("funding_mode=chip_account_classification_v1");
+        expect(url).toContain("fiscal_year=2023");
+        expect(url).toContain("funding_scope_preset=regular_grants_coops");
+        expect(url).toContain("award_type=grants_coops");
+        expect(url).toContain("emergency_supplemental_scope=exclude");
+        expect(url).toContain("review_status=reviewed_plus_needs_review");
+        expect(url).toContain("include_pphf=true");
+        expect(url).toContain("transfers_scope=cdc_relevant_only");
+        expect(url).toContain("data_source_scope=combined");
+      }
+      expect(legendUrl).toContain("/api/cdc/funding/legend?");
+      expect(profileUrl).toContain("/api/cdc/funding/profile/overview?");
+      expect(profileUrl).toContain("state=AL");
+      expect(detailsUrl).toContain("/api/cdc/funding/profile/details?");
+      expect(detailsUrl).toContain("state=AL");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -182,6 +278,7 @@ describe("fetchCdcFundingMethodologySummary", () => {
       expect(url).toContain("include_pphf=false");
       expect(url).toContain("include_transfers=true");
       expect(url).toContain("review_mode=all_master_universe");
+      expect(url).not.toContain("include_pending_review=");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -224,6 +321,7 @@ describe("fetchCdcFundingMethodologySummary", () => {
       await fetchCdcFundingMap({
         apiBase: "https://example.test",
         fiscal_year: null,
+        funding_mode: "raw_total",
       });
 
       const url = String(fetchMock.mock.calls[0][0]);

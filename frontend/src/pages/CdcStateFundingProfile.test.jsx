@@ -50,6 +50,14 @@ function pushCanonicalProfileUrl() {
   );
 }
 
+function pushChipV1ProfileUrl() {
+  window.history.pushState(
+    {},
+    "",
+    "/cdc-funding/state/AL?fy=2025&metric=total_funding&funding_type=total_cdc_funding&mode=chip_account_classification_v1&include_pending_review=true"
+  );
+}
+
 function buildSummaryPayload() {
   return {
     state_code: "AL",
@@ -168,6 +176,54 @@ function buildOverviewPayload() {
   };
 }
 
+function buildChipV1OverviewPayload() {
+  const summary = {
+    ...buildSummaryPayload(),
+    total_funding: 2000,
+    selected_metric: "total_funding",
+    selected_metric_label: "Total CDC Funding",
+    selected_metric_value: 2000,
+    funding_mode_label: "CHIP Account Classification v1",
+    normalization_note: "",
+    includes_pending_review: true,
+    pending_review_total: 250,
+    pending_review_account_count: 3,
+    pending_review_award_count: 4,
+    profile: {
+      ...buildSummaryPayload().profile,
+      funding_mode_requested: "chip_account_classification_v1",
+      funding_mode_effective: "chip_account_classification_v1",
+      funding_mode_label: "CHIP Account Classification v1",
+      total_funding: 2000,
+      metric_value: 2000,
+      needs_review_obligations: 250,
+      reviewed_obligations: 1750,
+      needs_review_account_count: 3,
+      metadata: {
+        metric_context: {
+          funding_type_label: "Total CDC Funding",
+          funding_mode_label: "CHIP Account Classification v1",
+          legend_title: "FY2025 CDC Funding",
+        },
+        includes_pending_review: true,
+        pending_review_total: 250,
+        pending_review_account_count: 3,
+        pending_review_award_count: 4,
+      },
+    },
+    filter_context: {
+      funding_type_label: "Total CDC Funding",
+      funding_mode_label: "CHIP Account Classification v1",
+      legend_title: "FY2025 CDC Funding",
+    },
+  };
+  return {
+    summary,
+    categories: buildCategoryPayload(),
+    subcategories: buildSubcategoryPayload(),
+  };
+}
+
 function buildDetailsPayload(overrides = {}) {
   return {
     state_code: "AL",
@@ -272,6 +328,28 @@ describe("CdcStateFundingProfile", () => {
           page_size: 25,
           sort_by: "amount",
           sort_dir: "desc",
+        })
+      );
+    });
+  });
+
+  it("shows CHIP v1 pending-review metadata without falling back to legacy labels", async () => {
+    pushChipV1ProfileUrl();
+    fetchCdcFundingProfileOverview.mockResolvedValue(buildChipV1OverviewPayload());
+    render(<CdcStateFundingProfile stateCode="AL" />);
+
+    expect(await screen.findByTestId("cdc-profile-mode-badge")).toHaveTextContent(
+      "CHIP Account Classification v1"
+    );
+    expect(screen.getByText(/\* Includes some accounts pending final review/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reviewed \$1,750.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/Needs review \$250.00/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchCdcFundingProfileOverview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          funding_mode: "chip_account_classification_v1",
+          include_pending_review: true,
         })
       );
     });

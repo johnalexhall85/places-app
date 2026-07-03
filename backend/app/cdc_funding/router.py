@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.cdc_funding import intelligence
 from app.cdc_funding import services
+from app.cdc_funding import chip_v1
 from app.cdc_funding import budget_grounded
 from app.cdc_funding import canonical
 from app.cdc_funding import v11_emergency
@@ -17,6 +19,7 @@ from app.funding_models.registry import is_custom_funding_mode
 
 router = APIRouter(prefix="/api/cdc/funding", tags=["cdc-funding"])
 FundingModeQuery = str
+logger = logging.getLogger(__name__)
 
 
 def _resolve_query_value(value):
@@ -41,7 +44,19 @@ def _resolve_requested_funding_model(funding_model, funding_mode):
     resolved_mode = _resolve_query_value(funding_mode)
     if resolved_mode is not None:
         return resolved_mode
-    return canonical.FUNDING_MODEL_KEY
+    return chip_v1.FUNDING_MODEL_KEY
+
+
+def _log_model(endpoint: str, funding_model: str | None) -> None:
+    logger.info(
+        "CDC funding %s served by funding_model=%s",
+        endpoint,
+        str(funding_model or "").strip() or chip_v1.FUNDING_MODEL_KEY,
+    )
+
+
+def _legacy_payload(payload):
+    return chip_v1.relabel_legacy_payload(payload)
 
 
 @router.get("/methodology/summary")
@@ -56,6 +71,12 @@ def get_cdc_funding_map(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -102,7 +123,46 @@ def get_cdc_funding_map(
     bbox = _resolve_query_value(bbox)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("map", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_map_geojson(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+            bbox=bbox,
+            limit=limit,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("map", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_map_geojson(
+                db,
+                fiscal_year=fiscal_year,
+                metric=metric,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                geography_level=geography_level or geography,
+                time_aggregation=time_aggregation,
+                bbox=bbox,
+                limit=limit,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("map", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_map_geojson(
             db,
             fiscal_year=fiscal_year,
@@ -120,6 +180,7 @@ def get_cdc_funding_map(
             limit=limit,
         )
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("map", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_map_geojson(
             db,
             fiscal_year=fiscal_year,
@@ -136,6 +197,7 @@ def get_cdc_funding_map(
             limit=limit,
         )
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("map", resolved_funding_mode)
         return funding_model_runtime.fetch_map_geojson(
             db,
             fiscal_year=fiscal_year,
@@ -151,6 +213,7 @@ def get_cdc_funding_map(
             bbox=bbox,
             limit=limit,
         )
+    _log_model("map", resolved_funding_mode)
     return intelligence.fetch_map_geojson(
         db,
         fiscal_year=fiscal_year,
@@ -175,6 +238,12 @@ def get_cdc_funding_legend(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -219,7 +288,44 @@ def get_cdc_funding_legend(
     bbox = _resolve_query_value(bbox)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("legend", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_legend_stats(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            geography_level=geography_level or geography,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+            bbox=bbox,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("legend", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_legend_stats(
+                db,
+                fiscal_year=fiscal_year,
+                metric=metric,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                geography_level=geography_level or geography,
+                time_aggregation=time_aggregation,
+                bbox=bbox,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("legend", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_legend_stats(
             db,
             fiscal_year=fiscal_year,
@@ -236,6 +342,7 @@ def get_cdc_funding_legend(
             bbox=bbox,
         )
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("legend", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_legend_stats(
             db,
             fiscal_year=fiscal_year,
@@ -251,6 +358,7 @@ def get_cdc_funding_legend(
             review_mode=_resolve_query_value(review_mode),
         )
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("legend", resolved_funding_mode)
         return funding_model_runtime.fetch_legend_stats(
             db,
             fiscal_year=fiscal_year,
@@ -265,6 +373,7 @@ def get_cdc_funding_legend(
             time_aggregation=time_aggregation,
             bbox=bbox,
         )
+    _log_model("legend", resolved_funding_mode)
     return intelligence.fetch_legend_stats(
         db,
         fiscal_year=fiscal_year,
@@ -288,6 +397,12 @@ def get_cdc_funding_national_summary(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -325,7 +440,40 @@ def get_cdc_funding_national_summary(
     center = _resolve_query_value(center)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("national", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_national_summary(
+            db,
+            fiscal_year=fiscal_year,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("national", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_national_summary(
+                db,
+                fiscal_year=fiscal_year,
+                metric=metric,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                time_aggregation=time_aggregation,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("national", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_national_summary(
             db,
             fiscal_year=fiscal_year,
@@ -340,6 +488,7 @@ def get_cdc_funding_national_summary(
             review_mode=_resolve_query_value(review_mode),
         )
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("national", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_national_summary(
             db,
             fiscal_year=fiscal_year,
@@ -354,6 +503,7 @@ def get_cdc_funding_national_summary(
             review_mode=_resolve_query_value(review_mode),
         )
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("national", resolved_funding_mode)
         return funding_model_runtime.fetch_national_summary(
             db,
             fiscal_year=fiscal_year,
@@ -366,6 +516,7 @@ def get_cdc_funding_national_summary(
             recipient_type=recipient_type,
             time_aggregation=time_aggregation,
         )
+    _log_model("national", resolved_funding_mode)
     return intelligence.fetch_national_summary(
         db,
         fiscal_year=fiscal_year,
@@ -398,6 +549,12 @@ def get_cdc_state_profile_summary(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -436,7 +593,42 @@ def get_cdc_state_profile_summary(
     center = _resolve_query_value(center)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("profile/summary", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_state_profile_summary(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("profile/summary", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_state_profile_summary(
+                db,
+                state=state,
+                fiscal_year=fiscal_year if fiscal_year is not None else fy,
+                metric=metric,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                time_aggregation=time_aggregation,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("profile/summary", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_state_profile_overview(
             db,
             state=state,
@@ -452,6 +644,7 @@ def get_cdc_state_profile_summary(
             review_mode=_resolve_query_value(review_mode),
         )["summary"]
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("profile/summary", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_state_profile_overview(
             db,
             state=state,
@@ -467,6 +660,7 @@ def get_cdc_state_profile_summary(
             review_mode=_resolve_query_value(review_mode),
         )["summary"]
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("profile/summary", resolved_funding_mode)
         return funding_model_runtime.fetch_state_profile_overview(
             db,
             state=state,
@@ -480,6 +674,7 @@ def get_cdc_state_profile_summary(
             recipient_type=recipient_type,
             time_aggregation=time_aggregation,
         )["summary"]
+    _log_model("profile/summary", resolved_funding_mode)
     return intelligence.fetch_state_profile_summary(
         db,
         state=state,
@@ -504,6 +699,12 @@ def get_cdc_state_profile_overview(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -542,7 +743,42 @@ def get_cdc_state_profile_overview(
     center = _resolve_query_value(center)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("profile/overview", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_state_profile_overview(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            metric=metric,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("profile/overview", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_state_profile_overview(
+                db,
+                state=state,
+                fiscal_year=fiscal_year if fiscal_year is not None else fy,
+                metric=metric,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                time_aggregation=time_aggregation,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("profile/overview", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_state_profile_overview(
             db,
             state=state,
@@ -558,6 +794,7 @@ def get_cdc_state_profile_overview(
             review_mode=_resolve_query_value(review_mode),
         )
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("profile/overview", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_state_profile_overview(
             db,
             state=state,
@@ -573,6 +810,7 @@ def get_cdc_state_profile_overview(
             review_mode=_resolve_query_value(review_mode),
         )
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("profile/overview", resolved_funding_mode)
         return funding_model_runtime.fetch_state_profile_overview(
             db,
             state=state,
@@ -586,6 +824,7 @@ def get_cdc_state_profile_overview(
             recipient_type=recipient_type,
             time_aggregation=time_aggregation,
         )
+    _log_model("profile/overview", resolved_funding_mode)
     return intelligence.fetch_state_profile_overview(
         db,
         state=state,
@@ -609,6 +848,12 @@ def get_cdc_state_profile_categories(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -646,7 +891,40 @@ def get_cdc_state_profile_categories(
     center = _resolve_query_value(center)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("profile/categories", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_state_profile_categories(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("profile/categories", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_state_profile_categories(
+                db,
+                state=state,
+                fiscal_year=fiscal_year if fiscal_year is not None else fy,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                time_aggregation=time_aggregation,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("profile/categories", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_state_profile_overview(
             db,
             state=state,
@@ -662,6 +940,7 @@ def get_cdc_state_profile_categories(
             review_mode=_resolve_query_value(review_mode),
         )["categories"]
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("profile/categories", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_state_profile_overview(
             db,
             state=state,
@@ -677,6 +956,7 @@ def get_cdc_state_profile_categories(
             review_mode=_resolve_query_value(review_mode),
         )["categories"]
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("profile/categories", resolved_funding_mode)
         return funding_model_runtime.fetch_state_profile_overview(
             db,
             state=state,
@@ -690,6 +970,7 @@ def get_cdc_state_profile_categories(
             recipient_type=recipient_type,
             time_aggregation=time_aggregation,
         )["categories"]
+    _log_model("profile/categories", resolved_funding_mode)
     return intelligence.fetch_state_profile_categories(
         db,
         state=state,
@@ -712,6 +993,12 @@ def get_cdc_state_profile_subcategories(
     funding_type: str | None = Query(default=None),
     funding_mode: FundingModeQuery | None = Query(default=None),
     funding_model: FundingModeQuery | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     cdc_center: str | None = Query(default=None),
     program_area: str | None = Query(default=None),
     mechanism: str | None = Query(default=None),
@@ -749,7 +1036,40 @@ def get_cdc_state_profile_subcategories(
     center = _resolve_query_value(center)
     resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode)
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("profile/subcategories", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_state_profile_subcategories(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_type=effective_funding_type,
+            time_aggregation=time_aggregation,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("profile/subcategories", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            intelligence.fetch_state_profile_subcategories(
+                db,
+                state=state,
+                fiscal_year=fiscal_year if fiscal_year is not None else fy,
+                funding_type=effective_funding_type,
+                funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                cdc_center=cdc_center or center,
+                program_area=program_area,
+                mechanism=mechanism,
+                recipient_type=recipient_type,
+                time_aggregation=time_aggregation,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("profile/subcategories", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_state_profile_overview(
             db,
             state=state,
@@ -765,6 +1085,7 @@ def get_cdc_state_profile_subcategories(
             review_mode=_resolve_query_value(review_mode),
         )["subcategories"]
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("profile/subcategories", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_state_profile_overview(
             db,
             state=state,
@@ -780,6 +1101,7 @@ def get_cdc_state_profile_subcategories(
             review_mode=_resolve_query_value(review_mode),
         )["subcategories"]
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("profile/subcategories", resolved_funding_mode)
         return funding_model_runtime.fetch_state_profile_overview(
             db,
             state=state,
@@ -793,6 +1115,7 @@ def get_cdc_state_profile_subcategories(
             recipient_type=recipient_type,
             time_aggregation=time_aggregation,
         )["subcategories"]
+    _log_model("profile/subcategories", resolved_funding_mode)
     return intelligence.fetch_state_profile_subcategories(
         db,
         state=state,
@@ -810,9 +1133,15 @@ def get_cdc_state_profile_subcategories(
 @router.get("/profile/details")
 def get_cdc_state_profile_details(
     state: str = Query(..., min_length=2, max_length=2),
-    funding_mode: FundingModeQuery = Query(default=canonical.FUNDING_MODEL_KEY),
+    funding_mode: FundingModeQuery = Query(default=chip_v1.FUNDING_MODEL_KEY),
     funding_model: FundingModeQuery | None = Query(default=None),
     funding_type: str | None = Query(default=None),
+    funding_scope_preset: str | None = Query(default=None),
+    award_type: str | None = Query(default=None),
+    emergency_supplemental_scope: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    transfers_scope: str | None = Query(default=None),
+    data_source_scope: str | None = Query(default=None),
     basis: Literal["prime", "subaward"] = Query(default="prime"),
     funding_geography_mode: Literal["recipient_location", "statewide_allocation"] = Query(
         default="recipient_location"
@@ -843,9 +1172,53 @@ def get_cdc_state_profile_details(
     office_value = str(office or "").strip() or None
     awarding_office_value = str(awarding_office or "").strip() or office_value
     funding_office_value = str(funding_office or "").strip() or office_value
-    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode) or canonical.FUNDING_MODEL_KEY
+    resolved_funding_mode = _resolve_requested_funding_model(funding_model, funding_mode) or chip_v1.FUNDING_MODEL_KEY
     effective_funding_type = _resolve_funding_type(funding_type, appropriation_type)
+    if chip_v1.is_chip_v1_mode(resolved_funding_mode):
+        _log_model("profile/details", chip_v1.FUNDING_MODEL_KEY)
+        return chip_v1.fetch_state_profile_details(
+            db,
+            state=state,
+            fiscal_year=fiscal_year if fiscal_year is not None else fy,
+            funding_type=effective_funding_type,
+            funding_scope_preset=funding_scope_preset,
+            award_type=award_type,
+            emergency_supplemental_scope=emergency_supplemental_scope,
+            review_status=review_status,
+            include_pphf=_resolve_query_value(include_pphf),
+            transfers_scope=transfers_scope,
+            data_source_scope=data_source_scope,
+            q=q,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+    if chip_v1.is_legacy_mode(resolved_funding_mode):
+        _log_model("profile/details", chip_v1.LEGACY_FUNDING_MODEL_KEY)
+        return _legacy_payload(
+            services.fetch_state_profile_details(
+                db,
+                state=state,
+                basis=basis,
+                funding_geography_mode=funding_geography_mode,
+                appropriation_type=appropriation_type,
+                assistance_type=assistance_type,
+                fiscal_year=fiscal_year if fiscal_year is not None else fy,
+                normalize=True,
+                normalization_funding_mode=chip_v1.LEGACY_UNDERLYING_FUNDING_MODE,
+                awarding_office=awarding_office_value,
+                funding_office=funding_office_value,
+                center=center,
+                q=q,
+                page=page,
+                page_size=page_size,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+            )
+        )
     if canonical.is_canonical_mode(resolved_funding_mode):
+        _log_model("profile/details", canonical.FUNDING_MODEL_KEY)
         return canonical.fetch_state_profile_details(
             db,
             state=state,
@@ -864,6 +1237,7 @@ def get_cdc_state_profile_details(
             sort_dir=sort_dir,
         )
     if budget_grounded.is_budget_grounded_mode(resolved_funding_mode):
+        _log_model("profile/details", budget_grounded.FUNDING_MODEL_KEY)
         return budget_grounded.fetch_state_profile_details(
             db,
             state=state,
@@ -882,6 +1256,7 @@ def get_cdc_state_profile_details(
             sort_dir=sort_dir,
         )
     if is_custom_funding_mode(db, resolved_funding_mode):
+        _log_model("profile/details", resolved_funding_mode)
         return funding_model_runtime.fetch_state_profile_details(
             db,
             state=state,
@@ -902,6 +1277,7 @@ def get_cdc_state_profile_details(
         recipient_type=None,
     )
     if emergency_support.enabled and resolved_funding_mode == "raw_total":
+        _log_model("profile/details", resolved_funding_mode)
         return v11_emergency.fetch_state_profile_details(
             db,
             state=state,
@@ -912,6 +1288,7 @@ def get_cdc_state_profile_details(
             sort_by=sort_by,
             sort_dir=sort_dir,
         )
+    _log_model("profile/details", resolved_funding_mode)
     return services.fetch_state_profile_details(
         db,
         state=state,

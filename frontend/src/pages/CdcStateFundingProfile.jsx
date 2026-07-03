@@ -9,6 +9,7 @@ import {
 import {
   CDC_DEFAULT_FUNDING_MODE,
   getCdcFundingModeLabel,
+  isChipAccountClassificationCdcFundingMode,
   isNormalizedCdcFundingMode,
   normalizeCdcFundingMode,
 } from "../utils/cdcFundingMode";
@@ -44,13 +45,29 @@ function parseQueryParams() {
     includeSupplemental: parseBooleanParam(params, "include_supplemental"),
     includePphf: parseBooleanParam(params, "include_pphf"),
     includeTransfers: parseBooleanParam(params, "include_transfers"),
+    includePendingReview: parseBooleanParam(params, "include_pending_review"),
     reviewMode: String(params.get("review_mode") ?? "").trim() || null,
+    fundingScopePreset: String(params.get("funding_scope_preset") ?? "").trim() || null,
+    awardType: String(params.get("award_type") ?? "").trim() || null,
+    emergencySupplementalScope: String(params.get("emergency_supplemental_scope") ?? "").trim() || null,
+    reviewStatus: String(params.get("review_status") ?? "").trim() || null,
+    transfersScope: String(params.get("transfers_scope") ?? "").trim() || null,
+    dataSourceScope: String(params.get("data_source_scope") ?? "").trim() || null,
   };
 }
 
 function toFinite(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined) {
+      return value;
+    }
+  }
+  return null;
 }
 
 function formatCurrency(value) {
@@ -142,7 +159,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
     query.includeSupplemental,
     query.includePphf,
     query.includeTransfers,
+    query.includePendingReview,
     query.reviewMode,
+    query.fundingScopePreset,
+    query.awardType,
+    query.emergencySupplementalScope,
+    query.reviewStatus,
+    query.transfersScope,
+    query.dataSourceScope,
   ]);
 
   useEffect(() => {
@@ -173,7 +197,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
       include_supplemental: query.includeSupplemental,
       include_pphf: query.includePphf,
       include_transfers: query.includeTransfers,
+      include_pending_review: query.includePendingReview,
       review_mode: query.reviewMode,
+      funding_scope_preset: query.fundingScopePreset,
+      award_type: query.awardType,
+      emergency_supplemental_scope: query.emergencySupplementalScope,
+      review_status: query.reviewStatus,
+      transfers_scope: query.transfersScope,
+      data_source_scope: query.dataSourceScope,
       signal: controller.signal,
     })
       .then((overviewPayload) => {
@@ -209,7 +240,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
     query.includeSupplemental,
     query.includePphf,
     query.includeTransfers,
+    query.includePendingReview,
     query.reviewMode,
+    query.fundingScopePreset,
+    query.awardType,
+    query.emergencySupplementalScope,
+    query.reviewStatus,
+    query.transfersScope,
+    query.dataSourceScope,
   ]);
 
   useEffect(() => {
@@ -234,7 +272,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
       include_supplemental: query.includeSupplemental,
       include_pphf: query.includePphf,
       include_transfers: query.includeTransfers,
+      include_pending_review: query.includePendingReview,
       review_mode: query.reviewMode,
+      funding_scope_preset: query.fundingScopePreset,
+      award_type: query.awardType,
+      emergency_supplemental_scope: query.emergencySupplementalScope,
+      review_status: query.reviewStatus,
+      transfers_scope: query.transfersScope,
+      data_source_scope: query.dataSourceScope,
       q: detailQuery,
       page: detailPage,
       page_size: detailPageSize,
@@ -267,7 +312,14 @@ export default function CdcStateFundingProfile({ stateCode }) {
     query.includeSupplemental,
     query.includePphf,
     query.includeTransfers,
+    query.includePendingReview,
     query.reviewMode,
+    query.fundingScopePreset,
+    query.awardType,
+    query.emergencySupplementalScope,
+    query.reviewStatus,
+    query.transfersScope,
+    query.dataSourceScope,
     detailPage,
     detailPageSize,
     detailQuery,
@@ -286,8 +338,13 @@ export default function CdcStateFundingProfile({ stateCode }) {
     ?? summary?.funding_mode_label
     ?? getCdcFundingModeLabel(query.fundingMode)
   ).trim();
-  const fundingModeClass = isNormalizedCdcFundingMode(
+  const effectiveFundingMode = (
     canonicalProfile?.funding_mode_effective ?? summary?.funding_mode_effective ?? query.fundingMode
+  );
+  const isChipV1ProfileMode = isChipAccountClassificationCdcFundingMode(effectiveFundingMode);
+  const fundingModeClass = (
+    isChipV1ProfileMode
+    || isNormalizedCdcFundingMode(effectiveFundingMode)
   )
     ? "is-normalized"
     : "is-raw";
@@ -296,6 +353,55 @@ export default function CdcStateFundingProfile({ stateCode }) {
     ?? summary?.normalization_note
     ?? ""
   ).trim();
+  const pendingReviewTotal = toFinite(
+    firstDefined(
+      canonicalProfile?.needs_review_obligations,
+      canonicalProfile?.metadata?.pending_review_total,
+      summary?.pending_review_total
+    )
+  );
+  const reviewedTotal = toFinite(
+    firstDefined(
+      canonicalProfile?.reviewed_obligations,
+      canonicalProfile?.metadata?.reviewed_total,
+      summary?.reviewed_total,
+      summary?.reviewed_obligations
+    )
+  );
+  const pendingReviewAccountCount = toFinite(
+    firstDefined(
+      canonicalProfile?.needs_review_account_count,
+      canonicalProfile?.metadata?.pending_review_account_count,
+      summary?.pending_review_account_count
+    )
+  );
+  const pendingReviewAwardCount = toFinite(
+    firstDefined(
+      canonicalProfile?.metadata?.pending_review_award_count,
+      summary?.pending_review_award_count
+    )
+  );
+  const hasReviewMetadata = isChipV1ProfileMode && Boolean(
+    summary?.includes_pending_review !== undefined
+    || canonicalProfile?.metadata?.includes_pending_review !== undefined
+    || pendingReviewTotal != null
+    || reviewedTotal != null
+    || pendingReviewAccountCount != null
+    || pendingReviewAwardCount != null
+  );
+  const includesPendingReview = hasReviewMetadata && Boolean(
+    summary?.includes_pending_review
+    || canonicalProfile?.metadata?.includes_pending_review
+    || (pendingReviewTotal != null && pendingReviewTotal > 0)
+    || (pendingReviewAccountCount != null && pendingReviewAccountCount > 0)
+    || (pendingReviewAwardCount != null && pendingReviewAwardCount > 0)
+  );
+  const pendingReviewNote = includesPendingReview
+    ? `* Includes some accounts pending final review. Pending-review amount included: ${formatCurrency(pendingReviewTotal)}.`
+    : "";
+  const dataSourcesLabel = isChipV1ProfileMode
+    ? "USAspending account breakdowns"
+    : "USAspending and TAGGS";
   const categoryTotalsByName = useMemo(() => {
     const totals = new Map();
     categoryRows.forEach((row) => {
@@ -350,6 +456,18 @@ export default function CdcStateFundingProfile({ stateCode }) {
         ? `${formatCurrency(canonicalProfile?.funding_per_capita ?? summary?.funding_per_capita)} per person`
         : null,
     },
+    ...(hasReviewMetadata ? [
+      {
+        label: "Review status totals",
+        value: `Reviewed ${formatCurrency(reviewedTotal)}`,
+        note: [
+          `Needs review ${formatCurrency(pendingReviewTotal)}`,
+          pendingReviewAccountCount != null
+            ? `${formatCount(pendingReviewAccountCount)} pending-review accounts`
+            : null,
+        ].filter(Boolean).join(" • "),
+      },
+    ] : []),
   ];
 
   const filterChips = [
@@ -426,9 +544,10 @@ export default function CdcStateFundingProfile({ stateCode }) {
             </div>
             <h1>CDC State Funding Profile</h1>
             <p className="cdc-profile-subtitle">
-              {stateName} funding summarized for analytical review using CHIP&apos;s source-aware CDC funding model. USAspending provides the transactional backbone and TAGGS contributes program-area enrichment where matching evidence supports it.
+              {stateName} funding summarized for analytical review using the selected CHIP funding model. The default model uses federal account classifications and maps award-linked obligations.
             </p>
             {fundingModeNote ? <p className="cdc-profile-mode-note">{fundingModeNote}</p> : null}
+            {pendingReviewNote ? <p className="cdc-profile-mode-note">{pendingReviewNote}</p> : null}
             <div className="cdc-profile-hero-amount">
               {formatCurrency(canonicalProfile?.total_funding ?? summary?.total_funding)}
             </div>
@@ -438,7 +557,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
             <div className="cdc-profile-hero-meta">
               <span>Last Updated: {reportDateLabel}</span>
               <span>Version: {reportVersionLabel}</span>
-              <span>Data Sources: USAspending and TAGGS</span>
+              <span>Data Sources: {dataSourcesLabel}</span>
             </div>
             <div className="cdc-profile-chip-row">
               <span className="cdc-profile-chip">{stateName}</span>
@@ -739,8 +858,17 @@ export default function CdcStateFundingProfile({ stateCode }) {
                 subtitle="Primary sources and scope notes for this state funding report."
               />
               <div className="cdc-profile-note-block">
-                <div>USAspending supplies award, subaward, and contract transaction records.</div>
-                <div>TAGGS contributes CDC center, program-area, and ALN-linked enrichment where the source evidence supports classification.</div>
+                {isChipV1ProfileMode ? (
+                  <>
+                    <div>USAspending supplies award-level account breakdown rows and geographic fields.</div>
+                    <div>CHIP Account Classification v1 identifies CDC-related federal accounts and includes pending-review accounts with a separate note.</div>
+                  </>
+                ) : (
+                  <>
+                    <div>USAspending supplies award, subaward, and contract transaction records.</div>
+                    <div>TAGGS contributes CDC center, program-area, and ALN-linked enrichment where the source evidence supports classification.</div>
+                  </>
+                )}
                 <div>Reported values may reflect filtered summaries, modeled grouping logic, or reconstructed scope alignment rather than source-system financial statements.</div>
               </div>
             </section>
@@ -748,12 +876,22 @@ export default function CdcStateFundingProfile({ stateCode }) {
             <section className="cdc-profile-section">
               <SectionTitle
                 title="Method Notes"
-                subtitle="How the CHIP funding model combines USAspending and TAGGS."
+                subtitle={
+                  isChipV1ProfileMode
+                    ? "How CHIP Account Classification v1 powers this state profile."
+                    : "How the CHIP funding model combines USAspending and TAGGS."
+                }
               />
               <div className="cdc-profile-note-block">
-                <div>
-                  USAspending supplies award, subaward, and contract transactions. TAGGS contributes ALN-linked CDC center and program-area enrichment so the funding map can be interpreted as a source-aware analytical layer rather than a raw transaction dump.
-                </div>
+                {isChipV1ProfileMode ? (
+                  <div>
+                    Federal account classifications identify the public CDC map account set, then award-linked obligations distribute funding to state geographies.
+                  </div>
+                ) : (
+                  <div>
+                    USAspending supplies award, subaward, and contract transactions. TAGGS contributes ALN-linked CDC center and program-area enrichment so the funding map can be interpreted as a source-aware analytical layer rather than a raw transaction dump.
+                  </div>
+                )}
                 {summary?.grouping?.category_method ? (
                   <div>{summary.grouping.category_method}</div>
                 ) : null}

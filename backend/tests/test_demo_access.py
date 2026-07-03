@@ -61,6 +61,8 @@ def test_signed_session_cookie_round_trip() -> None:
 def test_demo_access_middleware_public_paths() -> None:
     assert _is_public_path("/health")
     assert _is_public_path("/api/demo-access/session")
+    assert _is_public_path("/api/cdc/funding/map")
+    assert _is_public_path("/api/cdc/funding/legend")
     assert not _is_public_path("/counties")
     assert not _is_public_path("/api/cdc/funding/filters")
-
+    assert not _is_public_path("/api/cdc/funding/profile/overview")

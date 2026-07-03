@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.db_fqtn import cdc_funding_table, places_table, taggs_table, usaspending_table
 from app.cdc_funding import v11_emergency
+from app.cdc_funding import chip_v1
 from app.cdc_funding import budget_grounded
 from app.cdc_funding import canonical
 from app.recon.normalization import NORMALIZED_TABLE, fetch_state_normalization_lookup
@@ -30,7 +31,6 @@ from app.services.chip_funding_model import (
     is_normalized_funding_mode,
     normalization_lookup_variant_for_mode,
 )
-from app.funding_models.registry import list_funding_mode_options
 
 PRIME_TABLE = cdc_funding_table("prime_awards")
 PRIME_TX_TABLE = cdc_funding_table("prime_transactions")
@@ -2390,18 +2390,22 @@ def _mapping_coverage(db: Session) -> dict[str, Any]:
 def list_filter_options(db: Session) -> dict[str, Any]:
     _ensure_required_tables(db)
 
-    fiscal_years = canonical.available_fiscal_years(db, geography_level="state")
+    chip_v1_defaults = chip_v1.filter_defaults(db)
+    fiscal_years = chip_v1_defaults.get("available_fiscal_years") or canonical.available_fiscal_years(
+        db,
+        geography_level="state",
+    )
+    fiscal_year_options_years = sorted(
+        {int(year) for year in [*range(2020, 2026), *(fiscal_years or [])] if str(year).strip().isdigit()},
+        reverse=True,
+    )
     default_canonical_fiscal_year = canonical.default_fiscal_year(db, geography_level="state")
     mapping_coverage = _mapping_coverage(db)
-    funding_mode_options = list_funding_mode_options(db)
-    if not any(option.get("value") == canonical.FUNDING_MODEL_KEY for option in funding_mode_options):
-        funding_mode_options = [canonical.mode_option(), *funding_mode_options]
-    if not any(option.get("value") == budget_grounded.FUNDING_MODEL_KEY for option in funding_mode_options):
-        funding_mode_options = funding_mode_options + [budget_grounded.mode_option()]
+    funding_mode_options = chip_v1.public_mode_options()
     canonical_years_by_geography = canonical.available_fiscal_years_by_geography(db)
     canonical_defaults = canonical.filter_defaults() | {
         "available_fiscal_years": fiscal_years,
-        "default_fiscal_year": default_canonical_fiscal_year,
+        "default_fiscal_year": chip_v1_defaults.get("default_fiscal_year") or default_canonical_fiscal_year,
         "available_fiscal_years_by_geography": canonical_years_by_geography,
     }
     budget_grounded_years = budget_grounded.available_scope_fiscal_years(db)
@@ -2409,7 +2413,7 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         "available_fiscal_years": budget_grounded_years,
         "default_fiscal_year": budget_grounded_years[0] if budget_grounded_years else None,
     }
-    default_funding_mode = canonical.FUNDING_MODEL_KEY if fiscal_years else DEFAULT_FUNDING_MODE
+    default_funding_mode = chip_v1.FUNDING_MODEL_KEY
 
     return {
         "methodology": {
@@ -2418,16 +2422,17 @@ def list_filter_options(db: Session) -> dict[str, Any]:
             "default": True,
             "funding_mode_controlled": True,
         },
-        "fiscal_year_options": [{"value": "all", "label": "All Years"}]
+        "fiscal_year_options": [{"value": "all", "label": "All years"}]
         + [
             {"value": str(year), "label": f"FY{year}"}
-            for year in fiscal_years
+            for year in fiscal_year_options_years
         ],
-        "default_fiscal_year": default_canonical_fiscal_year,
+        "default_fiscal_year": chip_v1_defaults.get("default_fiscal_year") or default_canonical_fiscal_year,
         "metric_options": METRIC_OPTIONS,
         "funding_type_options": FUNDING_TYPE_OPTIONS,
         "funding_mode_options": funding_mode_options,
         "default_funding_mode": default_funding_mode,
+        "chip_v1_filter_defaults": chip_v1_defaults,
         "canonical_filter_defaults": canonical_defaults,
         "canonical_review_mode_options": canonical.review_mode_options(),
         "budget_grounded_scope_filter_defaults": budget_grounded_defaults,
@@ -2446,11 +2451,9 @@ def list_filter_options(db: Session) -> dict[str, Any]:
         },
         "notes": [
             DEFAULT_NOTE,
-            "Canonical CDC Funding is now the default map/profile backbone and unifies budget-grounded rows with provisional profile-scope normalized rows in one downstream schema.",
-            "Budget-Grounded Funding v1 remains available as a temporary debug mode alongside raw total funding, CHIP Normalized Funding v1.1, and CHIP Normalized Funding (Legacy).",
-            "CHIP Normalized Funding v1.1 rescales the current map distribution to the newest v1.1 emergency-classification state-profile benchmark. The legacy normalized mode remains available for comparison.",
-            "Published custom funding modes appear here after they are locked, built, and activated in the funding mode registry.",
-            "Emergency vs non-emergency splits come from centralized appropriation-type classification.",
+            "CHIP Account Classification v1 is the default public map funding model for the demo.",
+            "Only CHIP Account Classification v1 and CHIP Legacy are visible in the map UI for demo reliability.",
+            "CHIP Account Classification v1 includes accounts pending final review and reports the included pending-review amount separately.",
         ],
     }
 

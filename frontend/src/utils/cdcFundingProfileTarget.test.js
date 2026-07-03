@@ -24,6 +24,7 @@ describe("cdcFundingProfileTarget", () => {
       includeSupplemental: false,
       includePphf: true,
       includeTransfers: true,
+      includePendingReview: true,
       reviewMode: "all_master_universe",
       geographyLevel: "state",
     });
@@ -41,7 +42,36 @@ describe("cdcFundingProfileTarget", () => {
     expect(target.href).toContain("include_supplemental=false");
     expect(target.href).toContain("include_pphf=true");
     expect(target.href).toContain("include_transfers=true");
+    expect(target.href).toContain("include_pending_review=true");
     expect(target.href).toContain("review_mode=all_master_universe");
+  });
+
+  it("keeps CHIP scope filters on state funding profile links", () => {
+    const target = resolveCdcFundingProfileTarget({
+      selectedFeatureProps: {
+        geo_level: "state",
+        state_abbr: "AL",
+      },
+      fiscalYear: 2023,
+      fundingMode: "chip_account_classification_v1",
+      fundingScopePreset: "regular_grants_coops",
+      awardType: "grants_coops",
+      emergencySupplementalScope: "exclude",
+      reviewStatus: "reviewed_plus_needs_review",
+      includePphf: true,
+      transfersScope: "cdc_relevant_only",
+      dataSourceScope: "combined",
+      geographyLevel: "state",
+    });
+
+    expect(target.href).toContain("fy=2023");
+    expect(target.href).toContain("funding_scope_preset=regular_grants_coops");
+    expect(target.href).toContain("award_type=grants_coops");
+    expect(target.href).toContain("emergency_supplemental_scope=exclude");
+    expect(target.href).toContain("review_status=reviewed_plus_needs_review");
+    expect(target.href).toContain("include_pphf=true");
+    expect(target.href).toContain("transfers_scope=cdc_relevant_only");
+    expect(target.href).toContain("data_source_scope=combined");
   });
 
   it("uses the selected county's state when county selection is the active CDC pattern", () => {

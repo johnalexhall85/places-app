@@ -1,4 +1,6 @@
 export const CDC_FUNDING_MODES = {
+  CHIP_ACCOUNT_CLASSIFICATION_V1: "chip_account_classification_v1",
+  CHIP_LEGACY: "chip_legacy",
   CANONICAL_V1: "canonical_v1",
   RAW_TOTAL: "raw_total",
   CHIP_NORMALIZED: "chip_normalized",
@@ -12,19 +14,26 @@ export const CDC_GEOGRAPHY_LEVELS = {
   COUNTY: "county",
 };
 
-export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CANONICAL_V1;
+export const CDC_DEFAULT_FUNDING_MODE = CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1;
 export const CDC_DEFAULT_GEOGRAPHY_LEVEL = CDC_GEOGRAPHY_LEVELS.STATE;
 export const CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE = "all_master_universe";
 export const CDC_DEFAULT_CANONICAL_REVIEW_MODE = CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE;
 export const CDC_STATE_LAYER_MAX_ZOOM = 5;
 
 export const CDC_FUNDING_MODE_LABELS = {
+  [CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1]: "CHIP Account Classification v1",
+  [CDC_FUNDING_MODES.CHIP_LEGACY]: "CHIP Legacy",
   [CDC_FUNDING_MODES.CANONICAL_V1]: "Canonical CDC Funding",
   [CDC_FUNDING_MODES.RAW_TOTAL]: "Raw total funding",
   [CDC_FUNDING_MODES.CHIP_NORMALIZED]: "CHIP Normalized Funding (Legacy)",
   [CDC_FUNDING_MODES.CHIP_NORMALIZED_V11]: "CHIP Normalized Funding v1.1",
   [CDC_FUNDING_MODES.BUDGET_GROUNDED_V1]: "Budget-grounded funding",
 };
+
+export const CDC_VISIBLE_FUNDING_MODE_VALUES = [
+  CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1,
+  CDC_FUNDING_MODES.CHIP_LEGACY,
+];
 
 const CUSTOM_FUNDING_MODE_RE = /^[a-z][a-z0-9_]*$/;
 
@@ -46,8 +55,24 @@ export function isBudgetGroundedCdcFundingMode(value) {
   return token === CDC_FUNDING_MODES.BUDGET_GROUNDED_V1;
 }
 
+export function isChipAccountClassificationCdcFundingMode(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  return token === CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1;
+}
+
+export function isVisibleCdcFundingMode(value) {
+  const token = String(value ?? "").trim().toLowerCase();
+  return CDC_VISIBLE_FUNDING_MODE_VALUES.includes(token);
+}
+
 export function normalizeCdcFundingMode(value) {
   const token = String(value ?? "").trim().toLowerCase();
+  if (token === CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1) {
+    return CDC_FUNDING_MODES.CHIP_ACCOUNT_CLASSIFICATION_V1;
+  }
+  if (token === CDC_FUNDING_MODES.CHIP_LEGACY) {
+    return CDC_FUNDING_MODES.CHIP_LEGACY;
+  }
   if (token === CDC_FUNDING_MODES.CANONICAL_V1) {
     return CDC_FUNDING_MODES.CANONICAL_V1;
   }

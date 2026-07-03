@@ -16,6 +16,8 @@ PUBLIC_PATHS = {
     "/docs",
     "/redoc",
     "/favicon.ico",
+    "/api/cdc/funding/map",
+    "/api/cdc/funding/legend",
 }
 
 
@@ -60,4 +62,3 @@ class DemoAccessMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         finally:
             db.close()
-
