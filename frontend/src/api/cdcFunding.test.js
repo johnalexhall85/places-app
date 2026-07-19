@@ -7,11 +7,118 @@ import {
   fetchCdcFundingProfileDetails,
   fetchCdcFundingProfileOverview,
   fetchCdcFundingProfileSummary,
+  fetchFundingFilters,
+  fetchFundingStateAwards,
+  fetchFundingStateMap,
+  fetchFundingSummary,
 } from "./cdcFunding";
 
 describe("fetchCdcFundingMethodologySummary", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("requests the new state funding filters endpoint", async () => {
+    const payload = { default_fiscal_year: 2026, fiscal_years: [2026, 2025] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      const result = await fetchFundingFilters({ apiBase: "https://example.test/api" });
+
+      expect(result).toEqual(payload);
+      expect(String(fetchMock.mock.calls[0][0])).toBe("https://example.test/api/funding/filters");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("builds the new state funding map query", async () => {
+    const payload = { geography_level: "state", rows: [] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchFundingStateMap({
+        apiBase: "https://example.test",
+        fiscal_year: [2025, 2026],
+        funding_mechanism: "all",
+        funding_view_mode: "funding_profiles_comparable",
+        include_supplemental: true,
+        supplemental_history_filter: "exclude_awards_with_supplemental_history",
+        assistance_listing_number: "93.940",
+      });
+
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toContain("/funding/map/state?");
+      expect(url).toContain("fiscal_year=2025%2C2026");
+      expect(url).toContain("funding_mechanism=all");
+      expect(url).toContain("funding_view_mode=funding_profiles_comparable");
+      expect(url).not.toContain("include_supplemental");
+      expect(url).toContain("supplemental_history_filter=exclude_awards_with_supplemental_history");
+      expect(url).toContain("assistance_listing_number=93.940");
+      expect(url).toContain("metric=total_obligations");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("builds matching summary and state awards queries", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ rows: [] }),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock;
+
+    try {
+      await fetchFundingSummary({
+        apiBase: "https://example.test",
+        fiscal_year: 2026,
+        funding_mechanism: "contracts",
+        funding_view_mode: "funding_profiles_comparable",
+        include_supplemental: false,
+        supplemental_history_filter: "all",
+        state: "AL",
+      });
+      await fetchFundingStateAwards({
+        apiBase: "https://example.test",
+        state: "01",
+        fiscal_year: 2026,
+        funding_view_mode: "standard_usaspending",
+        supplemental_history_filter: "only_awards_with_supplemental_history",
+        assistance_listing_number: "93.940",
+        limit: 25,
+        offset: 50,
+      });
+
+      const summaryUrl = String(fetchMock.mock.calls[0][0]);
+      const awardsUrl = String(fetchMock.mock.calls[1][0]);
+      expect(summaryUrl).toContain("/funding/summary?");
+      expect(summaryUrl).toContain("fiscal_year=2026");
+      expect(summaryUrl).toContain("funding_mechanism=contracts");
+      expect(summaryUrl).toContain("funding_view_mode=funding_profiles_comparable");
+      expect(summaryUrl).toContain("supplemental_history_filter=all");
+      expect(summaryUrl).not.toContain("include_supplemental");
+      expect(summaryUrl).toContain("state=AL");
+      expect(awardsUrl).toContain("/funding/state/01/awards?");
+      expect(awardsUrl).toContain("funding_view_mode=standard_usaspending");
+      expect(awardsUrl).toContain("supplemental_history_filter=only_awards_with_supplemental_history");
+      expect(awardsUrl).not.toContain("include_supplemental");
+      expect(awardsUrl).toContain("assistance_listing_number=93.940");
+      expect(awardsUrl).toContain("limit=25");
+      expect(awardsUrl).toContain("offset=50");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("requests the methodology summary endpoint", async () => {

@@ -167,27 +167,47 @@ export function resolveCdcRequestGeographyLevel(geographyLevel, mapZoom) {
 export function readCdcFundingUrlState(search) {
   const params = new URLSearchParams(String(search ?? ""));
   const dataSource = String(params.get("data_source") ?? "").trim().toLowerCase();
+  if (dataSource === "cdc_funding_state") {
+    return {
+      dataSource,
+      fundingMode: normalizeCdcFundingMode(params.get("funding_mode")),
+      geographyLevel: CDC_GEOGRAPHY_LEVELS.STATE,
+      isStateFundingRebuild: true,
+    };
+  }
   if (dataSource !== "cdc_funding") {
     return null;
   }
   return {
+    dataSource,
     fundingMode: normalizeCdcFundingMode(params.get("funding_mode")),
     geographyLevel: normalizeCdcFundingGeographyLevel(
       params.get("geography_level") ?? params.get("geography")
     ),
+    isStateFundingRebuild: false,
   };
 }
 
 export function buildCdcFundingUrlSearch(search, { activeDataSource, fundingMode } = {}) {
   const params = new URLSearchParams(String(search ?? ""));
+  if (activeDataSource === "cdc_funding_state") {
+    params.set("data_source", "cdc_funding_state");
+    params.delete("funding_mode");
+    params.delete("geography_level");
+    params.delete("geography");
+    return params.toString();
+  }
   if (activeDataSource === "cdc_funding") {
     params.set("data_source", "cdc_funding");
     params.set("funding_mode", normalizeCdcFundingMode(fundingMode));
     return params.toString();
   }
-  if (String(params.get("data_source") ?? "").trim().toLowerCase() === "cdc_funding") {
+  const currentDataSource = String(params.get("data_source") ?? "").trim().toLowerCase();
+  if (currentDataSource === "cdc_funding" || currentDataSource === "cdc_funding_state") {
     params.delete("data_source");
     params.delete("funding_mode");
+    params.delete("geography_level");
+    params.delete("geography");
   }
   return params.toString();
 }

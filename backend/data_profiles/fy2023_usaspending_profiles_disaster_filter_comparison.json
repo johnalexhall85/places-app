@@ -1,0 +1,5478 @@
+{
+  "broad_defc_over_exclusion_vs_profile_aligned": {
+    "additional_obligations_excluded_by_broad_defc": 5319897431.92,
+    "broad_defc_excluded_total": 9224892652.42,
+    "profile_aligned_excluded_total": 3904995220.5
+  },
+  "cdc_funding_profiles_summary": {
+    "emergency_exception": {
+      "not_excluded_by_emergency_word_alone": "Public Health Emergency Preparedness Cooperative Agreement"
+    },
+    "fiscal_year": 2023,
+    "included_row_count": 10614,
+    "input_path": "/home/john/places-app/data/2023 CSV Data.csv",
+    "non_vfc_non_obvious_emergency_supplemental_total": 4557565021.0,
+    "obvious_emergency_supplemental_reason_totals": [
+      {
+        "amount": 5037263814.0,
+        "reason": "category_public_health_social_services_emergency_fund"
+      },
+      {
+        "amount": 5037263814.0,
+        "reason": "subcategory_contains_covid"
+      },
+      {
+        "amount": 5037263814.0,
+        "reason": "subcategory_contains_phssef_covid_19_activities"
+      },
+      {
+        "amount": 528454143.0,
+        "reason": "subcategory_contains_american_rescue_plan_act"
+      },
+      {
+        "amount": 528454143.0,
+        "reason": "subcategory_contains_arp"
+      },
+      {
+        "amount": 144274638.0,
+        "reason": "subcategory_contains_supplemental"
+      },
+      {
+        "amount": 122845205.0,
+        "reason": "subcategory_contains_coronavirus_aid_relief_and_economic_security_act"
+      },
+      {
+        "amount": 107169446.0,
+        "reason": "subcategory_contains_coronavirus_preparedness_and_response_supplemental"
+      },
+      {
+        "amount": 37105192.0,
+        "reason": "subcategory_contains_hurricane_supplemental"
+      }
+    ],
+    "obvious_emergency_supplemental_total": 5832837800.0,
+    "source_row_count": 10614,
+    "targets": {
+      "funding_profiles_minus_obvious_emergency_supplemental": 9331677208.0,
+      "funding_profiles_minus_vfc": 10390402821.0,
+      "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": 4557565021.0,
+      "funding_profiles_total": 15164515008.0
+    },
+    "total_amount": 15164515008.0,
+    "total_by_category": [
+      {
+        "amount": 5037263814.0,
+        "category": "Public Health Social Services Emergency Fund (PHSSEF)"
+      },
+      {
+        "amount": 4774112187.0,
+        "category": "Vaccines for Children"
+      },
+      {
+        "amount": 1147528762.0,
+        "category": "Cross-Cutting Activities and Program Support"
+      },
+      {
+        "amount": 930194704.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention"
+      },
+      {
+        "amount": 903852201.0,
+        "category": "Chronic Disease Prevention and Health Promotion"
+      },
+      {
+        "amount": 668647000.0,
+        "category": "Public Health Preparedness and Response"
+      },
+      {
+        "amount": 610762308.0,
+        "category": "Injury Prevention and Control"
+      },
+      {
+        "amount": 381681547.0,
+        "category": "Immunization and Respiratory Diseases"
+      },
+      {
+        "amount": 220884910.0,
+        "category": "Emerging and Zoonotic Infectious Diseases"
+      },
+      {
+        "amount": 114211074.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health"
+      },
+      {
+        "amount": 107297969.0,
+        "category": "Environmental Health"
+      },
+      {
+        "amount": 106956644.0,
+        "category": "Public Health Scientific Services (PHSS)"
+      },
+      {
+        "amount": 100883993.0,
+        "category": "Occupational Safety and Health"
+      },
+      {
+        "amount": 31501508.0,
+        "category": "Agency for Toxic Substances and Disease Registry (ATSDR)"
+      },
+      {
+        "amount": 23654388.0,
+        "category": "World Trade Center Health Programs (WTC)"
+      },
+      {
+        "amount": 2999999.0,
+        "category": "Health Reform - Toxic Substances & Environmental Public Health"
+      },
+      {
+        "amount": 2082000.0,
+        "category": "Childhood Obesity Demonstration Project"
+      }
+    ],
+    "total_by_category_subcategory": [
+      {
+        "amount": 5037263814.0,
+        "category": "Public Health Social Services Emergency Fund (PHSSEF)",
+        "subcategory": "PHSSEF COVID-19 Activities"
+      },
+      {
+        "amount": 4635431566.0,
+        "category": "Vaccines for Children",
+        "subcategory": "Vaccine Purchases"
+      },
+      {
+        "amount": 710274926.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "Domestic HIV/AIDS Prevention and Research"
+      },
+      {
+        "amount": 662211016.0,
+        "category": "Public Health Preparedness and Response",
+        "subcategory": "Public Health Emergency Preparedness Cooperative Agreement"
+      },
+      {
+        "amount": 528454143.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "American Rescue Plan Act (ARP)"
+      },
+      {
+        "amount": 354154470.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Opioid Overdose Prevention and Surveillance (CAT B)"
+      },
+      {
+        "amount": 318652731.0,
+        "category": "Immunization and Respiratory Diseases",
+        "subcategory": "Immunization and Other Respiratory Diseases"
+      },
+      {
+        "amount": 296197850.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Cancer Prevention and Control"
+      },
+      {
+        "amount": 161565791.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Public Health Infrastructure and Capacity"
+      },
+      {
+        "amount": 152348689.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Preventive Health and Health Services Block Grant - PPHF"
+      },
+      {
+        "amount": 138680621.0,
+        "category": "Vaccines for Children",
+        "subcategory": "Grant Awards"
+      },
+      {
+        "amount": 122845205.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Coronavirus Aid, Relief, and Economic Security Act"
+      },
+      {
+        "amount": 111940978.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "Sexually Transmitted Infections (STIs)"
+      },
+      {
+        "amount": 107358568.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Intentional Injury"
+      },
+      {
+        "amount": 107169446.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Coronavirus Preparedness and Response Supplemental"
+      },
+      {
+        "amount": 100379857.0,
+        "category": "Public Health Scientific Services (PHSS)",
+        "subcategory": "Surveillance, Epidemiology, and Informatics"
+      },
+      {
+        "amount": 97906415.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Drug Free Communities"
+      },
+      {
+        "amount": 80704860.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Antibiotic Resistance Initiative"
+      },
+      {
+        "amount": 76226125.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Tobacco - PPHF"
+      },
+      {
+        "amount": 75829898.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "Tuberculosis (TB)"
+      },
+      {
+        "amount": 62527383.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Safe Motherhood/Infant Health"
+      },
+      {
+        "amount": 58886411.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Heart Disease & Stroke"
+      },
+      {
+        "amount": 56122328.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Health and Development for People with Disabilities"
+      },
+      {
+        "amount": 55976558.0,
+        "category": "Immunization and Respiratory Diseases",
+        "subcategory": "Influenza/Influenza Planning and Response"
+      },
+      {
+        "amount": 51232884.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Diabetes - PPHF"
+      },
+      {
+        "amount": 50237357.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Racial and Ethnic Approach to Community Health (REACH)"
+      },
+      {
+        "amount": 49941697.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Diabetes"
+      },
+      {
+        "amount": 49281214.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Heart Disease and Stroke - PPHF"
+      },
+      {
+        "amount": 41410213.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Health Promotion"
+      },
+      {
+        "amount": 37105192.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Hurricane Supplemental (2 Year)"
+      },
+      {
+        "amount": 35650746.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "National Occupational Research Agenda (NORA)"
+      },
+      {
+        "amount": 32220990.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Child Health and Development"
+      },
+      {
+        "amount": 30849632.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Food Safety"
+      },
+      {
+        "amount": 30789403.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Education and Research Centers"
+      },
+      {
+        "amount": 30597771.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Tobacco"
+      },
+      {
+        "amount": 30480154.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Epi and Lab Capacity Program - PPHF"
+      },
+      {
+        "amount": 28328579.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Vector-borne Diseases"
+      },
+      {
+        "amount": 27584808.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Nutrition, Physical Activity and Obesity"
+      },
+      {
+        "amount": 25730130.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Other Occupational Safety and Health Research"
+      },
+      {
+        "amount": 24665224.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "National Diabetes Prevention Program"
+      },
+      {
+        "amount": 23654388.0,
+        "category": "World Trade Center Health Programs (WTC)",
+        "subcategory": "World Trade Center Health Programs (WTC) (No Year)"
+      },
+      {
+        "amount": 23070757.0,
+        "category": "Environmental Health",
+        "subcategory": "Childhood Lead Poisoning"
+      },
+      {
+        "amount": 21195077.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Prevention Research Centers"
+      },
+      {
+        "amount": 20302000.0,
+        "category": "Environmental Health",
+        "subcategory": "Environmental and Health Outcome Tracking Network"
+      },
+      {
+        "amount": 18793795.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "Infectious Disease and Opioids Epidemic"
+      },
+      {
+        "amount": 18765991.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Center for Forecasting Epidemics and Outbreak Analytics"
+      },
+      {
+        "amount": 18575593.0,
+        "category": "Environmental Health",
+        "subcategory": "Asthma"
+      },
+      {
+        "amount": 17573293.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "NVDRS"
+      },
+      {
+        "amount": 16690046.0,
+        "category": "Environmental Health",
+        "subcategory": "Environmental Health Activities"
+      },
+      {
+        "amount": 15836253.0,
+        "category": "Agency for Toxic Substances and Disease Registry (ATSDR)",
+        "subcategory": "Agency for Toxic Substances and Disease Registry"
+      },
+      {
+        "amount": 15665255.0,
+        "category": "Agency for Toxic Substances and Disease Registry (ATSDR)",
+        "subcategory": "Per-and Polyfluoroalkyl Substances (PFAS)"
+      },
+      {
+        "amount": 15399836.0,
+        "category": "Environmental Health",
+        "subcategory": "Environmental Health - PPHF"
+      },
+      {
+        "amount": 12877968.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "Viral Hepatitis"
+      },
+      {
+        "amount": 12225000.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Public Health Infrastructure and Capacity (2 year)"
+      },
+      {
+        "amount": 12151384.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Emerging Infectious Diseases"
+      },
+      {
+        "amount": 11259724.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Surveillance for Emerging Threats to Mothers and Babies"
+      },
+      {
+        "amount": 11194543.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "School Health"
+      },
+      {
+        "amount": 11005868.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Healthcare Associated Infections (HAIs) - PPHF"
+      },
+      {
+        "amount": 10104670.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Advanced Molecular Detection (AMD)"
+      },
+      {
+        "amount": 10077520.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Firearm Injury and Mortality Prevention Research"
+      },
+      {
+        "amount": 9673571.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Oral Health"
+      },
+      {
+        "amount": 9120942.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Injury Control Research Centers"
+      },
+      {
+        "amount": 8417093.0,
+        "category": "Environmental Health",
+        "subcategory": "Environmental Health Laboratory"
+      },
+      {
+        "amount": 8185795.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "National Lupus Patient Registry"
+      },
+      {
+        "amount": 8116639.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Epilepsy"
+      },
+      {
+        "amount": 7358286.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Injury Prevention Activities"
+      },
+      {
+        "amount": 7154963.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Arthritis"
+      },
+      {
+        "amount": 7049305.0,
+        "category": "Cross-Cutting Activities and Program Support",
+        "subcategory": "Public Health Leadership and Support"
+      },
+      {
+        "amount": 6758623.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Lyme Disease and Related Tick-Borne Illnesses"
+      },
+      {
+        "amount": 6435984.0,
+        "category": "Public Health Preparedness and Response",
+        "subcategory": "All Other CDC Preparedness"
+      },
+      {
+        "amount": 6318140.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Unintentional Injury"
+      },
+      {
+        "amount": 5856787.0,
+        "category": "Public Health Scientific Services (PHSS)",
+        "subcategory": "Public Health Workforce"
+      },
+      {
+        "amount": 5784642.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Social Determinants of Health"
+      },
+      {
+        "amount": 5587897.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Mining Research"
+      },
+      {
+        "amount": 5414507.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Public Health Approach to Blood Disorders"
+      },
+      {
+        "amount": 5013334.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Hospitals Promoting Breastfeeding - PPHF"
+      },
+      {
+        "amount": 4783985.0,
+        "category": "Environmental Health",
+        "subcategory": "Lead Exposure Registry - BA"
+      },
+      {
+        "amount": 4416703.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Prion Disease"
+      },
+      {
+        "amount": 4335000.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "All Other Hemophillia Treatment Centers"
+      },
+      {
+        "amount": 3752585.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Million Hearts - PPHF"
+      },
+      {
+        "amount": 3558358.0,
+        "category": "Immunization and Respiratory Diseases",
+        "subcategory": "Immunization and Respiratory Diseases Set-Asides"
+      },
+      {
+        "amount": 3493900.0,
+        "category": "Immunization and Respiratory Diseases",
+        "subcategory": "Acute Flaccid Myelitis"
+      },
+      {
+        "amount": 3321000.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "National Early Child Care Collaboratives - PPHF"
+      },
+      {
+        "amount": 2999999.0,
+        "category": "Health Reform - Toxic Substances & Environmental Public Health",
+        "subcategory": "Health Reform - Toxic Substances & Environmental Public Health"
+      },
+      {
+        "amount": 2713684.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Neonatal Abstinence Syndrome"
+      },
+      {
+        "amount": 2082000.0,
+        "category": "Childhood Obesity Demonstration Project",
+        "subcategory": "Childhood Obesity Demonstration Project"
+      },
+      {
+        "amount": 1918425.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Emerging and Zoonotic Infectious Diseases Set-Asides"
+      },
+      {
+        "amount": 1850303.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Occupational Safety and Health Set-Asides"
+      },
+      {
+        "amount": 1788884.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Quarantine"
+      },
+      {
+        "amount": 1671115.0,
+        "category": "Chronic Disease Prevention and Health Promotion",
+        "subcategory": "Chronic Disease Prevention and Health Promotion Set-Asides"
+      },
+      {
+        "amount": 1528027.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Harmful Algal Blooms"
+      },
+      {
+        "amount": 1079229.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "National Mesothelioma Registry & Tissue Bank"
+      },
+      {
+        "amount": 1019103.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Thalassemia"
+      },
+      {
+        "amount": 894674.0,
+        "category": "Injury Prevention and Control",
+        "subcategory": "Injury Prevention and Control Set-Asides"
+      },
+      {
+        "amount": 849101.0,
+        "category": "Emerging and Zoonotic Infectious Diseases",
+        "subcategory": "Chronic Fatigue Syndrome"
+      },
+      {
+        "amount": 830000.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Hemophilia CDC Activities"
+      },
+      {
+        "amount": 720000.0,
+        "category": "Public Health Scientific Services (PHSS)",
+        "subcategory": "Health Statistics"
+      },
+      {
+        "amount": 477139.0,
+        "category": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+        "subcategory": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention Set-Asides"
+      },
+      {
+        "amount": 295738.0,
+        "category": "Birth Defects, Developmental Disabilities, Disability and Health",
+        "subcategory": "Birth Defects, Developmental Disabilities, Disability and Health Set-Asides"
+      },
+      {
+        "amount": 118880.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Personal Protective Technology"
+      },
+      {
+        "amount": 77405.0,
+        "category": "Occupational Safety and Health",
+        "subcategory": "Firefighter Cancer Registry"
+      },
+      {
+        "amount": 58659.0,
+        "category": "Environmental Health",
+        "subcategory": "Environmental Health Set-Asides"
+      }
+    ],
+    "vfc_total": 4774112187.0
+  },
+  "closest_scenario": {
+    "absolute_difference": 586062710.92,
+    "label": "B. Current overall-award COVID/IIJA amount exclusion",
+    "scenario": "B_current_overall_award_covid_iija_amount_exclusion",
+    "target": "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental",
+    "total_obligations": 3971502310.08
+  },
+  "crosswalk_tables": {
+    "by_assistance_listing_number_title": [
+      {
+        "assistance_listing_number": "93.967",
+        "assistance_listing_title": "CDC'S COLLABORATION WITH ACADEMIA TO STRENGTHEN PUBLIC HEALTH",
+        "award_count": 95,
+        "recipient_count": 94,
+        "total_obligations": 2252995227.0,
+        "transaction_count": 305
+      },
+      {
+        "assistance_listing_number": "93.967",
+        "assistance_listing_title": "CENTERS FOR DISEASE CONTROL AND PREVENTION COLLABORATION WITH ACADEMIA TO STRENGTHEN PUBLIC HEALTH",
+        "award_count": 55,
+        "recipient_count": 53,
+        "total_obligations": 1998962950.0,
+        "transaction_count": 145
+      },
+      {
+        "assistance_listing_number": "93.067",
+        "assistance_listing_title": "GLOBAL AIDS",
+        "award_count": 316,
+        "recipient_count": 212,
+        "total_obligations": 1666003248.42,
+        "transaction_count": 700
+      },
+      {
+        "assistance_listing_number": "93.323",
+        "assistance_listing_title": "EPIDEMIOLOGY AND LABORATORY CAPACITY FOR INFECTIOUS DISEASES (ELC)",
+        "award_count": 64,
+        "recipient_count": 64,
+        "total_obligations": 1188844447.0,
+        "transaction_count": 711
+      },
+      {
+        "assistance_listing_number": "93.069",
+        "assistance_listing_title": "PUBLIC HEALTH EMERGENCY PREPAREDNESS",
+        "award_count": 62,
+        "recipient_count": 62,
+        "total_obligations": 660304901.0,
+        "transaction_count": 64
+      },
+      {
+        "assistance_listing_number": "93.268",
+        "assistance_listing_title": "IMMUNIZATION COOPERATIVE AGREEMENTS",
+        "award_count": 73,
+        "recipient_count": 72,
+        "total_obligations": 645368123.07,
+        "transaction_count": 260
+      },
+      {
+        "assistance_listing_number": "93.94",
+        "assistance_listing_title": "HIV PREVENTION ACTIVITIES HEALTH DEPARTMENT BASED",
+        "award_count": 92,
+        "recipient_count": 63,
+        "total_obligations": 485267303.0,
+        "transaction_count": 178
+      },
+      {
+        "assistance_listing_number": "93.136",
+        "assistance_listing_title": "INJURY PREVENTION AND CONTROL RESEARCH AND STATE AND COMMUNITY BASED PROGRAMS",
+        "award_count": 435,
+        "recipient_count": 226,
+        "total_obligations": 447432203.12,
+        "transaction_count": 488
+      },
+      {
+        "assistance_listing_number": "93.977",
+        "assistance_listing_title": "SEXUALLY TRANSMITTED DISEASES (STD) PREVENTION AND CONTROL GRANTS",
+        "award_count": 107,
+        "recipient_count": 95,
+        "total_obligations": 323249725.0,
+        "transaction_count": 289
+      },
+      {
+        "assistance_listing_number": "93.318",
+        "assistance_listing_title": "PROTECTING AND IMPROVING HEALTH GLOBALLY: BUILDING AND STRENGTHENING PUBLIC HEALTH IMPACT, SYSTEMS, CAPACITY AND SECURITY",
+        "award_count": 231,
+        "recipient_count": 166,
+        "total_obligations": 271478014.85,
+        "transaction_count": 446
+      },
+      {
+        "assistance_listing_number": "93.322",
+        "assistance_listing_title": "CSELS PARTNERSHIP: STRENGTHENING PUBLIC HEALTH LABORATORIES",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 255594040.0,
+        "transaction_count": 41
+      },
+      {
+        "assistance_listing_number": "93.898",
+        "assistance_listing_title": "CANCER PREVENTION AND CONTROL PROGRAMS FOR STATE, TERRITORIAL AND TRIBAL ORGANIZATIONS",
+        "award_count": 84,
+        "recipient_count": 83,
+        "total_obligations": 246968621.91,
+        "transaction_count": 258
+      },
+      {
+        "assistance_listing_number": "93.421",
+        "assistance_listing_title": "STRENGTHENING PUBLIC HEALTH SYSTEMS AND SERVICES THROUGH NATIONAL PARTNERSHIPS TO IMPROVE AND PROTECT THE NATION\u2019S HEALTH",
+        "award_count": 47,
+        "recipient_count": 46,
+        "total_obligations": 214770150.0,
+        "transaction_count": 335
+      },
+      {
+        "assistance_listing_number": "93.185",
+        "assistance_listing_title": "IMMUNIZATION RESEARCH, DEMONSTRATION, PUBLIC INFORMATION AND EDUCATION TRAINING AND CLINICAL SKILLS IMPROVEMENT PROJECTS",
+        "award_count": 61,
+        "recipient_count": 56,
+        "total_obligations": 174254530.0,
+        "transaction_count": 108
+      },
+      {
+        "assistance_listing_number": "93.991",
+        "assistance_listing_title": "PREVENTIVE HEALTH AND HEALTH SERVICES BLOCK GRANT",
+        "award_count": 61,
+        "recipient_count": 61,
+        "total_obligations": 148436120.0,
+        "transaction_count": 62
+      },
+      {
+        "assistance_listing_number": "93.495",
+        "assistance_listing_title": "COMMUNITY HEALTH WORKERS FOR PUBLIC HEALTH RESPONSE AND RESILIENT",
+        "award_count": 70,
+        "recipient_count": 68,
+        "total_obligations": 138769620.0,
+        "transaction_count": 77
+      },
+      {
+        "assistance_listing_number": "93.262",
+        "assistance_listing_title": "OCCUPATIONAL SAFETY AND HEALTH PROGRAM",
+        "award_count": 196,
+        "recipient_count": 117,
+        "total_obligations": 131744864.48,
+        "transaction_count": 217
+      },
+      {
+        "assistance_listing_number": "93.823",
+        "assistance_listing_title": "PUBLIC HEALTH RESPONSE, FORECASTING, AND ANALYTIC CAPACITIES RELATED TO DISEASE OUTBREAKS, EPIDEMICS, AND PANDEMICS",
+        "award_count": 13,
+        "recipient_count": 13,
+        "total_obligations": 103192494.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.116",
+        "assistance_listing_title": "PROJECT GRANTS AND COOPERATIVE AGREEMENTS FOR TUBERCULOSIS CONTROL PROGRAMS",
+        "award_count": 69,
+        "recipient_count": 68,
+        "total_obligations": 100432138.0,
+        "transaction_count": 159
+      },
+      {
+        "assistance_listing_number": "93.276",
+        "assistance_listing_title": "DRUG-FREE COMMUNITIES SUPPORT PROGRAM GRANTS",
+        "award_count": 766,
+        "recipient_count": 764,
+        "total_obligations": 96571782.72,
+        "transaction_count": 815
+      },
+      {
+        "assistance_listing_number": "93.084",
+        "assistance_listing_title": "PREVENTION OF DISEASE, DISABILITY, AND DEATH BY INFECTIOUS DISEASES",
+        "award_count": 72,
+        "recipient_count": 60,
+        "total_obligations": 94574800.0,
+        "transaction_count": 101
+      },
+      {
+        "assistance_listing_number": "93.939",
+        "assistance_listing_title": "HIV PREVENTION ACTIVITIES NON-GOVERNMENTAL ORGANIZATION BASED",
+        "award_count": 135,
+        "recipient_count": 115,
+        "total_obligations": 88695595.0,
+        "transaction_count": 178
+      },
+      {
+        "assistance_listing_number": "93.387",
+        "assistance_listing_title": "NATIONAL AND STATE TOBACCO CONTROL PROGRAM",
+        "award_count": 62,
+        "recipient_count": 60,
+        "total_obligations": 87856317.0,
+        "transaction_count": 63
+      },
+      {
+        "assistance_listing_number": "93.317",
+        "assistance_listing_title": "EMERGING INFECTIONS PROGRAMS",
+        "award_count": 10,
+        "recipient_count": 10,
+        "total_obligations": 68707389.0,
+        "transaction_count": 60
+      },
+      {
+        "assistance_listing_number": "93.099",
+        "assistance_listing_title": "COLLABORATION WITH THE WORLD HEALTH ORGANIZATION AND ITS REGIONAL OFFICES FOR GLOBAL HEALTH SECURITY AND THE INTERNATIONAL HEALTH REGULATIONS (IHR 2005)",
+        "award_count": 3,
+        "recipient_count": 2,
+        "total_obligations": 66661783.0,
+        "transaction_count": 17
+      },
+      {
+        "assistance_listing_number": "93.07",
+        "assistance_listing_title": "ENVIRONMENTAL PUBLIC HEALTH AND EMERGENCY RESPONSE",
+        "award_count": 139,
+        "recipient_count": 79,
+        "total_obligations": 57852666.0,
+        "transaction_count": 147
+      },
+      {
+        "assistance_listing_number": "93.988",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS FOR STATE-BASED DIABETES CONTROL PROGRAMS AND EVALUATION OF SURVEILLANCE SYSTEMS",
+        "award_count": 42,
+        "recipient_count": 42,
+        "total_obligations": 55075000.0,
+        "transaction_count": 43
+      },
+      {
+        "assistance_listing_number": "93.426",
+        "assistance_listing_title": "THE NATIONAL CARDIOVASCULAR HEALTH PROGRAM",
+        "award_count": 46,
+        "recipient_count": 40,
+        "total_obligations": 50296329.0,
+        "transaction_count": 49
+      },
+      {
+        "assistance_listing_number": "93.073",
+        "assistance_listing_title": "BIRTH DEFECTS AND DEVELOPMENTAL DISABILITIES - PREVENTION AND SURVEILLANCE",
+        "award_count": 82,
+        "recipient_count": 65,
+        "total_obligations": 47895786.0,
+        "transaction_count": 110
+      },
+      {
+        "assistance_listing_number": "93.354",
+        "assistance_listing_title": "PUBLIC HEALTH EMERGENCY RESPONSE:  COOPERATIVE AGREEMENT FOR EMERGENCY RESPONSE: PUBLIC HEALTH CRISIS RESPONSE",
+        "award_count": 54,
+        "recipient_count": 54,
+        "total_obligations": 46744751.0,
+        "transaction_count": 78
+      },
+      {
+        "assistance_listing_number": "93.988",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS FOR DIABETES CONTROL PROGRAMS",
+        "award_count": 36,
+        "recipient_count": 36,
+        "total_obligations": 41153991.0,
+        "transaction_count": 40
+      },
+      {
+        "assistance_listing_number": "93.197",
+        "assistance_listing_title": "CHILDHOOD LEAD POISONING PREVENTION PROJECTS, STATE AND LOCAL CHILDHOOD LEAD POISONING PREVENTION AND SURVEILLANCE OF BLOOD LEAD LEVELS IN CHILDREN",
+        "award_count": 74,
+        "recipient_count": 74,
+        "total_obligations": 40043136.0,
+        "transaction_count": 74
+      },
+      {
+        "assistance_listing_number": "93.304",
+        "assistance_listing_title": "RACIAL AND ETHNIC APPROACHES TO COMMUNITY HEALTH",
+        "award_count": 41,
+        "recipient_count": 41,
+        "total_obligations": 37268636.0,
+        "transaction_count": 68
+      },
+      {
+        "assistance_listing_number": "93.135",
+        "assistance_listing_title": "CENTERS FOR RESEARCH AND DEMONSTRATION FOR HEALTH PROMOTION AND DISEASE PREVENTION",
+        "award_count": 27,
+        "recipient_count": 27,
+        "total_obligations": 34580049.0,
+        "transaction_count": 35
+      },
+      {
+        "assistance_listing_number": "93.946",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS TO SUPPORT STATE-BASED SAFE MOTHERHOOD AND INFANT HEALTH INITIATIVE PROGRAMS",
+        "award_count": 135,
+        "recipient_count": 90,
+        "total_obligations": 33396530.0,
+        "transaction_count": 189
+      },
+      {
+        "assistance_listing_number": "93.944",
+        "assistance_listing_title": "HUMAN IMMUNODEFICIENCY VIRUS (HIV)/ACQUIRED IMMUNODEFICIENCY VIRUS SYNDROME (AIDS) SURVEILLANCE",
+        "award_count": 53,
+        "recipient_count": 33,
+        "total_obligations": 32620432.0,
+        "transaction_count": 69
+      },
+      {
+        "assistance_listing_number": "93.184",
+        "assistance_listing_title": "DISABILITIES PREVENTION",
+        "award_count": 12,
+        "recipient_count": 12,
+        "total_obligations": 30870119.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.772",
+        "assistance_listing_title": "TRIBAL PUBLIC HEALTH CAPACITY BUILDING AND QUALITY IMPROVEMENT UMBRELLA COOPERATIVE AGREEMENT",
+        "award_count": 35,
+        "recipient_count": 28,
+        "total_obligations": 29638763.0,
+        "transaction_count": 89
+      },
+      {
+        "assistance_listing_number": "93.336",
+        "assistance_listing_title": "BEHAVIORAL RISK FACTOR SURVEILLANCE SYSTEM",
+        "award_count": 56,
+        "recipient_count": 56,
+        "total_obligations": 29393694.0,
+        "transaction_count": 223
+      },
+      {
+        "assistance_listing_number": "93.945",
+        "assistance_listing_title": "ASSISTANCE PROGRAMS FOR CHRONIC DISEASE PREVENTION AND CONTROL",
+        "award_count": 72,
+        "recipient_count": 63,
+        "total_obligations": 29142883.0,
+        "transaction_count": 89
+      },
+      {
+        "assistance_listing_number": "93.426",
+        "assistance_listing_title": "IMPROVING THE HEALTH OF AMERICANS THROUGH PREVENTION AND MANAGEMENT OF DIABETES AND HEART DISEASE AND STROKE",
+        "award_count": 26,
+        "recipient_count": 26,
+        "total_obligations": 27930182.0,
+        "transaction_count": 26
+      },
+      {
+        "assistance_listing_number": "93.27",
+        "assistance_listing_title": "VIRAL HEPATITIS PREVENTION AND CONTROL",
+        "award_count": 63,
+        "recipient_count": 63,
+        "total_obligations": 26911643.0,
+        "transaction_count": 192
+      },
+      {
+        "assistance_listing_number": "93.334",
+        "assistance_listing_title": "THE HEALTHY BRAIN INITIATIVE: TECHNICAL ASSISTANCE TO IMPLEMENT PUBLIC HEALTH ACTIONS RELATED TO COGNITIVE HEALTH, COGNITIVE IMPAIRMENT, AND CAREGIVING AT THE STATE AND LOCAL LEVELS",
+        "award_count": 51,
+        "recipient_count": 50,
+        "total_obligations": 26628803.0,
+        "transaction_count": 60
+      },
+      {
+        "assistance_listing_number": "93.834",
+        "assistance_listing_title": "CAPACITY BUILDING ASSISTANCE (CBA) FOR HIGH-IMPACT HIV PREVENTION",
+        "award_count": 17,
+        "recipient_count": 17,
+        "total_obligations": 24049992.0,
+        "transaction_count": 17
+      },
+      {
+        "assistance_listing_number": "93.326",
+        "assistance_listing_title": "STRENGTHENING PUBLIC HEALTH THROUGH SURVEILLANCE, EPIDEMIOLOGIC RESEARCH, DISEASE DETECTION AND PREVENTION",
+        "award_count": 24,
+        "recipient_count": 23,
+        "total_obligations": 23764067.0,
+        "transaction_count": 46
+      },
+      {
+        "assistance_listing_number": "93.436",
+        "assistance_listing_title": "WELL-INTEGRATED SCREENING AND EVALUATION FOR WOMEN ACROSS THE NATION (WISEWOMAN)",
+        "award_count": 36,
+        "recipient_count": 35,
+        "total_obligations": 22860000.0,
+        "transaction_count": 36
+      },
+      {
+        "assistance_listing_number": "93.8",
+        "assistance_listing_title": "ORGANIZED APPROACHES TO INCREASE COLORECTAL CANCER SCREENING",
+        "award_count": 35,
+        "recipient_count": 35,
+        "total_obligations": 22103199.0,
+        "transaction_count": 35
+      },
+      {
+        "assistance_listing_number": "93.978",
+        "assistance_listing_title": "SEXUALLY TRANSMITTED DISEASES (STD) PROVIDER EDUCATION GRANTS",
+        "award_count": 16,
+        "recipient_count": 13,
+        "total_obligations": 20362475.0,
+        "transaction_count": 40
+      },
+      {
+        "assistance_listing_number": "93.479",
+        "assistance_listing_title": "GOOD HEALTH AND WELLNESS IN INDIAN COUNTRY",
+        "award_count": 28,
+        "recipient_count": 27,
+        "total_obligations": 19005060.0,
+        "transaction_count": 55
+      },
+      {
+        "assistance_listing_number": "93.068",
+        "assistance_listing_title": "CHRONIC DISEASES:  RESEARCH, CONTROL, AND PREVENTION",
+        "award_count": 21,
+        "recipient_count": 18,
+        "total_obligations": 18269117.0,
+        "transaction_count": 22
+      },
+      {
+        "assistance_listing_number": "93.079",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS TO PROMOTE ADOLESCENT HEALTH THROUGH SCHOOL-BASED HIV/STD PREVENTION AND SCHOOL-BASED SURVEILLANCE",
+        "award_count": 72,
+        "recipient_count": 72,
+        "total_obligations": 16401838.0,
+        "transaction_count": 117
+      },
+      {
+        "assistance_listing_number": "93.439",
+        "assistance_listing_title": "STATE PHYSICAL ACTIVITY AND NUTRITION (SPAN",
+        "award_count": 18,
+        "recipient_count": 17,
+        "total_obligations": 15237149.0,
+        "transaction_count": 21
+      },
+      {
+        "assistance_listing_number": "93.478",
+        "assistance_listing_title": "PREVENTING MATERNAL DEATHS: SUPPORTING MATERNAL MORTALITY REVIEW COMMITTEES",
+        "award_count": 30,
+        "recipient_count": 30,
+        "total_obligations": 15151004.0,
+        "transaction_count": 31
+      },
+      {
+        "assistance_listing_number": "93.762",
+        "assistance_listing_title": "A COMPREHENSIVE APPROACH TO GOOD HEALTH AND WELLNESS IN INDIAN COUNTY \u2013 FINANCED SOLELY BY PREVENTION AND PUBLIC HEALTH",
+        "award_count": 49,
+        "recipient_count": 47,
+        "total_obligations": 14152774.0,
+        "transaction_count": 59
+      },
+      {
+        "assistance_listing_number": "93.08",
+        "assistance_listing_title": "BLOOD DISORDER PROGRAM: PREVENTION, SURVEILLANCE, AND RESEARCH",
+        "award_count": 24,
+        "recipient_count": 23,
+        "total_obligations": 12178893.0,
+        "transaction_count": 32
+      },
+      {
+        "assistance_listing_number": "93.941",
+        "assistance_listing_title": "HIV DEMONSTRATION, RESEARCH, PUBLIC AND PROFESSIONAL EDUCATION PROJECTS",
+        "award_count": 13,
+        "recipient_count": 13,
+        "total_obligations": 11952342.0,
+        "transaction_count": 18
+      },
+      {
+        "assistance_listing_number": "93.083",
+        "assistance_listing_title": "PREVENTION OF DISEASE, DISABILITY, AND DEATH THROUGH IMMUNIZATION AND CONTROL OF RESPIRATORY AND RELATED DISEASES",
+        "award_count": 12,
+        "recipient_count": 12,
+        "total_obligations": 11447805.0,
+        "transaction_count": 12
+      },
+      {
+        "assistance_listing_number": "93.319",
+        "assistance_listing_title": "OUTREACH PROGRAMS TO REDUCE THE PREVALENCE OF OBESITY IN HIGH RISK RURAL AREAS",
+        "award_count": 16,
+        "recipient_count": 16,
+        "total_obligations": 11403330.0,
+        "transaction_count": 16
+      },
+      {
+        "assistance_listing_number": "93.456",
+        "assistance_listing_title": "CDC UNDERGRADUATE PUBLIC HEALTH SCHOLARS PROGRAM (CUPS): A PUBLIC HEALTH EXPERIENCE TO EXPOSE UNDERGRADUATES INTERESTED IN MINORITY HEALTH TO PUBLIC HEALTH AND THE PUBLIC HEALTH PROFESSIONS",
+        "award_count": 7,
+        "recipient_count": 7,
+        "total_obligations": 10554407.0,
+        "transaction_count": 19
+      },
+      {
+        "assistance_listing_number": "93.488",
+        "assistance_listing_title": "NATIONAL HARM REDUCTION TECHNICAL ASSISTANCE AND SYRINGE SERVICES PROGRAM (SSP) MONITORING AND EVALUATION FUNDING OPPORTUNITY",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 9695821.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.998",
+        "assistance_listing_title": "AUTISM AND OTHER DEVELOPMENTAL DISABILITIES, SURVEILLANCE, RESEARCH, AND PREVENTION",
+        "award_count": 15,
+        "recipient_count": 15,
+        "total_obligations": 9430276.0,
+        "transaction_count": 23
+      },
+      {
+        "assistance_listing_number": "93.366",
+        "assistance_listing_title": "STATE ACTIONS TO IMPROVE ORAL HEALTH OUTCOMES AND PARTNER ACTIONS TO IMPROVE ORAL HEALTH OUTCOMES",
+        "award_count": 20,
+        "recipient_count": 20,
+        "total_obligations": 8514632.0,
+        "transaction_count": 20
+      },
+      {
+        "assistance_listing_number": "93.981",
+        "assistance_listing_title": "IMPROVING STUDENT HEALTH AND ACADEMIC ACHIEVEMENT THROUGH NUTRITION, PHYSICAL ACTIVITY AND THE MANAGEMENT OF CHRONIC CONDITIONS IN SCHOOLS",
+        "award_count": 20,
+        "recipient_count": 20,
+        "total_obligations": 7800000.0,
+        "transaction_count": 20
+      },
+      {
+        "assistance_listing_number": "93.81",
+        "assistance_listing_title": "PAUL COVERDELL NATIONAL ACUTE STROKE PROGRAM NATIONAL CENTER FOR CHRONIC DISEASE PREVENTION AND HEALTH PROMOTION",
+        "award_count": 13,
+        "recipient_count": 13,
+        "total_obligations": 7775000.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.314",
+        "assistance_listing_title": "EARLY HEARING DETECTION AND INTERVENTION INFORMATION SYSTEM (EHDI-IS) SURVEILLANCE PROGRAM",
+        "award_count": 40,
+        "recipient_count": 40,
+        "total_obligations": 6979998.0,
+        "transaction_count": 40
+      },
+      {
+        "assistance_listing_number": "93.431",
+        "assistance_listing_title": "NETWORKING2SAVE\u201d:  CDC\u2019S NATIONAL NETWORK APPROACH TO PREVENTING AND CONTROLLING TOBACCO-RELATED CANCERS IN SPECIAL POPULATIONS",
+        "award_count": 9,
+        "recipient_count": 9,
+        "total_obligations": 6800004.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.874",
+        "assistance_listing_title": "STRENGTHENING THE PUBLIC HEALTH SYSTEM IN US-AFFILIATED PACIFIC ISLANDS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 6559989.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.283",
+        "assistance_listing_title": "CENTERS FOR DISEASE CONTROL AND PREVENTION INVESTIGATIONS AND TECHNICAL ASSISTANCE",
+        "award_count": 12,
+        "recipient_count": 11,
+        "total_obligations": 6382238.0,
+        "transaction_count": 17
+      },
+      {
+        "assistance_listing_number": "93.947",
+        "assistance_listing_title": "TUBERCULOSIS DEMONSTRATION, RESEARCH, PUBLIC AND PROFESSIONAL EDUCATION",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 6181654.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.85",
+        "assistance_listing_title": "IMPROVING EPILEPSY PROGRAMS, SERVICES, AND OUTCOMES THROUGH NATIONAL PARTNERSHIPS",
+        "award_count": 9,
+        "recipient_count": 9,
+        "total_obligations": 5949314.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.315",
+        "assistance_listing_title": "RARE DISORDERS: RESEARCH, SURVEILLANCE, HEALTH PROMOTION, AND EDUCATION",
+        "award_count": 37,
+        "recipient_count": 23,
+        "total_obligations": 5624986.0,
+        "transaction_count": 37
+      },
+      {
+        "assistance_listing_number": "93.874",
+        "assistance_listing_title": "STRENGTHENING THE PUBLIC HEALTH SYSTEM IN US-AFFILIATED PACIFIC ISLANDS (NON-PPHF)",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 5000000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.118",
+        "assistance_listing_title": "ACQUIRED IMMUNODEFICIENCY SYNDROME (AIDS) ACTIVITY",
+        "award_count": 14,
+        "recipient_count": 14,
+        "total_obligations": 4321250.0,
+        "transaction_count": 22
+      },
+      {
+        "assistance_listing_number": "93.86",
+        "assistance_listing_title": "EMERGING INFECTIONS SENTINEL NETWORKS",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 3726803.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.376",
+        "assistance_listing_title": "TITLE: MULTIPLE APPROACHES TO SUPPORT YOUNG BREAST CANCER SURVIVORS AND METASTATIC BREAST CANCER PATIENTS",
+        "award_count": 8,
+        "recipient_count": 8,
+        "total_obligations": 3680000.0,
+        "transaction_count": 8
+      },
+      {
+        "assistance_listing_number": "93.377",
+        "assistance_listing_title": "PREVENTION AND CONTROL OF CHRONIC DISEASE AND ASSOCIATED RISK FACTORS IN THE U.S. AFFILIATED PACIFIC ISLANDS, U.S. VIRGIN ISLANDS, AND P. R.",
+        "award_count": 8,
+        "recipient_count": 8,
+        "total_obligations": 3283508.0,
+        "transaction_count": 8
+      },
+      {
+        "assistance_listing_number": "93.799",
+        "assistance_listing_title": "CARA ACT \u2013 COMPREHENSIVE ADDICTION AND RECOVERY ACT OF 2016",
+        "award_count": 64,
+        "recipient_count": 64,
+        "total_obligations": 3199404.0,
+        "transaction_count": 64
+      },
+      {
+        "assistance_listing_number": "93.816",
+        "assistance_listing_title": "PREVENTING HEART ATTACKS AND STROKES IN HIGH NEED AREAS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 3120000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.809",
+        "assistance_listing_title": "NATIONAL ORGANIZATIONS FOR CHRONIC DISEASE PREVENTION AND HEALTH PROMOTION",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 3000000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.943",
+        "assistance_listing_title": "EPIDEMIOLOGIC RESEARCH STUDIES OF ACQUIRED IMMUNODEFICIENCY SYNDROME (AIDS) AND HUMAN IMMUNODEFICIENCY VIRUS (HIV) INFECTION IN SELECTED POPULATION GROUPS",
+        "award_count": 6,
+        "recipient_count": 6,
+        "total_obligations": 2737465.0,
+        "transaction_count": 7
+      },
+      {
+        "assistance_listing_number": "93.494",
+        "assistance_listing_title": "GLOBAL TUBERCULOSIS:DEVELOPING,EVALUATING,IMPLEMENTING EVIDENCE-BASED AND INNOVATIVE APPROACHES TO FIND, CURE, AND PREVENT TUBERCULOSIS GLOBALLY",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 2724866.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.858",
+        "assistance_listing_title": "NATIONAL COLLABORATION TO SUPPORT HEALTH, WELLNESS AND ACADEMIC SUCCESS OF SCHOOL-AGE CHILDREN",
+        "award_count": 6,
+        "recipient_count": 6,
+        "total_obligations": 2399067.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.845",
+        "assistance_listing_title": "PROMOTING POPULATION HEALTH THROUGH INCREASED CAPACITY IN ALCOHOL EPIDEMIOLOGY",
+        "award_count": 13,
+        "recipient_count": 13,
+        "total_obligations": 2386618.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.065",
+        "assistance_listing_title": "LABORATORY LEADERSHIP, WORKFORCE TRAINING AND MANAGEMENT DEVELOPMENT, IMPROVING PUBLIC HEALTH LABORATORY INFRASTRUCTURE",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 1906695.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.349",
+        "assistance_listing_title": "PACKAGING AND SPREADING PROVEN PEDIATRIC WEIGHT MANAGEMENT INTERVENTIONS FOR USE BY LOW-INCOME FAMILIES",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 1507000.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.427",
+        "assistance_listing_title": "PROVISION OF  TECHNICAL ASSISTANCE AND TRAINING ACTIVITIES TO ASSURE COMPREHENSIVE CANCER CONTROL OUTCOMES.",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 1500000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.833",
+        "assistance_listing_title": "SUPPORTING AND MAINTAINING A SURVEILLANCE SYSTEM FOR CHRONIC KIDNEY DISEASE (CKD) IN THE UNITED STATES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1200000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.422",
+        "assistance_listing_title": "NATIONAL PARTNERSHIPS TO PROMOTE CANCER SURVEILLANCE STANDARDS AND SUPPORT DATA QUALITY AND OPERATIONS OF NATIONAL PROGRAM OF CANCER REGISTRIES",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 1195000.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.097",
+        "assistance_listing_title": "STRENGTHENING THE NATION'S PUBLIC HEALTH SYSTEM THROUGH A NATIONAL VOLUNTARY ACCREDITATION PROGRAM FOR STATE, TRIBAL, LOCAL AND TERRITORIAL HEALTH DEPARTMENTS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1000000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.066",
+        "assistance_listing_title": "STATE VITAL STATISTICS IMPROVEMENT PROGRAM",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 920000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.649",
+        "assistance_listing_title": "NUTRITION AND PHYSICAL ACTIVITY PROGRAMS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 750000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.269",
+        "assistance_listing_title": "COMPLEX HUMANITARIAN EMERGENCY AND WAR-RELATED INJURY PUBLIC HEALTH ACTIVITIES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 719291.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "94.006",
+        "assistance_listing_title": "AMERICORPS STATE AND NATIONAL 94.006",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 618910.0,
+        "transaction_count": 4
+      },
+      {
+        "assistance_listing_number": "93.391",
+        "assistance_listing_title": "ACTIVITIES TO SUPPORT STATE, TRIBAL, LOCAL AND TERRITORIAL (STLT) HEALTH DEPARTMENT RESPONSE TO PUBLIC HEALTH OR HEALTHCARE CRISES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 554606.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.446",
+        "assistance_listing_title": "PARTNER ACTIONS TO IMPROVE ORAL HEALTH OUTCOMES",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 550000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.103",
+        "assistance_listing_title": "FOOD AND DRUG ADMINISTRATION RESEARCH",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 524500.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.348",
+        "assistance_listing_title": "TECHNICAL ASSISTANCE TO INCREASE TOBACCO CESSATION",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 450000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.832",
+        "assistance_listing_title": "PROMOTING THE CANCER SURVEILLANCE WORKFORCE, EDUCATION AND DATA USE",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 425000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.465",
+        "assistance_listing_title": "TOBACCO PREVENTION AND CONTROL LEGAL TECHNICAL ASSISTANCE",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 385000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.684",
+        "assistance_listing_title": "ENGAGING STATE AND LOCAL EMERGENCY MANAGEMENT AGENCIES TO IMPROVE ABILITY TO PREPARE FOR AND RESPOND TO ALL - HAZARDS EVENTS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 200000.0,
+        "transaction_count": 2
+      }
+    ],
+    "by_defc_classification": [
+      {
+        "award_count": 1168,
+        "defc_classification": "mixed_regular_and_supplemental_award",
+        "recipient_count": 534,
+        "total_obligations": 9024910164.42,
+        "transaction_count": 3911
+      },
+      {
+        "award_count": 3651,
+        "defc_classification": "regular_or_not_designated",
+        "recipient_count": 1830,
+        "total_obligations": 3820259475.15,
+        "transaction_count": 4575
+      },
+      {
+        "award_count": 131,
+        "defc_classification": "clean_supplemental_award",
+        "recipient_count": 107,
+        "total_obligations": 199982488.0,
+        "transaction_count": 162
+      }
+    ],
+    "by_emergency_supplemental_scenario_flags": [
+      {
+        "award_count": 820,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": true,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": false,
+        "recipient_count": 456,
+        "total_obligations": 4952332526.42,
+        "transaction_count": 2805
+      },
+      {
+        "award_count": 3482,
+        "broad_defc_award_history": false,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": false,
+        "recipient_count": 1755,
+        "total_obligations": 3603358064.58,
+        "transaction_count": 4366
+      },
+      {
+        "award_count": 195,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": true,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 165,
+        "total_obligations": 3276916680.0,
+        "transaction_count": 648
+      },
+      {
+        "award_count": 44,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": true,
+        "likely_vfc": true,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": false,
+        "recipient_count": 44,
+        "total_obligations": 461162474.0,
+        "transaction_count": 173
+      },
+      {
+        "award_count": 161,
+        "broad_defc_award_history": false,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 134,
+        "total_obligations": 215576410.5,
+        "transaction_count": 200
+      },
+      {
+        "award_count": 129,
+        "broad_defc_award_history": true,
+        "clean_defc_only": true,
+        "current_overall_award_covid_iija_amount": true,
+        "likely_vfc": false,
+        "mixed_aware_defc": true,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 106,
+        "total_obligations": 198982488.0,
+        "transaction_count": 160
+      },
+      {
+        "award_count": 22,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": true,
+        "likely_vfc": true,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 22,
+        "total_obligations": 182930649.0,
+        "transaction_count": 79
+      },
+      {
+        "award_count": 74,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": false,
+        "recipient_count": 58,
+        "total_obligations": 122453842.0,
+        "transaction_count": 171
+      },
+      {
+        "award_count": 13,
+        "broad_defc_award_history": true,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": false,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 12,
+        "total_obligations": 29113993.0,
+        "transaction_count": 35
+      },
+      {
+        "award_count": 2,
+        "broad_defc_award_history": true,
+        "clean_defc_only": true,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": false,
+        "mixed_aware_defc": true,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 2,
+        "total_obligations": 1000000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 6,
+        "broad_defc_award_history": false,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": true,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": false,
+        "recipient_count": 6,
+        "total_obligations": 850000.07,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 2,
+        "broad_defc_award_history": false,
+        "clean_defc_only": false,
+        "current_overall_award_covid_iija_amount": false,
+        "likely_vfc": true,
+        "mixed_aware_defc": false,
+        "profile_aligned_text_category_defc": true,
+        "recipient_count": 2,
+        "total_obligations": 475000.0,
+        "transaction_count": 3
+      }
+    ],
+    "by_federal_accounts_funding_this_award": [
+      {
+        "award_count": 65,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0959",
+        "recipient_count": 65,
+        "total_obligations": 3462012638.0,
+        "transaction_count": 342
+      },
+      {
+        "award_count": 61,
+        "federal_accounts_funding_this_award": "075-0140;075-0943",
+        "recipient_count": 56,
+        "total_obligations": 812062393.0,
+        "transaction_count": 115
+      },
+      {
+        "award_count": 857,
+        "federal_accounts_funding_this_award": "075-0948",
+        "recipient_count": 327,
+        "total_obligations": 785090614.91,
+        "transaction_count": 1111
+      },
+      {
+        "award_count": 63,
+        "federal_accounts_funding_this_award": "075-0956",
+        "recipient_count": 63,
+        "total_obligations": 660504901.0,
+        "transaction_count": 66
+      },
+      {
+        "award_count": 63,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0951",
+        "recipient_count": 63,
+        "total_obligations": 617641364.0,
+        "transaction_count": 244
+      },
+      {
+        "award_count": 350,
+        "federal_accounts_funding_this_award": "075-0950",
+        "recipient_count": 246,
+        "total_obligations": 579709072.0,
+        "transaction_count": 461
+      },
+      {
+        "award_count": 380,
+        "federal_accounts_funding_this_award": "075-0952",
+        "recipient_count": 219,
+        "total_obligations": 403142778.12,
+        "transaction_count": 396
+      },
+      {
+        "award_count": 39,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0955",
+        "recipient_count": 30,
+        "total_obligations": 389221204.0,
+        "transaction_count": 109
+      },
+      {
+        "award_count": 700,
+        "federal_accounts_funding_this_award": "075-0943",
+        "recipient_count": 654,
+        "total_obligations": 332592805.35,
+        "transaction_count": 740
+      },
+      {
+        "award_count": 63,
+        "federal_accounts_funding_this_award": "075-0140;075-0950",
+        "recipient_count": 62,
+        "total_obligations": 311861092.0,
+        "transaction_count": 221
+      },
+      {
+        "award_count": 61,
+        "federal_accounts_funding_this_award": "019-1031;075-0955",
+        "recipient_count": 55,
+        "total_obligations": 297498992.0,
+        "transaction_count": 124
+      },
+      {
+        "award_count": 85,
+        "federal_accounts_funding_this_award": "019-1031",
+        "recipient_count": 77,
+        "total_obligations": 257662507.0,
+        "transaction_count": 143
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0953;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 253632387.0,
+        "transaction_count": 36
+      },
+      {
+        "award_count": 29,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0955",
+        "recipient_count": 27,
+        "total_obligations": 199610156.42,
+        "transaction_count": 67
+      },
+      {
+        "award_count": 27,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943",
+        "recipient_count": 24,
+        "total_obligations": 182704297.0,
+        "transaction_count": 58
+      },
+      {
+        "award_count": 63,
+        "federal_accounts_funding_this_award": "075-0943;075-0950",
+        "recipient_count": 63,
+        "total_obligations": 94127852.0,
+        "transaction_count": 151
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 4,
+        "total_obligations": 93456548.0,
+        "transaction_count": 55
+      },
+      {
+        "award_count": 12,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0956",
+        "recipient_count": 12,
+        "total_obligations": 92192494.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 192,
+        "federal_accounts_funding_this_award": "075-0947",
+        "recipient_count": 105,
+        "total_obligations": 88524449.0,
+        "transaction_count": 194
+      },
+      {
+        "award_count": 15,
+        "federal_accounts_funding_this_award": "019-1031;072-1037",
+        "recipient_count": 14,
+        "total_obligations": 86678483.0,
+        "transaction_count": 31
+      },
+      {
+        "award_count": 191,
+        "federal_accounts_funding_this_award": "075-0958",
+        "recipient_count": 121,
+        "total_obligations": 80475219.0,
+        "transaction_count": 209
+      },
+      {
+        "award_count": 127,
+        "federal_accounts_funding_this_award": "075-0953",
+        "recipient_count": 87,
+        "total_obligations": 79837392.0,
+        "transaction_count": 137
+      },
+      {
+        "award_count": 16,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0955",
+        "recipient_count": 14,
+        "total_obligations": 79336717.0,
+        "transaction_count": 46
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0952;075-0955;075-0959",
+        "recipient_count": 3,
+        "total_obligations": 75530041.0,
+        "transaction_count": 36
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 4,
+        "total_obligations": 69053360.0,
+        "transaction_count": 45
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0956;075-0959",
+        "recipient_count": 6,
+        "total_obligations": 64211594.0,
+        "transaction_count": 46
+      },
+      {
+        "award_count": 24,
+        "federal_accounts_funding_this_award": "075-0945;075-0950",
+        "recipient_count": 24,
+        "total_obligations": 61824231.0,
+        "transaction_count": 56
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0952;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 61565641.0,
+        "transaction_count": 29
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0952;075-0955;075-0958;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 51526150.0,
+        "transaction_count": 28
+      },
+      {
+        "award_count": 57,
+        "federal_accounts_funding_this_award": "075-0943;075-0952",
+        "recipient_count": 57,
+        "total_obligations": 48074563.0,
+        "transaction_count": 97
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 48051047.0,
+        "transaction_count": 24
+      },
+      {
+        "award_count": 53,
+        "federal_accounts_funding_this_award": "075-0945",
+        "recipient_count": 53,
+        "total_obligations": 46488925.0,
+        "transaction_count": 77
+      },
+      {
+        "award_count": 17,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0951",
+        "recipient_count": 17,
+        "total_obligations": 46306825.0,
+        "transaction_count": 28
+      },
+      {
+        "award_count": 15,
+        "federal_accounts_funding_this_award": "019-1031;075-0943",
+        "recipient_count": 14,
+        "total_obligations": 45324861.0,
+        "transaction_count": 39
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0955;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 43520674.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 18,
+        "federal_accounts_funding_this_award": "075-0120;075-0950",
+        "recipient_count": 16,
+        "total_obligations": 43144062.0,
+        "transaction_count": 40
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 43143308.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0945;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 41675332.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0951",
+        "recipient_count": 6,
+        "total_obligations": 40541556.0,
+        "transaction_count": 19
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0952;075-0955;075-0959",
+        "recipient_count": 3,
+        "total_obligations": 40150405.0,
+        "transaction_count": 28
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 38801124.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0943;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 36752780.0,
+        "transaction_count": 28
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 36612970.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 264,
+        "federal_accounts_funding_this_award": "(blank)",
+        "recipient_count": 261,
+        "total_obligations": 36344371.22,
+        "transaction_count": 285
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0950;075-0951;075-0952;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 35801786.0,
+        "transaction_count": 18
+      },
+      {
+        "award_count": 32,
+        "federal_accounts_funding_this_award": "075-0943;075-0951",
+        "recipient_count": 30,
+        "total_obligations": 35392398.0,
+        "transaction_count": 41
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0952;075-0955;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 35030859.0,
+        "transaction_count": 24
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 34996112.0,
+        "transaction_count": 24
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0512;075-0943;075-0947;075-0949;075-0951;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 30503266.0,
+        "transaction_count": 17
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 29536635.0,
+        "transaction_count": 20
+      },
+      {
+        "award_count": 34,
+        "federal_accounts_funding_this_award": "075-0949",
+        "recipient_count": 34,
+        "total_obligations": 29232247.0,
+        "transaction_count": 41
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 28067195.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0950;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 27674828.0,
+        "transaction_count": 21
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 26359763.0,
+        "transaction_count": 14
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 26095142.0,
+        "transaction_count": 36
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0945;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 26062311.0,
+        "transaction_count": 14
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 26007444.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0950;075-0951;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 25719224.0,
+        "transaction_count": 20
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0945;075-0947;075-0949;075-0951;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 24978400.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0951;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 24207305.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 24,
+        "federal_accounts_funding_this_award": "075-0140;075-0948;075-0951",
+        "recipient_count": 24,
+        "total_obligations": 24169369.0,
+        "transaction_count": 48
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0949;075-0951;075-0955",
+        "recipient_count": 3,
+        "total_obligations": 24050358.0,
+        "transaction_count": 17
+      },
+      {
+        "award_count": 32,
+        "federal_accounts_funding_this_award": "075-0946",
+        "recipient_count": 11,
+        "total_obligations": 24008117.48,
+        "transaction_count": 33
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0145;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 23402599.0,
+        "transaction_count": 39
+      },
+      {
+        "award_count": 54,
+        "federal_accounts_funding_this_award": "075-0512;075-0949;075-0950",
+        "recipient_count": 54,
+        "total_obligations": 22857095.0,
+        "transaction_count": 169
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0955;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 21987528.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 19,
+        "federal_accounts_funding_this_award": "075-0943;075-0948",
+        "recipient_count": 19,
+        "total_obligations": 21824546.0,
+        "transaction_count": 20
+      },
+      {
+        "award_count": 20,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949",
+        "recipient_count": 20,
+        "total_obligations": 21466432.0,
+        "transaction_count": 34
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0512;075-0943;075-0945;075-0947;075-0949;075-0950;075-0951;075-0955;075-0956;075-0958;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 20766803.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 58,
+        "federal_accounts_funding_this_award": "075-0948;075-0952",
+        "recipient_count": 58,
+        "total_obligations": 20555523.0,
+        "transaction_count": 89
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 20147932.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 20128577.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 15,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0955",
+        "recipient_count": 14,
+        "total_obligations": 19959806.0,
+        "transaction_count": 30
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 19890221.0,
+        "transaction_count": 16
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 19842923.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0945;075-0947;075-0949;075-0950;075-0951;075-0952;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 19366325.0,
+        "transaction_count": 16
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 19272886.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 23,
+        "federal_accounts_funding_this_award": "075-0140;075-0949",
+        "recipient_count": 22,
+        "total_obligations": 19041917.0,
+        "transaction_count": 37
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 18600000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0950;075-0951",
+        "recipient_count": 3,
+        "total_obligations": 18496708.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 18244616.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0145;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 18115696.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0956;075-0958;075-0959;075-1364",
+        "recipient_count": 1,
+        "total_obligations": 17046095.0,
+        "transaction_count": 30
+      },
+      {
+        "award_count": 14,
+        "federal_accounts_funding_this_award": "075-0943;075-0949",
+        "recipient_count": 14,
+        "total_obligations": 16521363.0,
+        "transaction_count": 18
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0952;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 16512405.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0952;075-0956;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 16059930.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0140;075-0943;075-0945;075-0949;075-0950;075-0951;075-0955;075-0956;075-1000;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 15307029.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0512;075-0943;075-0945;075-0947;075-0949;075-0951;075-0955;075-0956;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 15247485.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0952;075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 15191842.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 23,
+        "federal_accounts_funding_this_award": "075-0943;075-0953",
+        "recipient_count": 23,
+        "total_obligations": 15150960.0,
+        "transaction_count": 26
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 15068682.0,
+        "transaction_count": 13
+      },
+      {
+        "award_count": 34,
+        "federal_accounts_funding_this_award": "075-0943;075-0955",
+        "recipient_count": 32,
+        "total_obligations": 15047322.0,
+        "transaction_count": 46
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0945;075-0947;075-0949;075-0955;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 14240489.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0140;075-0943;075-0955",
+        "recipient_count": 3,
+        "total_obligations": 13323434.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0951;075-0952;075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 13114033.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0945;075-0947;075-0949;075-0950;075-0951;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 12925547.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0950;075-0951;075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 12881175.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 24,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0950;075-0952",
+        "recipient_count": 24,
+        "total_obligations": 12820499.0,
+        "transaction_count": 64
+      },
+      {
+        "award_count": 27,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955",
+        "recipient_count": 26,
+        "total_obligations": 12676007.0,
+        "transaction_count": 41
+      },
+      {
+        "award_count": 8,
+        "federal_accounts_funding_this_award": "075-0120;075-0945;075-0950",
+        "recipient_count": 8,
+        "total_obligations": 12242500.0,
+        "transaction_count": 24
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0950;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 11907000.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 21,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0955",
+        "recipient_count": 17,
+        "total_obligations": 11874788.0,
+        "transaction_count": 33
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0947;075-0948;075-0949;075-0950;075-0951;075-0955;075-0956;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 11559989.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140",
+        "recipient_count": 2,
+        "total_obligations": 11345943.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0947;075-0949;075-0950;075-0951;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 11220362.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0952;075-0959",
+        "recipient_count": 5,
+        "total_obligations": 11074753.0,
+        "transaction_count": 23
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 11000000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0955;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 10285000.0,
+        "transaction_count": 18
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0945;075-0955;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 9958172.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 9604570.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 8926392.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0950;075-0951;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 8886387.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0951;075-0955",
+        "recipient_count": 6,
+        "total_obligations": 8787068.0,
+        "transaction_count": 26
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0949;075-0955",
+        "recipient_count": 5,
+        "total_obligations": 8635449.0,
+        "transaction_count": 13
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 8555408.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 15,
+        "federal_accounts_funding_this_award": "075-0949;075-0950",
+        "recipient_count": 15,
+        "total_obligations": 8528040.0,
+        "transaction_count": 41
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0950;075-0951;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 8455674.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 8355438.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0952;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 8283442.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0359;075-0943;075-0948;075-0950;075-0951;075-0952;075-0953",
+        "recipient_count": 1,
+        "total_obligations": 8103079.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 29,
+        "federal_accounts_funding_this_award": "075-0951",
+        "recipient_count": 29,
+        "total_obligations": 7888815.0,
+        "transaction_count": 29
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0945;075-0949;075-0951;075-0958;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 7875348.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0600;075-0849;075-0943;075-0947;075-0948;075-0950;075-0951;075-0952;075-0956;075-0958;075-0959;075-1363;075-1364;075-1365",
+        "recipient_count": 1,
+        "total_obligations": 7787925.0,
+        "transaction_count": 14
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 7784969.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 7582840.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 13,
+        "federal_accounts_funding_this_award": "075-0949;075-0955",
+        "recipient_count": 13,
+        "total_obligations": 7497564.0,
+        "transaction_count": 21
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0949;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 7360962.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0951;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 7233514.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0956",
+        "recipient_count": 2,
+        "total_obligations": 6927605.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0949;075-0955",
+        "recipient_count": 3,
+        "total_obligations": 6725073.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0951;075-0959;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 6634736.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0955;075-1000",
+        "recipient_count": 1,
+        "total_obligations": 6609781.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0945;075-0949;075-0951;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 6485985.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 20,
+        "federal_accounts_funding_this_award": "075-0943;075-0947",
+        "recipient_count": 19,
+        "total_obligations": 6338081.0,
+        "transaction_count": 23
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031;075-0949;075-0955",
+        "recipient_count": 3,
+        "total_obligations": 6180956.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0145;075-0943;075-0947;075-0948;075-0950;075-0951;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 5975615.0,
+        "transaction_count": 13
+      },
+      {
+        "award_count": 17,
+        "federal_accounts_funding_this_award": "075-0884;075-0948",
+        "recipient_count": 15,
+        "total_obligations": 5737479.0,
+        "transaction_count": 34
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0949;075-0955;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 5693475.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0140;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 5482303.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 19,
+        "federal_accounts_funding_this_award": "075-0955",
+        "recipient_count": 18,
+        "total_obligations": 5425513.0,
+        "transaction_count": 19
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0949;075-0951;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 5307964.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0945;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 5226584.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0955;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 5063500.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140;075-0953",
+        "recipient_count": 3,
+        "total_obligations": 4873796.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0944;075-0947;075-0948;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 4840603.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0952",
+        "recipient_count": 5,
+        "total_obligations": 4794213.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0955;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 4730864.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0948;075-0949;075-0950;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 4695647.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0950;075-0951;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 4601027.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0949;075-0951;075-0955",
+        "recipient_count": 4,
+        "total_obligations": 4557416.0,
+        "transaction_count": 13
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0943;075-0948;075-0950;075-0952;075-0956;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 4431500.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0958;075-8250",
+        "recipient_count": 6,
+        "total_obligations": 4359409.0,
+        "transaction_count": 33
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0949;075-0951;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 4214235.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0944;075-0947;075-0949;075-0955;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 4201508.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0951",
+        "recipient_count": 2,
+        "total_obligations": 4200000.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0949;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 3974310.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950;075-0951",
+        "recipient_count": 4,
+        "total_obligations": 3659502.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0951;075-0955;075-1000",
+        "recipient_count": 1,
+        "total_obligations": 3349999.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0945;075-0949;075-0951;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 3311000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0952;075-0959",
+        "recipient_count": 3,
+        "total_obligations": 3214710.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0952;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 3161673.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0945;075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 3158382.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0959;075-8250",
+        "recipient_count": 4,
+        "total_obligations": 3052540.0,
+        "transaction_count": 21
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0951;075-0955;075-1000",
+        "recipient_count": 1,
+        "total_obligations": 3049719.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0945;075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 3000000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 3000000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0959",
+        "recipient_count": 1,
+        "total_obligations": 3000000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 23,
+        "federal_accounts_funding_this_award": "075-0943;075-1365",
+        "recipient_count": 23,
+        "total_obligations": 2956302.0,
+        "transaction_count": 25
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950",
+        "recipient_count": 4,
+        "total_obligations": 2800000.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0145;075-0943;075-0948;075-0950;075-0951;075-0952;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 2752270.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0885;075-0943;075-0955;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 2750248.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0958",
+        "recipient_count": 2,
+        "total_obligations": 2732000.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0140;075-0959",
+        "recipient_count": 6,
+        "total_obligations": 2693653.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952",
+        "recipient_count": 5,
+        "total_obligations": 2638724.0,
+        "transaction_count": 22
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0959",
+        "recipient_count": 5,
+        "total_obligations": 2597226.0,
+        "transaction_count": 15
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0945;075-0949;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 2581219.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0951",
+        "recipient_count": 2,
+        "total_obligations": 2550000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0952;075-8250",
+        "recipient_count": 6,
+        "total_obligations": 2464300.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948",
+        "recipient_count": 2,
+        "total_obligations": 2460609.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 2428915.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0948;075-0950;075-0951;075-0952;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 2400399.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0944;075-0948;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 2400000.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0949;075-0951;075-0952;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 2389339.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 2387351.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0512;075-0951",
+        "recipient_count": 3,
+        "total_obligations": 2342500.07,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0952;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 2342000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0950;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 2320324.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 13,
+        "federal_accounts_funding_this_award": "075-0948;075-0950",
+        "recipient_count": 13,
+        "total_obligations": 2316814.0,
+        "transaction_count": 17
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 2215000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 2141081.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0944;075-0947;075-0948;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 2123622.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 2069994.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0945;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 2069948.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0959",
+        "recipient_count": 3,
+        "total_obligations": 2060744.0,
+        "transaction_count": 14
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0512;075-0949;075-0950;075-0951",
+        "recipient_count": 3,
+        "total_obligations": 2054548.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0945;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 2048312.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0948;075-0951",
+        "recipient_count": 2,
+        "total_obligations": 2043798.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 1998503.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 1993331.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1930897.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 18,
+        "federal_accounts_funding_this_award": "075-0948;075-0950;075-0952",
+        "recipient_count": 18,
+        "total_obligations": 1875282.0,
+        "transaction_count": 20
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0943;075-0948;075-0950;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1829828.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0945;075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1821763.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0872;075-0886;075-0948",
+        "recipient_count": 6,
+        "total_obligations": 1805173.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 1800000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0950;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1791674.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0951;075-0953",
+        "recipient_count": 1,
+        "total_obligations": 1780541.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0950",
+        "recipient_count": 2,
+        "total_obligations": 1635704.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0955;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1625000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0951;075-0955",
+        "recipient_count": 4,
+        "total_obligations": 1545000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0949;075-0951;075-0955;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 1542080.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0955;075-8250",
+        "recipient_count": 4,
+        "total_obligations": 1409990.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0958;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 1383579.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0951;075-0952;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 1310701.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1269372.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0951;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1250000.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0944;075-0947;075-0949;075-0950;075-0951;075-0952;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1209430.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 1208000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0950;075-0951;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 1202278.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1189999.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0949;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 1182280.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0943;075-0950;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 1165156.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0945;075-0949;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1145584.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0948;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 1140000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0958;075-0959",
+        "recipient_count": 3,
+        "total_obligations": 1101611.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0945;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 1100000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0952;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 1095781.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 1093264.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950;075-0951;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 1091600.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0958;075-0959;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 1075695.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1054814.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 1051414.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0945;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1038075.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0947;075-0948;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 1035886.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 1035515.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0952;075-0959;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 1026520.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0956;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 1022986.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0948;075-0950;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 1021899.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0951;075-0952;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 951432.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 932736.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0140;075-0943;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 898500.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0949;075-0950",
+        "recipient_count": 2,
+        "total_obligations": 880000.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0958",
+        "recipient_count": 2,
+        "total_obligations": 859822.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0849;075-0948;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 853614.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0951;075-0952;075-0958;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 849565.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0951;075-0958",
+        "recipient_count": 2,
+        "total_obligations": 845510.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0943;075-0947;075-0948;075-0952;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 830000.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0952;075-0958",
+        "recipient_count": 2,
+        "total_obligations": 827187.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0945;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 815000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0951;075-0952;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 775000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0950;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 760000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0955;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 749159.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0947;075-0948",
+        "recipient_count": 1,
+        "total_obligations": 730000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 716000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 700140.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0951;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 695912.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0949;075-0952;075-0953;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 692279.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0959;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 670101.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0951;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 663707.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 661000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0952;075-0953;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 628979.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0959;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 628732.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0951;075-0952;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 626533.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0945",
+        "recipient_count": 1,
+        "total_obligations": 625948.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0953;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 592664.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0951;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 582566.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0886;075-0948",
+        "recipient_count": 4,
+        "total_obligations": 579769.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 579627.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0950;075-0951;075-0952;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 570000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0953",
+        "recipient_count": 1,
+        "total_obligations": 536479.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0950;075-0952;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 534049.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 525577.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;075-0945;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 500000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0947;075-0951;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 500000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0952;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 500000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 500000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0952;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 500000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0947;075-0948;075-0951;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 500000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0846;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 470325.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 454000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0951;075-0953",
+        "recipient_count": 1,
+        "total_obligations": 427798.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 424056.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0949;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 420000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0951;075-0952;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 410647.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0951",
+        "recipient_count": 3,
+        "total_obligations": 407000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 405983.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0953",
+        "recipient_count": 2,
+        "total_obligations": 383447.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0949;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 378588.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0947;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 368294.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0949;075-0950;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 352462.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0959;075-1700",
+        "recipient_count": 1,
+        "total_obligations": 350000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 350000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0948;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 350000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 300000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0950;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 299801.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 288270.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0947;075-0949;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 275766.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0943;075-0949;075-0951;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 260097.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0951;075-0955;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 255000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0953;075-0956",
+        "recipient_count": 2,
+        "total_obligations": 218500.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0872;075-0948",
+        "recipient_count": 1,
+        "total_obligations": 198151.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 150000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 150000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0947;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 110000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0955;075-0959;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 99999.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0872",
+        "recipient_count": 1,
+        "total_obligations": 75450.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 50000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0948;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 10000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 10000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 1.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1.0,
+        "transaction_count": 1
+      }
+    ],
+    "by_individual_defc_code": [
+      {
+        "award_count": 4555,
+        "defc_code": "Q",
+        "recipient_count": 1847,
+        "total_obligations": 12808825268.35,
+        "transaction_count": 8201
+      },
+      {
+        "award_count": 790,
+        "defc_code": "V",
+        "recipient_count": 425,
+        "total_obligations": 8539056491.42,
+        "transaction_count": 3034
+      },
+      {
+        "award_count": 454,
+        "defc_code": "U",
+        "recipient_count": 216,
+        "total_obligations": 6107985712.0,
+        "transaction_count": 2067
+      },
+      {
+        "award_count": 484,
+        "defc_code": "N",
+        "recipient_count": 279,
+        "total_obligations": 3206619457.0,
+        "transaction_count": 2073
+      },
+      {
+        "award_count": 349,
+        "defc_code": "L",
+        "recipient_count": 233,
+        "total_obligations": 2293760222.0,
+        "transaction_count": 1565
+      },
+      {
+        "award_count": 152,
+        "defc_code": "P",
+        "recipient_count": 95,
+        "total_obligations": 1593322274.0,
+        "transaction_count": 1157
+      },
+      {
+        "award_count": 116,
+        "defc_code": "6",
+        "recipient_count": 69,
+        "total_obligations": 729874034.0,
+        "transaction_count": 388
+      },
+      {
+        "award_count": 45,
+        "defc_code": "E",
+        "recipient_count": 38,
+        "total_obligations": 596203470.0,
+        "transaction_count": 362
+      },
+      {
+        "award_count": 22,
+        "defc_code": "AAB",
+        "recipient_count": 18,
+        "total_obligations": 454388189.0,
+        "transaction_count": 237
+      },
+      {
+        "award_count": 8,
+        "defc_code": "X",
+        "recipient_count": 7,
+        "total_obligations": 148646546.0,
+        "transaction_count": 76
+      },
+      {
+        "award_count": 3,
+        "defc_code": "C",
+        "recipient_count": 3,
+        "total_obligations": 75786608.0,
+        "transaction_count": 44
+      },
+      {
+        "award_count": 264,
+        "defc_code": "(blank)",
+        "recipient_count": 261,
+        "total_obligations": 36344371.22,
+        "transaction_count": 285
+      }
+    ],
+    "note": "The individual DEFC code table is not additive when an award-history field contains multiple codes; the same transaction contributes to each observed code.",
+    "profile_aligned_supplemental_assistance_listing_candidates": [
+      {
+        "assistance_listing_number": "93.967",
+        "assistance_listing_title": "CDC'S COLLABORATION WITH ACADEMIA TO STRENGTHEN PUBLIC HEALTH",
+        "award_count": 62,
+        "recipient_count": 62,
+        "total_obligations": 1564266458.0,
+        "transaction_count": 212
+      },
+      {
+        "assistance_listing_number": "93.967",
+        "assistance_listing_title": "CENTERS FOR DISEASE CONTROL AND PREVENTION COLLABORATION WITH ACADEMIA TO STRENGTHEN PUBLIC HEALTH",
+        "award_count": 33,
+        "recipient_count": 33,
+        "total_obligations": 1303279313.0,
+        "transaction_count": 87
+      },
+      {
+        "assistance_listing_number": "93.268",
+        "assistance_listing_title": "IMMUNIZATION COOPERATIVE AGREEMENTS",
+        "award_count": 24,
+        "recipient_count": 24,
+        "total_obligations": 183405649.0,
+        "transaction_count": 82
+      },
+      {
+        "assistance_listing_number": "93.067",
+        "assistance_listing_title": "GLOBAL AIDS",
+        "award_count": 12,
+        "recipient_count": 10,
+        "total_obligations": 141941102.0,
+        "transaction_count": 30
+      },
+      {
+        "assistance_listing_number": "93.495",
+        "assistance_listing_title": "COMMUNITY HEALTH WORKERS FOR PUBLIC HEALTH RESPONSE AND RESILIENT",
+        "award_count": 70,
+        "recipient_count": 68,
+        "total_obligations": 138769620.0,
+        "transaction_count": 77
+      },
+      {
+        "assistance_listing_number": "93.318",
+        "assistance_listing_title": "PROTECTING AND IMPROVING HEALTH GLOBALLY: BUILDING AND STRENGTHENING PUBLIC HEALTH IMPACT, SYSTEMS, CAPACITY AND SECURITY",
+        "award_count": 61,
+        "recipient_count": 55,
+        "total_obligations": 86701080.0,
+        "transaction_count": 131
+      },
+      {
+        "assistance_listing_number": "93.185",
+        "assistance_listing_title": "IMMUNIZATION RESEARCH, DEMONSTRATION, PUBLIC INFORMATION AND EDUCATION TRAINING AND CLINICAL SKILLS IMPROVEMENT PROJECTS",
+        "award_count": 26,
+        "recipient_count": 25,
+        "total_obligations": 80101655.0,
+        "transaction_count": 34
+      },
+      {
+        "assistance_listing_number": "93.099",
+        "assistance_listing_title": "COLLABORATION WITH THE WORLD HEALTH ORGANIZATION AND ITS REGIONAL OFFICES FOR GLOBAL HEALTH SECURITY AND THE INTERNATIONAL HEALTH REGULATIONS (IHR 2005)",
+        "award_count": 2,
+        "recipient_count": 1,
+        "total_obligations": 61743308.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.136",
+        "assistance_listing_title": "INJURY PREVENTION AND CONTROL RESEARCH AND STATE AND COMMUNITY BASED PROGRAMS",
+        "award_count": 30,
+        "recipient_count": 28,
+        "total_obligations": 49594867.0,
+        "transaction_count": 37
+      },
+      {
+        "assistance_listing_number": "93.354",
+        "assistance_listing_title": "PUBLIC HEALTH EMERGENCY RESPONSE:  COOPERATIVE AGREEMENT FOR EMERGENCY RESPONSE: PUBLIC HEALTH CRISIS RESPONSE",
+        "award_count": 54,
+        "recipient_count": 54,
+        "total_obligations": 46744751.0,
+        "transaction_count": 78
+      },
+      {
+        "assistance_listing_number": "93.977",
+        "assistance_listing_title": "SEXUALLY TRANSMITTED DISEASES (STD) PREVENTION AND CONTROL GRANTS",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 44441418.0,
+        "transaction_count": 19
+      },
+      {
+        "assistance_listing_number": "93.323",
+        "assistance_listing_title": "EPIDEMIOLOGY AND LABORATORY CAPACITY FOR INFECTIOUS DISEASES (ELC)",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 27645473.0,
+        "transaction_count": 22
+      },
+      {
+        "assistance_listing_number": "93.421",
+        "assistance_listing_title": "STRENGTHENING PUBLIC HEALTH SYSTEMS AND SERVICES THROUGH NATIONAL PARTNERSHIPS TO IMPROVE AND PROTECT THE NATION\u2019S HEALTH",
+        "award_count": 4,
+        "recipient_count": 4,
+        "total_obligations": 22795075.0,
+        "transaction_count": 39
+      },
+      {
+        "assistance_listing_number": "93.94",
+        "assistance_listing_title": "HIV PREVENTION ACTIVITIES HEALTH DEPARTMENT BASED",
+        "award_count": 6,
+        "recipient_count": 6,
+        "total_obligations": 21650079.0,
+        "transaction_count": 15
+      },
+      {
+        "assistance_listing_number": "93.116",
+        "assistance_listing_title": "PROJECT GRANTS AND COOPERATIVE AGREEMENTS FOR TUBERCULOSIS CONTROL PROGRAMS",
+        "award_count": 13,
+        "recipient_count": 13,
+        "total_obligations": 18493960.0,
+        "transaction_count": 29
+      },
+      {
+        "assistance_listing_number": "93.317",
+        "assistance_listing_title": "EMERGING INFECTIONS PROGRAMS",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 17209834.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.939",
+        "assistance_listing_title": "HIV PREVENTION ACTIVITIES NON-GOVERNMENTAL ORGANIZATION BASED",
+        "award_count": 16,
+        "recipient_count": 15,
+        "total_obligations": 9735068.0,
+        "transaction_count": 26
+      },
+      {
+        "assistance_listing_number": "93.083",
+        "assistance_listing_title": "PREVENTION OF DISEASE, DISABILITY, AND DEATH THROUGH IMMUNIZATION AND CONTROL OF RESPIRATORY AND RELATED DISEASES",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 8775466.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.945",
+        "assistance_listing_title": "ASSISTANCE PROGRAMS FOR CHRONIC DISEASE PREVENTION AND CONTROL",
+        "award_count": 4,
+        "recipient_count": 4,
+        "total_obligations": 7421151.0,
+        "transaction_count": 4
+      },
+      {
+        "assistance_listing_number": "93.898",
+        "assistance_listing_title": "CANCER PREVENTION AND CONTROL PROGRAMS FOR STATE, TERRITORIAL AND TRIBAL ORGANIZATIONS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 4874793.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.978",
+        "assistance_listing_title": "SEXUALLY TRANSMITTED DISEASES (STD) PROVIDER EDUCATION GRANTS",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 4499975.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.08",
+        "assistance_listing_title": "BLOOD DISORDER PROGRAM: PREVENTION, SURVEILLANCE, AND RESEARCH",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 4300000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.084",
+        "assistance_listing_title": "PREVENTION OF DISEASE, DISABILITY, AND DEATH BY INFECTIOUS DISEASES",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 4175000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.944",
+        "assistance_listing_title": "HUMAN IMMUNODEFICIENCY VIRUS (HIV)/ACQUIRED IMMUNODEFICIENCY VIRUS SYNDROME (AIDS) SURVEILLANCE",
+        "award_count": 8,
+        "recipient_count": 8,
+        "total_obligations": 4171507.0,
+        "transaction_count": 9
+      },
+      {
+        "assistance_listing_number": "93.276",
+        "assistance_listing_title": "DRUG-FREE COMMUNITIES SUPPORT PROGRAM GRANTS",
+        "award_count": 28,
+        "recipient_count": 28,
+        "total_obligations": 3598509.5,
+        "transaction_count": 29
+      },
+      {
+        "assistance_listing_number": "93.336",
+        "assistance_listing_title": "BEHAVIORAL RISK FACTOR SURVEILLANCE SYSTEM",
+        "award_count": 5,
+        "recipient_count": 5,
+        "total_obligations": 3329477.0,
+        "transaction_count": 22
+      },
+      {
+        "assistance_listing_number": "93.197",
+        "assistance_listing_title": "CHILDHOOD LEAD POISONING PREVENTION PROJECTS, STATE AND LOCAL CHILDHOOD LEAD POISONING PREVENTION AND SURVEILLANCE OF BLOOD LEAD LEVELS IN CHILDREN",
+        "award_count": 6,
+        "recipient_count": 6,
+        "total_obligations": 3269955.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.988",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS FOR STATE-BASED DIABETES CONTROL PROGRAMS AND EVALUATION OF SURVEILLANCE SYSTEMS",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 3250000.0,
+        "transaction_count": 4
+      },
+      {
+        "assistance_listing_number": "93.07",
+        "assistance_listing_title": "ENVIRONMENTAL PUBLIC HEALTH AND EMERGENCY RESPONSE",
+        "award_count": 6,
+        "recipient_count": 6,
+        "total_obligations": 2546936.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.456",
+        "assistance_listing_title": "CDC UNDERGRADUATE PUBLIC HEALTH SCHOLARS PROGRAM (CUPS): A PUBLIC HEALTH EXPERIENCE TO EXPOSE UNDERGRADUATES INTERESTED IN MINORITY HEALTH TO PUBLIC HEALTH AND THE PUBLIC HEALTH PROFESSIONS",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 2292278.0,
+        "transaction_count": 6
+      },
+      {
+        "assistance_listing_number": "93.426",
+        "assistance_listing_title": "THE NATIONAL CARDIOVASCULAR HEALTH PROGRAM",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 2212042.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.079",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS TO PROMOTE ADOLESCENT HEALTH THROUGH SCHOOL-BASED HIV/STD PREVENTION AND SCHOOL-BASED SURVEILLANCE",
+        "award_count": 7,
+        "recipient_count": 7,
+        "total_obligations": 1940653.0,
+        "transaction_count": 13
+      },
+      {
+        "assistance_listing_number": "93.988",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS FOR DIABETES CONTROL PROGRAMS",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 1850000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.439",
+        "assistance_listing_title": "STATE PHYSICAL ACTIVITY AND NUTRITION (SPAN",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 1776000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.834",
+        "assistance_listing_title": "CAPACITY BUILDING ASSISTANCE (CBA) FOR HIGH-IMPACT HIV PREVENTION",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 1740436.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.27",
+        "assistance_listing_title": "VIRAL HEPATITIS PREVENTION AND CONTROL",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 1606228.0,
+        "transaction_count": 11
+      },
+      {
+        "assistance_listing_number": "93.073",
+        "assistance_listing_title": "BIRTH DEFECTS AND DEVELOPMENTAL DISABILITIES - PREVENTION AND SURVEILLANCE",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 1399752.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.426",
+        "assistance_listing_title": "IMPROVING THE HEALTH OF AMERICANS THROUGH PREVENTION AND MANAGEMENT OF DIABETES AND HEART DISEASE AND STROKE",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1398077.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.947",
+        "assistance_listing_title": "TUBERCULOSIS DEMONSTRATION, RESEARCH, PUBLIC AND PROFESSIONAL EDUCATION",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1332010.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.833",
+        "assistance_listing_title": "SUPPORTING AND MAINTAINING A SURVEILLANCE SYSTEM FOR CHRONIC KIDNEY DISEASE (CKD) IN THE UNITED STATES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1200000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.981",
+        "assistance_listing_title": "IMPROVING STUDENT HEALTH AND ACADEMIC ACHIEVEMENT THROUGH NUTRITION, PHYSICAL ACTIVITY AND THE MANAGEMENT OF CHRONIC CONDITIONS IN SCHOOLS",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 1170000.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.283",
+        "assistance_listing_title": "CENTERS FOR DISEASE CONTROL AND PREVENTION INVESTIGATIONS AND TECHNICAL ASSISTANCE",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1114500.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.762",
+        "assistance_listing_title": "A COMPREHENSIVE APPROACH TO GOOD HEALTH AND WELLNESS IN INDIAN COUNTY \u2013 FINANCED SOLELY BY PREVENTION AND PUBLIC HEALTH",
+        "award_count": 3,
+        "recipient_count": 3,
+        "total_obligations": 1039715.0,
+        "transaction_count": 4
+      },
+      {
+        "assistance_listing_number": "93.8",
+        "assistance_listing_title": "ORGANIZED APPROACHES TO INCREASE COLORECTAL CANCER SCREENING",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 922245.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.066",
+        "assistance_listing_title": "STATE VITAL STATISTICS IMPROVEMENT PROGRAM",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 920000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.998",
+        "assistance_listing_title": "AUTISM AND OTHER DEVELOPMENTAL DISABILITIES, SURVEILLANCE, RESEARCH, AND PREVENTION",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 814078.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.488",
+        "assistance_listing_title": "NATIONAL HARM REDUCTION TECHNICAL ASSISTANCE AND SYRINGE SERVICES PROGRAM (SSP) MONITORING AND EVALUATION FUNDING OPPORTUNITY",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 809434.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.858",
+        "assistance_listing_title": "NATIONAL COLLABORATION TO SUPPORT HEALTH, WELLNESS AND ACADEMIC SUCCESS OF SCHOOL-AGE CHILDREN",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 800000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.494",
+        "assistance_listing_title": "GLOBAL TUBERCULOSIS:DEVELOPING,EVALUATING,IMPLEMENTING EVIDENCE-BASED AND INNOVATIVE APPROACHES TO FIND, CURE, AND PREVENT TUBERCULOSIS GLOBALLY",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 761685.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.269",
+        "assistance_listing_title": "COMPLEX HUMANITARIAN EMERGENCY AND WAR-RELATED INJURY PUBLIC HEALTH ACTIVITIES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 719291.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.304",
+        "assistance_listing_title": "RACIAL AND ETHNIC APPROACHES TO COMMUNITY HEALTH",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 719008.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.946",
+        "assistance_listing_title": "COOPERATIVE AGREEMENTS TO SUPPORT STATE-BASED SAFE MOTHERHOOD AND INFANT HEALTH INITIATIVE PROGRAMS",
+        "award_count": 5,
+        "recipient_count": 4,
+        "total_obligations": 708396.0,
+        "transaction_count": 5
+      },
+      {
+        "assistance_listing_number": "93.262",
+        "assistance_listing_title": "OCCUPATIONAL SAFETY AND HEALTH PROGRAM",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 661972.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.391",
+        "assistance_listing_title": "ACTIVITIES TO SUPPORT STATE, TRIBAL, LOCAL AND TERRITORIAL (STLT) HEALTH DEPARTMENT RESPONSE TO PUBLIC HEALTH OR HEALTHCARE CRISES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 554606.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.069",
+        "assistance_listing_title": "PUBLIC HEALTH EMERGENCY PREPAREDNESS",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 478510.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.322",
+        "assistance_listing_title": "CSELS PARTNERSHIP: STRENGTHENING PUBLIC HEALTH LABORATORIES",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 342574.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.118",
+        "assistance_listing_title": "ACQUIRED IMMUNODEFICIENCY SYNDROME (AIDS) ACTIVITY",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 336250.0,
+        "transaction_count": 3
+      },
+      {
+        "assistance_listing_number": "93.314",
+        "assistance_listing_title": "EARLY HEARING DETECTION AND INTERVENTION INFORMATION SYSTEM (EHDI-IS) SURVEILLANCE PROGRAM",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 326000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.103",
+        "assistance_listing_title": "FOOD AND DRUG ADMINISTRATION RESEARCH",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 218000.0,
+        "transaction_count": 1
+      },
+      {
+        "assistance_listing_number": "93.799",
+        "assistance_listing_title": "CARA ACT \u2013 COMPREHENSIVE ADDICTION AND RECOVERY ACT OF 2016",
+        "award_count": 2,
+        "recipient_count": 2,
+        "total_obligations": 100000.0,
+        "transaction_count": 2
+      },
+      {
+        "assistance_listing_number": "93.326",
+        "assistance_listing_title": "STRENGTHENING PUBLIC HEALTH THROUGH SURVEILLANCE, EPIDEMIOLOGIC RESEARCH, DISEASE DETECTION AND PREVENTION",
+        "award_count": 1,
+        "recipient_count": 1,
+        "total_obligations": 1.0,
+        "transaction_count": 1
+      }
+    ],
+    "profile_aligned_supplemental_federal_account_candidates": [
+      {
+        "award_count": 46,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0959",
+        "recipient_count": 46,
+        "total_obligations": 2519507374.0,
+        "transaction_count": 246
+      },
+      {
+        "award_count": 35,
+        "federal_accounts_funding_this_award": "075-0140;075-0943",
+        "recipient_count": 33,
+        "total_obligations": 370506426.0,
+        "transaction_count": 60
+      },
+      {
+        "award_count": 15,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0951",
+        "recipient_count": 15,
+        "total_obligations": 164604670.0,
+        "transaction_count": 60
+      },
+      {
+        "award_count": 85,
+        "federal_accounts_funding_this_award": "075-0943",
+        "recipient_count": 83,
+        "total_obligations": 109953250.5,
+        "transaction_count": 92
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031;075-0955",
+        "recipient_count": 3,
+        "total_obligations": 54950643.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 53,
+        "federal_accounts_funding_this_award": "075-0945",
+        "recipient_count": 53,
+        "total_obligations": 46488925.0,
+        "transaction_count": 77
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0140;075-0950",
+        "recipient_count": 6,
+        "total_obligations": 46441418.0,
+        "transaction_count": 20
+      },
+      {
+        "award_count": 22,
+        "federal_accounts_funding_this_award": "075-0952",
+        "recipient_count": 22,
+        "total_obligations": 44742946.0,
+        "transaction_count": 23
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 43143308.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 40068811.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "019-1031",
+        "recipient_count": 3,
+        "total_obligations": 34887842.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 11,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0951",
+        "recipient_count": 11,
+        "total_obligations": 30663575.0,
+        "transaction_count": 17
+      },
+      {
+        "award_count": 28,
+        "federal_accounts_funding_this_award": "075-0948",
+        "recipient_count": 23,
+        "total_obligations": 28201262.0,
+        "transaction_count": 33
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 26007444.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 32,
+        "federal_accounts_funding_this_award": "075-0950",
+        "recipient_count": 29,
+        "total_obligations": 22866081.0,
+        "transaction_count": 43
+      },
+      {
+        "award_count": 16,
+        "federal_accounts_funding_this_award": "075-0943;075-0951",
+        "recipient_count": 15,
+        "total_obligations": 21206756.0,
+        "transaction_count": 19
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0945;075-0950",
+        "recipient_count": 6,
+        "total_obligations": 20754918.0,
+        "transaction_count": 17
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 19890221.0,
+        "transaction_count": 16
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0945;075-0947;075-0949;075-0950;075-0951;075-0952;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 19366325.0,
+        "transaction_count": 16
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0949;075-0951;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 19365499.0,
+        "transaction_count": 11
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 18600000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0512;075-0943;075-0944;075-0947;075-0948;075-0949;075-0950;075-0951;075-0952;075-0956;075-0958;075-0959;075-1364",
+        "recipient_count": 1,
+        "total_obligations": 17046095.0,
+        "transaction_count": 30
+      },
+      {
+        "award_count": 10,
+        "federal_accounts_funding_this_award": "075-0943;075-0950",
+        "recipient_count": 10,
+        "total_obligations": 16250479.0,
+        "transaction_count": 26
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0950;075-0951",
+        "recipient_count": 2,
+        "total_obligations": 13300546.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0951",
+        "recipient_count": 2,
+        "total_obligations": 11679313.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0140",
+        "recipient_count": 2,
+        "total_obligations": 11345943.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0958;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 8926392.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0945;075-0949;075-0950;075-0951;075-0952;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 8283442.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0511;075-0943;075-0949;075-0951;075-0952;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 8279148.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "019-1031;072-1037;075-0943;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 8094583.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0958",
+        "recipient_count": 6,
+        "total_obligations": 6839830.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0955",
+        "recipient_count": 2,
+        "total_obligations": 6498778.0,
+        "transaction_count": 8
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 5872000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0952;075-0959",
+        "recipient_count": 2,
+        "total_obligations": 5830459.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 6,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949",
+        "recipient_count": 6,
+        "total_obligations": 5377085.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 8,
+        "federal_accounts_funding_this_award": "075-0943;075-0952",
+        "recipient_count": 8,
+        "total_obligations": 4851921.0,
+        "transaction_count": 14
+      },
+      {
+        "award_count": 10,
+        "federal_accounts_funding_this_award": "075-0947",
+        "recipient_count": 9,
+        "total_obligations": 4816891.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943;075-0948;075-0949;075-0950;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 4695647.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 7,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0955",
+        "recipient_count": 7,
+        "total_obligations": 4370000.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 3494386.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0951;075-0955;075-1000",
+        "recipient_count": 1,
+        "total_obligations": 3049719.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 9,
+        "federal_accounts_funding_this_award": "075-0943;075-0955",
+        "recipient_count": 8,
+        "total_obligations": 2975292.0,
+        "transaction_count": 13
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0948",
+        "recipient_count": 1,
+        "total_obligations": 2840000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 2428915.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0949;075-0951;075-0952;075-0955;075-0956;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 2389339.0,
+        "transaction_count": 9
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 2387351.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 5,
+        "federal_accounts_funding_this_award": "075-0951",
+        "recipient_count": 5,
+        "total_obligations": 1925466.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0958;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 1752648.0,
+        "transaction_count": 12
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0943;075-0948;075-0950;075-0952",
+        "recipient_count": 4,
+        "total_obligations": 1640653.0,
+        "transaction_count": 10
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0949;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 1332010.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0948;075-0952",
+        "recipient_count": 4,
+        "total_obligations": 1264715.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0943;075-0949",
+        "recipient_count": 3,
+        "total_obligations": 1243435.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0950;075-0951;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 1202278.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0950;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 1189999.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0512;075-0949;075-0950",
+        "recipient_count": 2,
+        "total_obligations": 1166228.0,
+        "transaction_count": 7
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955",
+        "recipient_count": 4,
+        "total_obligations": 1150739.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0945;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 1100000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 1093264.0,
+        "transaction_count": 5
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 1090000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0949;075-0955;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 1051414.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "075-0140;075-0949",
+        "recipient_count": 4,
+        "total_obligations": 1030866.0,
+        "transaction_count": 6
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 920000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 865231.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0949;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 761685.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 700000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0946",
+        "recipient_count": 1,
+        "total_obligations": 585148.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "072-1037;075-0943;075-0945;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 575000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 560744.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 4,
+        "federal_accounts_funding_this_award": "(blank)",
+        "recipient_count": 4,
+        "total_obligations": 500000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0956",
+        "recipient_count": 1,
+        "total_obligations": 478510.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0951;075-0955;075-8250",
+        "recipient_count": 1,
+        "total_obligations": 450000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "019-1031;075-0943",
+        "recipient_count": 1,
+        "total_obligations": 444837.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0949;075-0950",
+        "recipient_count": 1,
+        "total_obligations": 440000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0947;075-0948;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 434606.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 3,
+        "federal_accounts_funding_this_award": "075-0955",
+        "recipient_count": 3,
+        "total_obligations": 400000.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0949;075-0958",
+        "recipient_count": 1,
+        "total_obligations": 378588.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0949;075-0950;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 352462.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0949;075-0959;075-1700",
+        "recipient_count": 1,
+        "total_obligations": 350000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0943;075-0948;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 350000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 342574.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0945;075-0955",
+        "recipient_count": 1,
+        "total_obligations": 300000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0512;075-0951",
+        "recipient_count": 1,
+        "total_obligations": 275000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0120;075-0140;075-0943;075-0949;075-0951;075-0956",
+        "recipient_count": 1,
+        "total_obligations": 260097.0,
+        "transaction_count": 3
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0951;075-0955;075-8250",
+        "recipient_count": 2,
+        "total_obligations": 255000.0,
+        "transaction_count": 2
+      },
+      {
+        "award_count": 2,
+        "federal_accounts_funding_this_award": "075-0943;075-0953;075-0956",
+        "recipient_count": 2,
+        "total_obligations": 218500.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0958;075-0959",
+        "recipient_count": 1,
+        "total_obligations": 150000.0,
+        "transaction_count": 4
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0948;075-0950;075-0952",
+        "recipient_count": 1,
+        "total_obligations": 100000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0953",
+        "recipient_count": 1,
+        "total_obligations": 76824.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0872",
+        "recipient_count": 1,
+        "total_obligations": 75450.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0512;075-0943;075-0948;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 10000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0140;075-0943;075-0948;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 10000.0,
+        "transaction_count": 1
+      },
+      {
+        "award_count": 1,
+        "federal_accounts_funding_this_award": "075-0943;075-0945;075-0949",
+        "recipient_count": 1,
+        "total_obligations": 1.0,
+        "transaction_count": 1
+      }
+    ]
+  },
+  "generated_at": "2026-07-04T13:39:52.267604+00:00",
+  "inputs": {
+    "fiscal_year": 2023,
+    "funding_profiles_csv": "/home/john/places-app/data/2023 CSV Data.csv",
+    "output_path": "/home/john/places-app/backend/data_profiles/fy2023_usaspending_profiles_disaster_filter_comparison.json",
+    "usaspending_csv": "/home/john/places-app/data/USAspending-csv.csv"
+  },
+  "recommendation": {
+    "funding_profiles_comparison_mode_rule": [
+      "Use a profile-aligned exclusion combining clean supplemental DEFC history, strong text/category patterns, and reviewed supplemental assistance listings or federal accounts discovered in the crosswalk tables.",
+      "Strong text signals include PHSSEF, COVID, Coronavirus, CARES, American Rescue Plan, ARP, Hurricane Supplemental, supplemental, and public health crisis response.",
+      "Do not exclude regular Public Health Emergency Preparedness solely because the word Emergency appears in the program name."
+    ],
+    "map_default_rule": [
+      "Do not use overall-award COVID obligated amount as a default transaction exclusion.",
+      "Do not use any non-Q DEFC as a broad exclusion, because it over-excludes mixed awards.",
+      "Use DEFC classification as an award-history flag, not transaction-level proof.",
+      "Keep mixed_regular_and_supplemental_award transactions by default unless they match strong profile-aligned supplemental signals."
+    ]
+  },
+  "usaspending_filter_scenarios": {
+    "A_no_emergency_supplemental_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 0,
+        "recipient_count": 0,
+        "total_obligations": 0.0,
+        "transaction_count": 0
+      },
+      "exclusion_flag": null,
+      "included": {
+        "award_count": 4950,
+        "recipient_count": 2112,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 3713474919.57,
+            "percent_difference": 39.79429245994982,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 2654749306.57,
+            "percent_difference": 25.550013337351054,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 8487587106.57,
+            "percent_difference": 186.23074092111784,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2119362880.43,
+            "percent_difference": -13.97580390346764,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 13045152127.57,
+        "transaction_count": 8648
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 4876,
+        "recipient_count": 2106,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 3068056796.5,
+            "percent_difference": 32.87787102054677,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 2009331183.5,
+            "percent_difference": 19.33833767675445,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 7842168983.5,
+            "percent_difference": 172.0692726788417,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2764781003.5,
+            "percent_difference": -18.231911815455007,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 12399734004.5,
+        "transaction_count": 8387
+      },
+      "label": "A. No emergency/supplemental exclusion"
+    },
+    "B_current_overall_award_covid_iija_amount_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 1210,
+        "recipient_count": 571,
+        "total_obligations": 9072324817.42,
+        "transaction_count": 3865
+      },
+      "exclusion_flag": "B_current_overall_award_covid_iija_amount",
+      "included": {
+        "award_count": 3740,
+        "recipient_count": 1833,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -5358849897.85,
+            "percent_difference": -57.42643876768353,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -6417575510.85,
+            "percent_difference": -61.764453423109494,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": -584737710.85,
+            "percent_difference": -12.830046486571014,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -11191687697.85,
+            "percent_difference": -73.80181754540686,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 3972827310.15,
+        "transaction_count": 4783
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 3732,
+        "recipient_count": 1828,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -5360174897.92,
+            "percent_difference": -57.440637716494834,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -6418900510.92,
+            "percent_difference": -61.77720557615713,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": -586062710.92,
+            "percent_difference": -12.859119029999244,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -11193012697.92,
+            "percent_difference": -73.81055504917339,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 3971502310.08,
+        "transaction_count": 4774
+      },
+      "label": "B. Current overall-award COVID/IIJA amount exclusion"
+    },
+    "C_broad_defc_award_history_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 1299,
+        "recipient_count": 575,
+        "total_obligations": 9224892652.42,
+        "transaction_count": 4073
+      },
+      "exclusion_flag": "C_broad_defc_award_history",
+      "included": {
+        "award_count": 3651,
+        "recipient_count": 1830,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -5511417732.85,
+            "percent_difference": -59.06138425067992,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -6570143345.85,
+            "percent_difference": -63.23280684143555,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": -737305545.85,
+            "percent_difference": -16.177619901256477,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -11344255532.85,
+            "percent_difference": -74.80790204543547,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 3820259475.15,
+        "transaction_count": 4575
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 3643,
+        "recipient_count": 1825,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -5512742732.92,
+            "percent_difference": -59.07558319949123,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -6571468345.92,
+            "percent_difference": -63.24555899448318,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": -738630545.92,
+            "percent_difference": -16.20669244468471,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -11345580532.92,
+            "percent_difference": -74.816639549202,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 3818934475.08,
+        "transaction_count": 4566
+      },
+      "label": "C. Broad DEFC award-history exclusion"
+    },
+    "D_clean_defc_only_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 131,
+        "recipient_count": 107,
+        "total_obligations": 199982488.0,
+        "transaction_count": 162
+      },
+      "exclusion_flag": "D_clean_defc_only",
+      "included": {
+        "award_count": 4819,
+        "recipient_count": 2084,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 3513492431.57,
+            "percent_difference": 37.65124267862481,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 2454766818.57,
+            "percent_difference": 23.62532868897711,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 8287604618.57,
+            "percent_difference": 181.84281695122303,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2319345368.43,
+            "percent_difference": -15.294556846733546,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 12845169639.57,
+        "transaction_count": 8486
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 4745,
+        "recipient_count": 2078,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 2868074308.5,
+            "percent_difference": 30.73482123922176,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 1809348695.5,
+            "percent_difference": 17.413653028380505,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 7642186495.5,
+            "percent_difference": 167.68134870894693,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2964763491.5,
+            "percent_difference": -19.550664758720913,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 12199751516.5,
+        "transaction_count": 8225
+      },
+      "label": "D. Clean DEFC-only exclusion"
+    },
+    "E_mixed_aware_defc_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 131,
+        "recipient_count": 107,
+        "total_obligations": 199982488.0,
+        "transaction_count": 162
+      },
+      "exclusion_flag": "E_mixed_aware_defc",
+      "included": {
+        "award_count": 4819,
+        "recipient_count": 2084,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 3513492431.57,
+            "percent_difference": 37.65124267862481,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 2454766818.57,
+            "percent_difference": 23.62532868897711,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 8287604618.57,
+            "percent_difference": 181.84281695122303,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2319345368.43,
+            "percent_difference": -15.294556846733546,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 12845169639.57,
+        "transaction_count": 8486
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 4745,
+        "recipient_count": 2078,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": 2868074308.5,
+            "percent_difference": 30.73482123922176,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": 1809348695.5,
+            "percent_difference": 17.413653028380505,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 7642186495.5,
+            "percent_difference": 167.68134870894693,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -2964763491.5,
+            "percent_difference": -19.550664758720913,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 12199751516.5,
+        "transaction_count": 8225
+      },
+      "label": "E. Mixed-aware DEFC exclusion"
+    },
+    "F_profile_aligned_text_category_defc_exclusion": {
+      "excluded_by_emergency_supplemental_rule": {
+        "award_count": 524,
+        "recipient_count": 325,
+        "total_obligations": 3904995220.5,
+        "transaction_count": 1127
+      },
+      "exclusion_flag": "F_profile_aligned_text_category_defc",
+      "included": {
+        "award_count": 4426,
+        "recipient_count": 1966,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -191520300.93,
+            "percent_difference": -2.0523674004262666,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -1250245913.93,
+            "percent_difference": -12.032699169305863,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 4582591886.07,
+            "percent_difference": 100.54912798730645,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -6024358100.93,
+            "percent_difference": -39.726678352402736,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 9140156907.07,
+        "transaction_count": 7521
+      },
+      "included_after_excluding_likely_vfc": {
+        "award_count": 4376,
+        "recipient_count": 1963,
+        "target_comparisons": {
+          "funding_profiles_minus_obvious_emergency_supplemental": {
+            "difference": -653532775.0,
+            "percent_difference": -7.003379568677425,
+            "target": 9331677208.0
+          },
+          "funding_profiles_minus_vfc": {
+            "difference": -1712258388.0,
+            "percent_difference": -16.479230088552118,
+            "target": 10390402821.0
+          },
+          "funding_profiles_minus_vfc_minus_obvious_emergency_supplemental": {
+            "difference": 4120579412.0,
+            "percent_difference": 90.411862321514,
+            "target": 4557565021.0
+          },
+          "funding_profiles_total": {
+            "difference": -6486370575.0,
+            "percent_difference": -42.77334666870739,
+            "target": 15164515008.0
+          }
+        },
+        "total_obligations": 8678144433.0,
+        "transaction_count": 7342
+      },
+      "label": "F. Profile-aligned text/category/DEFC exclusion"
+    }
+  },
+  "usaspending_summary": {
+    "defc_code_sets": {
+      "arp": [
+        "V"
+      ],
+      "covid_era_emergency": [
+        "L",
+        "N",
+        "P",
+        "U"
+      ],
+      "other_emergency_disaster_supplemental": [
+        "6",
+        "AAB",
+        "C",
+        "E",
+        "X"
+      ],
+      "regular_or_not_designated": [
+        "Q"
+      ]
+    },
+    "filter": {
+      "action_date_fiscal_year": 2023,
+      "federal_action_obligation": "> 0",
+      "funding_agency_name": "Department of Health and Human Services",
+      "funding_sub_agency_name": "Centers for Disease Control and Prevention"
+    },
+    "included_cdc_funded_positive_fy_row_count": 8648,
+    "input_path": "/home/john/places-app/data/USAspending-csv.csv",
+    "source_row_count": 32204
+  }
+}

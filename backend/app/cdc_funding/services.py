@@ -2390,7 +2390,7 @@ def _build_state_profile_normalization_context(
     db: Session,
     *,
     normalize: bool,
-    normalization_funding_mode: str | None,
+    normalization_funding_mode: str | None = None,
     state_code: str,
     basis: str,
     funding_geography_mode: str,
@@ -2427,7 +2427,11 @@ def _build_state_profile_normalization_context(
     methodology_version = None
     confidence_note = None
     normalized_mode_token = str(normalization_funding_mode or CDCFundingMode.CHIP_NORMALIZED.value).strip().lower()
-    normalized_mode_label = FUNDING_MODE_LABELS.get(normalized_mode_token, "CHIP normalized funding")
+    normalized_mode_label = (
+        "Normalized data"
+        if normalization_funding_mode is None
+        else FUNDING_MODE_LABELS.get(normalized_mode_token, "CHIP normalized funding")
+    )
 
     if normalization_requested:
         if normalized_fiscal_year is None:

@@ -52,18 +52,35 @@ describe("cdcFundingMode", () => {
   });
 
   it("reads CDC funding mode from shareable url state", () => {
+    expect(readCdcFundingUrlState("?data_source=cdc_funding_state")).toEqual({
+      dataSource: "cdc_funding_state",
+      fundingMode: CDC_DEFAULT_FUNDING_MODE,
+      geographyLevel: CDC_DEFAULT_GEOGRAPHY_LEVEL,
+      isStateFundingRebuild: true,
+    });
     expect(readCdcFundingUrlState("?data_source=cdc_funding&funding_mode=raw_total")).toEqual({
+      dataSource: "cdc_funding",
       fundingMode: "raw_total",
       geographyLevel: CDC_DEFAULT_GEOGRAPHY_LEVEL,
+      isStateFundingRebuild: false,
     });
     expect(readCdcFundingUrlState("?data_source=cdc_funding&geography_level=county")).toEqual({
+      dataSource: "cdc_funding",
       fundingMode: CDC_DEFAULT_FUNDING_MODE,
       geographyLevel: "county",
+      isStateFundingRebuild: false,
     });
     expect(readCdcFundingUrlState("?data_source=places")).toBeNull();
   });
 
   it("writes and clears CDC funding mode url state without affecting non-CDC urls", () => {
+    expect(
+      buildCdcFundingUrlSearch("funding_mode=chip_account_classification_v1", {
+        activeDataSource: "cdc_funding_state",
+        fundingMode: "chip_account_classification_v1",
+      })
+    ).toBe("data_source=cdc_funding_state");
+
     expect(
       buildCdcFundingUrlSearch("", {
         activeDataSource: "cdc_funding",
@@ -73,6 +90,13 @@ describe("cdcFundingMode", () => {
 
     expect(
       buildCdcFundingUrlSearch("data_source=cdc_funding&funding_mode=chip_normalized_v1_1", {
+        activeDataSource: "places",
+        fundingMode: "chip_normalized_v1_1",
+      })
+    ).toBe("");
+
+    expect(
+      buildCdcFundingUrlSearch("data_source=cdc_funding_state", {
         activeDataSource: "places",
         fundingMode: "chip_normalized_v1_1",
       })

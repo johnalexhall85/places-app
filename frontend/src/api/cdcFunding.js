@@ -109,6 +109,17 @@ function setFiscalYearIfPresent(url, fiscalYear) {
   url.searchParams.set("fiscal_year", String(numeric));
 }
 
+function setFundingFiscalYearsIfPresent(url, fiscalYear) {
+  if (fiscalYear === null || fiscalYear === undefined) return;
+  const values = Array.isArray(fiscalYear) ? fiscalYear : String(fiscalYear).split(",");
+  const years = values
+    .map((value) => Number(String(value ?? "").trim()))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  if (years.length > 0) {
+    url.searchParams.set("fiscal_year", years.join(","));
+  }
+}
+
 function buildCdcApiUrl(apiBase, path) {
   const base = String(apiBase ?? DEFAULT_API_BASE).trim().replace(/\/+$/, "");
   const normalizedPath = `/${String(path ?? "").trim().replace(/^\/+/, "")}`;
@@ -189,6 +200,123 @@ export async function fetchCdcFundingFilters({
   const url = buildCdcApiUrl(apiBase, "/api/cdc/funding/filters");
   const response = await fetch(url, { signal });
   return parseJsonOrThrow(response, "Failed to load CDC funding filters.");
+}
+
+function buildFundingApiUrl({
+  apiBase = DEFAULT_API_BASE,
+  path,
+  fiscal_year,
+  funding_mechanism,
+  funding_view_mode,
+  supplemental_history_filter,
+  state,
+  assistance_listing_number,
+  metric,
+  limit,
+  offset,
+} = {}) {
+  const url = buildCdcApiUrl(apiBase, path);
+  setFundingFiscalYearsIfPresent(url, fiscal_year);
+  setIfPresent(url, "funding_mechanism", funding_mechanism);
+  setIfPresent(url, "funding_view_mode", funding_view_mode);
+  setIfPresent(url, "supplemental_history_filter", supplemental_history_filter);
+  setIfPresent(url, "state", state);
+  setIfPresent(url, "assistance_listing_number", assistance_listing_number);
+  setIfPresent(url, "metric", metric);
+  if (Number.isInteger(Number(limit)) && Number(limit) > 0) {
+    url.searchParams.set("limit", String(Number(limit)));
+  }
+  if (Number.isInteger(Number(offset)) && Number(offset) >= 0) {
+    url.searchParams.set("offset", String(Number(offset)));
+  }
+  return url;
+}
+
+export async function fetchFundingFilters({
+  apiBase = DEFAULT_API_BASE,
+  signal,
+} = {}) {
+  const url = buildCdcApiUrl(apiBase, "/funding/filters");
+  const response = await fetch(url, { signal });
+  return parseJsonOrThrow(response, "Failed to load state funding filters.");
+}
+
+export async function fetchFundingStateMap({
+  apiBase = DEFAULT_API_BASE,
+  fiscal_year,
+  funding_mechanism = "grants_cooperative_agreements",
+  funding_view_mode = "standard_usaspending",
+  supplemental_history_filter = "all",
+  state,
+  assistance_listing_number,
+  metric = "total_obligations",
+  signal,
+} = {}) {
+  const url = buildFundingApiUrl({
+    apiBase,
+    path: "/funding/map/state",
+    fiscal_year,
+    funding_mechanism,
+    funding_view_mode,
+    supplemental_history_filter,
+    state,
+    assistance_listing_number,
+    metric,
+  });
+  const response = await fetch(url, { signal });
+  return parseJsonOrThrow(response, "Failed to load state funding map.");
+}
+
+export async function fetchFundingSummary({
+  apiBase = DEFAULT_API_BASE,
+  fiscal_year,
+  funding_mechanism = "grants_cooperative_agreements",
+  funding_view_mode = "standard_usaspending",
+  supplemental_history_filter = "all",
+  state,
+  assistance_listing_number,
+  signal,
+} = {}) {
+  const url = buildFundingApiUrl({
+    apiBase,
+    path: "/funding/summary",
+    fiscal_year,
+    funding_mechanism,
+    funding_view_mode,
+    supplemental_history_filter,
+    state,
+    assistance_listing_number,
+  });
+  const response = await fetch(url, { signal });
+  return parseJsonOrThrow(response, "Failed to load state funding summary.");
+}
+
+export async function fetchFundingStateAwards({
+  apiBase = DEFAULT_API_BASE,
+  state,
+  fiscal_year,
+  funding_mechanism = "grants_cooperative_agreements",
+  funding_view_mode = "standard_usaspending",
+  supplemental_history_filter = "all",
+  assistance_listing_number,
+  limit = 100,
+  offset = 0,
+  signal,
+} = {}) {
+  const stateToken = String(state ?? "").trim();
+  const url = buildFundingApiUrl({
+    apiBase,
+    path: `/funding/state/${encodeURIComponent(stateToken)}/awards`,
+    fiscal_year,
+    funding_mechanism,
+    funding_view_mode,
+    supplemental_history_filter,
+    assistance_listing_number,
+    limit,
+    offset,
+  });
+  const response = await fetch(url, { signal });
+  return parseJsonOrThrow(response, "Failed to load state funding awards.");
 }
 
 export async function fetchCdcFundingMethodologySummary({

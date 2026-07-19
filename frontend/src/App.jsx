@@ -73,7 +73,25 @@ import {
   fetchCdcFundingFilters,
   fetchCdcFundingLegend,
   fetchCdcFundingMap,
+  fetchFundingFilters,
+  fetchFundingStateAwards,
+  fetchFundingStateMap,
+  fetchFundingSummary,
 } from "./api/cdcFunding";
+import {
+  buildFundingLegendBins,
+  buildStateFundingAwardBadges,
+  buildStateFundingSummaryCards,
+  formatFundingCount,
+  formatFundingCurrency,
+  getFundingFiscalYearLabel,
+  getFundingMechanismLabel,
+  getFundingViewModeLabel,
+  getFundingViewModeMethodologyNote,
+  joinStateFundingRowsToGeometry,
+  STATE_FUNDING_SUPPLEMENTAL_HISTORY_FILTER_OPTIONS,
+  STATE_FUNDING_VIEW_MODE_OPTIONS,
+} from "./utils/stateFundingMap";
 import {
   fetchTaggsFilters,
   fetchTaggsStateLegend,
@@ -86,12 +104,20 @@ const DATA_SOURCES = {
   SVI: "svi",
   HPSA: "hpsa",
   CMS: "cms",
+  CDC_FUNDING_STATE: "cdc_funding_state",
   CDC_FUNDING: "cdc_funding",
   TAGGS: "taggs",
   USDA_FOOD_ENV: "usda_food_environment",
   FEMA_NRI: "fema_nri",
 };
-const CDC_DEFAULT_INTELLIGENCE_METRIC = "total_funding";
+const CDC_DEFAULT_INTELLIGENCE_METRIC = "total_obligations";
+const CDC_FUNDING_TAGGS_ENRICHMENT_NOTE =
+  "USAspending provides the award and transaction backbone; TAGGS adds CDC program-area enrichment.";
+const STATE_FUNDING_MECHANISM_OPTIONS = [
+  { value: "grants_cooperative_agreements", label: "Grants & Cooperative Agreements" },
+  { value: "contracts", label: "Contracts" },
+  { value: "all", label: "All Funding Mechanisms" },
+];
 const CDC_DEFAULT_FUNDING_TYPE = "total_cdc_funding";
 const CDC_DEFAULT_FUNDING_SCOPE_PRESET = "regular_grants_coops";
 const CDC_DEFAULT_AWARD_TYPE = "grants_coops";
@@ -2989,6 +3015,16 @@ export default function App() {
   const [cdcIncludeTransfers, setCdcIncludeTransfers] = useState(null);
   const [cdcReviewMode, setCdcReviewMode] = useState("");
   const [cdcMapMessage, setCdcMapMessage] = useState(null);
+  const [stateFundingMechanism, setStateFundingMechanism] = useState("grants_cooperative_agreements");
+  const [stateFundingViewMode, setStateFundingViewMode] = useState("standard_usaspending");
+  const [stateFundingSupplementalHistoryFilter, setStateFundingSupplementalHistoryFilter] = useState("all");
+  const [stateFundingAssistanceListing, setStateFundingAssistanceListing] = useState("");
+  const [stateFundingSummary, setStateFundingSummary] = useState(null);
+  const [stateFundingAwards, setStateFundingAwards] = useState([]);
+  const [stateFundingAwardsTotal, setStateFundingAwardsTotal] = useState(0);
+  const [stateFundingAwardsOffset, setStateFundingAwardsOffset] = useState(0);
+  const [isStateFundingAwardsLoading, setIsStateFundingAwardsLoading] = useState(false);
+  const [stateFundingAwardsError, setStateFundingAwardsError] = useState(null);
   const [cdcFilterOptions, setCdcFilterOptions] = useState({
     metric_options: [],
     fiscal_year_options: [],
@@ -3041,7 +3077,7 @@ export default function App() {
       typeof window !== "undefined" ? window.location.search : ""
     );
     if (!urlState) return;
-    setSelectedDataSource(DATA_SOURCES.CDC_FUNDING);
+    setSelectedDataSource(DATA_SOURCES.CDC_FUNDING_STATE);
     setSelectedMeasureId(CDC_DEFAULT_INTELLIGENCE_METRIC);
     setCdcFundingMode(urlState.fundingMode);
     setCdcGeographyLevel(urlState.geographyLevel);
@@ -3183,6 +3219,7 @@ export default function App() {
   const femaLegendAbortRef = useRef(null);
   const cdcLegendAbortRef = useRef(null);
   const taggsLegendAbortRef = useRef(null);
+  const stateFundingAwardsAbortRef = useRef(null);
   
   // Caching
   const cacheRef = useRef(new Map()); // { key: { data, ts } }
@@ -3302,7 +3339,10 @@ export default function App() {
 
   const activeDataSource = selectedDataSource === DATA_SOURCES.TAGGS
     ? DATA_SOURCES.CDC_FUNDING
+    : selectedDataSource === DATA_SOURCES.CDC_FUNDING_STATE
+      ? DATA_SOURCES.CDC_FUNDING
     : selectedDataSource;
+  const isStateFundingDataSource = selectedDataSource === DATA_SOURCES.CDC_FUNDING_STATE;
   const isAcsDataSource = activeDataSource === DATA_SOURCES.ACS_NMF;
   const isSviDataSource = activeDataSource === DATA_SOURCES.SVI;
   const isHpsaDataSource = activeDataSource === DATA_SOURCES.HPSA;
@@ -3339,13 +3379,13 @@ export default function App() {
       ? window.location.search.slice(1)
       : window.location.search;
     const nextSearch = buildCdcFundingUrlSearch(currentSearch, {
-      activeDataSource,
+      activeDataSource: selectedDataSource,
       fundingMode: cdcFundingMode,
     });
     if (nextSearch === currentSearch) return;
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
     window.history.replaceState({}, "", nextUrl);
-  }, [activeDataSource, cdcFundingMode]);
+  }, [selectedDataSource, cdcFundingMode]);
   const tractsActive = !isUsdaDataSource && !isHpsaDataSource && !isCmsDataSource && !isCdcDataSource && !isTaggsDataSource && mapZoom >= TRACT_ZOOM;
   const isUsdaHeatMode = false;
   const activeGeography = tractsActive ? "tract" : "county";
@@ -3390,7 +3430,7 @@ export default function App() {
     if (selectedDataSource !== DATA_SOURCES.TAGGS) {
       return;
     }
-    setSelectedDataSource(DATA_SOURCES.CDC_FUNDING);
+    setSelectedDataSource(DATA_SOURCES.CDC_FUNDING_STATE);
   }, [selectedDataSource]);
   const cdcFiscalYearOptions = useMemo(() => {
     return Array.isArray(cdcFilterOptions.fiscal_year_options)
@@ -3529,6 +3569,9 @@ export default function App() {
     cdcRenderLevel,
   ]);
   const cdcVisibleFiscalYearOptions = useMemo(() => {
+    if (isStateFundingDataSource) {
+      return cdcFiscalYearOptions;
+    }
     if (isChipV1CdcMode && cdcChipV1YearTokens.length > 0) {
       return cdcFiscalYearOptions.filter((option) => {
         const value = String(option?.value ?? "").trim();
@@ -3556,6 +3599,7 @@ export default function App() {
     cdcCanonicalYearTokens,
     cdcChipV1YearTokens,
     cdcFiscalYearOptions,
+    isStateFundingDataSource,
     isBudgetGroundedCdcMode,
     isCanonicalCdcMode,
     isChipV1CdcMode,
@@ -3590,6 +3634,16 @@ export default function App() {
     : [];
   const resolvedCdcFiscalYear = useMemo(() => {
     const selectedValue = String(cdcFiscalYear ?? "").trim();
+    if (isStateFundingDataSource) {
+      const optionValues = cdcFiscalYearOptions
+        .map((option) => normalizeCdcFiscalYearToken(option?.value, { allowAll: true }))
+        .filter(Boolean);
+      return resolveCdcFiscalYearSelection({
+        selectedValue,
+        defaultValue: cdcFilterOptions?.default_fiscal_year,
+        availableValues: optionValues,
+      });
+    }
     if (isChipV1CdcMode) {
       return resolveCdcFiscalYearSelection({
         selectedValue,
@@ -3629,6 +3683,7 @@ export default function App() {
     cdcFilterOptions?.default_fiscal_year,
     cdcFiscalYear,
     cdcFiscalYearOptions,
+    isStateFundingDataSource,
     isBudgetGroundedCdcMode,
     isCanonicalCdcMode,
     isChipV1CdcMode,
@@ -3654,9 +3709,7 @@ export default function App() {
     ? selectedHpsaDomain
     : isCdcDataSource
       ? (
-        usesScopedCdcFilters
-          ? `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|mandatory:${effectiveCdcIncludeMandatory ? "on" : "off"}|emergency:${effectiveCdcIncludeEmergency ? "on" : "off"}|supplemental:${effectiveCdcIncludeSupplemental ? "on" : "off"}|pphf:${effectiveCdcIncludePphf ? "on" : "off"}|transfers:${effectiveCdcIncludeTransfers ? "on" : "off"}|review:${effectiveCdcReviewMode || CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE}|${cdcTimeAggregation || "default"}`
-          : `${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|scope:${cdcFundingScopePreset}|award:${cdcAwardType}|emergency_supplemental:${cdcEmergencySupplementalScope}|review:${cdcReviewStatus}|pphf:${cdcIncludePphf ? "on" : "off"}|transfers:${cdcTransfersScope}|source:${cdcDataSourceScope}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|pending_review:${cdcIncludePendingReview ? "on" : "default"}`
+        `state|${selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC}|${resolvedCdcFiscalYear || "latest"}|${stateFundingMechanism}|view:${stateFundingViewMode}|supplemental_history:${stateFundingSupplementalHistoryFilter}|aln:${stateFundingAssistanceListing || "all"}`
       )
       : isTaggsDataSource
       ? `${selectedMeasureId}|${taggsFiscalYear || "all"}|${taggsProgramOffice || "all"}|${taggsAln || "all"}|${taggsCanCode || "all"}|${taggsFundingStream || "all"}|normalize:${taggsNormalizeData ? "on" : "off"}`
@@ -4464,7 +4517,7 @@ export default function App() {
     const fetchMeasuresPromise = source === DATA_SOURCES.CMS
       ? fetchCmsMeasures({ apiBase: API_BASE })
       : source === DATA_SOURCES.CDC_FUNDING
-        ? fetchCdcFundingFilters({ apiBase: API_BASE })
+        ? fetchFundingFilters({ apiBase: API_BASE })
       : source === DATA_SOURCES.TAGGS
         ? fetchTaggsFilters({
           apiBase: API_BASE,
@@ -4514,7 +4567,14 @@ export default function App() {
         if (source === DATA_SOURCES.CMS) {
           sorted = buildCmsCuratedMeasures(list);
         } else if (source === DATA_SOURCES.CDC_FUNDING) {
-          const metricOptions = Array.isArray(data?.metric_options) ? data.metric_options : [];
+          const metricOptions = Array.isArray(data?.metric_options) && data.metric_options.length > 0
+            ? data.metric_options
+            : [{ value: "total_obligations", label: "Total obligations" }];
+          const fiscalYearOptions = Array.isArray(data?.fiscal_year_options) && data.fiscal_year_options.length > 0
+            ? data.fiscal_year_options
+            : (Array.isArray(data?.fiscal_years) ? data.fiscal_years : [])
+              .map((year) => ({ value: String(year), label: `FY${year}` }));
+          const mechanismOptions = STATE_FUNDING_MECHANISM_OPTIONS;
           sorted = metricOptions
             .map((option) => {
               const metricValue = String(option?.value ?? "").trim();
@@ -4531,10 +4591,10 @@ export default function App() {
             .filter(Boolean);
           setCdcFilterOptions({
             metric_options: metricOptions,
-            fiscal_year_options: Array.isArray(data?.fiscal_year_options) ? data.fiscal_year_options : [],
+            fiscal_year_options: fiscalYearOptions,
             default_fiscal_year: data?.default_fiscal_year ?? null,
-            funding_type_options: Array.isArray(data?.funding_type_options) ? data.funding_type_options : [],
-            funding_mode_options: Array.isArray(data?.funding_mode_options) ? data.funding_mode_options : [],
+            funding_type_options: [{ value: "total_obligations", label: "Total obligations" }],
+            funding_mode_options: mechanismOptions,
             default_funding_mode: String(data?.default_funding_mode ?? CDC_DEFAULT_FUNDING_MODE),
             chip_v1_filter_defaults: (
               data?.chip_v1_filter_defaults
@@ -4555,13 +4615,19 @@ export default function App() {
               ? data.budget_grounded_review_mode_options
               : [],
             cdc_center_options: Array.isArray(data?.cdc_center_options) ? data.cdc_center_options : [],
-            mechanism_options: Array.isArray(data?.mechanism_options) ? data.mechanism_options : [],
+            mechanism_options: mechanismOptions,
             recipient_type_options: Array.isArray(data?.recipient_type_options) ? data.recipient_type_options : [],
             geography_level_options: Array.isArray(data?.geography_level_options) ? data.geography_level_options : [],
             time_aggregation_options: Array.isArray(data?.time_aggregation_options) ? data.time_aggregation_options : [],
             source_blend: data?.source_blend ?? null,
             notes: Array.isArray(data?.notes) ? data.notes : [],
+            assistance_listings: Array.isArray(data?.assistance_listings) ? data.assistance_listings : [],
+            states: Array.isArray(data?.states) ? data.states : [],
           });
+          setStateFundingMechanism(String(data?.default_funding_mechanism ?? "grants_cooperative_agreements"));
+          setStateFundingViewMode(String(data?.default_funding_view_mode ?? "standard_usaspending"));
+          setStateFundingSupplementalHistoryFilter(String(data?.default_supplemental_history_filter ?? "all"));
+          setCdcGeographyLevel("state");
         } else if (source === DATA_SOURCES.TAGGS) {
           const metricOptions = Array.isArray(data?.metric_options) ? data.metric_options : [];
           sorted = metricOptions
@@ -5148,53 +5214,54 @@ export default function App() {
       countyAbortRef.current = controller;
 
       if (isCdcDataSource) {
-        const metric = String(
-          selectedMeasureId || CDC_DEFAULT_INTELLIGENCE_METRIC
-        ).trim();
-        const payload = await fetchCdcFundingMap({
-          apiBase: API_BASE,
-          geography_level: cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL,
-          metric,
-          fiscal_year: resolvedCdcFiscalYear || null,
-          funding_type: cdcFundingType || CDC_DEFAULT_FUNDING_TYPE,
-          funding_mode: cdcFundingMode || CDC_DEFAULT_FUNDING_MODE,
-          include_mandatory: usesScopedCdcFilters ? effectiveCdcIncludeMandatory : null,
-          include_emergency: usesScopedCdcFilters ? effectiveCdcIncludeEmergency : null,
-          include_supplemental: usesScopedCdcFilters ? effectiveCdcIncludeSupplemental : null,
-          include_pphf: usesScopedCdcFilters ? effectiveCdcIncludePphf : null,
-          include_transfers: usesScopedCdcFilters ? effectiveCdcIncludeTransfers : null,
-          include_pending_review: cdcIncludePendingReview,
-          review_mode: usesScopedCdcFilters ? effectiveCdcReviewMode : null,
-          funding_scope_preset: isChipV1CdcMode ? cdcFundingScopePreset : null,
-          award_type: isChipV1CdcMode ? cdcAwardType : null,
-          emergency_supplemental_scope: isChipV1CdcMode ? cdcEmergencySupplementalScope : null,
-          review_status: isChipV1CdcMode ? cdcReviewStatus : null,
-          transfers_scope: isChipV1CdcMode ? cdcTransfersScope : null,
-          data_source_scope: isChipV1CdcMode ? cdcDataSourceScope : null,
-          cdc_center: cdcProgramArea || null,
-          mechanism: cdcMechanism || null,
-          recipient_type: cdcRecipientType || null,
-          time_aggregation: cdcTimeAggregation || null,
-          bbox: cdcRenderLevel === "county" ? (bboxValue || null) : null,
-          limit: (cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL) === "national"
-            ? 1
-            : (cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL) === "state"
-              ? 200
-              : 7000,
-          signal: controller.signal,
+        const [stateGeometry, mapPayload, summaryPayload] = await Promise.all([
+          stateBoundaryOverlay ?? fetchStateBoundaryOverlay(),
+          fetchFundingStateMap({
+            apiBase: API_BASE,
+            fiscal_year: resolvedCdcFiscalYear || null,
+            funding_mechanism: stateFundingMechanism,
+            funding_view_mode: stateFundingViewMode,
+            supplemental_history_filter: stateFundingSupplementalHistoryFilter,
+            assistance_listing_number: stateFundingAssistanceListing || null,
+            metric: "total_obligations",
+            signal: controller.signal,
+          }),
+          fetchFundingSummary({
+            apiBase: API_BASE,
+            fiscal_year: resolvedCdcFiscalYear || null,
+            funding_mechanism: stateFundingMechanism,
+            funding_view_mode: stateFundingViewMode,
+            supplemental_history_filter: stateFundingSupplementalHistoryFilter,
+            assistance_listing_number: stateFundingAssistanceListing || null,
+            signal: controller.signal,
+          }),
+        ]);
+        const rows = Array.isArray(mapPayload?.rows) ? mapPayload.rows : [];
+        const joined = joinStateFundingRowsToGeometry(stateGeometry, rows);
+        const fundingFeatures = joined.features.filter((feature) => (
+          feature?.properties?.value !== null && feature?.properties?.value !== undefined
+        ));
+        const legendBins = buildFundingLegendBins(rows, BIN_COUNT);
+        const summary = summaryPayload && typeof summaryPayload === "object"
+          ? summaryPayload
+          : (mapPayload?.summary ?? null);
+        setStateFundingSummary(summary);
+        setCdcLegend({
+          legend_title: "State-Mapped CDC Funding Obligations",
+          bins: legendBins,
+          n: fundingFeatures.length,
+          noDataCount: Math.max(0, joined.features.length - fundingFeatures.length),
+          filter_context: {
+            funding_type_label: getFundingMechanismLabel(stateFundingMechanism),
+            mechanism_label: getFundingMechanismLabel(stateFundingMechanism),
+            cdc_center_label: stateFundingAssistanceListing ? `ALN ${stateFundingAssistanceListing}` : null,
+          },
+          note: stateFundingViewMode === "funding_profiles_comparable"
+            ? getFundingViewModeMethodologyNote("funding_profiles_comparable")
+            : getFundingViewModeMethodologyNote("standard_usaspending"),
         });
-        const features = Array.isArray(payload?.features) ? payload.features : [];
-        const note = String(payload?.meta?.note ?? "").trim();
-        const mappedGeographies = Number(
-          payload?.meta?.mapped_geographies
-          ?? features.filter((feature) => {
-            const value = feature?.properties?.value;
-            return value !== null && value !== undefined;
-          }).length
-        );
-        const noData = mappedGeographies === 0 ? CDC_BUDGET_GROUNDED_EMPTY_STATE_MESSAGE : "";
-        setCdcMapMessage([note, noData].filter(Boolean).join(" ") || null);
-        return payload;
+        setCdcMapMessage(rows.length === 0 ? CDC_BUDGET_GROUNDED_EMPTY_STATE_MESSAGE : null);
+        return joined;
       }
 
       if (isTaggsDataSource) {
@@ -5489,6 +5556,10 @@ export default function App() {
       usdaLowZoomStateFallback,
       usdaRequestLevel,
       usdaSelectedLevel,
+      stateBoundaryOverlay,
+      stateFundingMechanism,
+      stateFundingSupplementalHistoryFilter,
+      stateFundingAssistanceListing,
     ]
   );
 
@@ -5827,6 +5898,9 @@ export default function App() {
       return;
     }
 
+    setIsCdcLegendLoading(false);
+    return undefined;
+
     const legendKey = usesScopedCdcFilters
       ? `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|mandatory:${effectiveCdcIncludeMandatory ? "on" : "off"}|emergency:${effectiveCdcIncludeEmergency ? "on" : "off"}|supplemental:${effectiveCdcIncludeSupplemental ? "on" : "off"}|pphf:${effectiveCdcIncludePphf ? "on" : "off"}|transfers:${effectiveCdcIncludeTransfers ? "on" : "off"}|review:${effectiveCdcReviewMode || CDC_DEFAULT_BUDGET_GROUNDED_REVIEW_MODE}|${cdcTimeAggregation || "default"}|${cdcLegendBbox ?? "global"}`
       : `legend|cdc|${cdcRenderLevel ?? CDC_DEFAULT_GEOGRAPHY_LEVEL}|${selectedMeasureId}|${resolvedCdcFiscalYear || "all"}|${cdcFundingType || CDC_DEFAULT_FUNDING_TYPE}|${cdcFundingMode || CDC_DEFAULT_FUNDING_MODE}|scope:${cdcFundingScopePreset}|award:${cdcAwardType}|emergency_supplemental:${cdcEmergencySupplementalScope}|review:${cdcReviewStatus}|pphf:${cdcIncludePphf ? "on" : "off"}|transfers:${cdcTransfersScope}|source:${cdcDataSourceScope}|${cdcProgramArea || "all"}|${cdcMechanism || "all"}|${cdcRecipientType || "all"}|${cdcTimeAggregation || "default"}|pending_review:${cdcIncludePendingReview ? "on" : "default"}|${cdcLegendBbox ?? "global"}`;
@@ -6086,6 +6160,7 @@ export default function App() {
     if (femaLegendAbortRef.current) femaLegendAbortRef.current.abort();
     if (cdcLegendAbortRef.current) cdcLegendAbortRef.current.abort();
     if (taggsLegendAbortRef.current) taggsLegendAbortRef.current.abort();
+    if (stateFundingAwardsAbortRef.current) stateFundingAwardsAbortRef.current.abort();
     // Clear currently-displayed geojson so the map updates for the new measure
     setCountyGeojson(null);
     setTractGeojson(null);
@@ -6104,6 +6179,11 @@ export default function App() {
     setFemaMapMessage(null);
     setCdcMapMessage(null);
     setTaggsMapMessage(null);
+    setStateFundingSummary(null);
+    setStateFundingAwards([]);
+    setStateFundingAwardsTotal(0);
+    setStateFundingAwardsError(null);
+    setIsStateFundingAwardsLoading(false);
     setUsdaMapLevel("county");
     setUsdaMapDiagnostics(null);
     setUsdaHeatLayer(null);
@@ -6884,101 +6964,25 @@ export default function App() {
       }
 
       if (isCdcDataSource) {
-        const fundingProfile = featureProps?.funding_profile ?? {};
-        const featureGeoLevel = (() => {
-          const value = String(
-            featureProps?.geo_level ?? featureProps?.level ?? cdcRenderLevel ?? "county"
-          ).trim().toLowerCase();
-          if (value === "national") return "national";
-          if (value === "state") return "state";
-          return "county";
-        })();
-        const areaLine = featureGeoLevel === "national"
-          ? "United States"
-          : featureGeoLevel === "state"
-            ? String(
-              pickFirstDefined(
-                featureProps?.state_name,
-                featureProps?.name,
-                featureProps?.state_abbr,
-                featureProps?.state_code,
-                "Unknown state"
-              )
-            ).trim()
-            : countyLine;
-        const metricLabel = String(
+        const areaLine = String(
           pickFirstDefined(
-            featureProps?.metric_label,
-            selectedMeasure?.label,
-            selectedMeasure?.name,
-            selectedMeasureId,
-            "Value"
+            featureProps?.state_name,
+            featureProps?.name,
+            featureProps?.state_abbr,
+            featureProps?.state_code,
+            "Unknown state"
           )
         ).trim();
-        const value = toFiniteNumericValue(
-          pickFirstDefined(featureProps?.value, featureProps?.metric_value, featureProps?.data_value)
-        );
-        const totalFundingValue = toFiniteNumericValue(
-          pickFirstDefined(fundingProfile?.total_funding, featureProps?.total_funding_amount)
-        );
-        const fundingPerCapitaValue = toFiniteNumericValue(
-          pickFirstDefined(fundingProfile?.funding_per_capita, featureProps?.funding_per_capita, featureProps?.metric_per_capita)
-        );
-        const fundingPer100kValue = toFiniteNumericValue(
-          pickFirstDefined(fundingProfile?.funding_per_100k, featureProps?.funding_per_100k)
-        );
-        const shareNationalValue = toFiniteNumericValue(
-          pickFirstDefined(fundingProfile?.national_share, featureProps?.share_national_pct)
-        );
-        const populationValue = toFiniteNumericValue(
-          pickFirstDefined(fundingProfile?.population, featureProps?.population)
-        );
-        const metricId = String(featureProps?.metric ?? selectedMeasureId ?? "").trim();
-        const valueText = formatCdcMetricValue(value, metricId);
-        const totalFundingText = totalFundingValue == null
-          ? "No data"
-          : `$${totalFundingValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-        const fundingPerCapitaText = fundingPerCapitaValue == null
-          ? "No data"
-          : `$${fundingPerCapitaValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-        const fundingPer100kText = fundingPer100kValue == null
-          ? "No data"
-          : `$${fundingPer100kValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-        const shareNationalText = shareNationalValue == null
-          ? "No data"
-          : `${shareNationalValue.toFixed(2)}%`;
-        const populationText = populationValue == null
-          ? null
-          : Math.round(populationValue).toLocaleString("en-US");
-        const timeframeLine = String(
-          pickFirstDefined(fundingProfile?.timeframe_label, featureProps?.timeframe_label, featureProps?.metric_context?.legend_title, resolvedCdcFiscalYear ? `FY ${resolvedCdcFiscalYear}` : "")
-        ).trim();
-        const programAreaLine = String(
-          pickFirstDefined(fundingProfile?.metadata?.metric_context?.cdc_center_label, featureProps?.metric_context?.cdc_center_label, "")
-        ).trim();
-        const fundingTypeLine = String(
-          pickFirstDefined(fundingProfile?.metadata?.metric_context?.funding_type_label, featureProps?.metric_context?.funding_type_label, "")
-        ).trim();
-        const fundingModeLine = String(
-          pickFirstDefined(
-            fundingProfile?.funding_mode_label,
-            featureProps?.funding_mode_label,
-            getCdcFundingModeLabel(cdcFundingMode, cdcFilterOptions?.funding_mode_options)
-          )
-        ).trim();
-        const populationLine = populationText ? `Population denominator: ${populationText}` : null;
+        const valueText = formatFundingCurrency(featureProps?.total_obligations ?? featureProps?.value);
+        const fiscalYearText = getFundingFiscalYearLabel(resolvedCdcFiscalYear);
+        const mechanismText = getFundingMechanismLabel(stateFundingMechanism);
         return (
-          `${areaLine}<br/>${metricLabel}: ${valueText}`
-          + `<br/>Total funding: ${totalFundingText}`
-          + (fundingModeLine ? `<br/>Funding model: ${fundingModeLine}` : "")
-          + `<br/>Funding per capita: ${fundingPerCapitaText}`
-          + `<br/>Funding per 100,000: ${fundingPer100kText}`
-          + `<br/>Share of national CDC funding: ${shareNationalText}`
-          + (populationLine ? `<br/>${populationLine}` : "")
-          + (timeframeLine ? `<br/>${timeframeLine}` : "")
-          + (programAreaLine && programAreaLine !== "All CDC Programs" ? `<br/>Program area: ${programAreaLine}` : "")
-          + (fundingTypeLine && fundingTypeLine !== "Total CDC Funding" ? `<br/>Funding type: ${fundingTypeLine}` : "")
-          + formatTooltipExplanationLine("CDC funding summary for the active geography, funding model, and filter context.")
+          `${areaLine}<br/>Total obligations: ${valueText}`
+          + `<br/>${fiscalYearText} • ${mechanismText}`
+          + `<br/>Transactions: ${formatFundingCount(featureProps?.transaction_count)}`
+          + `<br/>Awards: ${formatFundingCount(featureProps?.award_count)}`
+          + `<br/>Recipients: ${formatFundingCount(featureProps?.recipient_count)}`
+          + formatTooltipExplanationLine("USAspending positive CDC-funded prime obligations; place-of-performance geography with recipient fallback.")
         );
       }
 
@@ -8085,18 +8089,13 @@ export default function App() {
     selectedFeatureProps?.data_value
   );
   const cdcFundingProfile = selectedFeatureProps?.funding_profile ?? {};
-  const cdcFundingModeLabel = String(
-    firstDefined(
-      cdcFundingProfile?.funding_mode_label,
-      selectedFeatureProps?.funding_mode_label,
-      getCdcFundingModeLabel(cdcFundingMode, cdcFilterOptions?.funding_mode_options)
-    )
-  ).trim();
+  const cdcFundingModeLabel = getFundingMechanismLabel(stateFundingMechanism);
+  const stateFundingViewModeLabel = getFundingViewModeLabel(stateFundingViewMode);
   const cdcMetricNumeric = toFiniteNumericValue(cdcMetricValue);
   const cdcMetricId = String(selectedMeasureId ?? "").trim();
   const cdcMetricIsCount = isCdcCountMetric(cdcMetricId);
   const cdcTotalFundingNumeric = toFiniteNumericValue(
-    firstDefined(cdcFundingProfile?.total_funding, selectedFeatureProps?.total_funding_amount)
+    firstDefined(selectedFeatureProps?.total_obligations, cdcFundingProfile?.total_funding, selectedFeatureProps?.total_funding_amount)
   );
   const cdcFundingPerCapitaNumeric = toFiniteNumericValue(
     firstDefined(cdcFundingProfile?.funding_per_capita, selectedFeatureProps?.funding_per_capita, selectedFeatureProps?.metric_per_capita)
@@ -8108,13 +8107,13 @@ export default function App() {
     ? "No data"
     : cdcMetricIsCount
       ? Math.round(cdcMetricNumeric).toLocaleString("en-US")
-      : `$${cdcMetricNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+      : formatFundingCurrency(cdcMetricNumeric);
   const cdcSelectedMetricLabel = String(
     firstDefined(selectedFeatureProps?.metric_label, selectedMeasureDisplayName, "CDC metric")
   ).trim();
   const cdcTotalFundingText = cdcTotalFundingNumeric == null
     ? "No data"
-    : `$${cdcTotalFundingNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+    : formatFundingCurrency(cdcTotalFundingNumeric);
   const cdcFundingPerCapitaText = cdcFundingPerCapitaNumeric == null
     ? "No data"
     : `$${cdcFundingPerCapitaNumeric.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -8143,6 +8142,91 @@ export default function App() {
         ? (cdcStateCode ? `${cdcCountyName}, ${cdcStateCode}` : cdcCountyName)
         : String(firstDefined(selectedFeatureProps?.id, "Unknown county")).trim()
     );
+  const selectedFundingStateCode = isCdcDataSource
+    ? String(firstDefined(selectedFeatureProps?.state_code, selectedFeatureProps?.state_abbr, "")).trim().toUpperCase()
+    : "";
+  const selectedFundingStateToken = selectedFundingStateCode
+    || (isCdcDataSource ? String(firstDefined(selectedFeatureProps?.state_fips, "")).trim() : "");
+
+  useEffect(() => {
+    setStateFundingAwards([]);
+    setStateFundingAwardsTotal(0);
+    setStateFundingAwardsError(null);
+    setStateFundingAwardsOffset(0);
+  }, [
+    isCdcDataSource,
+    selectedFundingStateToken,
+    resolvedCdcFiscalYear,
+    stateFundingMechanism,
+    stateFundingViewMode,
+    stateFundingSupplementalHistoryFilter,
+    stateFundingAssistanceListing,
+  ]);
+
+  useEffect(() => {
+    if (!isCdcDataSource || !selectedFundingStateToken) {
+      if (stateFundingAwardsAbortRef.current) {
+        stateFundingAwardsAbortRef.current.abort();
+        stateFundingAwardsAbortRef.current = null;
+      }
+      setIsStateFundingAwardsLoading(false);
+      return undefined;
+    }
+
+    if (stateFundingAwardsAbortRef.current) {
+      stateFundingAwardsAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    stateFundingAwardsAbortRef.current = controller;
+    setIsStateFundingAwardsLoading(true);
+    setStateFundingAwardsError(null);
+
+    fetchFundingStateAwards({
+      apiBase: API_BASE,
+      state: selectedFundingStateToken,
+      fiscal_year: resolvedCdcFiscalYear || null,
+      funding_mechanism: stateFundingMechanism,
+      funding_view_mode: stateFundingViewMode,
+      supplemental_history_filter: stateFundingSupplementalHistoryFilter,
+      assistance_listing_number: stateFundingAssistanceListing || null,
+      limit: 100,
+      offset: stateFundingAwardsOffset,
+      signal: controller.signal,
+    })
+      .then((payload) => {
+        const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+        setStateFundingAwards((previous) => (
+          stateFundingAwardsOffset === 0 ? rows : [...previous, ...rows]
+        ));
+        setStateFundingAwardsTotal(Number(payload?.total_count ?? rows.length) || 0);
+      })
+      .catch((awardsError) => {
+        if (isAbortLikeError(awardsError, controller.signal)) return;
+        setStateFundingAwardsError(awardsError.message ?? "Failed to load state awards.");
+      })
+      .finally(() => {
+        if (stateFundingAwardsAbortRef.current === controller) {
+          stateFundingAwardsAbortRef.current = null;
+        }
+        setIsStateFundingAwardsLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (stateFundingAwardsAbortRef.current === controller) {
+        stateFundingAwardsAbortRef.current = null;
+      }
+    };
+  }, [
+    isCdcDataSource,
+    selectedFundingStateToken,
+    resolvedCdcFiscalYear,
+    stateFundingMechanism,
+    stateFundingViewMode,
+    stateFundingSupplementalHistoryFilter,
+    stateFundingAssistanceListing,
+    stateFundingAwardsOffset,
+  ]);
   const taggsMetricId = String(selectedMeasureId ?? "").trim();
   const taggsMetricLabel = String(
     firstDefined(selectedFeatureProps?.metric_label, selectedMeasureDisplayName, "TAGGS metric")
@@ -9575,7 +9659,7 @@ export default function App() {
             <label style={{ display: "grid", gap: 6 }}>
               <span style={{ fontWeight: 600 }}>Data source</span>
               <select
-                value={activeDataSource}
+                value={selectedDataSource}
                 onChange={(event) => {
                   const nextSource = event.target.value;
                   setSelectedDataSource(nextSource);
@@ -9590,7 +9674,7 @@ export default function App() {
                     setFemaMeasureSearch("");
                     setFemaMeasurePickerOpen(false);
                   }
-                  if (nextSource === DATA_SOURCES.CDC_FUNDING) {
+                  if (nextSource === DATA_SOURCES.CDC_FUNDING_STATE || nextSource === DATA_SOURCES.CDC_FUNDING) {
                     setSelectedMeasureId(CDC_DEFAULT_INTELLIGENCE_METRIC);
                     setCdcFiscalYear("");
                     setCdcFundingScopePreset(CDC_DEFAULT_FUNDING_SCOPE_PRESET);
@@ -9617,7 +9701,7 @@ export default function App() {
               >
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
                 <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
-                <option value={DATA_SOURCES.CDC_FUNDING}>CDC Funding</option>
+                <option value={DATA_SOURCES.CDC_FUNDING_STATE}>CDC Funding - State Map</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment</option>
                 <option value={DATA_SOURCES.FEMA_NRI}>FEMA National Risk Index</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>
@@ -9774,6 +9858,214 @@ export default function App() {
               </label>
             )}
             {isCdcDataSource ? (
+              <>
+                <div style={{ fontWeight: 700, color: "#123247", marginTop: 2 }}>State Funding</div>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Fiscal year</span>
+                  <select
+                    value={resolvedCdcFiscalYear}
+                    onChange={(event) => setCdcFiscalYear(String(event.target.value ?? ""))}
+                    disabled={cdcVisibleFiscalYearOptions.length === 0}
+                    style={controlSelectStyle}
+                  >
+                    {cdcVisibleFiscalYearOptions.map((option) => (
+                      <option key={`state-funding-fy-${option.value}`} value={String(option.value)}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Funding view</span>
+                  <select
+                    value={stateFundingViewMode}
+                    onChange={(event) => setStateFundingViewMode(String(event.target.value ?? "standard_usaspending"))}
+                    style={controlSelectStyle}
+                  >
+                    {STATE_FUNDING_VIEW_MODE_OPTIONS.map((option) => (
+                      <option key={`state-funding-view-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Funding mechanism</span>
+                  <select
+                    value={stateFundingMechanism}
+                    onChange={(event) => setStateFundingMechanism(String(event.target.value ?? "grants_cooperative_agreements"))}
+                    style={controlSelectStyle}
+                  >
+                    {STATE_FUNDING_MECHANISM_OPTIONS.map((option) => (
+                      <option key={`state-funding-mechanism-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Supplemental history</span>
+                  <select
+                    value={stateFundingSupplementalHistoryFilter}
+                    onChange={(event) => setStateFundingSupplementalHistoryFilter(String(event.target.value ?? "all"))}
+                    style={controlSelectStyle}
+                  >
+                    {STATE_FUNDING_SUPPLEMENTAL_HISTORY_FILTER_OPTIONS.map((option) => (
+                      <option key={`state-funding-supplemental-history-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Assistance Listing / Program</span>
+                  <select
+                    value={stateFundingAssistanceListing}
+                    onChange={(event) => setStateFundingAssistanceListing(String(event.target.value ?? ""))}
+                    style={controlSelectStyle}
+                  >
+                    <option value="">All programs</option>
+                    {(cdcFilterOptions.assistance_listings ?? []).map((listing) => {
+                      const value = String(listing?.assistance_listing_number ?? "").trim();
+                      if (!value) return null;
+                      const title = String(listing?.assistance_listing_title ?? "").trim();
+                      return (
+                        <option key={`state-funding-aln-${value}`} value={value}>
+                          {title ? `${value} - ${title}` : value}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 6,
+                    marginTop: 2,
+                  }}
+                >
+                  {buildStateFundingSummaryCards(stateFundingSummary).map(([label, value, type]) => (
+                    <div
+                      key={`state-funding-summary-${label}`}
+                      style={{
+                        border: "1px solid #D7E2EE",
+                        borderRadius: 8,
+                        padding: "7px 8px",
+                        background: "#F7FAFD",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ color: "#627A90", fontSize: 10 }}>{label}</div>
+                      <div style={{ color: "#123247", fontWeight: 800, fontSize: 13 }}>
+                        {type === "count"
+                          ? formatFundingCount(value)
+                          : formatFundingCurrency(value, { compact: true })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <details
+                  open
+                  style={{
+                    border: "1px solid #D7E2EE",
+                    borderRadius: 8,
+                    padding: "8px 9px",
+                    background: "#FFFFFF",
+                    color: "#123247",
+                  }}
+                >
+                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>About this funding view</summary>
+	                  <div style={{ color: "#627A90", fontSize: 11, lineHeight: 1.35, marginTop: 6 }}>
+	                    {getFundingViewModeMethodologyNote(stateFundingViewMode)}
+	                  </div>
+	                </details>
+                <details
+                  style={{
+                    border: "1px solid #D7E2EE",
+                    borderRadius: 8,
+                    padding: "8px 9px",
+                    background: "#FFFFFF",
+                    color: "#123247",
+                  }}
+                >
+                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>How this funding total is calculated</summary>
+                  <div style={{ color: "#627A90", fontSize: 11, lineHeight: 1.35, marginTop: 6 }}>
+                    {stateFundingViewMode === "funding_profiles_comparable" ? (
+                      <>
+                        <p style={{ margin: "0 0 6px" }}>
+                          Total including unmapped is the national comparison total for CDC Funding Profiles. State-mapped obligations are used for choropleth shading.
+                        </p>
+                        <p style={{ margin: "0 0 6px" }}>
+                          Not-mapped-to-state obligations are included in the national total but are not assigned to a state. VFC / Immunization Cooperative Agreement assistance transactions are included when they appear in USAspending assistance data.
+                        </p>
+                        <p style={{ margin: "0 0 6px" }}>
+                          FY2021 includes a large COVID-era immunization response block under Assistance Listing 93.268 in USAspending. CHIP excludes that FY2021 COVID-era block from the Funding Profiles Comparable total and reports it separately.
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          Separate VFC vaccine purchase amounts are not included because this map does not currently source a vaccine-purchase table. Ordinary VFC / Immunization Cooperative Agreement assistance transactions remain included in other years unless separately excluded.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ margin: "0 0 6px" }}>
+                          State-mapped obligations are used for choropleth shading. Total including unmapped adds positive CDC-funded prime obligations that cannot be assigned to a U.S. state or territory.
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          VFC / Immunization Cooperative Agreement obligations and awards with supplemental/emergency history are flagged for context but are not automatically excluded in USAspending Obligations mode.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </details>
+                <div
+                  style={{
+                    border: "1px solid #D7E2EE",
+                    borderRadius: 8,
+                    padding: "8px 9px",
+                    background: "#FFFFFF",
+                    display: "grid",
+                    gap: 5,
+                  }}
+                >
+                  <div style={{ color: "#123247", fontWeight: 700 }}>Validation</div>
+                  {[
+                    ["State-mapped obligations", formatFundingCurrency(stateFundingSummary?.state_mapped_obligations ?? stateFundingSummary?.total_obligations, { compact: true })],
+                    ["Not mapped to state", formatFundingCurrency(stateFundingSummary?.state_unmapped_obligations, { compact: true })],
+                    ["Total including unmapped", formatFundingCurrency(stateFundingSummary?.total_obligations_including_unmapped ?? stateFundingSummary?.total_obligations, { compact: true })],
+                    ["Emergency/supplemental excluded", formatFundingCurrency(stateFundingSummary?.funding_profiles_excluded_obligations, { compact: true })],
+                    ["Awards with supplemental history", formatFundingCurrency(stateFundingSummary?.obligations_from_awards_with_supplemental_history, { compact: true })],
+                    ["VFC / Immunization Cooperative Agreements", formatFundingCurrency(stateFundingSummary?.vfc_immunization_cooperative_agreement_obligations ?? stateFundingSummary?.likely_vfc_obligations, { compact: true })],
+                    ...(Number(stateFundingSummary?.covid_era_immunization_response_excluded_obligations ?? 0) !== 0
+                      ? [["COVID-era immunization excluded", formatFundingCurrency(stateFundingSummary?.covid_era_immunization_response_excluded_obligations, { compact: true })]]
+                      : []),
+                  ].map(([label, value]) => (
+                    <div
+                      key={`state-funding-validation-${label}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        color: "#334155",
+                        fontSize: 11,
+                      }}
+                    >
+                      <span>{label}</span>
+                      <strong style={{ color: "#123247", textAlign: "right" }}>{value}</strong>
+                    </div>
+                  ))}
+                  {stateFundingSummary?.possible_global_or_foreign_obligations != null ? (
+                    <div style={{ color: "#627A90", fontSize: 11 }}>
+                      Possible global/foreign subset:{" "}
+                      <strong>
+                        {formatFundingCurrency(stateFundingSummary.possible_global_or_foreign_obligations, { compact: true })}
+                      </strong>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+            {false && isCdcDataSource ? (
               <>
                 <div style={{ fontWeight: 700, color: "#123247", marginTop: 2 }}>Funding Scope</div>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -10230,30 +10522,11 @@ export default function App() {
 	              <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
 	                <div style={{ fontWeight: 600, color: "#123247" }}>CDC Funding</div>
 	                <div>
-	                  {cdcRenderLevel === "national"
-                      ? "National summary"
-                      : cdcRenderLevel === "state"
-                        ? "State totals"
-                        : "County totals"} • {selectedMeasureDisplayName || "CDC funding metric"} • FY {resolvedCdcFiscalYear || "All Years"}
+	                  State totals • {getFundingMechanismLabel(stateFundingMechanism)} • {getFundingFiscalYearLabel(resolvedCdcFiscalYear)}
 	                </div>
 	                <div style={{ fontSize: 11 }}>
-	                  This model uses federal account classifications to identify CDC-related funding and maps award-linked obligations by state or county.
+	                  Positive prime award obligations from USAspending, joined to state boundaries by state code.
 	                </div>
-	                {isChipV1CdcMode && cdcIncludesPendingReview ? (
-	                  <div style={{ fontSize: 11 }}>
-	                    * Includes some accounts pending final review.
-	                  </div>
-	                ) : null}
-	                {isChipV1CdcMode && cdcHasReviewMetadata && cdcReviewTotalsText ? (
-	                  <div style={{ fontSize: 11 }}>
-	                    {cdcReviewTotalsText}
-	                  </div>
-	                ) : null}
-	                {isChipV1CdcMode && cdcHasReviewMetadata && cdcPendingReviewCountText ? (
-	                  <div style={{ fontSize: 11 }}>
-	                    {cdcPendingReviewCountText}
-	                  </div>
-	                ) : null}
 	              </div>
               ) : isTaggsDataSource ? (
                 <div style={{ display: "grid", gap: 4, color: "#627A90" }}>
@@ -10377,7 +10650,7 @@ export default function App() {
 		                  <div style={{ fontWeight: 600 }}>Data type</div>
 		                  <div>CDC funding summary measure</div>
 		                  <div style={{ color: "#627A90", fontSize: 11 }}>
-		                    The map is powered by the selected CHIP funding model, with account-classified award obligations as the default.
+			                    State map totals use the selected USAspending funding view and supplemental-history filter.
 		                  </div>
 		                </div>
 		              ) : (
@@ -10626,6 +10899,11 @@ export default function App() {
               {legendSubtitle}
             </div>
           ) : null}
+          {isCdcDataSource ? (
+            <div style={{ fontSize: 11, color: "#627A90", marginTop: 2 }}>
+              Map shading reflects state-mapped obligations only.
+            </div>
+          ) : null}
         </div>
         {!isLegendPanelMinimized ? (
           <>
@@ -10726,24 +11004,16 @@ export default function App() {
               n={taggsLegend.n ?? 0}, no data={taggsLegend.noDataCount ?? 0}
             </div>
           ) : null}
-          {isCdcDataSource && cdcNationalSummary ? (
+          {isCdcDataSource && stateFundingSummary ? (
             <div style={{ color: "#334155", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 2 }}>
-              <div style={{ fontWeight: 600 }}>Nationwide summary</div>
-              <div>Funding model: {cdcNationalFundingModeLabel}</div>
-              <div>Nationwide total funding: {cdcNationalTotalText}</div>
-              {isChipV1CdcMode && cdcIncludesPendingReview ? (
-                <div>* Includes some accounts pending final review.</div>
-              ) : null}
-              {isChipV1CdcMode && cdcHasReviewMetadata && cdcReviewTotalsText ? (
-                <div>{cdcReviewTotalsText}</div>
-              ) : null}
-              {isChipV1CdcMode && cdcHasReviewMetadata && cdcPendingReviewCountText ? (
-                <div style={{ color: "#627A90", fontSize: 11 }}>{cdcPendingReviewCountText}</div>
-              ) : null}
-              <div>Nationwide funding per capita: {cdcNationalPerCapitaText}</div>
-              <div style={{ color: "#627A90", fontSize: 11 }}>
-                Population denominator: {cdcNationalPopulationText}
-              </div>
+              <div style={{ fontWeight: 600 }}>Current summary</div>
+              <div>State-mapped obligations: {formatFundingCurrency(stateFundingSummary.state_mapped_obligations ?? stateFundingSummary.total_obligations)}</div>
+              <div>Not mapped to state: {formatFundingCurrency(stateFundingSummary.state_unmapped_obligations)}</div>
+              <div>Total including unmapped: {formatFundingCurrency(stateFundingSummary.total_obligations_including_unmapped ?? stateFundingSummary.total_obligations)}</div>
+              <div>States: {formatFundingCount(stateFundingSummary.state_count)}</div>
+              <div>Awards: {formatFundingCount(stateFundingSummary.award_count)}</div>
+              <div>Recipients: {formatFundingCount(stateFundingSummary.recipient_count)}</div>
+              <div>Transactions: {formatFundingCount(stateFundingSummary.transaction_count)}</div>
             </div>
           ) : null}
           {isUsdaDataSource && usdaLegend ? (
@@ -10784,20 +11054,8 @@ export default function App() {
           ) : null}
           {isCdcDataSource ? (
             <div style={{ color: "#627A90", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 4 }}>
-              <div>
-                This model uses federal account classifications to identify CDC-related funding and maps award-linked obligations by state or county.
-              </div>
-              {isChipV1CdcMode && cdcIncludesPendingReview ? (
-                <div>
-                  * Includes some accounts pending final review. These are included for demo continuity and shown separately in the model metadata.
-                </div>
-              ) : null}
-              {isChipV1CdcMode && cdcHasReviewMetadata && cdcReviewTotalsText ? (
-                <div>{cdcReviewTotalsText}</div>
-              ) : null}
-              {isChipV1CdcMode && cdcHasReviewMetadata && cdcPendingReviewCountText ? (
-                <div>{cdcPendingReviewCountText}</div>
-              ) : null}
+              <div>{CDC_FUNDING_TAGGS_ENRICHMENT_NOTE}</div>
+              <div>{getFundingViewModeMethodologyNote(stateFundingViewMode)}</div>
             </div>
           ) : isTaggsDataSource ? (
             <div style={{ color: "#627A90", borderTop: "1px solid #E7EEF5", paddingTop: 8, display: "grid", gap: 4 }}>
@@ -10879,67 +11137,112 @@ export default function App() {
 		              ) : isCdcDataSource ? (
 		                <>
 		                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
-		                    {cdcGeoLevel === "national"
-		                      ? "National"
-		                      : cdcGeoLevel === "state"
-		                        ? "State"
-		                        : "County"} • {cdcLocationLine}
+		                    State • {cdcLocationLine}
 		                  </div>
 		                  <p>
 		                    <strong>{cdcSelectedMetricLabel}</strong>: <strong>{cdcMetricValueText}</strong>.
 		                  </p>
-		                  <p><strong>Total funding:</strong> <strong>{cdcTotalFundingText}</strong>.</p>
-		                  {cdcFundingModeLabel ? (
-		                    <p><strong>Funding model:</strong> <strong>{cdcFundingModeLabel}</strong>.</p>
-		                  ) : null}
-		                  {cdcSelectedHasReviewMetadata && cdcSelectedReviewTotalsText ? (
-		                    <p><strong>Review status totals:</strong> <strong>{cdcSelectedReviewTotalsText}</strong>.</p>
-		                  ) : null}
-		                  {isChipV1CdcMode && cdcSelectedPendingReviewValue != null && cdcSelectedPendingReviewValue > 0 ? (
-		                    <p>* Includes some accounts pending final review.</p>
-		                  ) : null}
-		                  <p><strong>Funding per capita:</strong> <strong>{cdcFundingPerCapitaText}</strong>.</p>
-		                  <p><strong>Population denominator:</strong> <strong>{cdcPopulationText}</strong>.</p>
-		                  {toFiniteNumericValue(selectedFeatureProps?.funding_per_100k) != null ? (
-		                    <p>
-		                      <strong>Funding per 100,000:</strong>{" "}
-		                      <strong>
-		                        {`$${toFiniteNumericValue(selectedFeatureProps?.funding_per_100k).toLocaleString("en-US", { maximumFractionDigits: 2 })}`}
-		                      </strong>.
-		                    </p>
-		                  ) : null}
-		                  {toFiniteNumericValue(selectedFeatureProps?.share_national_pct) != null ? (
-		                    <p>
-		                      <strong>Share of national CDC funding:</strong>{" "}
-		                      <strong>{`${toFiniteNumericValue(selectedFeatureProps?.share_national_pct).toFixed(2)}%`}</strong>.
-		                    </p>
-		                  ) : null}
-		                  {selectedFeatureProps?.timeframe_label ? (
-		                    <p><strong>Timeframe:</strong> <strong>{String(selectedFeatureProps.timeframe_label)}</strong>.</p>
-		                  ) : null}
-		                  {selectedFeatureProps?.metric_context?.cdc_center_label
-		                    && String(selectedFeatureProps.metric_context.cdc_center_label) !== "All CDC Programs" ? (
-		                    <p>
-		                      <strong>Program area:</strong>{" "}
-		                      <strong>{String(selectedFeatureProps.metric_context.cdc_center_label)}</strong>.
-		                    </p>
-		                  ) : null}
-		                  {selectedFeatureProps?.metric_context?.funding_type_label
-		                    && String(selectedFeatureProps.metric_context.funding_type_label) !== "Total CDC Funding" ? (
-		                    <p>
-		                      <strong>Funding type:</strong>{" "}
-		                      <strong>{String(selectedFeatureProps.metric_context.funding_type_label)}</strong>.
-		                    </p>
-		                  ) : null}
-			                  {cdcFundingProfileTarget?.enabled ? (
-			                    <p>
-			                      Use <strong>Open State Funding Profile</strong> in Map Tools to open the full state report with the same active filter context.
-			                    </p>
-			                  ) : (
-			                    <p>
-			                      State funding profiles are available when a state or county is selected.
-			                    </p>
-			                  )}
+		                  <p><strong>Funding view:</strong> <strong>{stateFundingViewModeLabel}</strong>.</p>
+		                  <p><strong>Funding mechanism:</strong> <strong>{cdcFundingModeLabel}</strong>.</p>
+		                  <p><strong>Fiscal year:</strong> <strong>{getFundingFiscalYearLabel(resolvedCdcFiscalYear)}</strong>.</p>
+		                  <p><strong>Transactions:</strong> <strong>{formatFundingCount(selectedFeatureProps?.transaction_count)}</strong>.</p>
+		                  <p><strong>Awards:</strong> <strong>{formatFundingCount(selectedFeatureProps?.award_count)}</strong>.</p>
+		                  <p><strong>Recipients:</strong> <strong>{formatFundingCount(selectedFeatureProps?.recipient_count)}</strong>.</p>
+		                  <div style={{ borderTop: "1px solid #E7EEF5", paddingTop: 8, marginTop: 8 }}>
+		                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Top award transactions</div>
+		                    {stateFundingAwardsError ? (
+		                      <div style={{ color: "#b91c1c" }}>{stateFundingAwardsError}</div>
+		                    ) : null}
+		                    {isStateFundingAwardsLoading && stateFundingAwards.length === 0 ? (
+		                      <div style={{ color: "#627A90" }}>Loading award transactions...</div>
+		                    ) : stateFundingAwards.length === 0 ? (
+		                      <div style={{ color: "#627A90" }}>No award transactions match the current filters.</div>
+		                    ) : (
+		                      <div style={{ display: "grid", gap: 8 }}>
+		                        {stateFundingAwards.slice(0, stateFundingAwardsOffset + 100).map((award, index) => {
+		                          const recipient = String(award?.recipient_name ?? "Unknown recipient").trim();
+		                          const amount = formatFundingCurrency(award?.federal_action_obligation);
+		                          const listingNumber = String(award?.assistance_listing_number ?? "").trim();
+		                          const listingTitle = String(award?.assistance_listing_title ?? "").trim();
+		                          const actionDate = String(award?.action_date ?? "").trim();
+		                          const description = String(
+		                            award?.transaction_description
+		                            ?? award?.prime_award_base_transaction_description
+		                            ?? ""
+		                          ).trim();
+		                          const permalink = String(award?.usaspending_permalink ?? "").trim();
+		                          const badges = buildStateFundingAwardBadges(award);
+		                          return (
+		                            <div
+		                              key={`state-funding-award-${award?.award_unique_key ?? award?.generated_unique_award_id ?? index}-${index}`}
+		                              style={{
+		                                border: "1px solid #E7EEF5",
+		                                borderRadius: 8,
+		                                padding: "8px 9px",
+		                                background: "#FFFFFF",
+		                                display: "grid",
+		                                gap: 3,
+		                              }}
+		                            >
+		                              <div style={{ fontWeight: 700, color: "#123247" }}>{recipient}</div>
+		                              {badges.length > 0 ? (
+		                                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+		                                  {badges.map((badge) => (
+		                                    <span
+		                                      key={`state-funding-award-badge-${badge}`}
+		                                      style={{
+		                                        border: "1px solid #BFD0E1",
+		                                        borderRadius: 6,
+		                                        color: "#123247",
+		                                        background: "#F7FAFD",
+		                                        fontSize: 11,
+		                                        fontWeight: 700,
+		                                        padding: "2px 5px",
+		                                      }}
+		                                    >
+		                                      {badge}
+		                                    </span>
+		                                  ))}
+		                                </div>
+		                              ) : null}
+		                              <div><strong>{amount}</strong>{actionDate ? ` • ${actionDate}` : ""}</div>
+		                              {listingNumber || listingTitle ? (
+		                                <div style={{ color: "#334155" }}>
+		                                  {[listingNumber, listingTitle].filter(Boolean).join(" - ")}
+		                                </div>
+		                              ) : null}
+		                              {description ? (
+		                                <div style={{ color: "#627A90" }}>{truncateText(description, 180)}</div>
+		                              ) : null}
+		                              {permalink ? (
+		                                <a href={permalink} target="_blank" rel="noreferrer">
+		                                  View on USAspending
+		                                </a>
+		                              ) : null}
+		                            </div>
+		                          );
+		                        })}
+		                        {stateFundingAwards.length < stateFundingAwardsTotal ? (
+		                          <button
+		                            type="button"
+		                            onClick={() => setStateFundingAwardsOffset((value) => value + 100)}
+		                            disabled={isStateFundingAwardsLoading}
+		                            style={{
+		                              border: "1px solid #BFD0E1",
+		                              borderRadius: 8,
+		                              background: "#F7FAFD",
+		                              color: "#123247",
+		                              fontWeight: 700,
+		                              padding: "8px 10px",
+		                              cursor: isStateFundingAwardsLoading ? "default" : "pointer",
+		                            }}
+		                          >
+		                            {isStateFundingAwardsLoading ? "Loading..." : `Load more (${stateFundingAwards.length}/${stateFundingAwardsTotal})`}
+		                          </button>
+		                        ) : null}
+		                      </div>
+		                    )}
+		                  </div>
 		                </>
 	              ) : isTaggsDataSource ? (
                 <>
