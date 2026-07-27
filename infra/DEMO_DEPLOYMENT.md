@@ -63,6 +63,11 @@ curl -I http://<server-ip>/
 curl http://<server-ip>/api/health
 curl http://<server-ip>/api/cdc/funding/filters
 
+# CDC Funding API v1 should preserve the /api prefix through Nginx.
+# With demo access enabled, unauthenticated requests return 401 instead of 404;
+# an authenticated browser/session should receive the fiscal-year payload.
+curl -i "http://<server-ip>/api/cdc-funding/v1/fiscal-years?scope=all_accounts"
+
 # Confirm backend is not listening on public interfaces
 ss -ltnp | rg ':80|:8000'
 ```

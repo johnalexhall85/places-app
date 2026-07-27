@@ -6,6 +6,11 @@ describe("routeResolver", () => {
     expect(resolveRoute("/funding-model-builder")).toEqual({ type: "funding-model-builder" });
   });
 
+  it("matches the CDC funding overview route without shadowing state profiles", () => {
+    expect(resolveRoute("/cdc-funding")).toEqual({ type: "cdc-funding-overview" });
+    expect(resolveRoute("/cdc-funding/")).toEqual({ type: "cdc-funding-overview" });
+  });
+
   it("matches the CDC state funding profile route", () => {
     expect(resolveRoute("/cdc-funding/state/AL")).toEqual({
       type: "cdc-state-funding-profile",

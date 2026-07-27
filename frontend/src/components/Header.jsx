@@ -108,6 +108,11 @@ const NAV_ITEMS = [
     text: "Use Search to locate an area, select a measure in the controls panel, and review the legend, methodology notes, and data panels for source-specific interpretation. The assistant can summarize place-based patterns, but estimates and reconstructions should always be reviewed with their methodology notes.",
   },
   {
+    id: "cdc-funding-overview",
+    label: "CDC Funding",
+    href: "/cdc-funding",
+  },
+  {
     id: "funding-model-builder",
     label: "Funding Model Builder",
     href: "/funding-model-builder",

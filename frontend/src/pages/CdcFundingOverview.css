@@ -1,0 +1,530 @@
+.cdc-funding-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 48%, #eef4fa 100%);
+  color: var(--pdo-text);
+}
+
+.cdc-funding-main {
+  width: min(1440px, calc(100vw - 28px));
+  margin: 18px auto 34px;
+  display: grid;
+  gap: 14px;
+}
+
+.cdc-funding-hero,
+.cdc-funding-section,
+.cdc-funding-about,
+.cdc-funding-status {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+}
+
+.cdc-funding-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: 18px;
+  align-items: end;
+  padding: 18px;
+}
+
+.cdc-funding-kicker {
+  color: var(--pdo-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cdc-funding-hero h1 {
+  margin: 5px 0 8px;
+  font-size: 2rem;
+  line-height: 1.12;
+}
+
+.cdc-funding-hero p,
+.cdc-funding-section-title p,
+.cdc-funding-muted,
+.cdc-funding-about p {
+  margin: 0;
+  color: var(--pdo-text-muted);
+}
+
+.cdc-funding-scope-copy {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.cdc-funding-year-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.cdc-funding-year-panel > span {
+  color: var(--pdo-text-subtle);
+  font-size: 0.86rem;
+}
+
+.cdc-funding-year-panel label,
+.cdc-funding-control-row label,
+.cdc-funding-table-actions label {
+  display: grid;
+  gap: 5px;
+  color: var(--pdo-text-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.cdc-funding-year-panel select,
+.cdc-funding-control-row select,
+.cdc-funding-table-actions input {
+  width: 100%;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--pdo-text);
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.cdc-funding-section {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.cdc-funding-section-header,
+.cdc-funding-overview-header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.cdc-funding-section-title {
+  display: grid;
+  gap: 3px;
+}
+
+.cdc-funding-section-title h2 {
+  font-size: 1.12rem;
+}
+
+.cdc-funding-total {
+  min-width: 230px;
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  text-align: right;
+}
+
+.cdc-funding-total span,
+.cdc-funding-kpi span,
+.cdc-funding-chart-label span,
+.cdc-funding-chart-value {
+  color: var(--pdo-text-muted);
+  font-size: 0.84rem;
+}
+
+.cdc-funding-total strong {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.cdc-funding-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cdc-funding-kpi {
+  min-height: 116px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border: 1px solid var(--pdo-border);
+  border-left: 5px solid var(--pdo-primary);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.cdc-funding-kpi.is-coral { border-left-color: #c2410c; }
+.cdc-funding-kpi.is-gold { border-left-color: #a16207; }
+.cdc-funding-kpi.is-teal { border-left-color: #0f766e; }
+.cdc-funding-kpi.is-blue { border-left-color: #2563eb; }
+
+.cdc-funding-kpi-label {
+  font-weight: 800;
+}
+
+.cdc-funding-kpi strong {
+  font-size: 1.1rem;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.cdc-funding-composition {
+  display: grid;
+  gap: 10px;
+}
+
+.cdc-funding-composition-bar {
+  height: 22px;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: var(--pdo-surface-alt);
+}
+
+.cdc-funding-composition-bar span,
+.cdc-funding-chart-track span {
+  display: block;
+  min-width: 1px;
+}
+
+.cdc-funding-composition-bar .is-coral,
+.cdc-funding-dot.is-coral,
+.cdc-funding-chart-emergency { background: #c2410c; }
+.cdc-funding-composition-bar .is-gold,
+.cdc-funding-dot.is-gold { background: #a16207; }
+.cdc-funding-composition-bar .is-teal,
+.cdc-funding-dot.is-teal,
+.cdc-funding-chart-nonemergency { background: #0f766e; }
+.cdc-funding-composition-bar .is-blue,
+.cdc-funding-dot.is-blue,
+.cdc-funding-chart-total { background: #2563eb; }
+
+.cdc-funding-chart-total.is-unusual {
+  background: repeating-linear-gradient(90deg, #627a90, #627a90 8px, #d7e2ee 8px, #d7e2ee 16px);
+}
+
+.cdc-funding-composition-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cdc-funding-composition-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  color: var(--pdo-text-muted);
+  font-size: 0.86rem;
+}
+
+.cdc-funding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.cdc-funding-matrix {
+  display: grid;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.cdc-funding-matrix-row {
+  display: grid;
+  grid-template-columns: 150px repeat(2, minmax(0, 1fr));
+}
+
+.cdc-funding-matrix-row > span {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  padding: 10px;
+  border-top: 1px solid var(--pdo-border);
+  border-left: 1px solid var(--pdo-border);
+}
+
+.cdc-funding-matrix-row > span:first-child {
+  border-left: 0;
+  font-weight: 800;
+}
+
+.cdc-funding-matrix-row.is-header > span {
+  min-height: auto;
+  border-top: 0;
+  background: var(--pdo-surface-alt);
+  color: var(--pdo-text-muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.cdc-funding-matrix small {
+  color: var(--pdo-text-muted);
+}
+
+.cdc-funding-control-row,
+.cdc-funding-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  justify-content: flex-end;
+}
+
+.cdc-funding-control-row label {
+  min-width: 160px;
+}
+
+.cdc-funding-table-actions label {
+  min-width: 240px;
+}
+
+.cdc-funding-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.cdc-funding-chart-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 330px) minmax(180px, 1fr) minmax(120px, 160px);
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+}
+
+.cdc-funding-chart-label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.cdc-funding-chart-label strong,
+.cdc-funding-chart-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cdc-funding-chart-track {
+  height: 18px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #edf3f9;
+  border: 1px solid var(--pdo-border);
+}
+
+.cdc-funding-chart-value {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.cdc-funding-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+}
+
+.cdc-funding-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.cdc-funding-table caption {
+  text-align: left;
+  color: var(--pdo-text-muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-funding-table th,
+.cdc-funding-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pdo-border);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.9rem;
+}
+
+.cdc-funding-table th {
+  background: var(--pdo-surface-alt);
+  color: var(--pdo-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.cdc-funding-table th button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  text-transform: inherit;
+}
+
+.cdc-funding-breakdown-row td {
+  background: #fbfdff;
+}
+
+.cdc-funding-total-row td {
+  background: var(--pdo-surface-alt);
+  font-weight: 800;
+}
+
+.cdc-funding-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cdc-funding-breakdown-grid span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--pdo-text-muted);
+}
+
+.cdc-funding-breakdown-grid strong {
+  color: var(--pdo-text);
+}
+
+.cdc-funding-button,
+.cdc-funding-expand {
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--pdo-text);
+  min-height: 36px;
+  padding: 7px 11px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.cdc-funding-button:hover,
+.cdc-funding-expand:hover,
+.cdc-funding-table th button:hover {
+  color: var(--pdo-primary);
+}
+
+.cdc-funding-status {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.cdc-funding-status h2 {
+  font-size: 1.1rem;
+}
+
+.cdc-funding-status p,
+.cdc-funding-note {
+  margin: 0;
+  color: #8a1c1c;
+}
+
+.cdc-funding-note {
+  border: 1px solid rgba(138, 28, 28, 0.18);
+  border-radius: 8px;
+  background: #fff7ed;
+  padding: 10px 12px;
+}
+
+.cdc-funding-skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.cdc-funding-skeleton span {
+  height: 86px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef4fa, #ffffff, #eef4fa);
+}
+
+.cdc-funding-about {
+  padding: 14px 16px;
+}
+
+.cdc-funding-about summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.cdc-funding-about p {
+  margin-top: 10px;
+}
+
+@media (max-width: 980px) {
+  .cdc-funding-hero,
+  .cdc-funding-section-header,
+  .cdc-funding-overview-header {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .cdc-funding-total {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .cdc-funding-card-grid,
+  .cdc-funding-composition-list,
+  .cdc-funding-breakdown-grid,
+  .cdc-funding-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cdc-funding-chart-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cdc-funding-chart-value {
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .cdc-funding-main {
+    width: min(100vw - 18px, 1440px);
+    margin-top: 10px;
+  }
+
+  .cdc-funding-hero h1 {
+    font-size: 1.6rem;
+  }
+
+  .cdc-funding-card-grid,
+  .cdc-funding-composition-list,
+  .cdc-funding-breakdown-grid,
+  .cdc-funding-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .cdc-funding-matrix-row {
+    grid-template-columns: 120px repeat(2, 230px);
+    min-width: 580px;
+  }
+
+  .cdc-funding-control-row,
+  .cdc-funding-table-actions {
+    justify-content: stretch;
+  }
+
+  .cdc-funding-control-row label,
+  .cdc-funding-table-actions label,
+  .cdc-funding-table-actions .cdc-funding-button {
+    width: 100%;
+  }
+}

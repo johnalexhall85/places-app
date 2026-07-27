@@ -6,6 +6,7 @@ import { applyDocumentBranding } from "./branding/pdoBrand";
 import { API_BASE } from "./config/apiBase";
 import DemoAccessGate from "./demoAccess/DemoAccessGate";
 import { installDemoAccessFetchCredentials } from "./demoAccess/api";
+import CdcFundingOverview from "./pages/CdcFundingOverview";
 import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
 import DemoAccessAdmin from "./pages/DemoAccessAdmin";
 import FundingModelBuilder from "./pages/FundingModelBuilder";
@@ -57,6 +58,8 @@ function Root() {
   const route = resolveRoute(window.location.pathname);
   if (route.type === "cdc-state-funding-profile") {
     routedPage = <CdcStateFundingProfile stateCode={route.id} />;
+  } else if (route.type === "cdc-funding-overview") {
+    routedPage = <CdcFundingOverview />;
   } else if (route.type === "funding-model-builder") {
     routedPage = <FundingModelBuilder />;
   } else if (route.type === "profile-county") {

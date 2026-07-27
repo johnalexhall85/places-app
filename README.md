@@ -64,6 +64,23 @@ Expected response:
 
 Then open `http://localhost:5173` in your browser.
 
+## CDC Funding Overview
+
+The standalone `/cdc-funding` page uses the CDC Funding API v1 with explicit `scope=all_accounts` requests:
+
+```text
+GET /api/cdc-funding/v1/fiscal-years?scope=all_accounts
+GET /api/cdc-funding/v1/overview?fiscal_year=<year>&scope=all_accounts
+GET /api/cdc-funding/v1/accounts?fiscal_year=<year>&scope=all_accounts
+```
+
+The page represents all federal accounts in the ingested CDC-awarded annual account-summary dataset. CDC Funding
+Profile mapping is not an inclusion requirement: mapped and unmapped account combinations are included, and detailed
+rows are grouped by federal account symbol. The `/categories` endpoint remains available for CDC Funding Profile
+analysis, but this page does not use it. FY2021 through FY2026 are currently available; FY2026 is currently latest and
+is determined dynamically from the API response. No database schema, stored data, or ingestion changes are required for
+this page behavior.
+
 ## Demo access gate
 
 CHIP uses a lightweight demo access gate before loading the app. Configure these backend environment variables before starting FastAPI:

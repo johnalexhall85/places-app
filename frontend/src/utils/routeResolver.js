@@ -3,6 +3,9 @@ export function resolveRoute(pathname) {
   if (/^\/funding-model-builder\/?$/i.test(normalizedPath)) {
     return { type: "funding-model-builder" };
   }
+  if (/^\/cdc-funding\/?$/i.test(normalizedPath)) {
+    return { type: "cdc-funding-overview" };
+  }
   const cdcFundingProfileMatch = normalizedPath.match(/^\/cdc-funding\/state\/([^/]+)\/?$/i);
   if (cdcFundingProfileMatch) {
     return { type: "cdc-state-funding-profile", id: cdcFundingProfileMatch[1] };
