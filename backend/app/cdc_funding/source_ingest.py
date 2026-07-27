@@ -191,6 +191,8 @@ CSV_SPECS = [
             "row_count",
             "numeric_obligation_rows",
             "transaction_obligated_amount",
+            "numeric_outlay_rows",
+            "gross_outlay_amount_FYB_to_period_end",
         ],
     ),
     CsvSpec(
@@ -207,6 +209,8 @@ CSV_SPECS = [
             "row_count",
             "numeric_obligation_rows",
             "transaction_obligated_amount",
+            "numeric_outlay_rows",
+            "gross_outlay_amount_FYB_to_period_end",
         ],
     ),
     CsvSpec(
@@ -221,6 +225,7 @@ CSV_SPECS = [
             "mapped_account_rows",
             "cfp_obligations",
             "usaspending_obligations",
+            "usaspending_outlays",
             "difference_usaspending_minus_cfp",
             "percent_difference",
         ],
@@ -232,6 +237,7 @@ CSV_SPECS = [
                 "mapping_status",
                 "mapped_account_rows",
                 "usaspending_obligations",
+                "usaspending_outlays",
                 "methodology_note",
             ],
             "category_summary_2026.csv": [
@@ -242,6 +248,7 @@ CSV_SPECS = [
                 "mapping_status",
                 "mapped_account_rows",
                 "usaspending_obligations",
+                "usaspending_outlays",
                 "methodology_note",
             ],
         },
@@ -259,6 +266,8 @@ CSV_SPECS = [
             "row_count",
             "numeric_obligation_rows",
             "transaction_obligated_amount",
+            "numeric_outlay_rows",
+            "gross_outlay_amount_FYB_to_period_end",
         ],
     ),
     CsvSpec(
@@ -272,6 +281,8 @@ CSV_SPECS = [
             "row_count",
             "numeric_obligation_rows",
             "transaction_obligated_amount",
+            "numeric_outlay_rows",
+            "gross_outlay_amount_FYB_to_period_end",
         ],
     ),
     CsvSpec(
@@ -362,6 +373,7 @@ MONEY_COLUMNS = {
     "ussgl497200_downward_adj_of_prior_year_paid_deliv_orders_oblig",
     "cfp_obligations",
     "usaspending_obligations",
+    "usaspending_outlays",
     "difference_usaspending_minus_cfp",
 }
 PERCENT_COLUMNS = {"percent_difference"}
@@ -379,6 +391,7 @@ INT_COLUMNS = {
     "award_latest_action_date_fiscal_year",
     "row_count",
     "numeric_obligation_rows",
+    "numeric_outlay_rows",
     "reference_detail_rows",
     "mapped_account_rows",
 }
@@ -501,6 +514,18 @@ def parse_amount(value: str | None) -> Decimal | None:
     return -parsed if negative else parsed
 
 
+def parse_outlay_amount(value: str | None) -> Decimal | None:
+    if value is None or value.strip() == "":
+        return None
+    cleaned = value.strip()
+    if not re.fullmatch(r"-?(?:0|[1-9]\d*)(?:\.\d{1,2})?", cleaned):
+        raise CdcFundingImportError(
+            f"Invalid outlay decimal value {value!r}; expected an unformatted "
+            "value with at most two decimal places"
+        )
+    return Decimal(cleaned)
+
+
 def parse_date(value: str | None) -> date | None:
     if value is None or value == "":
         return None
@@ -519,6 +544,15 @@ def parse_int(value: str | None) -> int | None:
         raise CdcFundingImportError(f"Invalid integer value {value!r}") from exc
 
 
+def parse_outlay_count(value: str | None) -> int | None:
+    parsed = parse_int(value)
+    if parsed is not None and parsed < 0:
+        raise CdcFundingImportError(
+            f"Invalid negative numeric_outlay_rows value {value!r}"
+        )
+    return parsed
+
+
 def parse_bool(value: str | None) -> bool | None:
     if value is None or value == "":
         return None
@@ -533,6 +567,13 @@ def parse_bool(value: str | None) -> bool | None:
 def parse_cell(column: str, value: str | None) -> Any:
     if value == "":
         return None
+    if column in {
+        "gross_outlay_amount_fyb_to_period_end",
+        "usaspending_outlays",
+    }:
+        return parse_outlay_amount(value)
+    if column == "numeric_outlay_rows":
+        return parse_outlay_count(value)
     if column in MONEY_COLUMNS or column in PERCENT_COLUMNS:
         return parse_amount(value)
     if column in DATE_COLUMNS:

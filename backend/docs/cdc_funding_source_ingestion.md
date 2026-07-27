@@ -33,6 +33,8 @@ Money columns use fixed-precision `NUMERIC(24,2)`. Percentages use `NUMERIC(12,4
 
 The importer normalizes column names to snake case but does not rewrite source values, recompute CFP categories, collapse `Emergency`/`NonEmergency`, infer award types from `Grant`/`Contract`, or follow historical Windows paths embedded in JSON payloads.
 
+`gross_outlay_amount_FYB_to_period_end` is the cumulative gross outlay amount from the beginning of the fiscal year through the applicable submission period or quarter end. It is stored exactly as supplied; it is not quarterly activity, and the importer does not difference or sum cumulative snapshots. `numeric_outlay_rows` records the number of source rows with numeric outlays in that summary group. `usaspending_outlays` is the mapped category's cumulative USAspending outlay value. These fields are nullable `NUMERIC(24,2)` or nullable integer counts. Blank values remain `NULL`, explicit zeroes remain zero, and negative values are preserved.
+
 ## Folder Convention
 
 Each fiscal year is loaded from a directory like:
@@ -111,3 +113,44 @@ FY2023 dry run and import enforce these verified controls:
 Create the next folder, for example `data/chipfunding/FY2024`, with the same 15-file structure. Run the dry run first. If headers have changed, the importer fails with the missing, unexpected, or reordered columns; update the explicit header contract and migration only after intentionally accepting a new source schema.
 
 Future read-only API and informational dashboard work should query these new tables as source-of-truth inputs rather than mutating source data or changing current map classifications.
+
+## Targeted Outlay Backfill
+
+Updated FY2021-FY2026 summaries live under `data/chipfunding/with_outlays/FY####`. The original files under `data/chipfunding/FY####` remain the canonical baseline for all non-outlay values.
+
+The backfill compares each updated file with the original file by its table's unique natural key. It requires identical row counts, key sets, and original column values, then verifies the database against the original file before updating only outlay columns. Newly supplied `data_status` and `as_of_period` columns are allowed metadata for FY2024 and FY2025 but are deliberately ignored; the command never writes them. Any other added non-outlay column fails validation.
+
+Natural keys are:
+
+- Annual and unmapped accounts: fiscal year, grant/contract classification, emergency classification, and federal account symbol.
+- Monthly accounts: fiscal year, submission period, grant/contract classification, emergency classification, and federal account symbol.
+- Quarterly accounts: fiscal year, fiscal quarter, grant/contract classification, emergency classification, and federal account symbol.
+- Category comparison: fiscal year and category.
+- Monthly categories: fiscal year, submission period, and category.
+- Quarterly categories: fiscal year, fiscal quarter, and category.
+
+Run the coordinated validation before applying the migration:
+
+```bash
+cd backend
+./.venv/bin/python scripts/backfill_cdc_funding_outlays.py \
+  --original-root /home/john/places-app/data/chipfunding \
+  --updated-root /home/john/places-app/data/chipfunding/with_outlays \
+  --fiscal-years 2021-2026 \
+  --dry-run
+```
+
+Apply the migration and backfill:
+
+```bash
+cd backend
+./.venv/bin/alembic upgrade head
+./.venv/bin/python scripts/backfill_cdc_funding_outlays.py \
+  --original-root /home/john/places-app/data/chipfunding \
+  --updated-root /home/john/places-app/data/chipfunding/with_outlays \
+  --fiscal-years 2021-2026
+```
+
+An identical rerun is idempotent and updates zero rows. If an existing non-null outlay differs from the verified source, the command aborts unless `--replace-existing-outlays` is supplied. That flag still updates only outlay columns and runs the same source, key, database, and reconciliation checks first.
+
+Completed backfills use `import_mode=outlay_backfill` and record updated-file checksums and validation results without replacing original import runs or audit payloads. API and frontend behavior are outside this storage-only operation.

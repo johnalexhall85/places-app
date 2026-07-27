@@ -369,7 +369,13 @@ def test_migration_upgrade_and_downgrade_are_wired(monkeypatch) -> None:
 
 
 def test_fy2023_source_directory_acceptance_controls() -> None:
-    source_dir = Path(__file__).resolve().parents[2] / "data" / "chipfunding" / "FY2023"
+    source_dir = (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "chipfunding"
+        / "with_outlays"
+        / "FY2023"
+    )
 
     result = ingest.validate_source_files(source_dir, 2023)
 
