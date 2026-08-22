@@ -72,14 +72,17 @@ The standalone `/cdc-funding` page uses the CDC Funding API v1 with explicit `sc
 GET /api/cdc-funding/v1/fiscal-years?scope=all_accounts
 GET /api/cdc-funding/v1/overview?fiscal_year=<year>&scope=all_accounts
 GET /api/cdc-funding/v1/accounts?fiscal_year=<year>&scope=all_accounts
+GET /api/cdc-funding/v1/obligation-trends?scope=all_accounts&period=month&view=total
+GET /api/cdc-funding/v1/quarterly-trends/accounts?scope=all_accounts
 ```
 
 The page represents all federal accounts in the ingested CDC-awarded annual account-summary dataset. CDC Funding
 Profile mapping is not an inclusion requirement: mapped and unmapped account combinations are included, and detailed
 rows are grouped by federal account symbol. The `/categories` endpoint remains available for CDC Funding Profile
 analysis, but this page does not use it. FY2021 through FY2026 are currently available; FY2026 is currently latest and
-is determined dynamically from the API response. No database schema, stored data, or ingestion changes are required for
-this page behavior.
+is determined dynamically from the API response. The obligation chart defaults to monthly reporting periods, supports
+quarterly mode, and hides FY2021 from the comparison scale unless requested. No database schema, stored data, or
+ingestion changes are required for this page behavior.
 
 ## Demo access gate
 

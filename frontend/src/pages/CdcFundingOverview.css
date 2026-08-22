@@ -1,6 +1,11 @@
 .cdc-funding-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 48%, #eef4fa 100%);
+  background: linear-gradient(
+    180deg,
+    #f7fbff 0%,
+    var(--pdo-background) 48%,
+    #eef4fa 100%
+  );
   color: var(--pdo-text);
 }
 
@@ -149,10 +154,18 @@
   padding: 12px;
 }
 
-.cdc-funding-kpi.is-coral { border-left-color: #c2410c; }
-.cdc-funding-kpi.is-gold { border-left-color: #a16207; }
-.cdc-funding-kpi.is-teal { border-left-color: #0f766e; }
-.cdc-funding-kpi.is-blue { border-left-color: #2563eb; }
+.cdc-funding-kpi.is-coral {
+  border-left-color: #c2410c;
+}
+.cdc-funding-kpi.is-gold {
+  border-left-color: #a16207;
+}
+.cdc-funding-kpi.is-teal {
+  border-left-color: #0f766e;
+}
+.cdc-funding-kpi.is-blue {
+  border-left-color: #2563eb;
+}
 
 .cdc-funding-kpi-label {
   font-weight: 800;
@@ -186,18 +199,32 @@
 
 .cdc-funding-composition-bar .is-coral,
 .cdc-funding-dot.is-coral,
-.cdc-funding-chart-emergency { background: #c2410c; }
+.cdc-funding-chart-emergency {
+  background: #c2410c;
+}
 .cdc-funding-composition-bar .is-gold,
-.cdc-funding-dot.is-gold { background: #a16207; }
+.cdc-funding-dot.is-gold {
+  background: #a16207;
+}
 .cdc-funding-composition-bar .is-teal,
 .cdc-funding-dot.is-teal,
-.cdc-funding-chart-nonemergency { background: #0f766e; }
+.cdc-funding-chart-nonemergency {
+  background: #0f766e;
+}
 .cdc-funding-composition-bar .is-blue,
 .cdc-funding-dot.is-blue,
-.cdc-funding-chart-total { background: #2563eb; }
+.cdc-funding-chart-total {
+  background: #2563eb;
+}
 
 .cdc-funding-chart-total.is-unusual {
-  background: repeating-linear-gradient(90deg, #627a90, #627a90 8px, #d7e2ee 8px, #d7e2ee 16px);
+  background: repeating-linear-gradient(
+    90deg,
+    #627a90,
+    #627a90 8px,
+    #d7e2ee 8px,
+    #d7e2ee 16px
+  );
 }
 
 .cdc-funding-composition-list {
@@ -288,7 +315,10 @@
 
 .cdc-funding-chart-row {
   display: grid;
-  grid-template-columns: minmax(180px, 330px) minmax(180px, 1fr) minmax(120px, 160px);
+  grid-template-columns: minmax(180px, 330px) minmax(180px, 1fr) minmax(
+      120px,
+      160px
+    );
   gap: 10px;
   align-items: center;
   min-height: 42px;
@@ -466,6 +496,184 @@
   margin-top: 10px;
 }
 
+.cdc-trend-section {
+  overflow: hidden;
+}
+
+.cdc-trend-filter-label {
+  color: var(--pdo-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cdc-trend-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.cdc-trend-control,
+.cdc-trend-account-controls label {
+  display: grid;
+  gap: 5px;
+  color: var(--pdo-text-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.cdc-trend-control select,
+.cdc-trend-account-controls select,
+.cdc-trend-account-controls input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--pdo-text);
+}
+
+.cdc-trend-account-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.6fr);
+  gap: 10px;
+}
+
+.cdc-trend-fy2021-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: var(--pdo-text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.cdc-trend-fy2021-control input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pdo-primary);
+}
+
+.cdc-trend-chart-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.cdc-trend-chart {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  min-height: 360px;
+}
+
+.cdc-trend-grid {
+  stroke: #dbe5ee;
+  stroke-width: 1;
+}
+
+.cdc-trend-zero {
+  stroke: #64748b;
+  stroke-width: 1.5;
+}
+
+.cdc-trend-axis-label {
+  fill: var(--pdo-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cdc-trend-line,
+.cdc-trend-chart circle,
+.cdc-trend-year-label {
+  cursor: pointer;
+  outline: none;
+}
+
+.cdc-trend-line:focus,
+.cdc-trend-chart circle:focus,
+.cdc-trend-year-label:focus {
+  filter: drop-shadow(0 0 3px #0f172a);
+}
+
+.cdc-trend-year-label {
+  font-size: 14px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.cdc-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cdc-trend-legend button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--pdo-text);
+  padding: 6px 9px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.cdc-trend-legend button[aria-pressed="true"] {
+  border-width: 2px;
+  border-color: var(--pdo-primary);
+  background: var(--pdo-surface-alt);
+}
+
+.cdc-trend-legend button span {
+  width: 13px;
+  height: 5px;
+  border-radius: 999px;
+}
+
+.cdc-trend-tooltip,
+.cdc-trend-empty,
+.cdc-trend-loading {
+  margin: 0;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: var(--pdo-surface-alt);
+  color: var(--pdo-text-muted);
+  padding: 10px 12px;
+}
+
+.cdc-trend-loading {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(90deg, #eef4fa, #ffffff, #eef4fa);
+}
+
+.cdc-trend-data summary {
+  cursor: pointer;
+  color: var(--pdo-primary);
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdc-trend-section * {
+    scroll-behavior: auto;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 @media (max-width: 980px) {
   .cdc-funding-hero,
   .cdc-funding-section-header,
@@ -483,6 +691,10 @@
   .cdc-funding-composition-list,
   .cdc-funding-breakdown-grid,
   .cdc-funding-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cdc-trend-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -526,5 +738,1278 @@
   .cdc-funding-table-actions label,
   .cdc-funding-table-actions .cdc-funding-button {
     width: 100%;
+  }
+
+  .cdc-trend-controls,
+  .cdc-trend-account-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cdc-trend-chart {
+    min-width: 680px;
+  }
+
+  .cdc-trend-year-label {
+    display: none;
+  }
+}
+
+/* CDC Funding information architecture redesign */
+
+.cdc-funding-main {
+  width: min(1240px, calc(100vw - 32px));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.cdc-redesign-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: center;
+  padding: 8px 2px 18px;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-redesign-eyebrow {
+  color: var(--pdo-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cdc-redesign-header h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.cdc-redesign-header p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--pdo-text-muted);
+  font-size: 1rem;
+}
+
+.cdc-redesign-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+}
+
+.cdc-redesign-header-actions label {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  color: var(--pdo-text-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.cdc-redesign-header-actions select,
+.cdc-ranking-controls select,
+.cdc-trend-primary-controls select,
+.cdc-filter-panel select,
+.cdc-account-table-controls input,
+.cdc-account-table-controls select {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--pdo-text);
+}
+
+.cdc-redesign-header-actions small {
+  color: var(--pdo-text-subtle);
+  font-weight: 500;
+}
+
+.cdc-methodology-link,
+.cdc-text-action {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--pdo-primary);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cdc-tabs-wrap {
+  overflow-x: auto;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-tabs {
+  display: flex;
+  min-width: max-content;
+  gap: 4px;
+}
+
+.cdc-tabs button {
+  min-height: 48px;
+  padding: 10px 20px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--pdo-text-muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cdc-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--pdo-primary);
+  color: var(--pdo-primary);
+}
+
+.cdc-tabs button:focus-visible,
+.cdc-text-action:focus-visible,
+.cdc-drawer-close:focus-visible,
+.cdc-filter-chips button:focus-visible,
+.cdc-focused-legend button:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.cdc-tab-panel {
+  display: grid;
+  gap: 34px;
+}
+
+.cdc-section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.cdc-section-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.cdc-section-heading p {
+  margin: 5px 0 0;
+  color: var(--pdo-text-muted);
+}
+
+.cdc-overview-summary,
+.cdc-composition-section,
+.cdc-ranking-section,
+.cdc-trend-workspace,
+.cdc-account-details-section {
+  display: grid;
+  gap: 16px;
+}
+
+.cdc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cdc-summary-metric {
+  min-height: 132px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 18px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 9px;
+  background: #fff;
+}
+
+.cdc-summary-metric > span {
+  color: var(--pdo-text-muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.cdc-summary-metric strong {
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+.cdc-summary-metric small {
+  color: var(--pdo-text-muted);
+}
+
+.cdc-emergency-callout {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 18px;
+  border-left: 4px solid #b45309;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #78350f;
+}
+
+.cdc-emergency-callout-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.cdc-emergency-callout h3 {
+  margin: 0 0 5px;
+  font-size: 1rem;
+}
+
+.cdc-emergency-callout p {
+  margin: 0;
+  color: #78350f;
+}
+
+.cdc-emergency-callout details {
+  margin-top: 8px;
+}
+
+.cdc-emergency-callout summary,
+.cdc-classification-details summary,
+.cdc-filter-panel summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.cdc-diverging-chart {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0;
+}
+
+.cdc-diverging-axis,
+.cdc-diverging-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(360px, 2fr) 100px;
+  gap: 14px;
+  align-items: center;
+}
+
+.cdc-diverging-axis {
+  color: var(--pdo-text-subtle);
+  font-size: 0.75rem;
+}
+
+.cdc-diverging-axis span:nth-child(2) {
+  text-align: center;
+}
+
+.cdc-diverging-axis span:nth-child(3) {
+  text-align: right;
+}
+
+.cdc-diverging-label {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-weight: 750;
+}
+
+.cdc-classification-key {
+  width: 18px;
+  height: 10px;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+}
+
+.cdc-classification-key.is-coral {
+  color: #be123c;
+  background: #fecdd3;
+}
+
+.cdc-classification-key.is-gold {
+  color: #a16207;
+  background: repeating-linear-gradient(135deg, #fef3c7 0 3px, #ca8a04 3px 5px);
+}
+
+.cdc-classification-key.is-teal {
+  color: #0f766e;
+  background: #99f6e4;
+}
+
+.cdc-classification-key.is-blue {
+  color: #1d4ed8;
+  background: repeating-linear-gradient(135deg, #dbeafe 0 3px, #3b82f6 3px 5px);
+}
+
+.cdc-diverging-track {
+  position: relative;
+  height: 28px;
+  border-radius: 4px;
+  background: #f1f5f9;
+}
+
+.cdc-diverging-zero {
+  position: absolute;
+  z-index: 2;
+  top: -4px;
+  bottom: -4px;
+  left: 50%;
+  width: 2px;
+  background: #475569;
+}
+
+.cdc-diverging-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  min-width: 2px;
+  border: 1px solid rgba(15, 23, 42, 0.25);
+}
+
+.cdc-diverging-bar.is-positive {
+  left: 50%;
+  border-radius: 0 4px 4px 0;
+}
+
+.cdc-diverging-bar.is-negative {
+  right: 50%;
+  border-radius: 4px 0 0 4px;
+}
+
+.cdc-diverging-bar.is-coral {
+  background: #e11d48;
+}
+
+.cdc-diverging-bar.is-gold {
+  background: #ca8a04;
+}
+
+.cdc-diverging-bar.is-teal {
+  background: #0f766e;
+}
+
+.cdc-diverging-bar.is-blue {
+  background: #2563eb;
+}
+
+.cdc-diverging-bar.is-contract {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 4px,
+    rgba(255, 255, 255, 0.55) 4px 6px
+  );
+}
+
+.cdc-diverging-zero-value {
+  position: absolute;
+  left: calc(50% - 4px);
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #64748b;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.cdc-diverging-row > strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-negative,
+.cdc-money.is-negative {
+  color: #9f1239;
+}
+
+.cdc-helper-text {
+  margin: 0;
+  color: var(--pdo-text-muted);
+  font-size: 0.86rem;
+}
+
+.cdc-classification-details {
+  border-top: 1px solid var(--pdo-border);
+  padding-top: 12px;
+}
+
+.cdc-classification-matrix {
+  width: 100%;
+  margin-top: 14px;
+  border-collapse: collapse;
+}
+
+.cdc-classification-matrix caption,
+.cdc-ranking-table caption,
+.cdc-account-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.cdc-classification-matrix th,
+.cdc-classification-matrix td {
+  padding: 12px;
+  border-bottom: 1px solid var(--pdo-border);
+  text-align: left;
+}
+
+.cdc-classification-matrix td {
+  font-variant-numeric: tabular-nums;
+}
+
+.cdc-classification-matrix td strong,
+.cdc-classification-matrix td small {
+  display: block;
+}
+
+.cdc-classification-matrix td small {
+  margin-top: 3px;
+  color: var(--pdo-text-muted);
+}
+
+.cdc-section-heading-with-controls {
+  align-items: end;
+}
+
+.cdc-ranking-controls,
+.cdc-account-table-controls {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cdc-ranking-controls label,
+.cdc-account-table-controls label,
+.cdc-trend-primary-controls label,
+.cdc-filter-panel-grid label {
+  display: grid;
+  gap: 4px;
+  color: var(--pdo-text-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.cdc-checkbox-control {
+  display: inline-flex !important;
+  min-height: 42px;
+  align-items: center;
+  grid-auto-flow: column;
+  gap: 7px !important;
+  color: var(--pdo-text) !important;
+}
+
+.cdc-checkbox-control input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pdo-primary);
+}
+
+.cdc-ranking-table-wrap,
+.cdc-account-table-wrap {
+  overflow: auto;
+  border-top: 1px solid var(--pdo-border);
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-ranking-table,
+.cdc-account-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cdc-ranking-table th,
+.cdc-ranking-table td,
+.cdc-account-table th,
+.cdc-account-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--pdo-border);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.cdc-ranking-table thead th,
+.cdc-account-table thead th {
+  color: var(--pdo-text-muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.025em;
+  background: #f8fafc;
+}
+
+.cdc-ranking-table tbody th,
+.cdc-account-table tbody th {
+  max-width: 390px;
+  font-weight: 750;
+}
+
+.cdc-ranking-table tbody tr:hover,
+.cdc-account-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.cdc-ranking-bar {
+  width: min(260px, 100%);
+  height: 5px;
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.cdc-ranking-bar > span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #0f766e;
+}
+
+.cdc-ranking-bar > span.is-negative {
+  margin-left: auto;
+  background: #be123c;
+}
+
+.cdc-money {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cdc-trend-narrative {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--pdo-primary);
+  background: #f0f9ff;
+  font-weight: 750;
+}
+
+.cdc-trend-primary-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.cdc-comparison-multiselect {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  color: var(--pdo-text-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.cdc-comparison-trigger {
+  min-height: 42px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--pdo-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cdc-comparison-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  left: 0;
+  width: max(100%, 280px);
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  background: #fff;
+  color: var(--pdo-text);
+}
+
+.cdc-comparison-actions {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-comparison-actions button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--pdo-primary);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.cdc-comparison-options {
+  max-height: 230px;
+  overflow-y: auto;
+  padding-top: 6px;
+}
+
+.cdc-comparison-options label {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border-radius: 5px;
+  color: var(--pdo-text);
+  cursor: pointer;
+}
+
+.cdc-comparison-options label:hover {
+  background: #f0f9ff;
+}
+
+.cdc-comparison-options input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pdo-primary);
+}
+
+.cdc-filter-panel {
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.cdc-filter-panel > summary {
+  width: auto;
+  padding: 12px 14px;
+  list-style-position: inside;
+}
+
+.cdc-filter-count {
+  min-width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--pdo-primary);
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.cdc-filter-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.cdc-filter-panel .cdc-text-action {
+  margin: 0 14px 12px;
+}
+
+.cdc-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cdc-filter-chips button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #7dd3fc;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #075985;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.cdc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.cdc-focused-chart-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.cdc-focused-chart {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  min-height: 390px;
+}
+
+.cdc-activity-bar {
+  fill: #0284c7;
+  cursor: pointer;
+}
+
+.cdc-activity-bar.is-negative {
+  fill: #be123c;
+}
+
+.cdc-activity-bar:focus,
+.cdc-trend-focus-point:focus {
+  outline: none;
+  filter: drop-shadow(0 0 4px #0f172a);
+}
+
+.cdc-trend-focus-point {
+  opacity: 0.4;
+  cursor: pointer;
+}
+
+.cdc-trend-focus-point:hover,
+.cdc-trend-focus-point:focus {
+  opacity: 1;
+}
+
+.cdc-chart-series {
+  transition: opacity 120ms ease;
+}
+
+.cdc-chart-series.is-dimmed {
+  opacity: 0.28;
+}
+
+.cdc-chart-series.is-highlighted .cdc-trend-line {
+  stroke-width: 7;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.3));
+}
+
+.cdc-chart-series.is-highlighted .cdc-trend-focus-point {
+  r: 6px;
+  opacity: 1;
+}
+
+.cdc-chart-series.is-highlighted .cdc-activity-bar {
+  stroke: #0f172a;
+  stroke-width: 2;
+}
+
+.cdc-chart-hit-target {
+  fill: transparent;
+  cursor: crosshair;
+  pointer-events: all;
+}
+
+.cdc-trend-year-label.is-highlighted {
+  font-weight: 900;
+}
+
+.cdc-focused-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdc-focused-legend button {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--pdo-text);
+  cursor: pointer;
+}
+
+.cdc-focused-legend button > span {
+  width: 20px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.cdc-focused-legend button[aria-pressed="true"] {
+  border-color: var(--pdo-primary);
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.14);
+}
+
+.cdc-focused-legend button.is-dimmed {
+  opacity: 0.5;
+}
+
+.cdc-focused-legend .is-primary {
+  background: var(--series-color, #075985);
+}
+
+.cdc-focused-legend .is-comparison {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--series-color, #9f1239) 0 7px,
+    transparent 7px 11px
+  );
+}
+
+.cdc-focused-legend .is-context {
+  background: #64748b;
+}
+
+.cdc-trend-tooltip ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cdc-trend-tooltip li.is-highlighted {
+  color: var(--pdo-primary);
+  font-weight: 800;
+}
+
+.cdc-account-filter-summary {
+  color: var(--pdo-text-muted);
+  font-size: 0.86rem;
+}
+
+.cdc-account-table tbody th small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--pdo-text-subtle);
+  font-size: 0.74rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cdc-drawer-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.cdc-account-drawer {
+  width: min(520px, 100vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  background: #fff;
+  box-shadow: -14px 0 36px rgba(15, 23, 42, 0.2);
+}
+
+.cdc-account-drawer-header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.cdc-account-drawer-header span {
+  color: var(--pdo-text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.cdc-account-drawer h2 {
+  margin: 4px 0 0;
+  font-size: 1.45rem;
+}
+
+.cdc-drawer-close {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid var(--pdo-border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--pdo-text);
+  font-size: 1.7rem;
+  cursor: pointer;
+}
+
+.cdc-account-official-name {
+  margin: 18px 0 6px;
+  color: var(--pdo-text-muted);
+}
+
+.cdc-account-symbol {
+  margin: 0 0 20px;
+}
+
+.cdc-account-drawer-values {
+  display: grid;
+  margin: 0;
+}
+
+.cdc-account-drawer-values > div {
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.cdc-account-drawer-values dt {
+  color: var(--pdo-text-muted);
+}
+
+.cdc-account-drawer-values dd {
+  margin: 0;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cdc-account-trend-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--pdo-border);
+}
+
+.cdc-account-trend-preview h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.cdc-account-trend-preview p {
+  margin: 4px 0 0;
+  color: var(--pdo-text-muted);
+  font-size: 0.82rem;
+}
+
+.cdc-account-trend-preview > strong {
+  color: var(--pdo-text);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cdc-account-trend-preview svg,
+.cdc-account-trend-preview details {
+  grid-column: 1 / -1;
+}
+
+.cdc-account-trend-preview svg {
+  width: 100%;
+  overflow: visible;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.cdc-account-trend-preview svg text {
+  fill: var(--pdo-text-muted);
+  font-size: 0.68rem;
+}
+
+.cdc-account-trend-zero {
+  stroke: #94a3b8;
+  stroke-width: 1;
+}
+
+.cdc-account-trend-line {
+  fill: none;
+  stroke: #075985;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cdc-account-trend-preview circle {
+  fill: #fff;
+  stroke: #075985;
+  stroke-width: 2;
+}
+
+.cdc-account-trend-preview summary {
+  color: var(--pdo-link);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cdc-account-trend-table-wrap {
+  max-height: 230px;
+  margin-top: 10px;
+  overflow: auto;
+}
+
+.cdc-account-trend-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.cdc-account-trend-table-wrap th,
+.cdc-account-trend-table-wrap td {
+  padding: 7px 5px;
+  border-bottom: 1px solid var(--pdo-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.cdc-account-trend-table-wrap td {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cdc-account-drawer-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.cdc-account-drawer-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdc-funding-button.is-secondary {
+  border-color: var(--pdo-border);
+  background: #fff;
+  color: var(--pdo-link);
+}
+
+.cdc-account-drawer-actions p {
+  margin: 0;
+  color: var(--pdo-text-muted);
+  font-size: 0.84rem;
+}
+
+.cdc-funding-about {
+  padding: 14px 16px;
+  border: 0;
+  border-top: 1px solid var(--pdo-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.cdc-funding-about summary {
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 1000px) {
+  .cdc-redesign-header {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .cdc-redesign-header-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .cdc-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cdc-section-heading-with-controls {
+    display: grid;
+  }
+
+  .cdc-ranking-controls,
+  .cdc-account-table-controls {
+    justify-content: flex-start;
+  }
+
+  .cdc-trend-primary-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cdc-filter-panel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cdc-account-table th:nth-child(6),
+  .cdc-account-table td:nth-child(6),
+  .cdc-account-table th:nth-child(8),
+  .cdc-account-table td:nth-child(8) {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .cdc-funding-main {
+    width: min(100vw - 20px, 1240px);
+    margin-top: 14px;
+    gap: 18px;
+  }
+
+  .cdc-redesign-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+  }
+
+  .cdc-redesign-header-actions label {
+    grid-column: 1 / -1;
+  }
+
+  .cdc-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .cdc-summary-metric {
+    min-height: 112px;
+    padding: 13px;
+  }
+
+  .cdc-summary-metric strong {
+    font-size: 1.45rem;
+  }
+
+  .cdc-diverging-axis {
+    display: none;
+  }
+
+  .cdc-diverging-row {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 8px;
+  }
+
+  .cdc-diverging-label {
+    grid-column: 1 / -1;
+  }
+
+  .cdc-diverging-track {
+    min-width: 0;
+  }
+
+  .cdc-ranking-controls,
+  .cdc-account-table-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .cdc-ranking-controls .cdc-checkbox-control,
+  .cdc-account-table-controls label:first-child,
+  .cdc-account-table-controls .cdc-funding-button {
+    grid-column: 1 / -1;
+  }
+
+  .cdc-ranking-table th:nth-child(3),
+  .cdc-ranking-table td:nth-child(3),
+  .cdc-ranking-table th:nth-child(5),
+  .cdc-ranking-table td:nth-child(5),
+  .cdc-ranking-table th:nth-child(6),
+  .cdc-ranking-table td:nth-child(6) {
+    display: none;
+  }
+
+  .cdc-trend-primary-controls,
+  .cdc-filter-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cdc-comparison-popover {
+    width: 100%;
+    max-width: calc(100vw - 40px);
+  }
+
+  .cdc-focused-chart {
+    min-width: 700px;
+  }
+
+  .cdc-account-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .cdc-account-table,
+  .cdc-account-table tbody,
+  .cdc-account-table tr,
+  .cdc-account-table th,
+  .cdc-account-table td {
+    display: block;
+  }
+
+  .cdc-account-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .cdc-account-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+    margin-bottom: 10px;
+    padding: 14px;
+    border: 1px solid var(--pdo-border);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .cdc-account-table tbody th {
+    grid-column: 1 / -1;
+    max-width: none;
+    padding: 0 0 5px;
+    border: 0;
+  }
+
+  .cdc-account-table tbody td {
+    padding: 0;
+    border: 0;
+  }
+
+  .cdc-account-table tbody td:nth-child(2) {
+    color: var(--pdo-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .cdc-account-table tbody td:nth-child(3),
+  .cdc-account-table tbody td:nth-child(4),
+  .cdc-account-table tbody td:nth-child(5),
+  .cdc-account-table tbody td:nth-child(6),
+  .cdc-account-table tbody td:nth-child(8) {
+    display: none;
+  }
+
+  .cdc-account-table tbody td:nth-child(7)::before {
+    content: "Total obligations";
+    display: block;
+    color: var(--pdo-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .cdc-account-table tbody td:nth-child(9) {
+    grid-column: 1 / -1;
+  }
+
+  .cdc-account-drawer {
+    width: 100vw;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .cdc-summary-grid {
+    grid-template-columns: 1fr;
   }
 }

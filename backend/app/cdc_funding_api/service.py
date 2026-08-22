@@ -20,8 +20,23 @@ from app.cdc_funding_api.schemas import (
     CdcFundingOverviewClassification,
     CdcFundingOverviewResponse,
     CdcFundingOverviewTotals,
+    CdcFundingObligationTrendPoint,
+    CdcFundingObligationTrendSeries,
+    CdcFundingObligationTrendsResponse,
+    CdcFundingQuarterlyTrendsResponse,
     CdcFundingReconciliation,
     CdcFundingScope,
+    CdcFundingTrendAccountOption,
+    CdcFundingTrendAccountsResponse,
+    CdcFundingTrendAwardType,
+    CdcFundingTrendEmergencyStatus,
+    CdcFundingTrendFilters,
+    CdcFundingTrendMeasure,
+    CdcFundingTrendPeriod,
+    CdcFundingTrendPoint,
+    CdcFundingTrendReconciliation,
+    CdcFundingTrendSeries,
+    CdcFundingTrendView,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,6 +51,34 @@ API_COMBINATIONS = [
     ("NonEmergency", "Grant", "nonemergency", "grant", "Nonemergency Grants"),
     ("NonEmergency", "Contract", "nonemergency", "contract", "Nonemergency Contracts"),
 ]
+
+FISCAL_MONTHS = (
+    "Oct",
+    "Nov",
+    "Dec",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+)
+SOURCE_PERIOD_MONTH_NUMBERS = {
+    "October-November (combined P01/P02 submission)": 2,
+    "December": 3,
+    "January": 4,
+    "February": 5,
+    "March": 6,
+    "April": 7,
+    "May": 8,
+    "June": 9,
+    "July": 10,
+    "August": 11,
+    "September": 12,
+}
 
 
 class CdcFundingApiError(RuntimeError):
@@ -103,6 +146,20 @@ def _scope_validation_error(message: str) -> HTTPException:
         detail={
             "code": "cdc_funding_scope_not_supported",
             "message": message,
+        },
+    )
+
+
+def _trend_validation_error(code: str, message: str) -> HTTPException:
+    return HTTPException(status_code=422, detail={"code": code, "message": message})
+
+
+def _trend_account_not_found(symbol: str) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail={
+            "code": "cdc_funding_account_not_found",
+            "message": f'Federal account symbol "{symbol}" is not available in CDC funding trend data.',
         },
     )
 
@@ -304,6 +361,456 @@ def get_accounts(
             overview_total=_money_string(overview_total),
             difference=_money_string(difference),
         ),
+    )
+
+
+def get_quarterly_trends(
+    db: Session,
+    *,
+    scope: CdcFundingScope = CdcFundingScope.all_accounts,
+    measure: CdcFundingTrendMeasure = CdcFundingTrendMeasure.obligations,
+    view: CdcFundingTrendView = CdcFundingTrendView.total,
+    federal_account_symbol: str | None = None,
+    emergency_status: CdcFundingTrendEmergencyStatus = CdcFundingTrendEmergencyStatus.all,
+    award_type: CdcFundingTrendAwardType = CdcFundingTrendAwardType.all,
+) -> CdcFundingQuarterlyTrendsResponse:
+    if scope != CdcFundingScope.all_accounts:
+        raise _scope_validation_error("Quarterly trends support only scope=all_accounts.")
+    symbol = (federal_account_symbol or "").strip() or None
+    if view == CdcFundingTrendView.federal_account and symbol is None:
+        raise _trend_validation_error(
+            "cdc_funding_account_required",
+            "federal_account_symbol is required when view=federal_account.",
+        )
+    if view == CdcFundingTrendView.total and symbol is not None:
+        raise _trend_validation_error(
+            "cdc_funding_account_not_allowed",
+            "federal_account_symbol is not accepted when view=total.",
+        )
+    if symbol is not None and not repository.trend_account_exists(db, symbol):
+        raise _trend_account_not_found(symbol)
+
+    coverage_rows = repository.fetch_trend_quarter_coverage(db)
+    coverage: dict[int, set[str]] = {}
+    for row in coverage_rows:
+        coverage.setdefault(int(row["fiscal_year"]), set()).add(str(row["fiscal_quarter"]))
+    years = sorted(coverage)
+    quarterly_rows = repository.fetch_quarterly_trend_rows(
+        db,
+        measure=measure.value,
+        federal_account_symbol=symbol,
+        emergency_status=emergency_status.value,
+        award_type=award_type.value,
+    )
+    annual_rows = repository.fetch_annual_trend_rows(
+        db,
+        measure=measure.value,
+        federal_account_symbol=symbol,
+        emergency_status=emergency_status.value,
+        award_type=award_type.value,
+    )
+    quarterly = {
+        (int(row["fiscal_year"]), str(row["fiscal_quarter"])): row
+        for row in quarterly_rows
+    }
+    annual = {int(row["fiscal_year"]): row for row in annual_rows}
+    quarter_labels = ("Q1", "Q2", "Q3", "Q4")
+    series: list[CdcFundingTrendSeries] = []
+
+    for year in years:
+        available_quarters = coverage[year]
+        latest_number = max(
+            (index for index, quarter in enumerate(quarter_labels, start=1) if quarter in available_quarters),
+            default=0,
+        )
+        cumulative = ZERO_MONEY
+        prior_outlay = ZERO_MONEY
+        has_activity = False
+        points: list[CdcFundingTrendPoint] = []
+        for quarter_number, quarter in enumerate(quarter_labels, start=1):
+            if quarter not in available_quarters:
+                points.append(
+                    CdcFundingTrendPoint(
+                        quarter=quarter,
+                        quarter_number=quarter_number,
+                        available=False,
+                        quarter_amount=None,
+                        cumulative_amount=None,
+                    )
+                )
+                continue
+            row = quarterly.get((year, quarter))
+            if row and int(row.get("matched_row_count") or 0) != int(row.get("numeric_amount_rows") or 0):
+                logger.error(
+                    "CDC funding trend source completeness failed fiscal_year=%s quarter=%s measure=%s "
+                    "view=%s account=%s emergency=%s award_type=%s matched_rows=%s numeric_rows=%s",
+                    year,
+                    quarter,
+                    measure.value,
+                    view.value,
+                    symbol,
+                    emergency_status.value,
+                    award_type.value,
+                    row.get("matched_row_count"),
+                    row.get("numeric_amount_rows"),
+                )
+                raise _internal_error("CDC funding trend source values are incomplete.")
+            amount = _money(row.get("amount") if row else None)
+            if measure == CdcFundingTrendMeasure.obligations:
+                quarter_amount = amount
+                cumulative = (cumulative + quarter_amount).quantize(MONEY_QUANT)
+            else:
+                cumulative = amount
+                quarter_amount = (cumulative - prior_outlay).quantize(MONEY_QUANT)
+                prior_outlay = cumulative
+            has_activity = has_activity or quarter_amount != ZERO_MONEY or cumulative != ZERO_MONEY
+            points.append(
+                CdcFundingTrendPoint(
+                    quarter=quarter,
+                    quarter_number=quarter_number,
+                    available=True,
+                    quarter_amount=_money_string(quarter_amount),
+                    cumulative_amount=_money_string(cumulative),
+                )
+            )
+
+        annual_row = annual.get(year)
+        if annual_row and int(annual_row.get("matched_row_count") or 0) != int(
+            annual_row.get("numeric_amount_rows") or 0
+        ):
+            raise _internal_error("CDC funding annual trend source values are incomplete.")
+        expected = _money(annual_row.get("amount") if annual_row else None)
+        difference = (cumulative - expected).quantize(MONEY_QUANT)
+        if difference != ZERO_MONEY:
+            logger.error(
+                "CDC funding trend reconciliation failed fiscal_year=%s measure=%s view=%s account=%s "
+                "emergency=%s award_type=%s expected=%s actual=%s difference=%s",
+                year,
+                measure.value,
+                view.value,
+                symbol,
+                emergency_status.value,
+                award_type.value,
+                expected,
+                cumulative,
+                difference,
+            )
+            raise _internal_error("CDC funding quarterly trend reconciliation failed.")
+        latest_quarter = quarter_labels[latest_number - 1] if latest_number else None
+        series.append(
+            CdcFundingTrendSeries(
+                fiscal_year=year,
+                available_through_quarter=latest_quarter,
+                is_complete=latest_number == 4,
+                latest_submission_period=f"FY{year}P{latest_number * 3:02d}" if latest_number else None,
+                has_activity=has_activity,
+                points=points,
+                reconciliation=CdcFundingTrendReconciliation(
+                    latest_available_cumulative=_money_string(cumulative),
+                    annual_or_current_ytd_total=_money_string(expected),
+                    difference=_money_string(difference),
+                ),
+            )
+        )
+
+    return CdcFundingQuarterlyTrendsResponse(
+        scope=scope,
+        measure=measure,
+        view=view,
+        filters=CdcFundingTrendFilters(
+            federal_account_symbol=symbol,
+            emergency_status=emergency_status,
+            award_type=award_type,
+        ),
+        available_fiscal_years=years,
+        series=series,
+    )
+
+
+def get_trend_accounts(
+    db: Session,
+    *,
+    scope: CdcFundingScope = CdcFundingScope.all_accounts,
+) -> CdcFundingTrendAccountsResponse:
+    if scope != CdcFundingScope.all_accounts:
+        raise _scope_validation_error("Quarterly trend accounts support only scope=all_accounts.")
+    return CdcFundingTrendAccountsResponse(
+        scope=scope,
+        accounts=[
+            CdcFundingTrendAccountOption(
+                federal_account_symbol=str(row["federal_account_symbol"]),
+                federal_account_name=row.get("federal_account_name"),
+                first_fiscal_year=int(row["first_fiscal_year"]),
+                last_fiscal_year=int(row["last_fiscal_year"]),
+            )
+            for row in repository.fetch_trend_account_options(db)
+        ],
+    )
+
+
+def _monthly_coverage(
+    rows: list[dict[str, Any]],
+) -> dict[int, dict[int, dict[str, Any]]]:
+    coverage: dict[int, dict[int, dict[str, Any]]] = {}
+    for row in rows:
+        year = int(row["fiscal_year"])
+        period_label = str(row.get("period_label") or "").strip()
+        month_number = SOURCE_PERIOD_MONTH_NUMBERS.get(period_label)
+        submission_period = str(row.get("submission_period") or "").strip()
+        fiscal_quarter = str(row.get("fiscal_quarter") or "").strip()
+        expected_submission = (
+            f"FY{year}P{month_number:02d}" if month_number is not None else None
+        )
+        expected_quarter = (
+            f"Q{((month_number - 1) // 3) + 1}"
+            if month_number is not None
+            else None
+        )
+        if (
+            month_number is None
+            or submission_period != expected_submission
+            or fiscal_quarter != expected_quarter
+        ):
+            logger.error(
+                "CDC funding monthly period mapping failed fiscal_year=%s submission_period=%s "
+                "period_label=%s fiscal_quarter=%s",
+                year,
+                submission_period,
+                period_label,
+                fiscal_quarter,
+            )
+            raise _internal_error("CDC funding monthly period mapping is inconsistent.")
+        if month_number in coverage.setdefault(year, {}):
+            raise _internal_error("CDC funding monthly period coverage contains duplicates.")
+        coverage[year][month_number] = dict(row)
+    return coverage
+
+
+def get_obligation_trends(
+    db: Session,
+    *,
+    scope: CdcFundingScope = CdcFundingScope.all_accounts,
+    period: CdcFundingTrendPeriod = CdcFundingTrendPeriod.month,
+    view: CdcFundingTrendView = CdcFundingTrendView.total,
+    federal_account_symbol: str | None = None,
+    emergency_status: CdcFundingTrendEmergencyStatus = CdcFundingTrendEmergencyStatus.all,
+    award_type: CdcFundingTrendAwardType = CdcFundingTrendAwardType.all,
+    exclude_deobligations: bool = False,
+    measure: str | None = None,
+) -> CdcFundingObligationTrendsResponse:
+    if measure is not None:
+        raise _trend_validation_error(
+            "cdc_funding_measure_not_supported",
+            "The obligation-trends endpoint does not accept measure; it always returns obligations.",
+        )
+    if scope != CdcFundingScope.all_accounts:
+        raise _scope_validation_error("Obligation trends support only scope=all_accounts.")
+    symbol = (federal_account_symbol or "").strip() or None
+    if view == CdcFundingTrendView.federal_account and symbol is None:
+        raise _trend_validation_error(
+            "cdc_funding_account_required",
+            "federal_account_symbol is required when view=federal_account.",
+        )
+    if view == CdcFundingTrendView.total and symbol is not None:
+        raise _trend_validation_error(
+            "cdc_funding_account_not_allowed",
+            "federal_account_symbol is not accepted when view=total.",
+        )
+    if symbol is not None and not repository.trend_account_exists(db, symbol):
+        raise _trend_account_not_found(symbol)
+
+    monthly_coverage = _monthly_coverage(repository.fetch_trend_month_coverage(db))
+    years = sorted(monthly_coverage)
+    if period == CdcFundingTrendPeriod.month:
+        period_labels = FISCAL_MONTHS
+        coverage = {
+            year: set(year_coverage)
+            for year, year_coverage in monthly_coverage.items()
+        }
+        if exclude_deobligations:
+            source_rows = repository.fetch_positive_obligation_trend_rows(
+                db,
+                period=period.value,
+                federal_account_symbol=symbol,
+                emergency_status=emergency_status.value,
+                award_type=award_type.value,
+            )
+        else:
+            source_rows = repository.fetch_monthly_obligation_trend_rows(
+                db,
+                federal_account_symbol=symbol,
+                emergency_status=emergency_status.value,
+                award_type=award_type.value,
+            )
+        source_by_period: dict[tuple[int, int], dict[str, Any]] = {}
+        for row in source_rows:
+            source_label = str(row.get("period_label") or "").strip()
+            month_number = SOURCE_PERIOD_MONTH_NUMBERS.get(source_label)
+            if month_number is None:
+                raise _internal_error("CDC funding monthly period mapping is inconsistent.")
+            source_by_period[(int(row["fiscal_year"]), month_number)] = row
+    else:
+        period_labels = ("Q1", "Q2", "Q3", "Q4")
+        quarter_rows = repository.fetch_trend_quarter_coverage(db)
+        coverage: dict[int, set[int]] = {year: set() for year in years}
+        for row in quarter_rows:
+            quarter = str(row["fiscal_quarter"])
+            if quarter not in period_labels:
+                raise _internal_error("CDC funding quarterly period mapping is inconsistent.")
+            coverage.setdefault(int(row["fiscal_year"]), set()).add(period_labels.index(quarter) + 1)
+        if exclude_deobligations:
+            source_rows = repository.fetch_positive_obligation_trend_rows(
+                db,
+                period=period.value,
+                federal_account_symbol=symbol,
+                emergency_status=emergency_status.value,
+                award_type=award_type.value,
+            )
+        else:
+            source_rows = repository.fetch_quarterly_trend_rows(
+                db,
+                measure="obligations",
+                federal_account_symbol=symbol,
+                emergency_status=emergency_status.value,
+                award_type=award_type.value,
+            )
+        source_by_period = {
+            (
+                int(row["fiscal_year"]),
+                period_labels.index(str(row["fiscal_quarter"])) + 1,
+            ): row
+            for row in source_rows
+        }
+
+    if exclude_deobligations:
+        annual_rows = repository.fetch_positive_annual_obligation_trend_rows(
+            db,
+            federal_account_symbol=symbol,
+            emergency_status=emergency_status.value,
+            award_type=award_type.value,
+        )
+    else:
+        annual_rows = repository.fetch_annual_trend_rows(
+            db,
+            measure="obligations",
+            federal_account_symbol=symbol,
+            emergency_status=emergency_status.value,
+            award_type=award_type.value,
+        )
+    annual = {int(row["fiscal_year"]): row for row in annual_rows}
+    series: list[CdcFundingObligationTrendSeries] = []
+    for year in years:
+        available_periods = coverage.get(year, set())
+        latest_number = max(available_periods, default=0)
+        cumulative = ZERO_MONEY
+        has_activity = False
+        points: list[CdcFundingObligationTrendPoint] = []
+        for period_number, period_label in enumerate(period_labels, start=1):
+            if period_number not in available_periods:
+                points.append(
+                    CdcFundingObligationTrendPoint(
+                        period=period_label,
+                        period_type=period,
+                        period_number=period_number,
+                        available=False,
+                        period_amount=None,
+                        cumulative_amount=None,
+                    )
+                )
+                continue
+            row = source_by_period.get((year, period_number))
+            if row and int(row.get("matched_row_count") or 0) != int(
+                row.get("numeric_amount_rows") or 0
+            ):
+                raise _internal_error("CDC funding obligation trend source values are incomplete.")
+            period_amount = _money(row.get("amount") if row else None)
+            cumulative = (cumulative + period_amount).quantize(MONEY_QUANT)
+            has_activity = has_activity or period_amount != ZERO_MONEY
+            coverage_row = (
+                monthly_coverage[year].get(period_number)
+                if period == CdcFundingTrendPeriod.month
+                else None
+            )
+            points.append(
+                CdcFundingObligationTrendPoint(
+                    period=period_label,
+                    period_type=period,
+                    period_number=period_number,
+                    available=True,
+                    period_amount=_money_string(period_amount),
+                    cumulative_amount=_money_string(cumulative),
+                    submission_period=coverage_row.get("submission_period") if coverage_row else None,
+                    source_period_label=coverage_row.get("period_label") if coverage_row else None,
+                )
+            )
+
+        annual_row = annual.get(year)
+        if annual_row and int(annual_row.get("matched_row_count") or 0) != int(
+            annual_row.get("numeric_amount_rows") or 0
+        ):
+            raise _internal_error("CDC funding annual trend source values are incomplete.")
+        expected = _money(annual_row.get("amount") if annual_row else None)
+        difference = (cumulative - expected).quantize(MONEY_QUANT)
+        if difference != ZERO_MONEY:
+            logger.error(
+                "CDC funding obligation trend reconciliation failed fiscal_year=%s period=%s view=%s "
+                "account=%s emergency=%s award_type=%s expected=%s actual=%s difference=%s",
+                year,
+                period.value,
+                view.value,
+                symbol,
+                emergency_status.value,
+                award_type.value,
+                expected,
+                cumulative,
+                difference,
+            )
+            raise _internal_error("CDC funding obligation trend reconciliation failed.")
+        latest_month_row = monthly_coverage[year].get(max(monthly_coverage[year], default=0))
+        latest_submission = (
+            latest_month_row.get("submission_period")
+            if period == CdcFundingTrendPeriod.month and latest_month_row
+            else f"FY{year}P{latest_number * 3:02d}"
+            if latest_number
+            else None
+        )
+        latest_label = period_labels[latest_number - 1] if latest_number else None
+        series.append(
+            CdcFundingObligationTrendSeries(
+                fiscal_year=year,
+                available_through_period=latest_label,
+                available_through_month=(
+                    FISCAL_MONTHS[max(monthly_coverage[year]) - 1]
+                    if period == CdcFundingTrendPeriod.month
+                    else None
+                ),
+                available_through_quarter=(
+                    latest_label if period == CdcFundingTrendPeriod.quarter else None
+                ),
+                is_complete=latest_number == len(period_labels),
+                latest_submission_period=latest_submission,
+                has_activity=has_activity,
+                points=points,
+                reconciliation=CdcFundingTrendReconciliation(
+                    latest_available_cumulative=_money_string(cumulative),
+                    annual_or_current_ytd_total=_money_string(expected),
+                    difference=_money_string(difference),
+                ),
+            )
+        )
+
+    return CdcFundingObligationTrendsResponse(
+        scope=scope,
+        period=period,
+        view=view,
+        filters=CdcFundingTrendFilters(
+            federal_account_symbol=symbol,
+            emergency_status=emergency_status,
+            award_type=award_type,
+            exclude_deobligations=exclude_deobligations,
+        ),
+        available_fiscal_years=years,
+        series=series,
     )
 
 

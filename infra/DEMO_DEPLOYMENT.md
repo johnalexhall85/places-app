@@ -2,6 +2,12 @@
 
 This repository keeps the backend private on localhost and exposes only Nginx on port 80.
 
+> **Important:** this temporary deployment is HTTP-only. Share and paste the
+> complete URL beginning with `http://`. Private-browsing and first-visit
+> browser modes may try HTTPS first; `https://<server-ip>/` will time out
+> because this deployment does not open port 443 or install a TLS certificate.
+> A domain and valid certificate are required for a durable HTTPS public URL.
+
 ## Quick toggle script (recommended)
 
 ```bash
@@ -11,6 +17,8 @@ cd /home/john/places-app
 
 Script behavior:
 - Brings the demo stack up and opens `80/tcp` in UFW while running.
+- Verifies that the anonymous demo-access session route responds through the
+  public HTTP URL before reporting the deployment as ready.
 - Blocks in foreground until `Ctrl+C`.
 - On exit, removes all UFW `ALLOW IN` rules for `80/tcp`.
 

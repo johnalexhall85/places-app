@@ -150,6 +150,7 @@ print_status() {
 
 preflight_up() {
   require_cmd docker
+  require_cmd curl
   require_cmd npm
   require_cmd rsync
   require_cmd ufw
@@ -226,10 +227,20 @@ up_mode() {
     host_ip="<server-ip>"
   fi
 
+  if [[ "$host_ip" != "<server-ip>" ]]; then
+    log "Verifying the anonymous demo-access route..."
+    curl --fail --silent --show-error --max-time 10 \
+      "http://$host_ip/api/demo-access/session" >/dev/null \
+      || fail "The public HTTP demo-access route did not respond."
+  fi
+
   echo
   log "Demo is publicly available while this script is running."
   echo "  Frontend: http://$host_ip/"
   echo "  API:      http://$host_ip/api/health"
+  echo
+  warn "This temporary deployment is HTTP-only. Copy the complete URL beginning with http://."
+  warn "HTTPS and browser HTTPS-only upgrades will time out because port 443/TLS is not configured."
   echo
   log "Press Ctrl+C to close public access and exit."
 

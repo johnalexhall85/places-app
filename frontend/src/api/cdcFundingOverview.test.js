@@ -5,7 +5,10 @@ import {
   fetchCdcFundingAccounts,
   fetchCdcFundingCategories,
   fetchCdcFundingFiscalYears,
+  fetchCdcFundingObligationTrends,
   fetchCdcFundingOverview,
+  fetchCdcFundingQuarterlyTrends,
+  fetchCdcFundingTrendAccounts,
 } from "./cdcFundingOverview";
 
 describe("cdcFundingOverview API client", () => {
@@ -64,8 +67,68 @@ describe("cdcFundingOverview API client", () => {
         scope: CDC_FUNDING_PROFILE_SCOPE,
       });
 
-      expect(String(fetchMock.mock.calls[0][0]))
-        .toBe("https://example.test/api/cdc-funding/v1/categories?fiscal_year=2026&scope=cdc_funding_profiles");
+      expect(String(fetchMock.mock.calls[0][0])).toBe(
+        "https://example.test/api/cdc-funding/v1/categories?fiscal_year=2026&scope=cdc_funding_profiles",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("serializes obligations-only trend filters and cross-year account options", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    });
+
+    try {
+      await fetchCdcFundingObligationTrends({
+        apiBase: "https://example.test/api",
+        scope: CDC_FUNDING_SCOPE_ALL_ACCOUNTS,
+        period: "month",
+        view: "federal_account",
+        federalAccountSymbol: "075-0943",
+        emergencyStatus: "emergency",
+        awardType: "grant",
+        excludeDeobligations: true,
+      });
+      await fetchCdcFundingTrendAccounts({
+        apiBase: "https://example.test/api",
+        scope: CDC_FUNDING_SCOPE_ALL_ACCOUNTS,
+      });
+
+      expect(String(globalThis.fetch.mock.calls[0][0])).toBe(
+        "https://example.test/api/cdc-funding/v1/obligation-trends" +
+          "?scope=all_accounts&period=month&view=federal_account" +
+          "&federal_account_symbol=075-0943&emergency_status=emergency&award_type=grant" +
+          "&exclude_deobligations=true",
+      );
+      expect(String(globalThis.fetch.mock.calls[1][0])).toBe(
+        "https://example.test/api/cdc-funding/v1/quarterly-trends/accounts?scope=all_accounts",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps the legacy quarterly trend client available for compatibility", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    });
+
+    try {
+      await fetchCdcFundingQuarterlyTrends({
+        apiBase: "https://example.test/api",
+        scope: CDC_FUNDING_SCOPE_ALL_ACCOUNTS,
+        measure: "outlays",
+      });
+
+      expect(String(globalThis.fetch.mock.calls[0][0])).toBe(
+        "https://example.test/api/cdc-funding/v1/quarterly-trends?scope=all_accounts&measure=outlays",
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -81,9 +144,15 @@ describe("cdcFundingOverview API client", () => {
 
     try {
       await fetchCdcFundingFiscalYears({ apiBase: "https://example.test/api" });
-      await fetchCdcFundingOverview(2026, { apiBase: "https://example.test/api" });
-      await fetchCdcFundingAccounts(2026, { apiBase: "https://example.test/api" });
-      await fetchCdcFundingCategories(2026, { apiBase: "https://example.test/api" });
+      await fetchCdcFundingOverview(2026, {
+        apiBase: "https://example.test/api",
+      });
+      await fetchCdcFundingAccounts(2026, {
+        apiBase: "https://example.test/api",
+      });
+      await fetchCdcFundingCategories(2026, {
+        apiBase: "https://example.test/api",
+      });
 
       const urls = fetchMock.mock.calls.map((call) => String(call[0]));
       expect(urls).toEqual([
@@ -101,15 +170,21 @@ describe("cdcFundingOverview API client", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: vi.fn().mockResolvedValue(JSON.stringify({
-        detail: { message: "CDC funding data are not available for fiscal year 1999." },
-      })),
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          detail: {
+            message: "CDC funding data are not available for fiscal year 1999.",
+          },
+        }),
+      ),
     });
 
     try {
-      await expect(fetchCdcFundingOverview(1999, { apiBase: "https://example.test" }))
-        .rejects
-        .toThrow("CDC funding data are not available for fiscal year 1999.");
+      await expect(
+        fetchCdcFundingOverview(1999, { apiBase: "https://example.test" }),
+      ).rejects.toThrow(
+        "CDC funding data are not available for fiscal year 1999.",
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -124,9 +199,9 @@ describe("cdcFundingOverview API client", () => {
     });
 
     try {
-      await expect(fetchCdcFundingFiscalYears({ apiBase: "https://example.test" }))
-        .rejects
-        .toMatchObject({ status: 404, message: "Not Found" });
+      await expect(
+        fetchCdcFundingFiscalYears({ apiBase: "https://example.test" }),
+      ).rejects.toMatchObject({ status: 404, message: "Not Found" });
     } finally {
       globalThis.fetch = originalFetch;
     }

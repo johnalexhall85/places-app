@@ -1,15 +1,22 @@
 # CDC Funding API v1
 
-The CDC Funding API v1 is a read-only annual funding API under:
+The CDC Funding API v1 is a read-only annual and obligation-trend funding API under:
 
 ```text
 /api/cdc-funding/v1
 ```
 
-It is intentionally separate from the existing CDC Funding Map API. All funding values come exclusively from the ingested CDC funding annual account-summary table:
+It is intentionally separate from the existing CDC Funding Map API. Annual values come from:
 
 ```text
 cdc_funding.cdc_funding_account_annual
+```
+
+Monthly and quarterly obligation trends come from:
+
+```text
+cdc_funding.cdc_funding_account_monthly
+cdc_funding.cdc_funding_account_quarterly
 ```
 
 Available fiscal-year metadata is checked against:
@@ -148,8 +155,100 @@ before a successful response is returned.
 The categories endpoint remains available for future CDC Funding Profile analysis, but the standalone `/cdc-funding`
 page does not use it.
 
+## Obligation Trends
+
+```http
+GET /api/cdc-funding/v1/obligation-trends
+```
+
+Supported parameters and defaults are:
+
+```text
+scope=all_accounts
+period=month
+view=total
+emergency_status=all
+award_type=all
+exclude_deobligations=false
+```
+
+`period` accepts `month` or `quarter`; `view` accepts `total` or `federal_account`. Emergency status accepts `all`,
+`emergency`, or `nonemergency`, and award type accepts `all`, `grant`, or `contract`. The endpoint accepts only
+`scope=all_accounts`. `federal_account_symbol` is required for federal-account view and rejected for total view. The
+endpoint is obligations-only and rejects a supplied `measure` parameter.
+
+When `exclude_deobligations=true`, the endpoint reads the signed
+`transaction_obligated_amount` values from `cdc_funding.cdc_funding_awards`,
+retains only source records whose amount is greater than zero, and then
+aggregates those records into monthly, quarterly, annual, and cumulative
+totals. This occurs before any period rollup; it does not clamp already-net
+monthly or quarterly values. The default remains `false`, which preserves the
+existing net-obligation calculation.
+
+Monthly mode reads `transaction_obligated_amount` activity from
+`cdc_funding.cdc_funding_account_monthly`. The source coverage uses these authoritative period mappings:
+
+```text
+FYyyyyP02  October-November (combined P01/P02 submission)  -> Nov
+FYyyyyP03  December                                        -> Dec
+FYyyyyP04  January                                         -> Jan
+FYyyyyP05  February                                        -> Feb
+FYyyyyP06  March                                           -> Mar
+FYyyyyP07  April                                           -> Apr
+FYyyyyP08  May                                             -> May
+FYyyyyP09  June                                            -> Jun
+FYyyyyP10  July                                            -> Jul
+FYyyyyP11  August                                          -> Aug
+FYyyyyP12  September                                       -> Sep
+```
+
+October is returned as unavailable because the loaded source does not provide individual October activity. The
+combined October-November amount is returned once at November with the complete source label; it is never split,
+interpolated, or estimated. The chart still returns fiscal-month slots in Oct–Sep order. FY2021 through FY2025
+currently reach September/P12. FY2026 currently reaches March/P06.
+
+Quarterly mode reads `transaction_obligated_amount` activity from
+`cdc_funding.cdc_funding_account_quarterly` in Q1–Q4 order. In either mode the service applies account, emergency, and
+award-type filters first, then adds available period activity to produce cumulative fiscal-year-to-date obligations.
+Negative obligations and deobligations are retained, so cumulative values can decline.
+They are retained when `exclude_deobligations=false`; in positive-only mode,
+each selected slice and fiscal year uses the same source-record rule.
+
+Every included source row must have a numeric obligation value. A NULL within a requested slice causes an integrity
+error rather than being silently omitted or converted to zero. A globally available period with no matching rows
+under a valid filter is returned as available with `"0.00"` activity and the previous cumulative value. A globally
+unavailable period has `available: false` and NULL amounts, and incomplete series stop at the latest loaded period.
+Global availability is derived independently from active filters.
+
+For every fiscal year, the latest cumulative amount is reconciled with the identically filtered annual/current-YTD
+`transaction_obligated_amount` from `cdc_funding.cdc_funding_account_annual` using exact decimal arithmetic. Complete
+monthly and quarterly totals also reconcile at comparable quarterly boundaries. Money is serialized as fixed
+two-decimal strings.
+
+Cross-year account options are available from:
+
+```http
+GET /api/cdc-funding/v1/quarterly-trends/accounts?scope=all_accounts
+```
+
+The response is the union of federal account symbols across available annual data. Symbols are identity; the display
+name is the most recent nonblank name by fiscal year. Mapped and unmapped accounts are both included.
+
+The `/cdc-funding` trend controls are stored in `trend_period`, `trend_view`, `trend_account`, `trend_emergency`,
+`trend_award_type`, and `trend_include_fy2021` URL parameters. They affect only the obligation chart. FY2021 remains
+in API responses but is hidden from the chart and its Y-axis scale by default unless the annual page is displaying
+FY2021. Selecting a fiscal-year line, point, label, or legend control updates the existing `fiscal_year` state and
+annual content without hiding other comparison years. Legacy `trend_measure` URL parameters are ignored and removed.
+
 The database schema, stored data, and ingestion process are unchanged. No migration, replacement summary table,
 materialized view, source CSV request-time read, or USAspending request-time call is part of this page behavior.
+Stored outlay data remain unchanged, but outlays are intentionally excluded from this trend because the ingested
+historical snapshots do not support valid monthly or quarterly timing analysis.
+
+### Legacy quarterly endpoint
+
+`GET /api/cdc-funding/v1/quarterly-trends` and its account-options route remain available temporarily for backward
+compatibility. The `/cdc-funding` frontend no longer calls that endpoint or requests outlay trends.
 
 ## Error Behavior
 
@@ -172,5 +271,6 @@ Internal reconciliation failures return HTTP `500` with `cdc_funding_internal_re
 
 ## Current Scope
 
-This API version is annual only. Monthly, quarterly, geography, recipient, and award-level drilldowns are outside v1.
-The standalone overview page is separate from the geographic CDC Funding Map.
+The API supports annual summaries and the read-only multi-year obligation trend described above. Geography,
+recipient, and award-level drilldowns remain outside v1. The standalone overview page is separate from the geographic
+CDC Funding Map. This feature added no migration and changed neither stored data nor ingestion behavior.

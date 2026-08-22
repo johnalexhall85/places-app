@@ -9,7 +9,15 @@ from app.cdc_funding_api.schemas import (
     CdcFundingCategoriesResponse,
     CdcFundingFiscalYearsResponse,
     CdcFundingOverviewResponse,
+    CdcFundingObligationTrendsResponse,
+    CdcFundingQuarterlyTrendsResponse,
     CdcFundingScope,
+    CdcFundingTrendAccountsResponse,
+    CdcFundingTrendAwardType,
+    CdcFundingTrendEmergencyStatus,
+    CdcFundingTrendMeasure,
+    CdcFundingTrendPeriod,
+    CdcFundingTrendView,
 )
 from app.db import get_db
 
@@ -70,6 +78,85 @@ def get_accounts(
     db: Session = Depends(get_db),
 ) -> CdcFundingAccountsResponse:
     return service.get_accounts(db, fiscal_year=fiscal_year, scope=scope)
+
+
+@router.get(
+    "/obligation-trends",
+    response_model=CdcFundingObligationTrendsResponse,
+    response_model_exclude_none=True,
+    summary="Compare cumulative monthly or quarterly CDC obligations",
+    description=(
+        "Returns obligations only. Monthly mode uses stored fiscal reporting-period activity and defaults "
+        "to month; quarterly mode uses stored quarterly activity. Negative obligations are retained by "
+        "default. Set exclude_deobligations=true to aggregate only positive signed source-record activity "
+        "before period and cumulative rollups."
+    ),
+)
+def get_obligation_trends(
+    scope: CdcFundingScope = Query(default=CdcFundingScope.all_accounts),
+    period: CdcFundingTrendPeriod = Query(default=CdcFundingTrendPeriod.month),
+    view: CdcFundingTrendView = Query(default=CdcFundingTrendView.total),
+    federal_account_symbol: str | None = Query(default=None),
+    emergency_status: CdcFundingTrendEmergencyStatus = Query(default=CdcFundingTrendEmergencyStatus.all),
+    award_type: CdcFundingTrendAwardType = Query(default=CdcFundingTrendAwardType.all),
+    exclude_deobligations: bool = Query(default=False),
+    measure: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> CdcFundingObligationTrendsResponse:
+    return service.get_obligation_trends(
+        db,
+        scope=scope,
+        period=period,
+        view=view,
+        federal_account_symbol=federal_account_symbol,
+        emergency_status=emergency_status,
+        award_type=award_type,
+        exclude_deobligations=exclude_deobligations,
+        measure=measure,
+    )
+
+
+@router.get(
+    "/quarterly-trends",
+    response_model=CdcFundingQuarterlyTrendsResponse,
+    response_model_exclude_none=True,
+    summary="Compare cumulative quarterly CDC funding across fiscal years",
+    description=(
+        "Uses all-account quarterly summaries. Obligations accumulate quarterly activity; outlays use each "
+        "stored fiscal-year-beginning-to-period-end snapshot and derive activity by differencing snapshots."
+    ),
+)
+def get_quarterly_trends(
+    scope: CdcFundingScope = Query(default=CdcFundingScope.all_accounts),
+    measure: CdcFundingTrendMeasure = Query(default=CdcFundingTrendMeasure.obligations),
+    view: CdcFundingTrendView = Query(default=CdcFundingTrendView.total),
+    federal_account_symbol: str | None = Query(default=None),
+    emergency_status: CdcFundingTrendEmergencyStatus = Query(default=CdcFundingTrendEmergencyStatus.all),
+    award_type: CdcFundingTrendAwardType = Query(default=CdcFundingTrendAwardType.all),
+    db: Session = Depends(get_db),
+) -> CdcFundingQuarterlyTrendsResponse:
+    return service.get_quarterly_trends(
+        db,
+        scope=scope,
+        measure=measure,
+        view=view,
+        federal_account_symbol=federal_account_symbol,
+        emergency_status=emergency_status,
+        award_type=award_type,
+    )
+
+
+@router.get(
+    "/quarterly-trends/accounts",
+    response_model=CdcFundingTrendAccountsResponse,
+    response_model_exclude_none=True,
+    summary="List cross-year federal account options for quarterly trends",
+)
+def get_quarterly_trend_accounts(
+    scope: CdcFundingScope = Query(default=CdcFundingScope.all_accounts),
+    db: Session = Depends(get_db),
+) -> CdcFundingTrendAccountsResponse:
+    return service.get_trend_accounts(db, scope=scope)
 
 
 @router.get(

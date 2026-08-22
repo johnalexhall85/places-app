@@ -14,7 +14,7 @@ export function decimalToScaledBigInt(value, scale = MONEY_SCALE) {
   const [wholeRaw, fractionRaw = ""] = unsigned.split(".");
   const whole = wholeRaw || "0";
   const fraction = `${fractionRaw}${"0".repeat(scale)}`.slice(0, scale);
-  const scaled = BigInt(whole) * (10n ** BigInt(scale)) + BigInt(fraction || "0");
+  const scaled = BigInt(whole) * 10n ** BigInt(scale) + BigInt(fraction || "0");
   return negative ? -scaled : scaled;
 }
 
@@ -30,7 +30,9 @@ export function scaledBigIntToDecimalString(value, scale = MONEY_SCALE) {
 
 export function normalizeMoneyString(value) {
   const scaled = decimalToScaledBigInt(value, MONEY_SCALE);
-  return scaled === null ? null : scaledBigIntToDecimalString(scaled, MONEY_SCALE);
+  return scaled === null
+    ? null
+    : scaledBigIntToDecimalString(scaled, MONEY_SCALE);
 }
 
 export function compareMoneyStrings(a, b) {
@@ -63,6 +65,48 @@ export function formatCurrencyFromDecimalString(value) {
   const dollars = absolute / 100n;
   const cents = String(absolute % 100n).padStart(2, "0");
   return `${negative ? "-$" : "$"}${withCommas(dollars)}.${cents}`;
+}
+
+export function formatCompactCurrencyFromDecimalString(value) {
+  const scaled = decimalToScaledBigInt(value, MONEY_SCALE);
+  if (scaled === null) return "Not available";
+  const negative = scaled < 0n;
+  const absolute = negative ? -scaled : scaled;
+  const units = [
+    {
+      threshold: 1_000_000_000_000n,
+      divisor: 100_000_000_000n,
+      suffix: "B",
+      digits: 1,
+    },
+    {
+      threshold: 100_000_000_000n,
+      divisor: 100_000_000_000n,
+      suffix: "B",
+      digits: 2,
+    },
+    {
+      threshold: 1_000_000_000n,
+      divisor: 100_000_000n,
+      suffix: "M",
+      digits: 1,
+    },
+    { threshold: 100_000_000n, divisor: 100_000_000n, suffix: "M", digits: 2 },
+    { threshold: 100_000n, divisor: 100_000n, suffix: "K", digits: 1 },
+    { threshold: 100n, divisor: 100n, suffix: "", digits: 0 },
+  ];
+  const unit =
+    units.find((candidate) => absolute >= candidate.threshold) ??
+    units[units.length - 1];
+  const factor = 10n ** BigInt(unit.digits);
+  const rounded = (absolute * factor + unit.divisor / 2n) / unit.divisor;
+  const whole = rounded / factor;
+  const fraction = unit.digits
+    ? `.${String(rounded % factor).padStart(unit.digits, "0")}`
+        .replace(/0+$/, "")
+        .replace(/\.$/, "")
+    : "";
+  return `${negative ? "-$" : "$"}${withCommas(whole)}${fraction}${unit.suffix}`;
 }
 
 export function formatPercentFromDecimalString(value, digits = 1) {
