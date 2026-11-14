@@ -1,0 +1,58 @@
+[
+  {
+    "slug": "health-conditions",
+    "title": "Health conditions",
+    "summary": "Published county and tract estimates of chronic conditions and mental health, when available.",
+    "measure_keys": [],
+    "overlays": [],
+    "limits": "The PLACES expansion is being reviewed on staging. No released chronic-condition estimates are available in this beta yet."
+  },
+  {
+    "slug": "prevention-and-access",
+    "title": "Prevention and access",
+    "summary": "Dental visits and health insurance estimates for the populations named by each source.",
+    "measure_keys": [["places", "dental_crudeprev"], ["places", "access2_crudeprev"]],
+    "overlays": ["health_centers"],
+    "limits": "The insurance estimate describes adults aged 18–64. A nearby health center does not establish that care is accessible."
+  },
+  {
+    "slug": "health-care-resources",
+    "title": "Health care resources",
+    "summary": "Published workforce and hospital counts with mapped health center and nursing-home locations.",
+    "measure_keys": [["ahrf", "phys_nf_prim_care_pc_exc_rsdt_23"], ["ahrf", "dent_nf_fed_proflly_activ_23"], ["ahrf", "md_nf_psych_all_pc_23"], ["ahrf", "hosp_23"], ["ahrf", "hosp_beds_23"]],
+    "overlays": ["health_centers", "nursing_homes"],
+    "limits": "Counts are not per-person rates. Facility locations do not show service areas or capacity."
+  },
+  {
+    "slug": "community-conditions",
+    "title": "Community conditions",
+    "summary": "Household income, broadband, vehicle availability, and housing cost burden.",
+    "measure_keys": [["acs", "B19013_001E"], ["clh", "ACS_PCT_HH_BROADBAND_ANY"], ["clh", "ACS_PCT_HU_NO_VEH"], ["clh", "ACS_PCT_RENTER_HU_COST_30PCT"]],
+    "overlays": [],
+    "limits": "Measures describe different populations and periods. ACS margins of error are 90% margins."
+  },
+  {
+    "slug": "food-environment",
+    "title": "Food environment",
+    "summary": "Published county measures of supermarket access and authorized food outlets.",
+    "measure_keys": [["usda_fea", "low_income_low_access_pct"], ["usda_fea", "snap_stores_per_1000"], ["usda_fea", "wic_stores_per_1000"], ["usda_fea", "farmers_markets_per_1000"], ["usda_fea", "no_car_low_access_households_pct"], ["clh", "CCBP_SOGS_RATE"]],
+    "overlays": [],
+    "limits": "Observation years differ across these measures. Outlet counts do not establish affordability or travel time."
+  },
+  {
+    "slug": "environment",
+    "title": "Environment",
+    "summary": "EPA annual county AQI summaries and TRI reporting-facility locations.",
+    "measure_keys": [["epa_aqi", "median_aqi"], ["epa_aqi", "p90_aqi"], ["epa_aqi", "max_aqi"], ["epa_aqi", "days_with_aqi"], ["epa_aqi", "good_days"]],
+    "overlays": ["tri_facilities"],
+    "limits": "Counties without a reporting monitor have no AQI value. TRI locations do not measure exposure or health effects."
+  },
+  {
+    "slug": "medicare-use-and-spending",
+    "title": "Medicare use and spending",
+    "summary": "Original Medicare beneficiary counts, spending, care use, and readmissions.",
+    "measure_keys": [["cms_gv", "om_beneficiaries"], ["cms_gv", "std_payment_per_capita"], ["cms_gv", "ip_stays_per_1000"], ["cms_gv", "er_visits_per_1000"], ["cms_gv", "readmission_rate"]],
+    "overlays": [],
+    "limits": "These measures describe Original Medicare beneficiaries, not all residents."
+  }
+]

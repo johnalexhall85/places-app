@@ -25,6 +25,19 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Unresolved:** `main` and `beta` are not pushed (blocked by session policy). No staging access code yet.
 - **Next action:** when the copy finishes, analyze the database, start the staging service, run the first staging deploy, recheck `lookup` there, then begin C1 (PLACES expansion).
 
+## 2026-11-14T23:56:16+00:00 — Began X1 community API while staging copy continues (Codex)
+
+- **Request/outcome:** John asked whether the beta plan could start now. C0.5 and the data contract were merged to `beta`, so the Codex product track began on `codex/beta-x1-community-api` while the staging restore continued. Added `/community` routes for county search, catalog, release-pinned county profile, comparison of up to four counties, facilities, tract values, seven topic descriptions, and county indicator CSV. Routes read published indicator and facility data through `app.area_pilot.lookup`; the existing county-name search handles names only.
+- **Files affected:** `backend/app/community/{router.py,topics.json}`, router registration in `backend/app/main.py`, `backend/tests/test_community_api.py`, and `docs/beta/status/codex.md`. No migrations, live application changes, database writes, or deployments.
+- **Verification:** Community and lookup tests: 13 passed. Full backend suite after linking the worktree's ignored local `data/recon` inputs to the live checkout for read-only test use: 655 passed, two source-dependent failures. With the ignored `data/chipfunding` folder linked for read-only use, the known `test_all_six_real_source_years_match_acceptance_totals` failure was confirmed (FY2026 source natural-key mismatch); the other source-directory acceptance test was interrupted to avoid competing with the staging index build. Staging restore still ran at about 64 GB of 70 GB, building an index; no staging API verification yet.
+- **Next action:** Finish the restore and staging service, run X1 against staging, then merge and deploy this branch to `beta`; continue X2. The seven topic descriptions are initial product copy and need C1/C2 measure additions when those releases publish.
+
+## 2026-11-14T23:48:45+00:00 — Beta execution gate check (Codex)
+
+- **Request/outcome:** Checked whether the staging database copy had finished before running the beta execution plan. It was still restoring: `places_staging` was 58 GB versus 70 GB for `places`, and `pg_restore` was running. The staging backend was inactive and `/api/health` on port 8080 returned 502. The product data contract was already merged into local `beta`, so X1 is ready for independent development once work resumes.
+- **Verification:** Read the plan, handbook, recent diary, both track status files, data contract, relevant router and lookup code; checked worktree state, database sizes, process state, and staging HTTP health. No application, database, deployment, or live checkout changes were made.
+- **Next action:** Confirm `pg_restore` exits successfully, validate staging, then start the next Codex product package in `/home/john/chip-codex`.
+
 ## 2026-11-14T23:40:00+00:00 — Funder beta plan approved; Phase 0 git base and repository setup (Claude)
 
 - **Decision:** John approved the [funder beta execution plan](beta/EXECUTION_PLAN.md): community profile, comparison, topics, exports, wider PLACES and ACS measures, and congressional district briefings in about 4–6 weeks. Claude takes the data and platform track, Codex the product track, on a staging copy with three review gates. New pages follow the PDO Brand & Style Guide v1.0.
