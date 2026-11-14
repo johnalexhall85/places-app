@@ -2,6 +2,11 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T20:39:45+00:00 — CMS nursing-home integration commit and push (Codex)
+
+- **Objective/outcome:** Complete the requested Git handoff for the CMS nursing-home integration documented below. Commit `115733d` includes application, migration, tests, source inventory, operator guide, handbook, and diary; pushed to `origin/claude/epa-tri-facilities` without force. No new application, database, or deployment changes were made in this handoff step.
+- **Verification/next action:** Staged diff passed `git diff --cached --check`; the push succeeded. This diary outcome entry follows that commit and will be pushed separately. The published release and deployed service are unchanged. Future refreshes remain manual with reviewed checksums; merging the branch is a separate decision.
+
 ## 2026-11-14T20:37:30+00:00 — CMS Nursing Home Provider Information integrated, published, and deployed (Codex)
 
 - **Objective:** Add CMS nursing homes as an independent optional point overlay with certified beds, four published star ratings, facility characteristics, filters, accessible table/detail, and source limitations. No geographic averages, vacancy estimates, inspections, penalties, staffing-hour measures, timer, backups policy, access controls, or funding methodology changed.
