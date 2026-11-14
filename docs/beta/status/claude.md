@@ -4,7 +4,7 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Updated at the end of ever
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| C0.1 Git base | Partly done | `claude/beta-phase0` | `beta` and the three worktrees exist locally at `0195959`. Moving and pushing `main`, and pushing `beta`, were blocked by the session permission policy and wait for John. AHRF branch check: nothing unmerged. |
+| C0.1 Git base | Done | `claude/beta-phase0` | John pushed `main` (`0195959`) and `beta` (`1e859e6`) on 2026-11-15. The live checkout is on `main`. AHRF branch check: nothing unmerged. |
 | C0.2 Repository setup | Done, merged to local `beta` | `claude/beta-phase0` | `apiBase.js` tracked, diary union merge, plan, ownership rules, status files. Alembic now follows `DATABASE_URL`. |
 | C0.3 Staging environment | In progress | `claude/beta-phase0` | Service unit, Nginx site (port 8080), deploy script, worktree `.env` files, and virtual environments are in place. `places_staging` is being copied from live (70 GB). The staging backend has not been started and no staging access code exists yet. |
 | C0.4 Coverage matrix | Done | `claude/beta-phase0` | [COVERAGE_MATRIX.md](../COVERAGE_MATRIX.md): C1 and C2 measure lists and showcase counties 37145, 54039, 06019. |
@@ -27,6 +27,5 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Updated at the end of ever
 
 ## Blocked or waiting
 
-- Push of `main` and `beta` to `origin` (John). Until then `beta` exists only on this VM.
 - `gh` is not signed in, so merges into `beta` are local merges through the deploy script.
 - Staging access code for authenticated browser checks: not created yet.
