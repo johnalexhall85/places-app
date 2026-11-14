@@ -2,6 +2,10 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T22:01:00+00:00 — CMS OM GV commit and push (Claude)
+
+- Commit `3a98647` (application, migration, tests, operator guide, inventory, handbook, diary) pushed as new branch `origin/claude/cms-geographic-variation` without force; `git diff --cached --check` passed. No application, data, or deployment changes in this step. Not merged to `main`.
+
 ## 2026-11-14T21:58:00+00:00 — CMS Original Medicare Geographic Variation 2024 shared product published and deployed (Claude)
 
 - **Objective/outcome:** Added CMS Original Medicare Geographic Variation (OM GV) as an independent shared area product, `cms_om_geographic_variation`. It has five 2024 measures at state and county level for the `All` age category, with its own release pointer. Published, deployed, and browser-verified. The legacy `cms.gv_*` integration was inspected and not run; its tables, routes, and behavior are unchanged, and only the main-map selector label changed. The weekly timer, backups, access controls, and funding methodology were not changed. The Codex sibling worktree was not touched.
