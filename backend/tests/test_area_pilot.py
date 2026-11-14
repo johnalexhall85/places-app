@@ -87,7 +87,7 @@ def test_tract_registry_has_distinct_periods_and_ci_fields():
     tract = load_registry('tract')
     assert tract['source_key_field'] == 'tractfips'
     assert tract['expected_tract_count'] == 83522
-    assert tract['expected_unavailable_tract_count'] == 4707
+    assert tract['expected_unavailable_tract_count'] == 4707 * 12   # KY and PA tracts for each of the twelve 2023 measures
     measures = {m['measure_id']:m for m in tract['measures']}
     assert (measures['dental_crudeprev']['observation_period'], measures['dental_crudeprev']['source_ci_field']) == ('2022','dental_crude95ci')
     assert (measures['access2_crudeprev']['observation_period'], measures['access2_crudeprev']['source_ci_field']) == ('2023','access2_crude95ci')
@@ -120,3 +120,28 @@ def test_tract_result_cap_is_bounded_and_explicit():
         ensure_cap(DB(), {}, 'tract')
     assert error.value.status_code == 413
     assert 'Zoom in' in error.value.detail
+
+
+def test_county_and_tract_registries_publish_the_same_measure_set():
+    from app.area_pilot.source import LEGACY_MEASURE_SET_SHA256, measure_set_digest
+    county, tract = load_registry('county'), load_registry('tract')
+    assert measure_set_digest(county) == measure_set_digest(tract)
+    assert measure_set_digest(county) != LEGACY_MEASURE_SET_SHA256
+    assert len(county['measures']) == 13
+    original = {'value_type': 'crude_prevalence', 'measures': [m for m in county['measures']
+                if m['measure_id'] in ('dental_crudeprev', 'access2_crudeprev')]}
+    assert measure_set_digest(original) == LEGACY_MEASURE_SET_SHA256
+    for m in county['measures']:
+        assert m['source_value_field'] == m['measure_id'] and m['source_ci_field'] == m['measure_id'].replace('crudeprev', 'crude95ci')
+        if m['observation_period'] == '2023':
+            assert m['documented_unavailable_states'] == ['KY', 'PA']
+
+
+def test_approval_is_bound_to_the_recorded_measure_set():
+    from types import SimpleNamespace
+    from app.area_pilot.source import check_measure_set, measure_set_digest
+    config = load_registry('county'); current = measure_set_digest(config)
+    check_measure_set({'report': {}}, config, SimpleNamespace())                     # releases staged before the change
+    check_measure_set({'report': {'measure_set_sha256': current}}, config, SimpleNamespace(measure_set_sha256=current))
+    with pytest.raises(ValueError): check_measure_set({'report': {'measure_set_sha256': current}}, config, SimpleNamespace(measure_set_sha256=None))
+    with pytest.raises(ValueError): check_measure_set({'report': {'measure_set_sha256': 'x' * 64}}, config, SimpleNamespace(measure_set_sha256='x' * 64))

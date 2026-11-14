@@ -8,11 +8,20 @@
   "source_metadata_api": "https://data.cdc.gov/api/views/i46a-9kgh.json",
   "source_release_id": "2025-12-04",
   "source_release_label": "December 2025 PLACES release",
-  "refresh_policy": {"schedule": "weekly_full_content_verification", "auto_publish": false,
-    "supported_release_ids": ["2025-12-04"], "same_label_revision": "hold_for_review",
-    "new_release": "discover_and_hold", "schema_or_boundary_drift": "hold_for_review"},
+  "refresh_policy": {
+    "schedule": "weekly_full_content_verification",
+    "auto_publish": false,
+    "supported_release_ids": [
+      "2025-12-04"
+    ],
+    "same_label_revision": "hold_for_review",
+    "new_release": "discover_and_hold",
+    "schema_or_boundary_drift": "hold_for_review"
+  },
   "boundary_vintage": "TIGER/Line 2023 county",
-  "geographies": ["county"],
+  "geographies": [
+    "county"
+  ],
   "aggregation_method": "none",
   "expected_county_count": 3143,
   "expected_schema_sha256": "728eda33c40df4ba3dbbea46d69499d6848181ae1bdae160ed431a93d2d764dc",
@@ -27,7 +36,8 @@
       "population": "adults",
       "source_value_field": "dental_crudeprev",
       "source_ci_field": "dental_crude95ci",
-      "source_definition_contains": "visited dentist or dental clinic in the past year among adults, 2022"
+      "source_definition_contains": "visited dentist or dental clinic in the past year among adults, 2022",
+      "category": "prevention"
     },
     {
       "measure_id": "access2_crudeprev",
@@ -37,17 +47,180 @@
       "source_value_field": "access2_crudeprev",
       "source_ci_field": "access2_crude95ci",
       "source_definition_contains": "current lack of health insurance among adults aged 18-64 years, 2023",
-      "documented_unavailable_states": ["KY", "PA"]
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "prevention"
+    },
+    {
+      "measure_id": "diabetes_crudeprev",
+      "label": "Diagnosed diabetes",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "diabetes_crudeprev",
+      "source_ci_field": "diabetes_crude95ci",
+      "source_definition_contains": "diagnosed diabetes among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "bphigh_crudeprev",
+      "label": "High blood pressure",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "bphigh_crudeprev",
+      "source_ci_field": "bphigh_crude95ci",
+      "source_definition_contains": "high blood pressure among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "obesity_crudeprev",
+      "label": "Obesity",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "obesity_crudeprev",
+      "source_ci_field": "obesity_crude95ci",
+      "source_definition_contains": "obesity among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "chd_crudeprev",
+      "label": "Coronary heart disease",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "chd_crudeprev",
+      "source_ci_field": "chd_crude95ci",
+      "source_definition_contains": "coronary heart disease among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "stroke_crudeprev",
+      "label": "Stroke",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "stroke_crudeprev",
+      "source_ci_field": "stroke_crude95ci",
+      "source_definition_contains": "stroke among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "copd_crudeprev",
+      "label": "Chronic obstructive pulmonary disease (COPD)",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "copd_crudeprev",
+      "source_ci_field": "copd_crude95ci",
+      "source_definition_contains": "chronic obstructive pulmonary disease among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "casthma_crudeprev",
+      "label": "Current asthma",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "casthma_crudeprev",
+      "source_ci_field": "casthma_crude95ci",
+      "source_definition_contains": "current asthma among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "depression_crudeprev",
+      "label": "Depression",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "depression_crudeprev",
+      "source_ci_field": "depression_crude95ci",
+      "source_definition_contains": "depression among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_outcomes"
+    },
+    {
+      "measure_id": "mhlth_crudeprev",
+      "label": "Frequent mental distress",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "mhlth_crudeprev",
+      "source_ci_field": "mhlth_crude95ci",
+      "source_definition_contains": "frequent mental distress among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "health_status"
+    },
+    {
+      "measure_id": "csmoking_crudeprev",
+      "label": "Current cigarette smoking",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "csmoking_crudeprev",
+      "source_ci_field": "csmoking_crude95ci",
+      "source_definition_contains": "current cigarette smoking among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "risk_behaviors"
+    },
+    {
+      "measure_id": "checkup_crudeprev",
+      "label": "Routine checkup within the past year",
+      "observation_period": "2023",
+      "population": "adults",
+      "source_value_field": "checkup_crudeprev",
+      "source_ci_field": "checkup_crude95ci",
+      "source_definition_contains": "routine checkup within the past year among adults, 2023",
+      "documented_unavailable_states": [
+        "KY",
+        "PA"
+      ],
+      "category": "prevention"
     }
   ],
   "missing_semantics": {
     "numeric_zero": "true_zero",
     "empty_or_absent": "missing unless a documented unavailable state",
-    "suppression_tokens": ["*", "***", "Suppressed"],
+    "suppression_tokens": [
+      "*",
+      "***",
+      "Suppressed"
+    ],
     "documented_unavailable": "not_published"
   },
   "documentation_urls": [
     "https://www.cdc.gov/places/current-release-notes/index.html",
     "https://www.cdc.gov/places/measure-definitions/index.html"
-  ]
+  ],
+  "measure_set_note": "Widened from 2 to 13 measures on 2026-11-15 for the funder beta. All added measures use 2023 BRFSS data, which CDC does not publish for Kentucky and Pennsylvania in this release (every county and tract blank)."
 }

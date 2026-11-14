@@ -60,6 +60,38 @@ def semantic_digest(records, columns, key_field='countyfips'):
     return digest([normalize_record(row, columns) for row in sorted(records, key=lambda row: row[key_field])])
 
 
+def measure_set_digest(config):
+    """Identity of the published measure set, independent of the source bytes.
+
+    Source digests alone cannot tell a wider registry from the one already published: the PLACES
+    file is the same, only the columns CHIP turns into observations differ. A candidate is a
+    duplicate only when both the source content and this digest match.
+    """
+    return digest([[m['measure_id'], m['observation_period'], m['population'], m['source_value_field'],
+                    m['source_ci_field'], sorted(m.get('documented_unavailable_states', []))]
+                   for m in sorted(config['measures'], key=lambda m: m['measure_id'])] + [config['value_type']])
+
+
+# Releases published before the measure set was recorded carried exactly these two measures.
+LEGACY_MEASURE_SET_SHA256 = measure_set_digest({'value_type': 'crude_prevalence', 'measures': [
+    {'measure_id': 'dental_crudeprev', 'observation_period': '2022', 'population': 'adults',
+     'source_value_field': 'dental_crudeprev', 'source_ci_field': 'dental_crude95ci'},
+    {'measure_id': 'access2_crudeprev', 'observation_period': '2023', 'population': 'adults aged 18-64',
+     'source_value_field': 'access2_crudeprev', 'source_ci_field': 'access2_crude95ci',
+     'documented_unavailable_states': ['KY', 'PA']}]})
+
+
+def check_measure_set(row, config, args):
+    """A candidate that records its measure set is approved only against that exact, current set."""
+    recorded = row['report'].get('measure_set_sha256')
+    if recorded is None:
+        return
+    if recorded != measure_set_digest(config):
+        raise ValueError('Registry measure set changed since the candidate was staged')
+    if getattr(args, 'measure_set_sha256', None) != recorded:
+        raise ValueError('Candidate measure set differs from the reviewed value (--measure-set-sha256)')
+
+
 def parse_observation(row, measure):
     raw = row.get(measure['source_value_field'])
     ci = row.get(measure['source_ci_field'])

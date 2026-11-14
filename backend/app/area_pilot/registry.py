@@ -22,7 +22,7 @@ def load_registry(geography: str = 'county') -> dict:
     if not config['expected_schema_sha256'] or len(config['expected_schema_sha256']) != 64:
         raise ValueError('Verified source schema checksum required')
     names = [m['measure_id'] for m in config['measures']]
-    if len(names) != len(set(names)) or set(names) != {'dental_crudeprev', 'access2_crudeprev'}:
+    if not names or len(names) != len(set(names)) or not {'dental_crudeprev', 'access2_crudeprev'} <= set(names):
         raise ValueError('Pilot measure registry is invalid')
     for measure in config['measures']:
         for field in ('measure_id', 'label', 'observation_period', 'population',

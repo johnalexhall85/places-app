@@ -124,3 +124,22 @@ Postpublication direct API function timings and compact JSON response sizes were
 Authenticated Chromium verified the initial county layer, tract switching after zoom, the same release across transitions, 2022 dental and 2023 insurance metadata and CIs, keyboard table expansion, and rapid measure changes settling on the final choice. The tract screenshot is retained in the Phase 2 recovery directory as `zoom-ui.png`. No browser page errors occurred. The UI initially displayed 3,127 counties intersecting its 1,600 px viewport; the explicit nationwide API query verified the complete 3,143 county coverage.
 
 The final focused backend and CDC funding regression run passed 28 tests. The complete frontend suite passed 112 tests across 14 files, and the production frontend build succeeded. The only test warning was the existing `requests` dependency version warning; it did not affect source retrieval or validation.
+
+## Measure-set expansion for the funder beta (2026-11-15; staging only until promoted)
+
+The registries now list 13 measures at county and tract level: the original two plus diagnosed diabetes, high blood pressure, obesity, coronary heart disease, stroke, COPD, current asthma, depression, frequent mental distress, current cigarette smoking, and routine checkup. All eleven additions are crude prevalence among adults with 2023 data and a 95% confidence interval, read from the same two GIS-friendly files (`i46a-9kgh`, `yjkw-uj5s`) and the same source releases.
+
+**Source check (2026-11-15, CDC metadata and data API):** each added column and its `_crude95ci` companion exists in both files with a definition ending "among adults, 2023". For every added measure the value is blank in all 120 Kentucky and 67 Pennsylvania counties and all 1,299 Kentucky and 3,408 Pennsylvania tracts, and nowhere else. These are stored as `not_published`, exactly like the insurance measure. `expected_unavailable_tract_count` is therefore 4,707 × 12 = 56,484.
+
+**Release identity.** The source bytes do not change when CHIP reads more columns, so source digests alone would treat a wider registry as a duplicate of the published release. Each candidate now records `measure_set_sha256` (measure IDs, periods, populations, source fields, unavailable states, value type) in its report, and a run is a duplicate only when the source digests and the measure set both match. Releases staged before this change have no recorded value and are treated as the original two-measure set.
+
+**Approval.** For a candidate that records a measure set, `approve-publish` also requires `--measure-set-sha256` with the reviewed value, and refuses if the registry's current measure set differs from the candidate's:
+
+```bash
+.venv/bin/python -m app.area_pilot.cli approve-publish CANDIDATE_UUID \
+  --semantic-sha256 … --schema-sha256 … --metadata-sha256 … --measure-set-sha256 …
+```
+
+**Order of operations.** Publish the county candidate first, then stage and publish the tract candidate. The tract candidate requires the active county parent to carry the same measure set (`county_parent_measure_set` check). Between the two publications the active release is county-only, so tract values are briefly unavailable.
+
+**Rollback.** Rolling back to an older two-measure release keeps the pointer mechanics unchanged. The eleven added measures then have no rows: maps for them are empty and `app.area_pilot.lookup` reports `not_in_release`. Roll forward again by selecting the wider release.

@@ -140,6 +140,7 @@ def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
         'measure_id': measure['measure_id'], 'label': measure['label'],
         'unit': measure.get('unit') or config.get('unit'),
         'kind': measure.get('kind'), 'storage_scale': measure.get('storage_scale'),
+        'category': measure.get('category') or measure.get('subcategory'),
         'period': measure['observation_period'], 'population': measure['population'],
         'value_type': config['value_type'], 'levels': _measure_levels(spec, config, measure),
         'uncertainty_kind': spec.uncertainty,

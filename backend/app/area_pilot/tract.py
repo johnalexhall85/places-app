@@ -11,7 +11,8 @@ import geopandas as gpd
 import requests
 from sqlalchemy import text
 
-from app.area_pilot.source import SourceClient, digest, parse_observation, semantic_digest, same_label_revision
+from app.area_pilot.source import (LEGACY_MEASURE_SET_SHA256, SourceClient, check_measure_set, digest, measure_set_digest,
+                                   parse_observation, semantic_digest, same_label_revision)
 
 S = 'area_pilot'
 
@@ -121,6 +122,7 @@ def fetch_stage_tract(engine, config, directory: Path, resume_directory=None):
                         'description':before['metadata'].get('description'),'columns':columns}
     metadata = digest(metadata_payload)
     keyset = digest(before['keys'])
+    measure_set = measure_set_digest(config)
     keys = [row['tractfips'] for row in records]
     check = {'source_stable':stable,'schema_matches_registry':schema == config['expected_schema_sha256'],
              'exact_keyset':keys == before['keys'],
@@ -153,6 +155,11 @@ def fetch_stage_tract(engine, config, directory: Path, resume_directory=None):
         county_count = conn.execute(text(f'SELECT count(DISTINCT county_fips) FROM {S}.observation WHERE release_id=:id'),
                                     {'id':parent_id}).scalar_one()
         check['county_parent_complete'] = county_count == 3143
+        parent_measures = conn.execute(text(f'''SELECT DISTINCT measure_id,observation_period,population,value_type
+            FROM {S}.observation WHERE release_id=:id'''),{'id':parent_id}).all()
+        # The tract release republishes the parent's county rows, so both must carry the same measures.
+        check['county_parent_measure_set'] = sorted(tuple(r) for r in parent_measures) == sorted(
+            (m['measure_id'],m['observation_period'],m['population'],config['value_type']) for m in config['measures'])
         available_boundaries = boundary_keys(conn)
         missing = sorted(set(keys)-available_boundaries)
         check['boundary_join'] = not missing
@@ -160,11 +167,13 @@ def fetch_stage_tract(engine, config, directory: Path, resume_directory=None):
         existing = conn.execute(text(f'''SELECT id,status FROM {S}.release WHERE dataset_id=:dataset
             AND parent_county_release_id IS NOT NULL AND semantic_sha256=:semantic AND schema_sha256=:schema
             AND metadata_sha256=:metadata
+            AND COALESCE(report->>'measure_set_sha256',:legacy_measures)=:measures
             AND keyset_sha256=:keyset AND (status IN ('ready','published') OR
                 (status='held' AND report->>'hold_reason'='same_label_semantic_revision'))
             ORDER BY created_at LIMIT 1'''),
             {'dataset':config['dataset_id'],'semantic':semantic,'schema':schema,
-             'metadata':metadata,'keyset':keyset}).mappings().one_or_none()
+             'metadata':metadata,'keyset':keyset,'measures':measure_set,
+             'legacy_measures':LEGACY_MEASURE_SET_SHA256}).mappings().one_or_none()
         if existing and all(check.values()):
             run_status = 'held' if existing['status'] == 'held' else 'duplicate'
             conn.execute(text(f"INSERT INTO {S}.run (id,release_id,action,status,detail) VALUES (:run,:id,'fetch-stage-validate',:status,jsonb_build_object('same_semantic_content',true,'reused_held_candidate',:reused))"),
@@ -184,7 +193,8 @@ def fetch_stage_tract(engine, config, directory: Path, resume_directory=None):
         status = 'ready' if all(check.values()) and not revision_hold else 'held'
         report = {'product_scope':'county_tract','parent_county_release_id':str(parent_id),
                   'checks':check,'tract_count':len(records),'observation_count':len(observations),
-                  'unavailable_insurance_count':unavailable,'unmatched_tracts':missing[:50],
+                  'unavailable_cell_count':unavailable,'measure_set_sha256':measure_set,
+                  'measure_ids':[m['measure_id'] for m in config['measures']],'unmatched_tracts':missing[:50],
                   'page_count':sum(f['role'].startswith('page_') for f in client.files),
                   'hold_reason':'same_label_semantic_revision' if revision_hold else None,
                   'columns':columns,'metadata_payload':metadata_payload,
@@ -228,6 +238,7 @@ def publish_tract(engine, config, args):
         if (row['semantic_sha256'],row['schema_sha256'],row['metadata_sha256']) != (
                 args.semantic_sha256,args.schema_sha256,args.metadata_sha256):
             raise ValueError('Candidate checksums differ from reviewed values')
+        check_measure_set(row, config, args)
         active = conn.execute(text(f'SELECT release_id FROM {S}.active_release WHERE dataset_id=:dataset'),
                               {'dataset':config['dataset_id']}).scalar_one_or_none()
         if active != row['parent_county_release_id']:
@@ -276,7 +287,7 @@ def publish_tract(engine, config, args):
                                     {'id':args.candidate_id}).scalar_one()
         validations = dict(conn.execute(text(f'SELECT check_name,passed FROM {S}.validation WHERE release_id=:id'),
                                         {'id':args.candidate_id}).all())
-        if county_diff or county_stage_diff or county_count != 6286 or not validations.get('source_db_sample_parity') or not all(validations.values()):
+        if county_diff or county_stage_diff or county_count != 3143 * len(config['measures']) or not validations.get('source_db_sample_parity') or not all(validations.values()):
             raise ValueError('County copy, source sample, or validation checks failed')
         conn.execute(text(f"UPDATE {S}.release SET status='published',published_at=now() WHERE id=:id"),
                      {'id':args.candidate_id})

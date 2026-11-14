@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from sqlalchemy import create_engine, text
 from app.area_pilot.registry import load_registry
-from app.area_pilot.source import SourceClient, digest, parse_observation, semantic_digest, same_label_revision
+from app.area_pilot.source import (LEGACY_MEASURE_SET_SHA256, SourceClient, check_measure_set, digest, measure_set_digest,
+                                   parse_observation, semantic_digest, same_label_revision)
 from app.db import DATABASE_URL
 
 S = 'area_pilot'
@@ -63,6 +64,7 @@ def fetch_stage(engine, config, directory, resume_directory=None):
     schema = digest(before['columns'])
     metadata = digest({'revision':before['revision'], 'name':before['metadata'].get('name'), 'description':before['metadata'].get('description'), 'columns':before['columns']})
     keyset = digest(before['keys'])
+    measure_set = measure_set_digest(config)
     check = {'source_stable': stable, 'schema_matches_registry': schema == config['expected_schema_sha256'],
              'exact_keyset': [r['countyfips'] for r in records] == before['keys'],
              'county_count': len(records) == config['expected_county_count']}
@@ -79,10 +81,13 @@ def fetch_stage(engine, config, directory, resume_directory=None):
         boundary = conn.execute(text('SELECT COUNT(DISTINCT b.statefp || b.countyfp) FROM dim_county_boundary b WHERE b.geom IS NOT NULL AND b.statefp || b.countyfp = ANY(:keys)'), {'keys':before['keys']}).scalar_one()
         existing = conn.execute(text(f'''SELECT id,status FROM {S}.release WHERE dataset_id=:dataset AND semantic_sha256=:semantic
             AND schema_sha256=:schema AND metadata_sha256=:metadata AND keyset_sha256=:keyset
+            AND parent_county_release_id IS NULL
+            AND COALESCE(report->>'measure_set_sha256',:legacy_measures)=:measures
             AND (status IN ('ready','published') OR
                  (status='held' AND report->>'hold_reason'='same_label_semantic_revision'))
             ORDER BY created_at LIMIT 1'''),
-            {'dataset':config['dataset_id'],'semantic':semantic,'schema':schema,'metadata':metadata,'keyset':keyset}).mappings().one_or_none()
+            {'dataset':config['dataset_id'],'semantic':semantic,'schema':schema,'metadata':metadata,'keyset':keyset,
+             'measures':measure_set,'legacy_measures':LEGACY_MEASURE_SET_SHA256}).mappings().one_or_none()
         if existing and stable and boundary == len(records):
             run_status = 'held' if existing['status'] == 'held' else 'duplicate'
             conn.execute(text(f"INSERT INTO {S}.run (id,release_id,action,status,detail) VALUES (:id,:release,'fetch-stage-validate',:status,CAST(:detail AS jsonb))"),
@@ -113,6 +118,7 @@ def fetch_stage(engine, config, directory, resume_directory=None):
         ready = all(check.values()) and not revision_hold
         status = 'ready' if ready else 'held'
         report = {'checks':check, 'county_count':len(records), 'observation_count':len(observations),
+                  'measure_set_sha256':measure_set, 'measure_ids':[m['measure_id'] for m in config['measures']],
                   'page_count':sum(f['role'].startswith('page_') for f in client.files), 'active_changes':changes,
                   'hold_reason':'same_label_semantic_revision' if revision_hold else None,
                   'columns':before['columns'],
@@ -155,6 +161,7 @@ def publish(engine, config, args):
             raise ValueError('Candidate is not ready for approval')
         if (row['semantic_sha256'],row['schema_sha256'],row['metadata_sha256']) != (args.semantic_sha256,args.schema_sha256,args.metadata_sha256):
             raise ValueError('Candidate checksums differ from reviewed values')
+        check_measure_set(row, config, args)
         staged = conn.execute(text(f'SELECT county_fips,record FROM {S}.stage_county WHERE release_id=:id ORDER BY county_fips'), {'id':args.candidate_id}).mappings().all()
         if digest(row['report']['columns']) != row['schema_sha256'] or digest(row['report']['metadata_payload']) != row['metadata_sha256']:
             raise ValueError('Candidate schema or metadata changed since review')
@@ -220,6 +227,7 @@ def main():
     approve = sub.add_parser('approve-publish'); approve.add_argument('candidate_id', type=uuid.UUID)
     for name in ('semantic_sha256','schema_sha256','metadata_sha256'):
         approve.add_argument(f'--{name.replace("_", "-")}', required=True)
+    approve.add_argument('--measure-set-sha256', help='Required when the candidate report records measure_set_sha256')
     undo = sub.add_parser('rollback'); undo.add_argument('release_id', type=uuid.UUID)
     sub.add_parser('deactivate')
     args = parser.parse_args(); config = load_registry(); engine = create_engine(args.db_url, pool_pre_ping=True)
