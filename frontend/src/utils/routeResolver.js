@@ -12,6 +12,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/clh\/?$/i.test(normalizedPath)) {
     return { type: "clh-area" };
   }
+  if (/^\/area\/epa-aqi\/?$/i.test(normalizedPath)) {
+    return { type: "epa-aqi-area" };
+  }
   if (/^\/funding-model-builder\/?$/i.test(normalizedPath)) {
     return { type: "funding-model-builder" };
   }

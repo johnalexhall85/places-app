@@ -2,6 +2,42 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T16:55:41+00:00 — EPA AirData annual county AQI integrated, published, and deployed (Claude)
+
+- **Agent/objective:** Claude implemented the EPA AirData annual AQI-by-county product in the shared area pipeline, as assigned. Codex's sibling worktree (`codex/ahrf-county-five-measures`) was not touched.
+- **Source/year:** `annual_aqi_by_county_2025.zip` (EPA build 2026-06-25; ZIP SHA-256 `72b022b3…7130`) is the latest completed calendar year. The partial 2026 file was skipped. Definitions come from EPA's About AirData Reports page.
+- **Measures:** five published fields: Median, 90th percentile, and Max AQI; Days with AQI; Good days. Days with AQI is stored on every observation row. Nothing is derived, and no CI or MOE is invented.
+- **Identifiers:** the file has names only. GEOIDs come from EPA's site-listing State+County codes and are cross-checked against TIGER 2024 names by documented rules, with 8 reviewed spelling variants. No fuzzy matching is used.
+- **Coverage:** 985 source rows; 975 mapped. 10 excluded with reasons: 8 legacy Connecticut counties not forced onto planning regions, Sonora (Mexico), and USVI St. John. 2,247 of 3,222 boundary counties are shown as `no_reported_value` at read time; no rows are stored for them. Eight beyond-scale maxima (>500) are kept and flagged.
+- **Changes:**
+  - Registry `epa_aqi_county_2025.json`; modules `epa_aqi.py`, `epa_aqi_cli.py`, and `epa_aqi_api.py`.
+  - Additive migration `d3a7e5c1b9f2`.
+  - Narrow branches in the shared `router.py`.
+  - Frontend `/area/epa-aqi`, with a neutral legend (no daily health-category colors), Days with AQI in popups and the table, visible limitations, and selector entries.
+  - Tests; operator guide `backend/docs/chip_epa_aqi_county_2025.md`; inventory row 44; handbook.
+- **State-changing commands:**
+  - `alembic upgrade head` (`c9f76d3a51e2` → `d3a7e5c1b9f2`).
+  - `epa_aqi_cli fetch-stage-validate` twice: the first run was ready with all six checks passing; the second was a duplicate.
+  - `review` and `approve-publish 70e78172-da21-4782-91e2-d3b97896863f` (semantic `d29d432f…da54`, schema `e753e547…577e`, metadata `c71d063d…fd17`).
+  - Pointer drill: `deactivate`, then `rollback` to the same release. A cross-product rollback was refused.
+  - Webroot backed up to `data/deploy-recovery/epa-aqi-20261114/`, then `rsync -a --delete frontend/dist/ /var/www/places/`.
+  - `systemctl restart places-backend`.
+- **Verification:**
+  - New AQI tests: 29 backend and 2 frontend.
+  - Focused backend suite: 308 passed, 1 failed. The failure is `test_all_six_real_source_years_match_acceptance_totals`, a FY2026 CDC account-summary natural-key change in local data. It fails identically on pre-task `d45fed6`, so it is pre-existing and unrelated.
+  - Frontend: 119/119 tests; production build OK (existing bundle-size warning).
+  - Review re-hashed 20 archived files and matched all 4,875 observations; spot checks matched the raw CSV.
+  - In-process API checks against the live release covered all five measures in four viewports with map, table, and legend parity. The national view returned 3,109 counties in ~1.6 MB in ~3.1 s. Tract and 2026 requests returned 400.
+  - Through Nginx, the anonymous catalog returned 401. PLACES, ACS, AHRF, and CLH reads and three funding v1 reads returned 200, with pointers unchanged. Published AQI rows reject writes.
+- **Not done:** no authenticated browser check. Creating a temporary demo access code was denied by the session's permission policy. The timer, backups, access controls, funding methodology, and legacy integrations were not changed.
+- **Discrepancies found:**
+  - The deployed webroot before this task matched neither `89fc4d8` nor `d45fed6` byte-for-byte; it was built from the pre-commit tree. This deploy therefore also shipped the committed `main` funding and demo-access code.
+  - `frontend/src/config/apiBase.js` is git-ignored, so a clean checkout cannot build.
+  - Nginx `/health` serves the SPA; use `/api/health`.
+  - The handbook's "72-row" inventory is 95 records.
+- **Git:** committed on new branch `claude/epa-aqi-county-2025`, based on `d45fed6`, and pushed to `origin` without force. `main` is unchanged; merging is a separate decision. The deployed webroot and backend correspond to this branch's tree.
+- **Next action:** an operator with access performs the authenticated browser check of `/area/epa-aqi`, covering Baltimore city (data), a CT planning region (no value), and Mayagüez (exception). Then refresh the recovery set.
+
 ## 2026-11-14T16:30:31+00:00 — Main branch push completed
 
 - **Objective/outcome:** All 30 nonignored pending paths were committed as `23b79c6` on `claude/improvements`. Local `main` fast-forwarded from `b1a0eba` to `23b79c6`; `git push origin main` succeeded without force. The push carried the branch's 14 commits beyond the former `origin/main`, including earlier CHIP work and the new consolidated commit. The existing sibling AHRF branch was not merged: its AHRF source and guide files matched the integrated versions, while its history lacked the later CLH work.

@@ -195,3 +195,20 @@
   .pilot-table { bottom: 16px; max-height: 32vh; }
   .pilot-table.is-open { bottom: calc(23vh + 76px); }
 }
+
+.pilot-scope p {
+  margin: 0 0 6px;
+}
+
+.pilot-limitations {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.pilot-swatches i.pilot-swatch-none {
+  border: 1px dashed #516677;
+  flex: none;
+}

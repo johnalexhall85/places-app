@@ -104,6 +104,7 @@ const DATA_SOURCES = {
   ACS_2024_AREA: "acs_2024_area",
   AHRF_AREA: "ahrf_area",
   CLH_AREA: "clh_area",
+  EPA_AQI_AREA: "epa_aqi_area",
   ACS_NMF: "acs_nmf",
   SVI: "svi",
   HPSA: "hpsa",
@@ -9682,6 +9683,10 @@ export default function App() {
                     window.location.assign("/area/clh");
                     return;
                   }
+                  if (nextSource === DATA_SOURCES.EPA_AQI_AREA) {
+                    window.location.assign("/area/epa-aqi");
+                    return;
+                  }
                   setSelectedDataSource(nextSource);
                   setSelectedMeasureId("");
                   if (nextSource === DATA_SOURCES.USDA_FOOD_ENV) {
@@ -9724,6 +9729,7 @@ export default function App() {
                 <option value={DATA_SOURCES.ACS_2024_AREA}>ACS 2020–2024 income (states, counties, tracts)</option>
                 <option value={DATA_SOURCES.AHRF_AREA}>AHRF 2023 workforce and hospitals (counties)</option>
                 <option value={DATA_SOURCES.CLH_AREA}>AHRQ CLH community conditions (counties and selected tracts)</option>
+                <option value={DATA_SOURCES.EPA_AQI_AREA}>EPA annual AQI by county (2025)</option>
                 <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
                 <option value={DATA_SOURCES.CDC_FUNDING_STATE}>CDC Funding - State Map</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment</option>

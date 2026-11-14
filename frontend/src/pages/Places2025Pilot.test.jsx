@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null }));
@@ -280,5 +280,81 @@ describe("CLH measure geography", () => {
     expect(screen.getByRole("columnheader", { name: "Value (establishments per 1,000 people)" })).toBeInTheDocument();
     expect(requests.every((url) => url.includes("geography=county") && url.includes("period=2023")
       && url.includes("release_id=release-clh"))).toBe(true);
+  });
+});
+
+describe("EPA annual county AQI", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; });
+  const measures = [
+    { measure_id: "median_aqi", label: "Median AQI", kind: "aqi_index", unit: "AQI index value", observation_period: "2025",
+      population: "days with a reported daily AQI from county monitoring sites", legend_breaks: [25, 50, 100, 150],
+      official_definition: "Half of daily AQI values during the year were less than or equal to the median value, and half equaled or exceeded it.",
+      statistic_note: "Median of the county's daily AQI values; a distribution statistic, not an uncertainty interval." },
+    { measure_id: "p90_aqi", label: "90th percentile AQI", kind: "aqi_index", unit: "AQI index value", observation_period: "2025",
+      population: "days with a reported daily AQI from county monitoring sites", legend_breaks: [25, 50, 100, 150],
+      official_definition: "90 percent of daily AQI values during the year were less than or equal to the 90th percentile value.",
+      statistic_note: "90th percentile of the county's daily AQI values; a distribution statistic, not a confidence interval or margin of error." },
+    { measure_id: "good_days", label: "Good days", kind: "day_count", unit: "days", observation_period: "2025",
+      population: "days with a reported daily AQI from county monitoring sites", legend_breaks: [73, 146, 219, 292],
+      official_definition: "Number of days in the year having an AQI value 0 through 50.", statistic_note: "Interpret with Days with AQI." },
+  ];
+  const limitations = ["Annual historical AQI summary for one calendar year; not current or forecast conditions.",
+    "No reported value means no county summary was published, not that the air was clean."];
+
+  it("formats values, reporting days, beyond-index maxima, and absent counties without inventing zeros", () => {
+    expect(aqiValueText({ value: 0, status: "true_zero" }, measures[2])).toBe("0 days");
+    expect(aqiValueText({ value: null, status: "no_reported_value" }, measures[0])).toBe("No reported value");
+    expect(aqiValueText({ value: 2122, status: "available", value_note: "above_500_beyond_aqi_scale" }, measures[0]))
+      .toBe("2,122 (above 500: beyond the AQI scale)");
+    expect(aqiReportingText({ days_with_aqi: 355 }, "2025")).toBe("355 of 365 days with AQI");
+    expect(aqiReportingText({ days_with_aqi: 366 }, "2024")).toBe("366 of 366 days with AQI");
+    expect(aqiReportingText({ days_with_aqi: null }, "2025")).toMatch(/No EPA county summary/);
+    expect(aqiBinLabels([25, 50, 100, 150], "AQI index value")).toEqual(["0–25", "26–50", "51–100", "101–150", "151 or more"]);
+    expect(aqiColor(null, "no_reported_value", [25])).toBe("#ffffff");
+    expect(aqiColor(0, "true_zero", [25, 50])).not.toBe(aqiColor(null, "no_reported_value", [25, 50]));
+    // No daily health-category palette (green/yellow/orange/red/purple/maroon).
+    expect(["#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023"]).not.toContain(aqiColor(40, "available", [25, 50, 100, 150]));
+    const popup = aqiPopup({ name: "Baldwin<script>", geography_id: "01003", value: 42, status: "available", days_with_aqi: 355,
+      source_name: "Baldwin, Alabama" }, measures[0]);
+    expect(popup).toContain("355 of 365 days with AQI");
+    expect(popup).toContain("historical, not current");
+    expect(popup).not.toContain("<script>");
+  });
+
+  it("keeps one release-pinned county selection with reporting days in table and limitations visible", async () => {
+    expect(resolveRoute("/area/epa-aqi")).toEqual({ type: "epa-aqi-area" });
+    const urls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url); urls.push(path);
+      const payload = path.includes("/catalog") ? {
+        dataset_id: "epa_airdata_aqi_county_2025", active_release_id: "release-aqi", value_type: "annual_aqi_summary",
+        geographies: ["county"], source_url: "https://aqs.epa.gov/aqsweb/airdata/download_files.html", measures, limitations,
+      } : path.includes("/map?") ? { release_id: "release-aqi", features: [] }
+        : path.includes("/legend?") ? { release_id: "release-aqi", statuses: [
+          { status: "available", n: 1, low: 42, high: 42, days_low: 355, days_high: 355 },
+          { status: "no_reported_value", n: 1, low: null, high: null, days_low: null, days_high: null }] }
+        : { release_id: "release-aqi", total: 2, rows: [
+          { geography_id: "01001", name: "Autauga", value: null, status: "no_reported_value", days_with_aqi: null, source_name: null },
+          { geography_id: "01003", name: "Baldwin", value: 42, status: "available", days_with_aqi: 355, source_name: "Baldwin, Alabama" }] };
+      return { ok: true, json: async () => ({ ...payload, geography: "county" }) };
+    }));
+    render(<Places2025Pilot dataset="aqi" />);
+    expect(await screen.findByText("01003")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Days with AQI" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "EPA source name" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /95% CI|MOE|Uncertainty/ })).not.toBeInTheDocument();
+    expect(screen.getByText("355")).toBeInTheDocument();
+    expect(screen.getAllByText("No reported value").length).toBeGreaterThan(0);
+    expect(screen.getByText(/not that the air was clean/)).toBeInTheDocument();
+    expect(screen.getByText(/not current or forecast conditions/)).toBeInTheDocument();
+    expect(screen.getByText(/category colors are not used/)).toBeInTheDocument();
+    expect(screen.getByText(/does not mean clean air/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "p90_aqi" } });
+    expect(await screen.findByText(/not a confidence interval or margin of error/)).toBeInTheDocument();
+    act(() => { mapHarness.zoom = 12; mapHarness.handlers.zoomend(); });
+    const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
+    expect(data.every((url) => url.includes("dataset_id=epa_airdata_aqi_county_2025") && url.includes("geography=county")
+      && url.includes("release_id=release-aqi") && url.includes("period=2025"))).toBe(true);
+    expect(data.some((url) => url.includes("measure_id=p90_aqi"))).toBe(true);
   });
 });
