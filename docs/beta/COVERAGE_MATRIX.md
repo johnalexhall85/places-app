@@ -54,19 +54,21 @@ These are the targets. Each is confirmed against the source release (name, data 
 | Risk behaviour | Current cigarette smoking |
 | Prevention | Routine checkup in the past year |
 
-PLACES measures come from different BRFSS years (high blood pressure is asked in alternate years). The period is recorded per measure. Kentucky and Pennsylvania gaps for 2023 measures, already documented for the insurance measure, are expected to apply to others.
+**Verified against the CDC files on 2026-11-15:** all eleven exist at county and tract level with 2023 data and a 95% interval. Every one of them is blank for all Kentucky and Pennsylvania counties and tracts, as the insurance measure already is. Those two states will show "not published" for chronic disease, and the profile must say so.
 
 **C2, Census ACS 5-year 2020–2024 (state, county, tract; source-published percentages with 90% margins), 7 additions:**
 
-| Measure | Planned table |
-|---|---|
-| Total population | B01003 |
-| People below the poverty level, percent | S1701 |
-| Population aged 65 and over, percent | S0101 |
-| Population under 18, percent | S0101 |
-| People with a disability, percent | S1810 |
-| People without health insurance, percent | S2701 |
-| People who speak English less than "very well", percent | S1601 |
+| Measure | Variable (estimate; `M`, `EA`, `MA` companions exist) | Universe |
+|---|---|---|
+| Total population | `B01003_001E` (detailed tables) | Total population |
+| People below the poverty level, percent | `S1701_C03_001E` | Population for whom poverty status is determined |
+| Population aged 65 and over, percent | `S0101_C02_030E` | Total population |
+| Population under 18, percent | `S0101_C02_022E` | Total population |
+| People with a disability, percent | `S1810_C03_001E` | Civilian noninstitutionalized population |
+| People without health insurance, percent | `S2701_C05_001E` | Civilian noninstitutionalized population |
+| People who speak English less than "very well", percent | `S1601_C06_001E` | Population 5 years and over |
+
+**Verified against the Census API on 2026-11-15:** all seven variables and their margin and annotation companions exist in the 2024 ACS 5-year endpoints (`acs/acs5` and `acs/acs5/subject`). A sample request returned values with margins for Etowah County and its tracts. The same endpoint returns congressional districts named "Congressional District N (119th Congress)", which settles the district vintage question for C3.
 
 Subject tables are used so the percentage and its margin of error are the Census Bureau's own, not computed by CHIP.
 
