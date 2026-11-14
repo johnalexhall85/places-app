@@ -12,6 +12,7 @@ import DemoAccessAdmin from "./pages/DemoAccessAdmin";
 import FundingModelBuilder from "./pages/FundingModelBuilder";
 import ProfileCounty from "./pages/ProfileCounty";
 import ProfileTract from "./pages/ProfileTract";
+import Places2025Pilot from "./pages/Places2025Pilot";
 import "./index.css";
 import { resolveRoute } from "./utils/routeResolver";
 
@@ -66,6 +67,14 @@ function Root() {
     routedPage = <ProfileCounty countyFips={route.id} />;
   } else if (route.type === "profile-tract") {
     routedPage = <ProfileTract tractGeoid={route.id} />;
+  } else if (route.type === "places-2025-pilot") {
+    routedPage = <Places2025Pilot />;
+  } else if (route.type === "acs-2024-area") {
+    routedPage = <Places2025Pilot dataset="acs" />;
+  } else if (route.type === "ahrf-area") {
+    routedPage = <Places2025Pilot dataset="ahrf" />;
+  } else if (route.type === "clh-area") {
+    routedPage = <Places2025Pilot dataset="clh" />;
   } else {
     routedPage = <App />;
   }

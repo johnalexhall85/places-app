@@ -1,0 +1,17 @@
+[Unit]
+Description=CHIP federal area full-content verification
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=john
+Group=john
+WorkingDirectory=/home/john/places-app/backend
+EnvironmentFile=-/home/john/places-app/backend/.env
+Environment=PATH=/home/john/places-app/backend/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/john/places-app/backend/.venv/bin/python -m app.area_pilot.operations check --mode content
+TimeoutStartSec=30min
+MemoryMax=3G
+TasksMax=64
+NoNewPrivileges=true

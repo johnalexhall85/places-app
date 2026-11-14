@@ -1,0 +1,33 @@
+{
+  "dataset_id": "ahrq_clh_2023_curated",
+  "name": "AHRQ Community-Level Health: community conditions",
+  "publisher": "AHRQ",
+  "distributor": "Agency for Healthcare Research and Quality",
+  "landing_page": "https://www.ahrq.gov/data/innovations/clh-data.html",
+  "source_release_id": "CLH September 2025 v2.0, 2023 files",
+  "source_urls": {
+    "landing": "https://www.ahrq.gov/data/innovations/clh-data.html",
+    "codebook": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2023_codebook_2_0.xlsx",
+    "documentation": "https://www.ahrq.gov/sites/default/files/wysiwyg/data/clh/CLH-Data-Sources-Documentation-2025.pdf",
+    "county": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2023_county_2_0.xlsx",
+    "tract": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2023_tract_2_0.xlsx"
+  },
+  "expected_source_rows": {"county": 3234, "tract": 85433},
+  "expected_source_only": {
+    "county": ["09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015", "60010", "60020", "60030", "60040"],
+    "tract": ["60050951203", "66010950300", "66010950502", "66010950900", "66010951100", "66010951800", "66010951901", "66010951902", "66010952200", "66010952300", "66010952400", "66010952900", "66010953200", "66010953300", "66010953400", "66010955900", "69110000200", "69110000400", "69110000500", "69110000700", "69110001200", "78010970100", "78010970200", "78010970300", "78010970500", "78010970600", "78010970800", "78010970900", "78010971100", "78010971400", "78010971500", "78020950200", "78030960300", "78030960400", "78030960600", "78030960800", "78030961100"]
+  },
+  "expected_boundary_only": {"county": [], "tract": []},
+  "geographies": ["county", "tract"],
+  "boundary_vintage": {"county": "TIGER/Line 2024 county equivalents", "tract": "TIGER/Line 2024 census tracts"},
+  "aggregation_method": "none",
+  "value_type": "published_rate_or_percentage",
+  "refresh_policy": {"schedule": "manual_full_content", "auto_publish": false, "same_label_revision": "hold_for_review", "new_release": "hold_for_review"},
+  "measures": [
+    {"measure_id": "ACS_PCT_HH_BROADBAND_ANY", "official_label": "Percentage of households with broadband of any type", "label": "Households with broadband of any type", "unit": "%", "population": "all households", "denominator": "all households", "observation_period": "2019–2023", "source": "U.S. Census Bureau, American Community Survey 5-year", "geographies": ["county", "tract"]},
+    {"measure_id": "ACS_PCT_HU_NO_VEH", "official_label": "Percentage of housing units with no vehicle available", "label": "Occupied housing units without a vehicle", "unit": "%", "population": "occupied housing units", "denominator": "occupied housing units", "observation_period": "2019–2023", "source": "U.S. Census Bureau, American Community Survey 5-year", "geographies": ["county", "tract"]},
+    {"measure_id": "ACS_PCT_RENTER_HU_COST_30PCT", "official_label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income", "label": "Renter housing cost burden, at least 30% of income", "unit": "%", "population": "renter-occupied housing units with computed rent-to-income ratio", "denominator": "renter-occupied housing units with computed rent-to-income ratio", "observation_period": "2019–2023", "source": "U.S. Census Bureau, American Community Survey 5-year", "geographies": ["county", "tract"]},
+    {"measure_id": "CCBP_SOGS_RATE", "official_label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people", "label": "Supermarkets and grocery stores per 1,000 residents", "unit": "establishments per 1,000 people", "population": "paid-employee establishments, NAICS 445110", "denominator": "county resident population", "observation_period": "2023", "source": "U.S. Census Bureau, County Business Patterns and population estimates", "geographies": ["county"]},
+    {"measure_id": "CCBP_FCRSC_RATE", "official_label": "Total number of fitness centers and recreational sports centers per 1,000 people", "label": "Fitness and recreational sports centers per 1,000 residents", "unit": "establishments per 1,000 people", "population": "paid-employee establishments, NAICS 713940", "denominator": "county resident population", "observation_period": "2023", "source": "U.S. Census Bureau, County Business Patterns and population estimates", "geographies": ["county"]}
+  ]
+}

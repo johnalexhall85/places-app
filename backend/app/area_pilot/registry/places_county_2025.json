@@ -1,0 +1,53 @@
+{
+  "dataset_id": "cdc_places_county_2025_pilot",
+  "name": "PLACES 2025 county pilot",
+  "publisher": "Centers for Disease Control and Prevention",
+  "landing_page": "https://data.cdc.gov/d/i46a-9kgh",
+  "source_view_id": "i46a-9kgh",
+  "source_api": "https://data.cdc.gov/resource/i46a-9kgh.json",
+  "source_metadata_api": "https://data.cdc.gov/api/views/i46a-9kgh.json",
+  "source_release_id": "2025-12-04",
+  "source_release_label": "December 2025 PLACES release",
+  "refresh_policy": {"schedule": "weekly_full_content_verification", "auto_publish": false,
+    "supported_release_ids": ["2025-12-04"], "same_label_revision": "hold_for_review",
+    "new_release": "discover_and_hold", "schema_or_boundary_drift": "hold_for_review"},
+  "boundary_vintage": "TIGER/Line 2023 county",
+  "geographies": ["county"],
+  "aggregation_method": "none",
+  "expected_county_count": 3143,
+  "expected_schema_sha256": "728eda33c40df4ba3dbbea46d69499d6848181ae1bdae160ed431a93d2d764dc",
+  "population": "adult residents; measure-specific age restriction",
+  "value_type": "crude_prevalence",
+  "unit": "percent",
+  "measures": [
+    {
+      "measure_id": "dental_crudeprev",
+      "label": "Visited dentist or dental clinic in the past year",
+      "observation_period": "2022",
+      "population": "adults",
+      "source_value_field": "dental_crudeprev",
+      "source_ci_field": "dental_crude95ci",
+      "source_definition_contains": "visited dentist or dental clinic in the past year among adults, 2022"
+    },
+    {
+      "measure_id": "access2_crudeprev",
+      "label": "Current lack of health insurance",
+      "observation_period": "2023",
+      "population": "adults aged 18-64",
+      "source_value_field": "access2_crudeprev",
+      "source_ci_field": "access2_crude95ci",
+      "source_definition_contains": "current lack of health insurance among adults aged 18-64 years, 2023",
+      "documented_unavailable_states": ["KY", "PA"]
+    }
+  ],
+  "missing_semantics": {
+    "numeric_zero": "true_zero",
+    "empty_or_absent": "missing unless a documented unavailable state",
+    "suppression_tokens": ["*", "***", "Suppressed"],
+    "documented_unavailable": "not_published"
+  },
+  "documentation_urls": [
+    "https://www.cdc.gov/places/current-release-notes/index.html",
+    "https://www.cdc.gov/places/measure-definitions/index.html"
+  ]
+}
