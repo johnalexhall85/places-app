@@ -1,0 +1,184 @@
+{
+  "dataset_id": "hrsa_health_center_sites",
+  "name": "HRSA Health Center Service Delivery and Look-Alike Sites",
+  "publisher": "Health Resources and Services Administration (HRSA), Bureau of Primary Health Care (BPHC), via the HRSA Data Warehouse",
+  "product_kind": "point_site_directory",
+  "landing_page": "https://data.hrsa.gov/topics/health-centers/",
+  "download_page": "https://data.hrsa.gov/data/download",
+  "source_urls": {
+    "download_page": "https://data.hrsa.gov/data/download",
+    "topic_page": "https://data.hrsa.gov/topics/health-centers/",
+    "metadata_xlsx": "https://data.hrsa.gov/DataDownload/DD_Files/Health_Center_Service_Delivery_and_LookAlike_Sites_Data_Download_Metadata.xlsx",
+    "sites_csv": "https://data.hrsa.gov/DataDownload/DD_Files/Health_Center_Service_Delivery_and_LookAlike_Sites.csv"
+  },
+  "download_page_links": [
+    "/DataDownload/DD_Files/Health_Center_Service_Delivery_and_LookAlike_Sites.csv",
+    "/DataDownload/DD_Files/Health_Center_Service_Delivery_and_LookAlike_Sites_Data_Download_Metadata.xlsx"
+  ],
+  "download_page_phrases": [
+    "Health Center Service Delivery Sites (HCSD) Data Published by: HRSA, Bureau of Primary Health Care (BPHC) Usage limitations: None",
+    "The city and state are the only address components for domestic violence shelters (the building number, street name, and ZIP Code are suppressed and will be empty)."
+  ],
+  "topic_page_phrases": [
+    "This dataset provides a list of the over",
+    "sites where HRSA-funded health centers provide comprehensive health care services."
+  ],
+  "metadata_sheet": "SITE_FQHC_FQHC_LAL_DD_META_VX",
+  "metadata_header": ["Attribute Name", "Physical Column Name", "User Friendly Names", "Definition", "Data Restriction",
+    "Organization", "Update Frequency", "Data Type", "Business Rule / Format", "HDW Transformation", "Valid Values",
+    "Definition Update Date"],
+  "metadata_phrases": {
+    "Geocoding Artifact Address Primary X Coordinate": "primary longitude in decimal degrees (x coordinate) of an entity based on its address",
+    "Geocoding Artifact Address Primary Y Coordinate": "primary latitude in decimal degrees (y coordinate) of an entity based on its address",
+    "BPHC Assigned Number": "site number assigned by the source system",
+    "Site Status Description": "whether a given health center service delivery site is affiliated with an organization that has a current health center grant, and that the site itself is currently open for business",
+    "Health Center Type Description": "indicates whether a given health center service delivery site offers direct patient care, functions in an administrative capacity, or both",
+    "Data Warehouse Record Create Date": "the date on which the data was processed by the HRSA Data Warehouse"
+  },
+  "expected_header": ["Health Center Type", "Health Center Number", "BHCMIS Organization Identification Number",
+    "BPHC Assigned Number", "Site Name", "Site Address", "Site City", "Site State Abbreviation", "Site Postal Code",
+    "Site Telephone Number", "Site Web Address", "Operating Hours per Week",
+    "Health Center Location Setting Identification Number",
+    "Health Center Service Delivery Site Location Setting Description", "Health Center Status Identification Number",
+    "Site Status Description", "FQHC Site Medicare Billing Number", "FQHC Site NPI Number",
+    "Health Center Location Identification Number", "Health Center Location Type Description",
+    "Health Center Type Identification Number", "Health Center Type Description",
+    "Health Center Operator Identification Number", "Health Center Operator Description",
+    "Health Center Operating Schedule Identification Number", "Health Center Operational Schedule Description",
+    "Health Center Operating Calendar Surrogate Key", "Health Center Operating Calendar",
+    "Site Added to Scope this Date", "Health Center Name", "Health Center Organization Street Address",
+    "Health Center Organization City", "Health Center Organization State", "Health Center Organization ZIP Code",
+    "Grantee Organization Type Description", "Geocoding Artifact Address Primary X Coordinate",
+    "Geocoding Artifact Address Primary Y Coordinate", "U.S. - Mexico Border 100 Kilometer Indicator",
+    "U.S. - Mexico Border County Indicator", "State and County Federal Information Processing Standard Code",
+    "Complete County Name", "County Equivalent Name", "County Description", "HHS Region Code", "HHS Region Name",
+    "State FIPS Code", "State Name", "State FIPS and Congressional District Number Code",
+    "Congressional District Number", "Congressional District Name", "Congressional District Code",
+    "U.S. Congressional Representative Name", "Name of U.S. Senator Number One", "Name of U.S. Senator Number Two",
+    "Data Warehouse Record Create Date", ""],
+  "snapshot_field": "Data Warehouse Record Create Date",
+  "snapshot_format": "%m/%d/%Y",
+  "site_id_field": "BPHC Assigned Number",
+  "site_id_pattern": "^BPS-(H80|LAL)-[0-9]{6}$",
+  "program_consistency": {
+    "H80": {"program": "Federally Qualified Health Center (FQHC)", "health_center_number_prefix": "H80CS"},
+    "LAL": {"program": "Federally Qualified Health Center (FQHC) Look-Alike", "health_center_number_prefix": "LALCS"}
+  },
+  "expected_source_rows": {"min": 15000, "max": 26000},
+  "change_hold_fraction": 0.10,
+  "max_outside_published_county": 100,
+  "eligible_statuses": ["Active"],
+  "status_values": ["Active", "Pending Verification", "Terminated", "Unknown"],
+  "classifications": {
+    "program": {
+      "source_field": "Health Center Type",
+      "label": "Program",
+      "values": [
+        {"code": "fqhc", "source": "Federally Qualified Health Center (FQHC)", "label": "Health Center Program awardee (FQHC)", "default": true},
+        {"code": "look_alike", "source": "Federally Qualified Health Center (FQHC) Look-Alike", "label": "Health Center Program look-alike (FQHC Look-Alike)", "default": true}
+      ]
+    },
+    "site_type": {
+      "source_field": "Health Center Type Description",
+      "label": "Site type",
+      "values": [
+        {"code": "service_delivery", "source": "Service Delivery Site", "label": "Service delivery site", "default": true},
+        {"code": "admin_and_service", "source": "Administrative/Service Delivery Site", "label": "Administrative and service delivery site", "default": true},
+        {"code": "administrative", "source": "Administrative", "label": "Administrative only (no service delivery listed)", "default": false}
+      ]
+    },
+    "location_type": {
+      "source_field": "Health Center Location Type Description",
+      "label": "Location type",
+      "values": [
+        {"code": "permanent", "source": "Permanent", "label": "Permanent", "default": true},
+        {"code": "seasonal", "source": "Seasonal", "label": "Seasonal", "default": true},
+        {"code": "mobile_van", "source": "Mobile Van", "label": "Mobile van (published base address)", "default": true},
+        {"code": "unknown", "source": "Unknown", "label": "Unknown", "default": true}
+      ]
+    },
+    "setting": {
+      "source_field": "Health Center Service Delivery Site Location Setting Description",
+      "label": "Location setting",
+      "values": [
+        {"code": "general", "source": "All Other Clinic Types", "label": "All other clinic types", "default": true},
+        {"code": "school", "source": "School", "label": "School", "default": true},
+        {"code": "hospital", "source": "Hospital", "label": "Hospital", "default": true},
+        {"code": "nursing_home", "source": "Nursing Home", "label": "Nursing home", "default": true},
+        {"code": "tribal", "source": "Tribal", "label": "Tribal", "default": true},
+        {"code": "correctional", "source": "Correctional Facility", "label": "Correctional facility", "default": true},
+        {"code": "carceral_transition", "source": "Transitional Care in Carceral Setting", "label": "Transitional care in carceral setting", "default": true},
+        {"code": "domestic_violence", "source": "Domestic Violence", "label": "Domestic violence", "default": false, "location_suppressed": true},
+        {"code": "unknown", "source": "Unknown", "label": "Unknown", "default": true}
+      ]
+    }
+  },
+  "display_vocabularies": {
+    "Health Center Operator Description": ["Health Center/Applicant", "Subrecipient", "Contractor", "Grantee", "Sub-recipient", "Unknown"],
+    "Health Center Operational Schedule Description": ["Full-Time", "Part-Time", "Unknown"],
+    "Health Center Operating Calendar": ["Year-Round", "Seasonal", "Unknown"]
+  },
+  "vocabulary_notes": "HRSA metadata valid values (2016/05/27 and 2015/05/15 definitions) omit 'Transitional Care in Carceral Setting', 'Health Center/Applicant', and 'Subrecipient', which appear in the live file; they were reviewed from the 2026-11-14 file. Any other unreviewed value holds the candidate.",
+  "exposed_attributes": {
+    "site_name": "Site Name",
+    "organization_name": "Health Center Name",
+    "health_center_number": "Health Center Number",
+    "bhcmis_organization_id": "BHCMIS Organization Identification Number",
+    "site_address": "Site Address",
+    "site_city": "Site City",
+    "site_state": "Site State Abbreviation",
+    "site_postal_code": "Site Postal Code",
+    "site_phone": "Site Telephone Number",
+    "site_website": "Site Web Address",
+    "operating_hours_per_week": "Operating Hours per Week",
+    "operator_type": "Health Center Operator Description",
+    "operating_schedule": "Health Center Operational Schedule Description",
+    "operating_calendar": "Health Center Operating Calendar",
+    "county_name": "Complete County Name",
+    "county_fips": "State and County Federal Information Processing Standard Code",
+    "state_name": "State Name"
+  },
+  "suppressed_location_fields": ["site_address", "site_postal_code", "site_phone"],
+  "not_exposed_notes": "Site Added to Scope this Date is marked Restricted in HRSA metadata and is never exposed. Medicare billing/NPI numbers, congressional and senator fields, and organization (awardee) address fields are retained only in the raw staging record.",
+  "location_policy": {
+    "crs": "EPSG:4326",
+    "crs_basis": "HRSA metadata defines X/Y as longitude/latitude in decimal degrees from Esri address geocoding; no datum is stated. Coordinates are stored exactly as published and interpreted as WGS 84 longitude/latitude without transformation.",
+    "source_quality_fields": "none published (no geocode match score, precision, or method field)",
+    "suppressed_settings": ["Domestic Violence"],
+    "rules": [
+      "suppressed_source_policy: location setting is Domestic Violence. HRSA suppresses street, building number, and ZIP for these shelters; no coordinate, address, or phone is stored in the read model or exposed, even if present in the file.",
+      "no_published_coordinates: X and Y both blank.",
+      "invalid_coordinates: only one of X/Y present, nonnumeric, nonfinite, outside longitude -180..180 or latitude -90..90, or exactly 0,0.",
+      "approximate_shared_coordinate: identical published X/Y is shared by sites whose normalized city names differ, or a pair published with at most three decimal places is shared by sites whose normalized street addresses differ (a place-level geocode).",
+      "coarse_coordinate: X or Y published with at most two decimal places (about 1 km or coarser).",
+      "published_county_not_in_boundary_layer: the site's state is covered by the CHIP TIGER/Line 2024 county layer but its published county FIPS is blank or absent from that layer.",
+      "outside_published_county: the point does not intersect the TIGER/Line 2024 county whose GEOID equals the site's published county FIPS.",
+      "mapped: none of the above. boundary_check is within_published_county, or outside_chip_boundary_layer for island areas (AS, GU, MP, VI, FM, MH, PW) that the CHIP 2024 layer does not cover."
+    ],
+    "never": "No address is geocoded, no withheld location is reconstructed, and no city, ZIP, or county centroid is substituted for a missing site location."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 county equivalents (50 states, DC, Puerto Rico)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "clustering": {
+    "point_cap": 2000,
+    "point_min_zoom": 8,
+    "cluster_cell_px": 64,
+    "cluster_cap": 3000,
+    "table_page_max": 200,
+    "note": "Clusters are display groupings of eligible published sites in a fixed Web Mercator grid cell for the current zoom. They are not service areas, catchments, or travel-time zones."
+  },
+  "limitations": [
+    "Current HRSA directory snapshot, not an annual observation period. HRSA refreshes it daily; CHIP shows the reviewed snapshot named here.",
+    "Sites differ in services, hours, and who they serve; this file does not list services offered or whether a site accepts new patients.",
+    "School, hospital, nursing-home, correctional, and carceral-setting sites may serve only students, residents, or patients of that institution.",
+    "Mobile van locations are the published base address, not every place the van operates.",
+    "Domestic violence shelter locations are suppressed by HRSA and are never mapped. Sites without published coordinates or with approximate coordinates are counted but not mapped.",
+    "Clusters are display groupings, not service areas. CHIP does not calculate service areas, travel times, nearest providers, rates, or clinical performance."
+  ],
+  "usage_terms": "HRSA data download page, Health Center Service Delivery Sites (HCSD): published by HRSA, Bureau of Primary Health Care (BPHC); usage limitations: None.",
+  "refresh_policy": {"schedule": "manual_full_content", "auto_publish": false,
+    "same_label_revision": "hold_for_review", "large_change_vs_active": "hold_for_review",
+    "unchanged_content": "record_duplicate_run_with_confirmed_snapshot_date"}
+}

@@ -3,6 +3,7 @@ import { GeoJSON, MapContainer, TileLayer, ZoomControl, useMapEvents } from "rea
 import { API_BASE } from "../config/apiBase";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { HealthCenterSiteLayer, HealthCenterSitePanel, useHealthCenterSites } from "../components/HealthCenterSites";
 import "./Places2025Pilot.css";
 
 const cache = new Map();
@@ -158,6 +159,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [tableOpen, setTableOpen] = useState(true);
   const requestId = useRef(0);
   const viewportRef = useRef(null);
+  // Optional point overlay: its own release, filters, and requests; it never changes the area selection.
+  const sites = useHealthCenterSites({ bbox, zoom: mapZoom });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -263,6 +266,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             const uncertainty = displayUncertainty(item, isAcs, isAhrf, isClh);
             layer.bindPopup(`${areaName(geography)} ${item.name} (${item.geography_id || item.county_fips})<br>${value} ${isAhrf && item.value != null ? measure?.unit : ""}<br>${uncertainty}<br>${measure?.observation_period}${isAcs ? " · ACS 5-year · 2024 dollars" : ""}`);
           }} />}
+          {sites.enabled && <HealthCenterSiteLayer sites={sites} />}
         </MapContainer>}
       </div>
       <section className="pilot-panel pilot-controls" aria-label="Analytical controls">
@@ -342,6 +346,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             </>}
           </div>}
         </section>
+        <HealthCenterSitePanel sites={sites} />
       </>}
     </main>
     <Footer />

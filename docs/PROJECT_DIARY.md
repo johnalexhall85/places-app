@@ -2,6 +2,64 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T18:21:16+00:00 — HRSA health center site point overlay integrated, published, and deployed (Claude)
+
+- **Objective:** CHIP's first point layer: HRSA Health Center Service Delivery and Look-Alike Sites as an optional overlay on the area maps. The Codex sibling worktree was not touched.
+- **Source:** HRSA BPHC/Data Warehouse HCSD CSV plus metadata XLSX. Usage limitations: "None"; refreshed daily.
+  - Snapshot 2026-11-14, from `Data Warehouse Record Create Date`; retrieval was 18:07Z.
+  - CSV SHA-256 `08b01537…a436`.
+  - CMS FQHC ownership records and UDS organization-level data were not used.
+- **Product rules:**
+  - Key: `BPHC Assigned Number` (19,616 unique site IDs). Organizations (1,593 health center numbers) are attributes and are never merged with sites.
+  - Default filter: Active service-delivery sites, so administrative-only sites are opt-in.
+  - Location statuses: 19,200 mapped (19,186 inside their published county; 14 island-area points without a CHIP boundary).
+  - Excluded from the map: 14 domestic-violence locations (suppressed by HRSA policy; no coordinates, address, or phone kept in the read model), 363 rows with no coordinates, 38 shared place-level geocodes (AS, FM, MH, PW), and 1 coarse coordinate.
+  - Colocated sites are retained (up to 15 at one point).
+  - The "Site Added to Scope" date is marked Restricted in HRSA metadata and is never exposed.
+- **Changes:**
+  - Registry `hrsa_hc_sites.json`; modules `hrsa_sites.py`, `hrsa_sites_cli.py`, `hrsa_sites_api.py`; one router include in `main.py`.
+  - Additive migration `e9b3f6a2c4d8` (`stage_hrsa_site`, `site_hrsa` with PostGIS points, GiST index, constraints, and the published-immutability trigger).
+  - Frontend `HealthCenterSites.jsx`, wired into `Places2025Pilot.jsx` and CSS.
+  - Tests; operator guide `backend/docs/chip_hrsa_health_center_sites.md`; inventory record 96; handbook.
+- **State-changing commands:**
+  - `alembic upgrade head` (`d3a7e5c1b9f2` → `e9b3f6a2c4d8`).
+  - `fetch-stage-validate` three times:
+    - Run 1 was held (`38f71065…`) because my new Content-Length check misread a gzip-encoded page. This was a code bug, fixed; the held row is kept.
+    - Run 2 produced `e5cdea05-6518-454c-9418-353410c2309d`, ready with all 8 checks passing.
+    - Run 3 was recorded as a duplicate.
+  - `review`, then `approve-publish e5cdea05…` (semantic `31859595…b90a`, schema `2096dab1…e0ab`, metadata `2cb368bf…48d2f9`).
+  - Pointer drill: `deactivate`, then a refused cross-product rollback, then `rollback e5cdea05…`.
+  - Webroot backed up to `data/deploy-recovery/hrsa-sites-20261114/`, then `rsync -a --delete frontend/dist/ /var/www/places/` (repeated twice for a layout fix), then `systemctl restart places-backend`.
+- **Verification:**
+  - Backend: 23 unit tests, plus 7 PostGIS integration tests in a scratch DB (`chip_hrsa_sites_test`, created and dropped by the tests). The full suite had 567 passed and 1 failed; the failure is the known `test_all_six_real_source_years_match_acceptance_totals`.
+  - Frontend: 126/126 tests (7 new); build OK with the existing bundle-size warning.
+  - Review rechecked 4 archives and all 19,616 rows, plus 19,200 geometries to 1e-9.
+  - Map and table totals were equal in 8 benchmark views:
+
+    | View | Result | Time |
+    | --- | --- | --- |
+    | National clusters | 53 clusters | ~70–90 ms, ~10 KB |
+    | Los Angeles, zoom 11 | 347 points | ≤15 ms, ~200 KB |
+    | NYC, zoom 9 | 543 points | ~300 KB |
+    | Rural views | points | ≤4 ms |
+
+  - Through Nginx, all site routes return 401 anonymously, and published site rows reject writes.
+  - Area regression: all five area catalogs resolve unchanged pointers, and an AQI map read returns 200.
+  - Funding regression: public map and legend return 200 through Nginx. The map took 25.8 s cold after the restart and 4.9 s warm. Four funding v1 routes return 200 in-process.
+- **Browser check:** headless Chromium loaded the deployed bundle against a loopback-only verification backend (live DB, gate off, port 8765, stopped). It covered:
+  - Clusters, then points, and colocated lists.
+  - Marker clicks without area popups, while polygon popups still work in every mode.
+  - Keyboard detail from the table.
+  - Filters.
+  - Measure switching with no site refetch.
+  - Persistence across PLACES, EPA AQI, and ACS.
+  - A layout fix so the site panel no longer covers the legend on desktop; it starts collapsed on mobile.
+- **Not done:**
+  - No authenticated real-session browser check: creating a temporary demo access code was denied by the session permission policy.
+  - Timer, backups, access controls, funding code, and other facility datasets were not changed.
+- **Git:** committed on new branch `claude/hrsa-health-center-sites` (based on `e35aee2`) and pushed to `origin` without force; `main` is unchanged. The deployed webroot and backend correspond to this branch's tree. Raw source files and archives (`data/`) are gitignored and not committed.
+- **Next action:** an operator runs an authenticated browser check of the overlay on `/area/places-2025` and `/area/epa-aqi`, then refreshes the recovery set to include the site tables.
+
 ## 2026-11-14T17:45:20+00:00 — EPA AQI branch merged to main (Claude)
 
 - **Outcome:** At the user's request, local `main` was fast-forwarded from `d45fed6` to `a17cf77` (branch `claude/epa-aqi-county-2025`) and pushed to `origin/main` without force. `origin/main` had not moved since the branch was created. This entry and the handbook Git-status line are a follow-up documentation commit. They correct the earlier entry's statement that `main` was unchanged.
