@@ -2,6 +2,64 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T19:16:00+00:00 — EPA TRI reporting-facility point overlay integrated, published, and deployed (Claude)
+
+- **Agent/objective:** Claude implemented CHIP's second point layer, EPA Toxics Release Inventory reporting facilities with reported chemicals, reusing the HRSA point-layer framework. The Codex sibling worktree (`codex/ahrf-county-five-measures`) was not touched.
+- **Source/year/status:**
+  - EPA TRI basic data file, national, **reporting year 2024**; the page states forms "processed as of November 5, 2025" (page last updated 2026-01-28).
+  - The RY2025 URL returned HTTP 404. EPA's preliminary-dataset page also calls 2024 the most current year.
+  - Treated as the latest complete annual basic file, subject to EPA revision, and **not** the frozen National Analysis dataset.
+  - CSV SHA-256 `06dfa3a6…1506` (60,550,684 bytes); retrieved 19:01:48Z.
+  - The documentation PDF is the August 2024 edition ("Updated for RY 2023"); the RY2024 header was reviewed exactly.
+- **Grain and findings:**
+  - 77,295 forms (unique `DOC_CTRL_NUM`; 68,567 Form R, 8,728 Form A) and 21,482 facilities (TRIFD).
+  - 562 chemical IDs and 76,381 facility-chemical relationships. 637 pairs have more than one form; these are distinct submissions, and all are kept.
+  - Facility attributes conflict for 0 facilities. Industry sector is form-level (41 multi-sector facilities), so facilities carry a set of sectors.
+  - 15 chemical IDs have more than one published name; all names are kept.
+  - All facilities are mapped (6-decimal FRS coordinates). `HORIZONTAL DATUM` is blank on every row, so the coordinates are drawn as EPSG:4326 without transformation.
+  - Boundary checks: 2 points lie outside the reported state (FL/GA and KS/MO state lines) and 19 lie in island areas outside the CHIP layer. All stay mapped, with the derived county stored separately.
+  - 213 colocated coordinate groups (472 facilities) are kept distinct.
+  - No revision or withdrawal flag exists in the file; refresh change reports count forms that are no longer present.
+- **Changes:**
+  - Registry `epa_tri_facilities.json`; modules `tri.py`, `tri_cli.py`, `tri_api.py`; one router include in `main.py`.
+  - Additive migration `f2c8d4a6b1e3` (`stage_tri_report`, `tri_report`, `tri_chemical`, `tri_facility`, `tri_facility_chemical`, with immutability triggers).
+  - Frontend `TriFacilities.jsx`, wired into `Places2025Pilot.jsx`. The HRSA and TRI panels now stack in a shared `.pilot-overlays` column.
+  - Tests; operator guide `backend/docs/chip_epa_tri_facilities.md`; inventory row `epa-tri-facilities` updated in place (still 96 records); handbook.
+- **State-changing commands:**
+  - `alembic upgrade head` (`e9b3f6a2c4d8` → `f2c8d4a6b1e3`).
+  - `tri_cli fetch-stage-validate` twice: candidate `3b6ecfb1-bf58-4122-a71f-432027994bd7` ready with 11/11 checks, then a duplicate run.
+  - `review`, then `approve-publish` at 19:03:10Z (semantic `b0d831fc…f0ae`, schema `5a37e707…e143`, metadata `71b6ea27…a77`).
+  - Pointer drill: `deactivate`, then a refused rollback to the HRSA release, then `rollback 3b6ecfb1…`.
+  - Webroot backed up to `data/deploy-recovery/tri-facilities-20261114/`, then `rsync -a --delete frontend/dist/ /var/www/places/` three times (two layout fixes); the final webroot matches the build by SHA-256.
+  - `sudo -n systemctl restart places-backend` at 19:04:11Z.
+  - For verification: six temporary demo access codes (label `agent-verification-tri-20261114`, 2 uses, 30-minute expiry; 6 runs, three of which stopped at the marker-click step before the script fix), each deactivated by the script in a `finally` block. A DB check confirmed all 6 are inactive with one use each. The plaintext was never printed or stored.
+- **Verification:**
+  - Backend: 21 unit tests and 7 PostGIS integration tests (scratch DB `chip_tri_facilities_test`, created and dropped by the tests). They cover multi-form pairs, revision and withdrawal holds, colocated facilities, coordinate conflicts, missing locations, chemical and sector filters, cluster and table parity, caps and 413s, publication isolation, failed candidates, authentication, and tamper detection.
+  - Full backend suite: 595 passed, 1 failed (the known `test_all_six_real_source_years_match_acceptance_totals`).
+  - Frontend: 133/133 tests (7 new: chemical filter, sector filter, keyboard detail, stale responses during rapid switching, release mismatch, simultaneous overlays). The build succeeds with the existing chunk-size warning.
+  - `review` re-verified 3 archives and every staged and read-model row plus the geometries. An independent raw-CSV comparison matched for 3 facilities.
+  - Benchmarks: national clusters 88 ms in-process (95–110 ms through Nginx), urban points ≤3 ms (Houston 323, Chicago 449), rural ≤10 ms. Details are in the guide.
+  - Anonymous requests to all `/api/area/tri/*` routes return 401.
+- **Authenticated browser check (real session through Nginx, 23/23):**
+  - Clusters, then points, then a marker detail with the FRS link and no area popup.
+  - Keyboard detail focus.
+  - TRI and HRSA shown together.
+  - Ethylene-oxide filter (no HRSA refetch).
+  - Rapid sector switching.
+  - Measure switching that refetches only the area map.
+  - `/area/epa-aqi` and `/area/acs-2024` with both overlays.
+  - All area catalogs and the HRSA catalog on unchanged pointers.
+  - Funding map and legend returning 200.
+  - No page errors; mobile without horizontal scroll.
+  - Two layout bugs found by screenshot were fixed: an open panel collapsed and spilled below the map, and a long detail label squeezed the values.
+- **Not done / limits:**
+  - No release quantities, totals, toxicity, risk, aggregates, distance zones, historical years, or enforcement joins (deferred by design).
+  - HRSA marker detail and HRSA filters were not exercised in the authenticated run.
+  - On narrow screens the overlay column overlaps the open area table, as the HRSA toggle did before this change.
+  - The timer and backup configuration were not changed. TRI is not in the recovery set.
+- **Git:** committed on new branch `claude/epa-tri-facilities`, created from `claude/hrsa-health-center-sites` (`9666f71`) because the deployed tree contains both overlays. Pushed to `origin` without force. `main` contains neither. Raw source files, archives, and the webroot backup (`data/`) are gitignored and not committed.
+- **Next action:** an operator decides whether to merge the HRSA and TRI branches into `main`, then refreshes the recovery set to include the site and TRI tables.
+
 ## 2026-11-14T18:21:16+00:00 — HRSA health center site point overlay integrated, published, and deployed (Claude)
 
 - **Objective:** CHIP's first point layer: HRSA Health Center Service Delivery and Look-Alike Sites as an optional overlay on the area maps. The Codex sibling worktree was not touched.

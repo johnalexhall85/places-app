@@ -33,6 +33,7 @@ from app.demo_access.middleware import DemoAccessMiddleware
 from app.demo_access.router import router as demo_access_router
 from app.area_pilot.router import router as area_pilot_router
 from app.area_pilot.hrsa_sites_api import router as area_sites_router
+from app.area_pilot.tri_api import router as area_tri_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -85,3 +86,4 @@ app.include_router(funding_models_router)
 app.include_router(demo_access_router)
 app.include_router(area_pilot_router)
 app.include_router(area_sites_router)
+app.include_router(area_tri_router)

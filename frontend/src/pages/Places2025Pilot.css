@@ -227,6 +227,28 @@
 .pilot-sites.is-open { max-height: calc(54% - 24px); }
 .pilot-content:has(.pilot-sites.is-open) .pilot-legend { max-height: calc(46% - 24px); overflow: auto; }
 
+/* Point overlays (HRSA sites, EPA TRI facilities) stack in one bottom-right column; open panels share it. */
+.pilot-overlays {
+  position: absolute;
+  z-index: 2200;
+  right: 16px;
+  bottom: 16px;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(54% - 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.pilot-overlays > .pilot-panel, .pilot-overlays > .pilot-panel.pilot-sites, .pilot-overlays > .pilot-panel.pilot-sites.is-open { position: relative; right: auto; bottom: auto; top: auto; left: auto; width: auto; max-height: none; min-height: 0; flex: 0 0 auto; pointer-events: auto; }
+.pilot-overlays > .pilot-panel.pilot-sites.is-open { flex: 0 1 auto; }
+.chip-tri-chemical-filter { display: grid; gap: 4px; }
+.chip-tri-chemical-filter label { display: grid; gap: 4px; font-weight: 700; }
+.chip-tri-chemical-filter input[type="search"] { border: 1px solid var(--pdo-border-strong); border-radius: 7px; padding: 4px 8px; }
+.chip-tri-chemical-list, .chip-tri-chemicals { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.chip-tri-chemical-list button[aria-pressed="true"] { border-color: #6b3fa0; font-weight: 700; }
+.pilot-tri .chip-sites-detail dl { grid-template-columns: minmax(0, 10.5em) minmax(0, 1fr); }
+
 .pilot-sites-head {
   display: flex;
   align-items: center;
@@ -297,6 +319,16 @@
 }
 .chip-site-cluster { border-radius: 50%; background: rgba(255, 255, 255, 0.88); border: 2px solid #213547; box-shadow: 0 0 0 4px rgba(33, 53, 71, 0.18); }
 .chip-site-colocated { border-radius: 4px; background: #213547; color: white; border: 1.5px solid white; }
+.chip-tri-cluster, .chip-tri-colocated {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font: 700 11px/1 system-ui, sans-serif;
+}
+.chip-tri-cluster { border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #2c1546; border: 2px solid #6b3fa0; box-shadow: 0 0 0 4px rgba(107, 63, 160, 0.2); }
+.chip-tri-colocated { border-radius: 4px; background: #6b3fa0; color: white; border: 1.5px solid white; }
+.chip-tri-swatch-colocated { background: #6b3fa0; }
+.chip-tri-swatch-cluster { border-radius: 3px; border-color: #6b3fa0; background: rgba(107, 63, 160, 0.18); }
 
 .visually-hidden {
   position: absolute !important;
@@ -306,6 +338,7 @@
 
 @media (max-width: 700px) {
   .pilot-content:has(.pilot-sites.is-open) .pilot-legend { max-height: 23vh; }
+  .pilot-overlays { left: 16px; right: 16px; width: auto; top: calc(34vh + 24px); bottom: auto; max-height: 30vh; }
   .pilot-sites.is-open,
   .pilot-sites { left: 16px; right: 16px; width: auto; top: calc(34vh + 24px); bottom: auto; max-height: 30vh; }
 }
