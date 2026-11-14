@@ -11,12 +11,13 @@ import {
   formatCompactCurrencyFromDecimalString,
   formatCurrencyFromDecimalString,
   formatPercentFromDecimalString,
+  rowsToCsv,
   sumMoneyStrings,
 } from "../utils/cdcFundingFormatting";
 
 const TAB_DEFINITIONS = [
-  { id: "overview", label: "Overview" },
   { id: "trends", label: "Trends" },
+  { id: "overview", label: "Annual Funding" },
   { id: "accounts", label: "Account Details" },
 ];
 
@@ -35,10 +36,6 @@ const FISCAL_MONTHS = [
   "Sep",
 ];
 
-const SERIES_STYLES = {
-  primary: { color: "#075985", dash: "" },
-  context: { color: "#64748b", dash: "3 5" },
-};
 const COMPARISON_STYLES = [
   { color: "#9f1239", dash: "9 5" },
   { color: "#166534", dash: "4 4" },
@@ -131,12 +128,6 @@ function equivalentComparisonPoint(series, periodNumber) {
 }
 
 export function CdcFundingHeader({
-  fiscalYears,
-  latestYear,
-  onDownload,
-  onYearChange,
-  selectedYear,
-  yearsLoading,
 }) {
   return (
     <section
@@ -147,43 +138,11 @@ export function CdcFundingHeader({
         <div className="cdc-redesign-eyebrow">CDC Funding</div>
         <h1 id="cdc-funding-title">CDC Funding</h1>
         <p>
-          Explore CDC-awarded obligations by fiscal year, federal funding
-          account, emergency designation, and award type.
+          Explore CDC-awarded funding by fiscal year, federal funding account,
+          supplemental designation, and award type.
         </p>
       </div>
       <div className="cdc-redesign-header-actions">
-        <label>
-          <span>Fiscal year</span>
-          <select
-            aria-label="Fiscal year"
-            value={selectedYear ?? ""}
-            onChange={onYearChange}
-            disabled={yearsLoading || fiscalYears.length === 0}
-          >
-            {selectedYear === null ? (
-              <option value="">Select fiscal year</option>
-            ) : null}
-            {fiscalYears.map((item) => (
-              <option value={item.fiscal_year} key={item.fiscal_year}>
-                FY{item.fiscal_year}
-                {item.is_latest ? " latest" : ""}
-              </option>
-            ))}
-          </select>
-          <small>
-            {latestYear
-              ? `Latest available: FY${latestYear}`
-              : "Latest available: none"}
-          </small>
-        </label>
-        <button
-          type="button"
-          className="cdc-funding-button"
-          onClick={onDownload}
-          disabled={!selectedYear}
-        >
-          Download CSV
-        </button>
         <a
           className="cdc-methodology-link"
           href="#cdc-funding-methodology"
@@ -200,6 +159,26 @@ export function CdcFundingHeader({
         </a>
       </div>
     </section>
+  );
+}
+
+export function FiscalYearControl({ fiscalYears, onYearChange, selectedYear }) {
+  return (
+    <label className="cdc-fiscal-year-control">
+      <span>Fiscal year</span>
+      <select
+        aria-label="Fiscal year"
+        value={selectedYear ?? ""}
+        onChange={onYearChange}
+        disabled={fiscalYears.length === 0}
+      >
+        {fiscalYears.map((item) => (
+          <option value={item.fiscal_year} key={item.fiscal_year}>
+            FY{item.fiscal_year}{item.is_latest ? " latest" : ""}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -336,7 +315,7 @@ function ExecutiveSummary({
   );
 }
 
-function EmergencyAdjustmentCallout({ classificationRows }) {
+function SupplementalAdjustmentCallout({ classificationRows }) {
   const negativeEmergencyRows = classificationRows.filter(
     (row) =>
       row.emergencyStatus === "emergency" &&
@@ -353,7 +332,7 @@ function EmergencyAdjustmentCallout({ classificationRows }) {
       </div>
       <div>
         <h3>
-          Emergency adjustments reduced net obligations by{" "}
+          Supplemental adjustments reduced net obligations by{" "}
           {formatCompactCurrencyFromDecimalString(reduction)}.
         </h3>
         <p>
@@ -378,7 +357,7 @@ function ClassificationMatrix({ rows, showPercentages }) {
   const byKey = new Map(rows.map((row) => [row.key, row]));
   return (
     <table className="cdc-classification-matrix">
-      <caption>Emergency status by award type</caption>
+      <caption>Funding type by award type</caption>
       <thead>
         <tr>
           <th scope="col">Classification</th>
@@ -388,8 +367,8 @@ function ClassificationMatrix({ rows, showPercentages }) {
       </thead>
       <tbody>
         {[
-          ["Emergency", "emergency"],
-          ["Nonemergency", "nonemergency"],
+          ["Supplemental", "emergency"],
+          ["Non-supplemental", "nonemergency"],
         ].map(([label, prefix]) => (
           <tr key={prefix}>
             <th scope="row">{label}</th>
@@ -435,7 +414,7 @@ function FundingClassification({ rows, total }) {
       <div className="cdc-section-heading">
         <div>
           <h2 id="cdc-composition-heading">Funding composition</h2>
-          <p>Net obligations by emergency designation and award type.</p>
+          <p>Net obligations by supplemental designation and award type.</p>
         </div>
       </div>
       <div
@@ -696,6 +675,9 @@ export function FundingOverviewTab({
   rankingLimit,
   rankingMode,
   trendMetadata,
+  fiscalYears,
+  onDownload,
+  onYearChange,
 }) {
   const selectedSeries = getSeries(trendMetadata, fiscalYear);
   return (
@@ -705,6 +687,16 @@ export function FundingOverviewTab({
       aria-labelledby="cdc-tab-overview"
       className="cdc-tab-panel"
     >
+      <div className="cdc-tab-local-controls" aria-label="Annual Funding controls">
+        <FiscalYearControl
+          fiscalYears={fiscalYears}
+          selectedYear={fiscalYear}
+          onYearChange={onYearChange}
+        />
+        <button type="button" className="cdc-funding-button" onClick={onDownload}>
+          Download CSV
+        </button>
+      </div>
       <ExecutiveSummary
         accounts={accounts}
         classificationRows={classificationRows}
@@ -712,7 +704,7 @@ export function FundingOverviewTab({
         overview={overview}
         trendMetadata={trendMetadata}
       />
-      <EmergencyAdjustmentCallout classificationRows={classificationRows} />
+      <SupplementalAdjustmentCallout classificationRows={classificationRows} />
       <FundingClassification
         rows={classificationRows}
         total={overview?.total_obligations ?? "0.00"}
@@ -767,6 +759,35 @@ function resolveComparisonYears(
   return years;
 }
 
+function resolveVisibleYears(payload, selectedYear, state) {
+  const available = (payload?.available_fiscal_years ?? [])
+    .map(Number)
+    .filter(Number.isInteger)
+    .sort((a, b) => a - b);
+  const allowed = new Set(
+    available.filter((year) => year !== 2021 || state.includeFy2021),
+  );
+  let requested;
+  if (Array.isArray(state.years)) {
+    requested = state.years;
+  } else if ((state.comparisons ?? []).length > 0) {
+    requested = [
+      Number(selectedYear),
+      ...resolveComparisonYears(
+        payload,
+        selectedYear,
+        state.comparisons,
+        state.includeFy2021,
+      ),
+    ];
+  } else {
+    requested = available.filter((year) => year >= 2022);
+  }
+  return [...new Set(requested.map(Number))]
+    .filter((year) => allowed.has(year))
+    .sort((a, b) => a - b);
+}
+
 function trendNarrative(
   payload,
   selectedYear,
@@ -811,41 +832,24 @@ function trendNarrative(
   return `FY${selectedYear} reached ${amount} through ${through}${mode}, ${relation} at the same point.${additional}`;
 }
 
-function ComparisonYearMultiselect({
+function FiscalYearMultiselect({
   availableYears,
-  comparisons,
   includeFy2021,
   onChange,
-  selectedYear,
+  selectedYears,
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
-  const comparisonYears = resolveComparisonYears(
-    { available_fiscal_years: availableYears },
-    selectedYear,
-    comparisons,
-    includeFy2021,
-  );
-  const priorYear = Number(selectedYear) - 1;
-  const priorAvailable =
-    availableYears.includes(priorYear) &&
-    (priorYear !== 2021 || includeFy2021);
   const options = [...availableYears]
-    .filter(
-      (year) =>
-        Number(year) !== Number(selectedYear) &&
-        (Number(year) !== 2021 || includeFy2021),
-    )
+    .filter((year) => Number(year) !== 2021 || includeFy2021)
     .sort((a, b) => Number(b) - Number(a));
   const summary =
-    comparisons.length === 1 && comparisons[0] === "prior" && priorAvailable
-      ? "Prior fiscal year"
-      : comparisonYears.length === 0
-        ? "No comparisons"
-        : comparisonYears.length <= 2
-          ? comparisonYears.map((year) => `FY${year}`).join(", ")
-          : `${comparisonYears.length} fiscal years selected`;
+    selectedYears.length === 0
+      ? "No fiscal years"
+      : selectedYears.length <= 2
+        ? selectedYears.map((year) => `FY${year}`).join(", ")
+        : `${selectedYears.length} fiscal years selected`;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -873,14 +877,14 @@ function ComparisonYearMultiselect({
 
   const toggleYear = (year, checked) => {
     const next = checked
-      ? [...comparisonYears, Number(year)]
-      : comparisonYears.filter((value) => value !== Number(year));
-    onChange([...new Set(next)].map(String));
+      ? [...selectedYears, Number(year)]
+      : selectedYears.filter((value) => value !== Number(year));
+    onChange([...new Set(next)].sort((a, b) => a - b));
   };
 
   return (
     <div className="cdc-comparison-multiselect" ref={rootRef}>
-      <span id="cdc-comparison-label">Comparison fiscal years</span>
+      <span id="cdc-comparison-label">Fiscal years shown</span>
       <button
         type="button"
         className="cdc-comparison-trigger"
@@ -897,37 +901,34 @@ function ComparisonYearMultiselect({
         <div
           className="cdc-comparison-popover"
           role="dialog"
-          aria-label="Choose comparison fiscal years"
+          aria-label="Choose fiscal years shown"
         >
           <div className="cdc-comparison-actions">
             <button
               type="button"
               onClick={() => onChange([])}
-              disabled={comparisonYears.length === 0}
+              disabled={selectedYears.length === 0}
             >
               Clear all
             </button>
-            {priorAvailable ? (
-              <button type="button" onClick={() => onChange(["prior"])}>
-                Select prior fiscal year
-              </button>
-            ) : null}
+            <button type="button" onClick={() => onChange(options.slice().sort((a, b) => a - b))}>
+              Select all
+            </button>
           </div>
           <div
             className="cdc-comparison-options"
             role="group"
-            aria-label="Available comparison fiscal years"
+            aria-label="Available fiscal years"
           >
             {options.map((year) => (
               <label key={year}>
                 <input
                   type="checkbox"
-                  checked={comparisonYears.includes(Number(year))}
+                  checked={selectedYears.includes(Number(year))}
                   onChange={(event) => toggleYear(year, event.target.checked)}
                 />
                 <span>
                   FY{year}
-                  {Number(year) === priorYear ? " · prior" : ""}
                 </span>
               </label>
             ))}
@@ -946,7 +947,10 @@ function ActiveFilterChips({ accounts, state, onChange }) {
     state.emergency !== "all"
       ? {
           key: "emergency",
-          label: state.emergency === "emergency" ? "Emergency" : "Nonemergency",
+          label:
+            state.emergency === "emergency"
+              ? "Supplemental"
+              : "Non-supplemental",
           clear: () => onChange({ ...state, emergency: "all" }),
         }
       : null,
@@ -969,7 +973,7 @@ function ActiveFilterChips({ accounts, state, onChange }) {
             }),
         }
       : null,
-    state.excludeDeobligations
+    state.measure === "obligations" && state.excludeDeobligations
       ? {
           key: "deobligations",
           label: "Deobligations excluded",
@@ -991,24 +995,96 @@ function ActiveFilterChips({ accounts, state, onChange }) {
   );
 }
 
+function TrendDataTable({
+  display,
+  isPointAvailable,
+  measureNoun,
+  measurePlural,
+  payload,
+  series,
+}) {
+  const activityLabel =
+    payload.period === "month"
+      ? `Monthly ${measureNoun} activity`
+      : `Quarterly ${measureNoun} activity`;
+  return (
+    <section className="cdc-trend-data" aria-labelledby="cdc-chart-data-heading">
+      <h3 id="cdc-chart-data-heading">Chart data</h3>
+      <div className="cdc-funding-table-wrap">
+        <table className="cdc-funding-table">
+          <caption>
+            {display === "activity"
+              ? `Period ${measureNoun} activity`
+              : `Cumulative ${measureNoun} values`}{" "}
+            for the selected fiscal years.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Fiscal year</th>
+              <th scope="col">
+                {payload.period === "month" ? "Fiscal month" : "Fiscal quarter"}
+              </th>
+              <th scope="col">Available</th>
+              <th scope="col">{activityLabel}</th>
+              <th scope="col">Cumulative fiscal-year-to-date {measurePlural}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {series.flatMap((item) =>
+              (item.points ?? []).map((point) => (
+                <tr key={`${item.fiscal_year}-${point.period}`}>
+                  <th scope="row">FY{item.fiscal_year}</th>
+                  <td>{point.source_period_label || point.period}</td>
+                  <td>
+                    {isPointAvailable(item, point)
+                      ? "Available"
+                      : "Not available"}
+                  </td>
+                  <td>
+                    {isPointAvailable(item, point)
+                      ? formatCurrencyFromDecimalString(point.period_amount)
+                      : "Not available"}
+                  </td>
+                  <td>
+                    {isPointAvailable(item, point)
+                      ? formatCurrencyFromDecimalString(point.cumulative_amount)
+                      : "Not available"}
+                  </td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function TrendChart({
   account,
   comparisonYears,
   display,
-  includeFy2021,
   payload,
   selectedYear,
+  visibleYears,
 }) {
   const [highlightedYear, setHighlightedYear] = useState(null);
   const [tooltipState, setTooltipState] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const cycleRef = useRef({ periodNumber: null, candidateYears: [] });
-  const visibleYears = [
-    Number(selectedYear),
-    ...comparisonYears,
-    includeFy2021 || Number(selectedYear) === 2021 ? 2021 : null,
-  ].filter((year, index, values) => year && values.indexOf(year) === index);
-  const series = visibleYears
+  const chartYears = Array.isArray(visibleYears)
+    ? visibleYears.includes(Number(selectedYear))
+      ? [
+          Number(selectedYear),
+          ...visibleYears
+            .filter((year) => Number(year) !== Number(selectedYear))
+            .sort((a, b) => Number(b) - Number(a)),
+        ]
+      : visibleYears
+    : [Number(selectedYear), ...comparisonYears].filter(
+        (year, index, values) => year && values.indexOf(year) === index,
+      );
+  const series = chartYears
     .map((year) => getSeries(payload, year))
     .filter(Boolean);
   const orderedSeries = highlightedYear
@@ -1023,14 +1099,8 @@ function TrendChart({
     : series;
   const valueField =
     display === "activity" ? "period_amount" : "cumulative_amount";
-  const primaryLatestPeriod =
-    lastAvailablePoint(getSeries(payload, selectedYear))?.period_number ??
-    (payload.period === "month" ? 12 : 4);
   const isPointAvailable = (item, point) =>
-    point.available &&
-    point[valueField] !== null &&
-    (Number(item.fiscal_year) === Number(selectedYear) ||
-      Number(point.period_number) <= Number(primaryLatestPeriod));
+    point.available && point[valueField] !== null;
   const points = series.flatMap((item) =>
     (item.points ?? []).filter((point) => isPointAvailable(item, point)),
   );
@@ -1040,11 +1110,23 @@ function TrendChart({
     setAnnouncement("");
     cycleRef.current = { periodNumber: null, candidateYears: [] };
   }, [comparisonYears.join(","), display, payload, selectedYear]);
+  const measureNoun = payload.measure === "outlays" ? "outlay" : "obligation";
+  const measurePlural = payload.measure === "outlays" ? "outlays" : "obligations";
   if (points.length === 0 || !series.some((item) => item.has_activity)) {
     return (
-      <p className="cdc-trend-empty">
-        No obligation activity matches these trend filters.
-      </p>
+      <>
+        <p className="cdc-trend-empty">
+          No funding activity matches these trend filters.
+        </p>
+        <TrendDataTable
+          display={display}
+          isPointAvailable={isPointAvailable}
+          measureNoun={measureNoun}
+          measurePlural={measurePlural}
+          payload={payload}
+          series={series}
+        />
+      </>
     );
   }
   const values = points.map((point) =>
@@ -1075,22 +1157,22 @@ function TrendChart({
   );
   const activityLabel =
     payload.period === "month"
-      ? "Monthly obligation activity"
-      : "Quarterly obligation activity";
+      ? `Monthly ${measureNoun} activity`
+      : `Quarterly ${measureNoun} activity`;
   const pointLabel = (item, point) => {
     const periodName = point.source_period_label || point.period;
     return [
       `FY${item.fiscal_year} · ${periodName}.`,
       `${activityLabel}: ${formatCurrencyFromDecimalString(point.period_amount)}.`,
-      `Cumulative obligations: ${formatCurrencyFromDecimalString(point.cumulative_amount)}.`,
+      `Cumulative ${measurePlural}: ${formatCurrencyFromDecimalString(point.cumulative_amount)}.`,
       payload.view === "federal_account" && account
         ? `Federal account: ${trendAccountLabel(account)}.`
         : "",
-      `Emergency classification: ${
+      `Funding type: ${
         {
-          all: "All",
-          emergency: "Emergency",
-          nonemergency: "Nonemergency",
+          all: "All funding",
+          emergency: "Supplemental",
+          nonemergency: "Non-supplemental",
         }[payload.filters?.emergency_status] ?? "All"
       }.`,
       `Award type: ${
@@ -1103,18 +1185,9 @@ function TrendChart({
       .filter(Boolean)
       .join(" ");
   };
-  const barWidth = Math.max(10, Math.min(28, plotWidth / labels.length / 2));
   const styleFor = (item) => {
     const year = Number(item.fiscal_year);
-    if (year === Number(selectedYear)) return SERIES_STYLES.primary;
-    if (comparisonYears.includes(year)) return comparisonStyle(year);
-    return SERIES_STYLES.context;
-  };
-  const roleFor = (item) => {
-    const year = Number(item.fiscal_year);
-    if (year === Number(selectedYear)) return "Primary";
-    if (comparisonYears.includes(year)) return "Comparison";
-    return "Context";
+    return comparisonStyle(year);
   };
   const pointAt = (item, periodNumber) =>
     (item?.points ?? []).find(
@@ -1233,20 +1306,6 @@ function TrendChart({
         const available = (item.points ?? []).filter((point) =>
           isPointAvailable(item, point),
         );
-        if (
-          display === "activity" &&
-          Number(item.fiscal_year) === Number(selectedYear)
-        ) {
-          const point = pointAt(item, periodNumber);
-          if (!point || Math.abs(periodPosition - periodNumber) > 0.45) {
-            return false;
-          }
-          const pointY = yFor(decimalStringToNumber(point.period_amount));
-          return (
-            pointerY >= Math.min(pointY, zeroY) - 12 &&
-            pointerY <= Math.max(pointY, zeroY) + 12
-          );
-        }
         const before = [...available]
           .reverse()
           .find((point) => point.period_number <= periodPosition);
@@ -1277,28 +1336,23 @@ function TrendChart({
     else if (candidates.length) showTooltip(candidates, periodNumber);
     else setTooltipState(null);
   };
-  const directLabelYears = [
-    Number(selectedYear),
-    comparisonYears[0] ?? null,
-  ].filter(Boolean);
+  const directLabelYears = series.map((item) => Number(item.fiscal_year));
   const directLabelY = (item, point) => {
     const currentY = yFor(decimalStringToNumber(point[valueField]));
-    const otherYear = directLabelYears.find(
-      (year) => year !== Number(item.fiscal_year),
-    );
-    const otherPoint = otherYear
-      ? [...(getSeries(payload, otherYear)?.points ?? [])]
+    const endpoints = series
+      .map((seriesItem) => {
+        const endpoint = [...(seriesItem.points ?? [])]
           .reverse()
-          .find((candidate) =>
-            isPointAvailable(getSeries(payload, otherYear), candidate),
-          )
-      : null;
-    if (!otherPoint) return currentY - 10;
-    const otherY = yFor(decimalStringToNumber(otherPoint[valueField]));
-    if (Math.abs(currentY - otherY) < 34) {
-      return currentY < otherY ? currentY - 12 : currentY + 18;
-    }
-    return currentY - 10;
+          .find((candidate) => isPointAvailable(seriesItem, candidate));
+        return endpoint
+          ? { year: Number(seriesItem.fiscal_year), y: yFor(decimalStringToNumber(endpoint[valueField])) }
+          : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.y - b.y);
+    const rank = endpoints.findIndex((entry) => entry.year === Number(item.fiscal_year));
+    const centeredOffset = (rank - (endpoints.length - 1) / 2) * 13;
+    return Math.max(margins.top + 8, Math.min(height - margins.bottom - 4, currentY + centeredOffset));
   };
 
   return (
@@ -1306,7 +1360,7 @@ function TrendChart({
       <div
         className="cdc-focused-chart-wrap"
         role="region"
-        aria-label="Scrollable obligation trend chart"
+        aria-label={`Scrollable ${measureNoun} trend chart`}
         tabIndex="0"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
@@ -1324,17 +1378,12 @@ function TrendChart({
         >
           <title id="cdc-focused-chart-title">
             {display === "activity"
-              ? "CDC obligation activity by reporting period"
-              : "Cumulative CDC obligations by fiscal year"}
+              ? `CDC ${measureNoun} activity by reporting period`
+              : `Cumulative CDC ${measurePlural} by fiscal year`}
           </title>
           <desc id="cdc-focused-chart-desc">
-            FY{selectedYear} is the primary series
-            {comparisonYears.length
-              ? ` with comparison series for ${comparisonYears
-                  .map((year) => `FY${year}`)
-                  .join(", ")}`
-              : ""}
-            . Select a line repeatedly to cycle through overlapping series.
+            Each selected fiscal year is shown as a peer series. Select a line
+            repeatedly to cycle through overlapping series.
             Exact values are available from every focusable point and the
             accessible data table.
           </desc>
@@ -1380,7 +1429,6 @@ function TrendChart({
             </text>
           ))}
           {orderedSeries.map((item) => {
-            const isPrimary = Number(item.fiscal_year) === Number(selectedYear);
             const isHighlighted =
               Number(item.fiscal_year) === Number(highlightedYear);
             const style = styleFor(item);
@@ -1394,58 +1442,6 @@ function TrendChart({
             ]
               .filter(Boolean)
               .join(" ");
-            if (display === "activity" && isPrimary) {
-              return (
-                <g
-                  key={item.fiscal_year}
-                  className={seriesClass}
-                  data-testid={`trend-series-${item.fiscal_year}`}
-                  data-highlighted={isHighlighted ? "true" : "false"}
-                >
-                  {available.map((point) => {
-                    const value = decimalStringToNumber(point.period_amount);
-                    const y = yFor(value);
-                    const label = pointLabel(item, point);
-                    return (
-                      <rect
-                        key={point.period}
-                        x={xFor(point.period_number) - barWidth / 2}
-                        y={Math.min(y, zeroY)}
-                        width={barWidth}
-                        height={Math.max(2, Math.abs(zeroY - y))}
-                        className={
-                          value < 0
-                            ? "cdc-activity-bar is-negative"
-                            : "cdc-activity-bar"
-                        }
-                        role="button"
-                        tabIndex="0"
-                        aria-label={`${label} Activate to highlight FY${item.fiscal_year}.`}
-                        onFocus={() =>
-                          showTooltip(
-                            series
-                              .filter((candidate) =>
-                                pointAt(candidate, point.period_number),
-                              )
-                              .map((candidate) =>
-                                Number(candidate.fiscal_year),
-                              ),
-                            point.period_number,
-                          )
-                        }
-                        onClick={() => selectFromPoint(item, point)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            selectFromPoint(item, point);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </g>
-              );
-            }
             const segments = available.reduce((result, point) => {
               const current = result[result.length - 1];
               const previous = current?.[current.length - 1];
@@ -1479,10 +1475,8 @@ function TrendChart({
                       .join(" ")}
                     fill="none"
                     stroke={style.color}
-                    strokeWidth={isPrimary ? 5 : 3}
-                    strokeDasharray={
-                      !item.is_complete && isPrimary ? "12 4" : style.dash
-                    }
+                    strokeWidth="3"
+                    strokeDasharray={style.dash}
                     className="cdc-trend-line"
                     aria-hidden="true"
                   />
@@ -1554,7 +1548,6 @@ function TrendChart({
       </div>
       <div className="cdc-focused-legend" aria-label="Trend series legend">
         {series.map((item) => {
-          const role = roleFor(item);
           const isHighlighted =
             Number(item.fiscal_year) === Number(highlightedYear);
           return (
@@ -1578,11 +1571,10 @@ function TrendChart({
               aria-pressed={isHighlighted}
             >
               <span
-                className={`is-${role.toLowerCase()}`}
                 style={{ "--series-color": styleFor(item).color }}
                 aria-hidden="true"
               />
-              FY{item.fiscal_year} · {role}
+              FY{item.fiscal_year}
               {!item.is_complete
                 ? ` · through ${item.available_through_period}`
                 : ""}
@@ -1622,59 +1614,14 @@ function TrendChart({
       <p className="cdc-sr-only" aria-live="polite">
         {announcement}
       </p>
-      <details className="cdc-trend-data">
-        <summary>View accessible chart data</summary>
-        <div className="cdc-funding-table-wrap">
-          <table className="cdc-funding-table">
-            <caption>
-              {display === "activity"
-                ? "Period obligation activity"
-                : "Cumulative obligation values"}{" "}
-              for the primary and comparison fiscal years.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Fiscal year</th>
-                <th scope="col">
-                  {payload.period === "month"
-                    ? "Fiscal month"
-                    : "Fiscal quarter"}
-                </th>
-                <th scope="col">Available</th>
-                <th scope="col">{activityLabel}</th>
-                <th scope="col">Cumulative fiscal-year-to-date obligations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {series.flatMap((item) =>
-                (item.points ?? []).map((point) => (
-                  <tr key={`${item.fiscal_year}-${point.period}`}>
-                    <th scope="row">FY{item.fiscal_year}</th>
-                    <td>{point.source_period_label || point.period}</td>
-                    <td>
-                      {isPointAvailable(item, point)
-                        ? "Available"
-                        : "Not available"}
-                    </td>
-                    <td>
-                      {isPointAvailable(item, point)
-                        ? formatCurrencyFromDecimalString(point.period_amount)
-                        : "Not available"}
-                    </td>
-                    <td>
-                      {isPointAvailable(item, point)
-                        ? formatCurrencyFromDecimalString(
-                            point.cumulative_amount,
-                          )
-                        : "Not available"}
-                    </td>
-                  </tr>
-                )),
-              )}
-            </tbody>
-          </table>
-        </div>
-      </details>
+      <TrendDataTable
+        display={display}
+        isPointAvailable={isPointAvailable}
+        measureNoun={measureNoun}
+        measurePlural={measurePlural}
+        payload={payload}
+        series={series}
+      />
     </>
   );
 }
@@ -1761,13 +1708,15 @@ export function FocusedObligationTrends({
         trendState.view === "federal_account" ? trendState.account : undefined,
       emergencyStatus: trendState.emergency,
       awardType: trendState.awardType,
-      excludeDeobligations: trendState.excludeDeobligations,
+      excludeDeobligations:
+        trendState.measure === "obligations" && trendState.excludeDeobligations,
+      measure: trendState.measure,
     })
       .then((response) => {
         if (controller.signal.aborted) return;
         if (response?.scope !== CDC_FUNDING_SCOPE_ALL_ACCOUNTS) {
           throw new Error(
-            "The obligation-trend response did not use all-account scope.",
+            "The funding-trend response did not use all-account scope.",
           );
         }
         if (
@@ -1779,14 +1728,14 @@ export function FocusedObligationTrends({
               ) !== 0,
           )
         ) {
-          throw new Error("Obligation trend data did not reconcile.");
+          throw new Error("Funding trend data did not reconcile.");
         }
         setPayload(response);
       })
       .catch((requestError) => {
         if (!controller.signal.aborted) {
           setError(
-            requestError?.message ?? "Failed to load obligation trends.",
+            requestError?.message ?? "Failed to load funding trends.",
           );
         }
       })
@@ -1804,42 +1753,33 @@ export function FocusedObligationTrends({
     trendState.awardType,
     trendState.emergency,
     trendState.excludeDeobligations,
+    trendState.measure,
     trendState.period,
     trendState.view,
   ]);
 
-  const comparisonYears = resolveComparisonYears(
-    payload,
-    selectedYear,
-    trendState.comparisons,
-    trendState.includeFy2021,
-  );
+  const visibleYears = resolveVisibleYears(payload, selectedYear, trendState);
+  const primaryYear = visibleYears.length
+    ? Math.max(...visibleYears)
+    : Number(selectedYear);
+  const comparisonYears = visibleYears.filter(
+    (year) => Number(year) !== Number(primaryYear),
+  ).sort((a, b) => b - a);
   useEffect(() => {
-    if (!payload) return;
+    if (!payload || !Array.isArray(trendState.years)) return;
     const available = new Set(
       (payload.available_fiscal_years ?? []).map(Number),
     );
-    const seenYears = new Set();
-    const normalized = [];
-    for (const comparison of trendState.comparisons) {
-      const year =
-        comparison === "prior"
-          ? Number(selectedYear) - 1
-          : Number(comparison);
-      if (
-        !available.has(year) ||
-        year === Number(selectedYear) ||
-        (year === 2021 && !trendState.includeFy2021) ||
-        seenYears.has(year)
-      ) {
-        continue;
-      }
-      seenYears.add(year);
-      normalized.push(comparison === "prior" ? "prior" : String(year));
-    }
-    if (normalized.join(",") !== trendState.comparisons.join(",")) {
+    const normalized = [...new Set(trendState.years.map(Number))]
+      .filter(
+        (year) =>
+          available.has(year) &&
+          (year !== 2021 || trendState.includeFy2021),
+      )
+      .sort((a, b) => a - b);
+    if (normalized.join(",") !== trendState.years.join(",")) {
       onTrendStateChange(
-        { ...trendState, comparisons: normalized },
+        { ...trendState, years: normalized },
         "replace",
       );
     }
@@ -1853,12 +1793,45 @@ export function FocusedObligationTrends({
     (trendState.emergency !== "all" ? 1 : 0) +
     (trendState.awardType !== "all" ? 1 : 0) +
     (trendState.view === "federal_account" && trendState.account ? 1 : 0) +
-    (trendState.excludeDeobligations ? 1 : 0);
+    (trendState.measure === "obligations" && trendState.excludeDeobligations ? 1 : 0);
   const selectedAccount = accounts.find(
     (account) => accountSymbol(account) === trendState.account,
   );
   const setField = (field, value) =>
     onTrendStateChange({ ...trendState, [field]: value });
+  const downloadTrendCsv = () => {
+    if (!payload) return;
+    const measure = payload.measure === "outlays" ? "Outlay" : "Obligation";
+    const period = payload.period === "month" ? "Month" : "Quarter";
+    const rows = [
+      [
+        "Fiscal Year",
+        `Fiscal ${period}`,
+        "Available",
+        `${period} ${measure} Activity`,
+        `Cumulative Fiscal-Year-to-Date ${measure}s`,
+      ],
+      ...visibleYears.flatMap((year) => {
+        const series = getSeries(payload, year);
+        return (series?.points ?? []).map((point) => [
+          year,
+          point.source_period_label || point.period,
+          point.available ? "Available" : "Not available",
+          point.available ? point.period_amount : "",
+          point.available ? point.cumulative_amount : "",
+        ]);
+      }),
+    ];
+    const blob = new Blob([`${rowsToCsv(rows)}\r\n`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `cdc-funding-${payload.measure}-${payload.period}-${trendState.display}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
   const clearFilters = () =>
     onTrendStateChange({
       ...trendState,
@@ -1882,10 +1855,10 @@ export function FocusedObligationTrends({
       >
         <div className="cdc-section-heading">
           <div>
-            <h2 id="cdc-trends-heading">Obligation trends</h2>
+            <h2 id="cdc-trends-heading">Funding trends</h2>
             <p>
-              Compare monthly or quarterly CDC-awarded obligation activity and
-              fiscal-year-to-date totals.
+              Compare monthly or quarterly CDC-awarded obligations or outlays
+              and fiscal-year-to-date totals.
             </p>
           </div>
         </div>
@@ -1893,13 +1866,24 @@ export function FocusedObligationTrends({
           <p className="cdc-trend-narrative">
             {trendNarrative(
               payload,
-              selectedYear,
+              primaryYear,
               comparisonYears,
-              trendState.excludeDeobligations,
+              trendState.measure === "obligations" && trendState.excludeDeobligations,
             )}
           </p>
         ) : null}
         <div className="cdc-trend-primary-controls">
+          <label>
+            <span>Funding measure</span>
+            <select
+              aria-label="Funding measure"
+              value={trendState.measure}
+              onChange={(event) => setField("measure", event.target.value)}
+            >
+              <option value="obligations">Obligations</option>
+              <option value="outlays">Outlays</option>
+            </select>
+          </label>
           <label>
             <span>Reporting period</span>
             <select
@@ -1912,45 +1896,34 @@ export function FocusedObligationTrends({
             </select>
           </label>
           <label>
-            <span>Trend measure</span>
+            <span>Trend display</span>
             <select
-              aria-label="Trend measure"
+              aria-label="Trend display"
               value={trendState.display}
               onChange={(event) => setField("display", event.target.value)}
             >
               <option value="activity">Period activity</option>
-              <option value="cumulative">Cumulative obligations</option>
+              <option value="cumulative">Cumulative fiscal-year-to-date</option>
             </select>
           </label>
-          <ComparisonYearMultiselect
+          <FiscalYearMultiselect
             availableYears={(payload?.available_fiscal_years ?? []).map(Number)}
-            comparisons={trendState.comparisons}
             includeFy2021={trendState.includeFy2021}
-            onChange={(comparisons) => setField("comparisons", comparisons)}
-            selectedYear={selectedYear}
+            onChange={(years) => setField("years", years)}
+            selectedYears={visibleYears}
           />
           <label className="cdc-checkbox-control cdc-trend-fy-control">
             <input
               type="checkbox"
-              checked={
-                trendState.includeFy2021 || Number(selectedYear) === 2021
-              }
-              disabled={Number(selectedYear) === 2021}
+              checked={trendState.includeFy2021}
               onChange={(event) => {
                 const checked = event.target.checked;
                 onTrendStateChange({
                   ...trendState,
                   includeFy2021: checked,
-                  comparisons: checked
-                    ? trendState.comparisons
-                    : trendState.comparisons.filter(
-                        (comparison) =>
-                          Number(
-                            comparison === "prior"
-                              ? Number(selectedYear) - 1
-                              : comparison,
-                          ) !== 2021,
-                      ),
+                  years: checked
+                    ? [...new Set([...visibleYears, 2021])].sort((a, b) => a - b)
+                    : visibleYears.filter((year) => year !== 2021),
                 });
               }}
               aria-describedby="cdc-focused-fy2021-help"
@@ -1961,6 +1934,7 @@ export function FocusedObligationTrends({
             <input
               type="checkbox"
               checked={trendState.excludeDeobligations}
+              disabled={trendState.measure === "outlays"}
               onChange={(event) =>
                 setField("excludeDeobligations", event.target.checked)
               }
@@ -1970,30 +1944,33 @@ export function FocusedObligationTrends({
           </label>
         </div>
         <p id="cdc-focused-fy2021-help" className="cdc-helper-text">
-          FY2021 is hidden by default because its unusually large funding total
-          can compress the scale for later fiscal years.
+          FY2021 is hidden by default because of an unusually large amount of
+          supplemental funding due to the COVID-19 pandemic. Total funding will
+          compress the scale for later fiscal years. To view only appropriated
+          funding, select the filter to exclude supplemental funding.
         </p>
         <p id="cdc-focused-deobligations-help" className="cdc-helper-text">
-          Shows positive obligation activity without downward adjustments or
-          deobligations.
+          {trendState.measure === "outlays"
+            ? "Deobligation filtering applies to obligations only."
+            : "Shows positive obligation activity without downward adjustments or deobligations."}
         </p>
-        <details className="cdc-filter-panel">
-          <summary>
+        <section className="cdc-filter-panel" aria-labelledby="cdc-trend-filters-heading">
+          <h3 id="cdc-trend-filters-heading">
             Filters
             {activeFilterCount ? (
               <span className="cdc-filter-count">{activeFilterCount}</span>
             ) : null}
-          </summary>
+          </h3>
           <div className="cdc-filter-panel-grid">
             <label>
-              <span>Emergency classification</span>
+              <span>Funding type</span>
               <select
                 value={trendState.emergency}
                 onChange={(event) => setField("emergency", event.target.value)}
               >
-                <option value="all">All classifications</option>
-                <option value="emergency">Emergency</option>
-                <option value="nonemergency">Nonemergency</option>
+                <option value="all">All funding</option>
+                <option value="emergency">Supplemental</option>
+                <option value="nonemergency">Non-supplemental</option>
               </select>
             </label>
             <label>
@@ -2042,7 +2019,7 @@ export function FocusedObligationTrends({
           >
             Clear filters
           </button>
-        </details>
+        </section>
         <ActiveFilterChips
           accounts={accounts}
           state={trendState}
@@ -2053,7 +2030,7 @@ export function FocusedObligationTrends({
         ) : null}
         {needsAccount ? (
           <p className="cdc-trend-empty">
-            Select a federal account to compare obligation trends across fiscal
+            Select a federal account to compare funding trends across fiscal
             years.
           </p>
         ) : null}
@@ -2065,12 +2042,12 @@ export function FocusedObligationTrends({
         ) : null}
         {loading ? (
           <div className="cdc-trend-loading" role="status">
-            Loading obligation trends…
+            Loading funding trends…
           </div>
         ) : null}
         {error ? (
           <div className="cdc-funding-status" role="alert">
-            <h3>Obligation trends could not be loaded</h3>
+            <h3>Funding trends could not be loaded</h3>
             <p>{error}</p>
             <button
               type="button"
@@ -2082,14 +2059,21 @@ export function FocusedObligationTrends({
           </div>
         ) : null}
         {!loading && payload ? (
-          <TrendChart
-            account={selectedAccount}
-            comparisonYears={comparisonYears}
-            display={trendState.display}
-            includeFy2021={trendState.includeFy2021}
-            payload={payload}
-            selectedYear={selectedYear}
-          />
+          <>
+            <div className="cdc-trend-download-row">
+              <button type="button" className="cdc-funding-button" onClick={downloadTrendCsv}>
+                Download trend CSV
+              </button>
+            </div>
+            <TrendChart
+              account={selectedAccount}
+              comparisonYears={comparisonYears}
+              display={trendState.display}
+              payload={payload}
+              selectedYear={primaryYear}
+              visibleYears={visibleYears}
+            />
+          </>
         ) : null}
       </section>
     </div>
@@ -2371,12 +2355,12 @@ function AccountDrawer({
   ]);
   const values = [
     ["Total obligations", account.total_obligations],
-    ["Emergency grants", account.breakdown?.emergency_grants],
-    ["Emergency contracts", account.breakdown?.emergency_contracts],
-    ["Nonemergency grants", account.breakdown?.nonemergency_grants],
-    ["Nonemergency contracts", account.breakdown?.nonemergency_contracts],
-    ["Emergency net amount", account.emergency_obligations],
-    ["Nonemergency net amount", account.nonemergency_obligations],
+    ["Supplemental grants", account.breakdown?.emergency_grants],
+    ["Supplemental contracts", account.breakdown?.emergency_contracts],
+    ["Non-supplemental grants", account.breakdown?.nonemergency_grants],
+    ["Non-supplemental contracts", account.breakdown?.nonemergency_contracts],
+    ["Supplemental net amount", account.emergency_obligations],
+    ["Non-supplemental net amount", account.nonemergency_obligations],
     ["Grants net amount", grants],
     ["Contracts net amount", contracts],
   ];
@@ -2466,6 +2450,8 @@ export function AccountDetailsTab({
   selectedAccountTrigger,
   sortDir,
   sortKey,
+  fiscalYears,
+  onYearChange,
 }) {
   const grantTotal = (account) =>
     sumMoneyStrings([
@@ -2498,6 +2484,11 @@ export function AccountDetailsTab({
             </p>
           </div>
           <div className="cdc-account-table-controls">
+            <FiscalYearControl
+              fiscalYears={fiscalYears}
+              selectedYear={fiscalYear}
+              onYearChange={onYearChange}
+            />
             <label>
               <span>Account search</span>
               <input
@@ -2521,10 +2512,10 @@ export function AccountDetailsTab({
                   Total obligations
                 </option>
                 <option value="emergency_obligations:desc">
-                  Emergency obligations
+                  Supplemental obligations
                 </option>
                 <option value="nonemergency_obligations:desc">
-                  Nonemergency obligations
+                  Non-supplemental obligations
                 </option>
                 <option value="account_name:asc">Account name</option>
                 <option value="federal_account_symbol:asc">
@@ -2542,7 +2533,7 @@ export function AccountDetailsTab({
           </div>
         </div>
         <div className="cdc-account-filter-summary">
-          FY{fiscalYear} · All emergency classifications · Grants and contracts
+          FY{fiscalYear} · All funding types · Grants and contracts
         </div>
         <div className="cdc-account-table-wrap">
           <table className="cdc-account-table">
@@ -2553,12 +2544,12 @@ export function AccountDetailsTab({
               <tr>
                 <th scope="col">Federal account</th>
                 <th scope="col">Account symbol</th>
-                <th scope="col">Emergency</th>
-                <th scope="col">Nonemergency</th>
+                <th scope="col">Supplemental</th>
+                <th scope="col">Non-supplemental</th>
                 <th scope="col">Grants</th>
                 <th scope="col">Contracts</th>
                 <th scope="col">Total obligations</th>
-                <th scope="col">Emergency share</th>
+                <th scope="col">Supplemental share</th>
                 <th scope="col">Details</th>
               </tr>
             </thead>
@@ -2642,28 +2633,59 @@ export function CdcFundingMethodology() {
   return (
     <details className="cdc-funding-about" id="cdc-funding-methodology">
       <summary>About this data and methodology</summary>
+      <h2>Source</h2>
       <p>
-        This page displays transaction obligations from the ingested CDC-awarded
-        funding dataset. It includes all federal accounts, regardless of CDC
-        Funding Profile mapping, and represents CDC as the awarding agency.
+        Data was pulled directly from the{" "}
+        <a href="https://www.usaspending.gov/download_center/custom_account_data">
+          USAspending Custom Account Data download
+        </a>{" "}
+        on July 18, 2026 for most fiscal years and July 10, 2026 for FY2023.
+        Assistance listings were defined as grants and contracts were defined
+        as contracts. Disaster Emergency Funds were included in the pull.
+        Disaster emergency funds not designated as emergency, non-emergency,
+        disaster, or wildfire suppression were coded as “Supplemental.”
+        Non-supplemental funding is funding included in the annual appropriations
+        bill or continuing resolution.
       </p>
+      <h3>Disaster Emergency Fund codes include (non-exhaustive list):</h3>
+      <ul>
+        <li><strong>L</strong> — Coronavirus Preparedness and Response Supplemental Appropriations Act, 2020; Emergency Public Law 116-123</li>
+        <li><strong>M</strong> — Families First Coronavirus Response Act; Emergency Public Law 116-127</li>
+        <li><strong>N</strong> — Coronavirus Aid, Relief, and Economic Security Act or the CARES Act; Emergency Public Law 116-136</li>
+        <li><strong>O</strong> — Coronavirus Aid, Relief, and Economic Security Act or the CARES Act; Non-emergency Public Law 116-136</li>
+        <li><strong>O</strong> — Paycheck Protection Program and Health Care Enhancement Act; Non-emergency Public Law 116-139</li>
+        <li><strong>O</strong> — Consolidated Appropriations Act, 2021; Non-emergency Public Law 116-260</li>
+        <li><strong>O</strong> — American Rescue Plan Act of 2021; Non-emergency Public Law 117-2</li>
+        <li><strong>P</strong> — Paycheck Protection Program and Health Care Enhancement Act; Emergency Public Law 116-139</li>
+        <li><strong>U</strong> — Consolidated Appropriations Act, 2021; Emergency Public Law 116-260</li>
+        <li><strong>V</strong> — American Rescue Plan Act of 2021; Non-emergency Public Law 117-2</li>
+        <li><strong>Q</strong> — Not Designated Nonemergency/Emergency/Disaster/Wildfire Suppression</li>
+      </ul>
+      <h2>Calculations</h2>
       <p>
-        Grants, contracts, emergency, and nonemergency classifications retain
+        Grants, contracts, supplemental, and non-supplemental classifications retain
         their reported signs. Negative amounts may represent deobligations,
         corrections, or other downward adjustments; they are not converted to
         positive values.
       </p>
       <p>
-        Monthly trends add activity for each available fiscal reporting period.
-        The source combines October and November in P02, so October is shown as
-        unavailable and the combined activity appears once in November.
-        Quarterly trends add quarterly activity. Missing future periods remain
-        unavailable rather than zero.
+        Monthly trends show the funding activity reported for each available
+        month. USAspending combines October and November in its P02 submission,
+        so October is shown as unavailable and the combined October-November
+        amount is shown in November. Quarterly trends total the available
+        activity for each quarter. Months or quarters that have not been
+        reported yet are shown as unavailable, not as $0.
       </p>
       <p>
-        Trend filters affect only the trend analysis. The geographic CDC Funding
-        Map is a separate product. Annual obligations should not be interpreted
-        as appropriations, expenditures, outlays, or award ceilings.
+        Trend filters affect only the trend analysis. Annual obligations should
+        not be interpreted as appropriations, expenditures, outlays, or award
+        ceilings. Outlays use the cumulative gross outlay amount from the
+        beginning of the fiscal year through each reported period; period
+        activity is the difference between consecutive source snapshots.
+      </p>
+      <p>
+        For more detailed information on these data, please see{" "}
+        <a href="https://www.usaspending.gov/">USAspending.gov</a>.
       </p>
     </details>
   );

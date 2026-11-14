@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -219,7 +217,7 @@ class CdcFundingObligationTrendSeries(BaseModel):
 
 class CdcFundingObligationTrendsResponse(BaseModel):
     scope: CdcFundingScope
-    measure: Literal["obligations"] = "obligations"
+    measure: CdcFundingTrendMeasure = CdcFundingTrendMeasure.obligations
     period: CdcFundingTrendPeriod
     view: CdcFundingTrendView
     calculation: str = "cumulative_fiscal_year_to_date"

@@ -31,28 +31,28 @@ import "./CdcFundingOverview.css";
 const CLASSIFICATION_DEFS = [
   {
     key: "emergency_grant",
-    label: "Emergency Grants",
+    label: "Supplemental Grants",
     emergencyStatus: "emergency",
     awardType: "grant",
     tone: "coral",
   },
   {
     key: "emergency_contract",
-    label: "Emergency Contracts",
+    label: "Supplemental Contracts",
     emergencyStatus: "emergency",
     awardType: "contract",
     tone: "gold",
   },
   {
     key: "nonemergency_grant",
-    label: "Nonemergency Grants",
+    label: "Non-supplemental Grants",
     emergencyStatus: "nonemergency",
     awardType: "grant",
     tone: "teal",
   },
   {
     key: "nonemergency_contract",
-    label: "Nonemergency Contracts",
+    label: "Non-supplemental Contracts",
     emergencyStatus: "nonemergency",
     awardType: "contract",
     tone: "blue",
@@ -61,26 +61,28 @@ const CLASSIFICATION_DEFS = [
 
 const SORT_OPTIONS = [
   { value: "total_desc", label: "Total obligations" },
-  { value: "emergency_desc", label: "Emergency obligations" },
-  { value: "nonemergency_desc", label: "Nonemergency obligations" },
-  { value: "share_desc", label: "Emergency share" },
+  { value: "emergency_desc", label: "Supplemental obligations" },
+  { value: "nonemergency_desc", label: "Non-supplemental obligations" },
+  { value: "share_desc", label: "Supplemental share" },
   { value: "account_asc", label: "Account name" },
 ];
 
 const TABLE_SORT_LABELS = {
   account_name: "Federal Account",
   federal_account_symbol: "Account Symbol",
-  emergency_obligations: "Emergency",
-  nonemergency_obligations: "Nonemergency",
+  emergency_obligations: "Supplemental",
+  nonemergency_obligations: "Non-supplemental",
   total_obligations: "Total",
-  emergency_share: "Emergency Share",
+  emergency_share: "Supplemental Share",
 };
 
 const PAGE_SCOPE = CDC_FUNDING_SCOPE_ALL_ACCOUNTS;
 const TREND_DEFAULTS = {
+  measure: "obligations",
   period: "month",
   display: "cumulative",
-  comparisons: ["prior"],
+  years: null,
+  comparisons: [],
   view: "total",
   account: "",
   emergency: "all",
@@ -88,8 +90,8 @@ const TREND_DEFAULTS = {
   includeFy2021: false,
   excludeDeobligations: false,
 };
-const PAGE_TAB_DEFAULT = "overview";
-const PAGE_TABS = ["overview", "trends", "accounts"];
+const PAGE_TAB_DEFAULT = "trends";
+const PAGE_TABS = ["trends", "overview", "accounts"];
 const TREND_COLORS = [
   "#075985",
   "#9f1239",
@@ -125,6 +127,11 @@ function parseTrendStateFromUrl() {
     return values.includes(value) ? value : fallback;
   };
   return {
+    measure: allowed(
+      "trend_funding_measure",
+      ["obligations", "outlays"],
+      TREND_DEFAULTS.measure,
+    ),
     period: allowed(
       "trend_period",
       ["month", "quarter"],
@@ -148,6 +155,27 @@ function parseTrendStateFromUrl() {
         );
       if (values.some((value) => value === "none")) return [];
       return [...new Set(tokens)];
+    })(),
+    years: (() => {
+      const raw = params.get("trend_years");
+      if (raw === null && params.has("trend_compare")) {
+        const selected = Number(params.get("fiscal_year"));
+        const legacy = params
+          .getAll("trend_compare")
+          .flatMap((value) => value.split(","))
+          .map((value) =>
+            value === "prior" && Number.isInteger(selected)
+              ? selected - 1
+              : Number(value),
+          )
+          .filter(Number.isInteger);
+        if (Number.isInteger(selected)) legacy.push(selected);
+        if (params.get("trend_include_fy2021") === "true") legacy.push(2021);
+        return [...new Set(legacy)].sort((a, b) => a - b);
+      }
+      if (raw === null) return null;
+      return [...new Set(raw.split(",").map(Number).filter(Number.isInteger))]
+        .sort((a, b) => a - b);
     })(),
     view: allowed(
       "trend_view",
@@ -181,15 +209,31 @@ function updateTrendUrl(state, mode = "push") {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.delete("trend_measure");
+  if (state.measure === "outlays") {
+    url.searchParams.set("trend_funding_measure", "outlays");
+  } else {
+    url.searchParams.delete("trend_funding_measure");
+  }
   url.searchParams.set("trend_period", state.period);
   url.searchParams.set("trend_display", state.display);
-  const comparisons = Array.isArray(state.comparisons)
-    ? [...new Set(state.comparisons)]
-    : [...TREND_DEFAULTS.comparisons];
-  url.searchParams.set(
-    "trend_compare",
-    comparisons.length > 0 ? comparisons.join(",") : "none",
-  );
+  if (Array.isArray(state.years)) {
+    url.searchParams.delete("trend_compare");
+    url.searchParams.set(
+      "trend_years",
+      [...new Set(state.years.map(Number).filter(Number.isInteger))]
+        .sort((a, b) => a - b)
+        .join(","),
+    );
+  } else {
+    const comparisons = Array.isArray(state.comparisons)
+      ? [...new Set(state.comparisons)]
+      : [...TREND_DEFAULTS.comparisons];
+    url.searchParams.set(
+      "trend_compare",
+      comparisons.length > 0 ? comparisons.join(",") : "none",
+    );
+    url.searchParams.delete("trend_years");
+  }
   url.searchParams.set("trend_view", state.view);
   url.searchParams.set("trend_emergency", state.emergency);
   url.searchParams.set("trend_award_type", state.awardType);
@@ -226,6 +270,8 @@ function parsePageTabFromUrl() {
     "trend_include_fy2021",
     "trend_exclude_deobligations",
     "trend_measure",
+    "trend_funding_measure",
+    "trend_years",
   ];
   return legacyTrendParameters.some((name) => params.has(name))
     ? "trends"
@@ -448,7 +494,7 @@ function validatePayloads(
       compareMoneyStrings(emergencyTotal, account?.emergency_obligations) !== 0
     ) {
       errors.push(
-        `Emergency totals did not reconcile for ${getAccountPrimaryLabel(account)}.`,
+        `Supplemental totals did not reconcile for ${getAccountPrimaryLabel(account)}.`,
       );
     }
     if (
@@ -458,7 +504,7 @@ function validatePayloads(
       ) !== 0
     ) {
       errors.push(
-        `Nonemergency totals did not reconcile for ${getAccountPrimaryLabel(account)}.`,
+        `Non-supplemental totals did not reconcile for ${getAccountPrimaryLabel(account)}.`,
       );
     }
   });
@@ -522,14 +568,14 @@ function makeCsvRows(accounts, fiscalYear) {
       "Fiscal Year",
       "Federal Account Name",
       "Federal Account Symbol",
-      "Emergency Grants",
-      "Emergency Contracts",
-      "Emergency Total",
-      "Nonemergency Grants",
-      "Nonemergency Contracts",
-      "Nonemergency Total",
+      "Supplemental Grants",
+      "Supplemental Contracts",
+      "Supplemental Total",
+      "Non-supplemental Grants",
+      "Non-supplemental Contracts",
+      "Non-supplemental Total",
       "Total Obligations",
-      "Emergency Share Percent",
+      "Supplemental Share Percent",
     ],
     ...accounts.map((account) => [
       fiscalYear,
@@ -652,14 +698,14 @@ function CompositionBar({ rows, total }) {
 function Matrix({ rows }) {
   const byKey = new Map(rows.map((row) => [row.key, row]));
   const matrixRows = [
-    { label: "Emergency", prefix: "emergency" },
-    { label: "Nonemergency", prefix: "nonemergency" },
+    { label: "Supplemental", prefix: "emergency" },
+    { label: "Non-supplemental", prefix: "nonemergency" },
   ];
   return (
     <div
       className="cdc-funding-matrix"
       role="table"
-      aria-label="Emergency status by award type"
+      aria-label="Funding type by award type"
     >
       <div className="cdc-funding-matrix-row is-header" role="row">
         <span role="columnheader" />
@@ -731,7 +777,7 @@ function AccountsChart({
       <div className="cdc-funding-section-header">
         <SectionTitle
           title="Funding by Federal Account"
-          subtitle="Compare federal account totals or emergency share for the selected fiscal year."
+          subtitle="Compare federal account totals or supplemental share for the selected fiscal year."
         />
         <div className="cdc-funding-control-row">
           <label>
@@ -741,7 +787,7 @@ function AccountsChart({
               onChange={(event) => onModeChange(event.target.value)}
             >
               <option value="dollars">Dollars</option>
-              <option value="share">Emergency share</option>
+              <option value="share">Supplemental share</option>
             </select>
           </label>
           <label>
@@ -965,7 +1011,7 @@ function AccountsTable({
                         <td colSpan={7} id={rowId}>
                           <div className="cdc-funding-breakdown-grid">
                             <span>
-                              Emergency grants{" "}
+                              Supplemental grants{" "}
                               <strong>
                                 {formatCurrencyFromDecimalString(
                                   account.breakdown?.emergency_grants,
@@ -973,7 +1019,7 @@ function AccountsTable({
                               </strong>
                             </span>
                             <span>
-                              Emergency contracts{" "}
+                              Supplemental contracts{" "}
                               <strong>
                                 {formatCurrencyFromDecimalString(
                                   account.breakdown?.emergency_contracts,
@@ -981,7 +1027,7 @@ function AccountsTable({
                               </strong>
                             </span>
                             <span>
-                              Nonemergency grants{" "}
+                              Non-supplemental grants{" "}
                               <strong>
                                 {formatCurrencyFromDecimalString(
                                   account.breakdown?.nonemergency_grants,
@@ -989,7 +1035,7 @@ function AccountsTable({
                               </strong>
                             </span>
                             <span>
-                              Nonemergency contracts{" "}
+                              Non-supplemental contracts{" "}
                               <strong>
                                 {formatCurrencyFromDecimalString(
                                   account.breakdown?.nonemergency_contracts,
@@ -1153,8 +1199,8 @@ function ObligationTrendChart({
   const emergencyLabel =
     {
       all: "All",
-      emergency: "Emergency",
-      nonemergency: "Nonemergency",
+      emergency: "Supplemental",
+      nonemergency: "Non-supplemental",
     }[payload.filters?.emergency_status] ?? "All";
   const awardLabel =
     {
@@ -1170,7 +1216,7 @@ function ObligationTrendChart({
       payload.view === "federal_account" && account
         ? `Federal account: ${trendAccountLabel(account)}.`
         : "",
-      `Emergency classification: ${emergencyLabel}.`,
+      `Funding type: ${emergencyLabel}.`,
       `Award type: ${awardLabel}.`,
       isComplete ? "" : "Partial fiscal year.",
     ]
@@ -1605,13 +1651,13 @@ function ObligationTrends({
           ]}
         />
         <TrendControl
-          label="Emergency classification"
+          label="Funding type"
           value={trendState.emergency}
           onChange={(value) => setField("emergency", value)}
           options={[
             { value: "all", label: "All" },
-            { value: "emergency", label: "Emergency" },
-            { value: "nonemergency", label: "Nonemergency" },
+            { value: "emergency", label: "Supplemental" },
+            { value: "nonemergency", label: "Non-supplemental" },
           ]}
         />
         <TrendControl
@@ -2077,14 +2123,7 @@ export default function CdcFundingOverview() {
     <div className="cdc-funding-page">
       <Header />
       <main className="cdc-funding-main">
-        <CdcFundingHeader
-          fiscalYears={fiscalYears}
-          latestYear={latestYear}
-          onDownload={() => handleDownloadCsv(payload?.accounts ?? [])}
-          onYearChange={handleYearChange}
-          selectedYear={selectedYear}
-          yearsLoading={yearsLoading}
-        />
+        <CdcFundingHeader />
 
         {yearsLoading ? <Skeleton /> : null}
         {hasEmptyYears ? (
@@ -2129,6 +2168,9 @@ export default function CdcFundingOverview() {
                 rankingLimit={chartLimit}
                 rankingMode={chartMode}
                 trendMetadata={payload.trendMetadata}
+                fiscalYears={fiscalYears}
+                onYearChange={handleYearChange}
+                onDownload={() => handleDownloadCsv(payload?.accounts ?? [])}
               />
             ) : null}
             {activeTab === "trends" ? (
@@ -2155,6 +2197,8 @@ export default function CdcFundingOverview() {
                 selectedAccountTrigger={accountDetail?.trigger ?? null}
                 sortDir={sortDir}
                 sortKey={sortKey}
+                fiscalYears={fiscalYears}
+                onYearChange={handleYearChange}
               />
             ) : null}
             <CdcFundingMethodology />

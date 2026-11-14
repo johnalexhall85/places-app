@@ -659,11 +659,9 @@
   background: linear-gradient(90deg, #eef4fa, #ffffff, #eef4fa);
 }
 
-.cdc-trend-data summary {
-  cursor: pointer;
-  color: var(--pdo-primary);
-  font-weight: 800;
-  margin-bottom: 8px;
+.cdc-trend-data h3 {
+  margin: 0 0 8px;
+  color: var(--pdo-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -879,6 +877,7 @@
 
 .cdc-tab-panel {
   display: grid;
+  min-width: 0;
   gap: 34px;
 }
 
@@ -1295,8 +1294,25 @@
 .cdc-trend-primary-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(170px, 1fr));
+  min-width: 0;
   gap: 10px;
   align-items: end;
+}
+
+.cdc-trend-primary-controls > *,
+.cdc-filter-panel-grid > *,
+.cdc-trend-workspace,
+.cdc-trend-data,
+.cdc-focused-chart-wrap,
+.cdc-funding-table-wrap {
+  min-width: 0;
+}
+
+.cdc-trend-primary-controls select,
+.cdc-filter-panel-grid select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cdc-comparison-multiselect {
@@ -1384,15 +1400,16 @@
 }
 
 .cdc-filter-panel {
+  padding-top: 12px;
   border: 1px solid var(--pdo-border);
   border-radius: 8px;
   background: #fff;
 }
 
-.cdc-filter-panel > summary {
-  width: auto;
-  padding: 12px 14px;
-  list-style-position: inside;
+.cdc-filter-panel > h3 {
+  margin: 0;
+  padding: 0 14px 12px;
+  font-size: 1rem;
 }
 
 .cdc-filter-count {
@@ -1416,6 +1433,33 @@
 
 .cdc-filter-panel .cdc-text-action {
   margin: 0 14px 12px;
+}
+
+.cdc-tab-local-controls,
+.cdc-trend-download-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cdc-fiscal-year-control {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  color: var(--pdo-text-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.cdc-fiscal-year-control select {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--pdo-text);
 }
 
 .cdc-filter-chips {
@@ -1920,7 +1964,7 @@
 
   .cdc-trend-primary-controls,
   .cdc-filter-panel-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .cdc-comparison-popover {

@@ -325,13 +325,19 @@ def fetch_quarterly_trend_rows(
     return [dict(row) for row in rows]
 
 
-def fetch_monthly_obligation_trend_rows(
+def fetch_monthly_trend_rows(
     db: Session,
     *,
+    measure: str,
     federal_account_symbol: str | None,
     emergency_status: str,
     award_type: str,
 ) -> list[dict[str, Any]]:
+    amount_column = (
+        "transaction_obligated_amount"
+        if measure == "obligations"
+        else "gross_outlay_amount_fyb_to_period_end"
+    )
     filters, params = _trend_filters(
         alias="monthly",
         federal_account_symbol=federal_account_symbol,
@@ -349,8 +355,8 @@ def fetch_monthly_obligation_trend_rows(
                     monthly.period_label,
                     monthly.fiscal_quarter,
                     COUNT(*) AS matched_row_count,
-                    COUNT(monthly.transaction_obligated_amount) AS numeric_amount_rows,
-                    SUM(monthly.transaction_obligated_amount) AS amount
+                    COUNT(monthly.{amount_column}) AS numeric_amount_rows,
+                    SUM(monthly.{amount_column}) AS amount
                   FROM {MONTHLY_TABLE} AS monthly
                  WHERE monthly.fiscal_year >= :min_fiscal_year
                  {filters}
@@ -368,6 +374,23 @@ def fetch_monthly_obligation_trend_rows(
         .all()
     )
     return [dict(row) for row in rows]
+
+
+def fetch_monthly_obligation_trend_rows(
+    db: Session,
+    *,
+    federal_account_symbol: str | None,
+    emergency_status: str,
+    award_type: str,
+) -> list[dict[str, Any]]:
+    """Backward-compatible wrapper for obligation-only callers."""
+    return fetch_monthly_trend_rows(
+        db,
+        measure="obligations",
+        federal_account_symbol=federal_account_symbol,
+        emergency_status=emergency_status,
+        award_type=award_type,
+    )
 
 
 def fetch_positive_obligation_trend_rows(

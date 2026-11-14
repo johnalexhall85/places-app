@@ -596,12 +596,20 @@ def get_obligation_trends(
     emergency_status: CdcFundingTrendEmergencyStatus = CdcFundingTrendEmergencyStatus.all,
     award_type: CdcFundingTrendAwardType = CdcFundingTrendAwardType.all,
     exclude_deobligations: bool = False,
-    measure: str | None = None,
+    measure: CdcFundingTrendMeasure = CdcFundingTrendMeasure.obligations,
 ) -> CdcFundingObligationTrendsResponse:
-    if measure is not None:
+    if isinstance(measure, str):
+        try:
+            measure = CdcFundingTrendMeasure(measure)
+        except ValueError as exc:
+            raise _trend_validation_error(
+                "cdc_funding_measure_not_supported",
+                "Funding measure must be obligations or outlays.",
+            ) from exc
+    if measure == CdcFundingTrendMeasure.outlays and exclude_deobligations:
         raise _trend_validation_error(
-            "cdc_funding_measure_not_supported",
-            "The obligation-trends endpoint does not accept measure; it always returns obligations.",
+            "cdc_funding_deobligations_not_supported_for_outlays",
+            "Deobligation filtering applies to obligations only.",
         )
     if scope != CdcFundingScope.all_accounts:
         raise _scope_validation_error("Obligation trends support only scope=all_accounts.")
@@ -635,9 +643,17 @@ def get_obligation_trends(
                 emergency_status=emergency_status.value,
                 award_type=award_type.value,
             )
-        else:
+        elif measure == CdcFundingTrendMeasure.obligations:
             source_rows = repository.fetch_monthly_obligation_trend_rows(
                 db,
+                federal_account_symbol=symbol,
+                emergency_status=emergency_status.value,
+                award_type=award_type.value,
+            )
+        else:
+            source_rows = repository.fetch_monthly_trend_rows(
+                db,
+                measure=measure.value,
                 federal_account_symbol=symbol,
                 emergency_status=emergency_status.value,
                 award_type=award_type.value,
@@ -669,7 +685,7 @@ def get_obligation_trends(
         else:
             source_rows = repository.fetch_quarterly_trend_rows(
                 db,
-                measure="obligations",
+                measure=measure.value,
                 federal_account_symbol=symbol,
                 emergency_status=emergency_status.value,
                 award_type=award_type.value,
@@ -692,7 +708,7 @@ def get_obligation_trends(
     else:
         annual_rows = repository.fetch_annual_trend_rows(
             db,
-            measure="obligations",
+            measure=measure.value,
             federal_account_symbol=symbol,
             emergency_status=emergency_status.value,
             award_type=award_type.value,
@@ -703,6 +719,7 @@ def get_obligation_trends(
         available_periods = coverage.get(year, set())
         latest_number = max(available_periods, default=0)
         cumulative = ZERO_MONEY
+        prior_outlay = ZERO_MONEY
         has_activity = False
         points: list[CdcFundingObligationTrendPoint] = []
         for period_number, period_label in enumerate(period_labels, start=1):
@@ -722,9 +739,15 @@ def get_obligation_trends(
             if row and int(row.get("matched_row_count") or 0) != int(
                 row.get("numeric_amount_rows") or 0
             ):
-                raise _internal_error("CDC funding obligation trend source values are incomplete.")
-            period_amount = _money(row.get("amount") if row else None)
-            cumulative = (cumulative + period_amount).quantize(MONEY_QUANT)
+                raise _internal_error("CDC funding trend source values are incomplete.")
+            source_amount = _money(row.get("amount") if row else None)
+            if measure == CdcFundingTrendMeasure.obligations:
+                period_amount = source_amount
+                cumulative = (cumulative + period_amount).quantize(MONEY_QUANT)
+            else:
+                cumulative = source_amount
+                period_amount = (cumulative - prior_outlay).quantize(MONEY_QUANT)
+                prior_outlay = cumulative
             has_activity = has_activity or period_amount != ZERO_MONEY
             coverage_row = (
                 monthly_coverage[year].get(period_number)
@@ -753,10 +776,11 @@ def get_obligation_trends(
         difference = (cumulative - expected).quantize(MONEY_QUANT)
         if difference != ZERO_MONEY:
             logger.error(
-                "CDC funding obligation trend reconciliation failed fiscal_year=%s period=%s view=%s "
+                "CDC funding trend reconciliation failed fiscal_year=%s period=%s measure=%s view=%s "
                 "account=%s emergency=%s award_type=%s expected=%s actual=%s difference=%s",
                 year,
                 period.value,
+                measure.value,
                 view.value,
                 symbol,
                 emergency_status.value,
@@ -765,7 +789,7 @@ def get_obligation_trends(
                 cumulative,
                 difference,
             )
-            raise _internal_error("CDC funding obligation trend reconciliation failed.")
+            raise _internal_error("CDC funding trend reconciliation failed.")
         latest_month_row = monthly_coverage[year].get(max(monthly_coverage[year], default=0))
         latest_submission = (
             latest_month_row.get("submission_period")
@@ -801,6 +825,7 @@ def get_obligation_trends(
 
     return CdcFundingObligationTrendsResponse(
         scope=scope,
+        measure=measure,
         period=period,
         view=view,
         filters=CdcFundingTrendFilters(

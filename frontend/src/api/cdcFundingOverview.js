@@ -146,6 +146,7 @@ export async function fetchCdcFundingObligationTrends({
   emergencyStatus,
   awardType,
   excludeDeobligations,
+  measure,
 } = {}) {
   const url = buildCdcFundingOverviewUrl(
     apiBase,
@@ -158,6 +159,7 @@ export async function fetchCdcFundingObligationTrends({
       emergency_status: emergencyStatus,
       award_type: awardType,
       exclude_deobligations: excludeDeobligations ? "true" : undefined,
+      measure,
     },
   );
   const response = await fetch(url, { signal });

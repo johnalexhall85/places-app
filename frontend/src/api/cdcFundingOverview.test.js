@@ -75,7 +75,7 @@ describe("cdcFundingOverview API client", () => {
     }
   });
 
-  it("serializes obligations-only trend filters and cross-year account options", async () => {
+  it("serializes funding measure and trend filters with cross-year account options", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -91,7 +91,7 @@ describe("cdcFundingOverview API client", () => {
         federalAccountSymbol: "075-0943",
         emergencyStatus: "emergency",
         awardType: "grant",
-        excludeDeobligations: true,
+        measure: "outlays",
       });
       await fetchCdcFundingTrendAccounts({
         apiBase: "https://example.test/api",
@@ -102,7 +102,7 @@ describe("cdcFundingOverview API client", () => {
         "https://example.test/api/cdc-funding/v1/obligation-trends" +
           "?scope=all_accounts&period=month&view=federal_account" +
           "&federal_account_symbol=075-0943&emergency_status=emergency&award_type=grant" +
-          "&exclude_deobligations=true",
+          "&measure=outlays",
       );
       expect(String(globalThis.fetch.mock.calls[1][0])).toBe(
         "https://example.test/api/cdc-funding/v1/quarterly-trends/accounts?scope=all_accounts",

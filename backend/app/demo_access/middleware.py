@@ -49,16 +49,17 @@ class DemoAccessMiddleware(BaseHTTPMiddleware):
                 raw_cookie=request.cookies.get(settings.cookie_name),
                 settings=settings,
             )
-            if not resolved.is_valid:
-                return JSONResponse(
-                    status_code=401,
-                    content={
-                        "detail": "Demo access required.",
-                        "demo_access_required": True,
-                    },
-                )
-            request.state.demo_access_code_id = resolved.access_code.id if resolved.access_code else None
-            request.state.demo_access_session_id = resolved.session_id
-            return await call_next(request)
+            code_id = resolved.access_code.id if resolved.access_code else None
         finally:
             db.close()
+        if not resolved.is_valid:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "detail": "Demo access required.",
+                    "demo_access_required": True,
+                },
+            )
+        request.state.demo_access_code_id = code_id
+        request.state.demo_access_session_id = resolved.session_id
+        return await call_next(request)

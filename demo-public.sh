@@ -35,6 +35,24 @@ require_cmd() {
   command -v "$cmd" >/dev/null 2>&1 || fail "Missing required command: $cmd"
 }
 
+wait_for_http() {
+  local label="$1"
+  local url="$2"
+  local max_attempts="${3:-60}"
+  local attempt
+
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    if curl --fail --silent --show-error --max-time 3 "$url" >/dev/null 2>&1; then
+      log "$label is ready (attempt $attempt/$max_attempts)."
+      return 0
+    fi
+    sleep 1
+  done
+
+  warn "$label did not become ready after $max_attempts attempts: $url"
+  return 1
+}
+
 write_state() {
   {
     echo "pid=$$"
@@ -204,6 +222,11 @@ up_mode() {
   sudo systemctl daemon-reload
   sudo systemctl enable --now places-backend
   sudo systemctl restart places-backend
+  wait_for_http "Backend health endpoint" "http://127.0.0.1:8000/health" 60 \
+    || {
+      sudo systemctl --no-pager --full status places-backend || true
+      fail "The backend did not become ready after restart."
+    }
 
   log "Installing nginx site config..."
   sudo cp "$NGINX_SITE_SRC" "$NGINX_SITE_DST"
@@ -229,8 +252,10 @@ up_mode() {
 
   if [[ "$host_ip" != "<server-ip>" ]]; then
     log "Verifying the anonymous demo-access route..."
-    curl --fail --silent --show-error --max-time 10 \
-      "http://$host_ip/api/demo-access/session" >/dev/null \
+    wait_for_http \
+      "Public anonymous demo-access route" \
+      "http://$host_ip/api/demo-access/session" \
+      30 \
       || fail "The public HTTP demo-access route did not respond."
   fi
 

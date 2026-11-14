@@ -282,6 +282,24 @@ def _install_obligation_rows(
             )
         ],
     )
+    monkeypatch.setattr(
+        repository,
+        "fetch_monthly_trend_rows",
+        lambda db, **kwargs: [
+            {
+                "fiscal_year": 2026,
+                "submission_period": submission,
+                "period_label": label,
+                "fiscal_quarter": quarter,
+                "matched_row_count": 1,
+                "numeric_amount_rows": 1,
+                "amount": Decimal(amount),
+            }
+            for (submission, label, quarter), amount in zip(
+                periods, monthly_amounts, strict=True
+            )
+        ],
+    )
     quarter_values = quarterly_amounts or []
     monkeypatch.setattr(
         repository,
@@ -522,7 +540,7 @@ def test_obligation_trends_account_filters_and_zero_activity(
     assert payload.series[0].points[2].cumulative_amount == "10.00"
 
 
-def test_obligation_trends_reject_measure_and_reconciliation_failure(
+def test_obligation_trends_reject_invalid_measure_and_reconciliation_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_obligation_rows(
@@ -532,7 +550,7 @@ def test_obligation_trends_reject_measure_and_reconciliation_failure(
     )
 
     with pytest.raises(HTTPException) as measure_error:
-        service.get_obligation_trends(object(), measure="outlays")
+        service.get_obligation_trends(object(), measure="spending")
     assert measure_error.value.status_code == 422
     assert measure_error.value.detail["code"] == "cdc_funding_measure_not_supported"
 
@@ -543,6 +561,30 @@ def test_obligation_trends_reject_measure_and_reconciliation_failure(
         reconciliation_error.value.detail["code"]
         == "cdc_funding_internal_reconciliation_error"
     )
+
+
+def test_monthly_outlays_difference_stored_cumulative_snapshots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_obligation_rows(
+        monkeypatch,
+        monthly_amounts=["80.00", "125.00", "120.00"],
+        annual_amount="120.00",
+    )
+
+    payload = service.get_obligation_trends(object(), measure="outlays")
+    points = payload.series[0].points[1:4]
+
+    assert payload.measure == "outlays"
+    assert [point.period_amount for point in points] == ["80.00", "45.00", "-5.00"]
+    assert [point.cumulative_amount for point in points] == ["80.00", "125.00", "120.00"]
+    assert payload.series[0].reconciliation.difference == "0.00"
+
+    with pytest.raises(HTTPException) as error:
+        service.get_obligation_trends(
+            object(), measure="outlays", exclude_deobligations=True
+        )
+    assert error.value.detail["code"] == "cdc_funding_deobligations_not_supported_for_outlays"
 
 
 def test_obligation_trends_validate_scope_and_account(

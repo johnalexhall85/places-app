@@ -84,12 +84,11 @@ def get_accounts(
     "/obligation-trends",
     response_model=CdcFundingObligationTrendsResponse,
     response_model_exclude_none=True,
-    summary="Compare cumulative monthly or quarterly CDC obligations",
+    summary="Compare monthly or quarterly CDC obligations or outlays",
     description=(
-        "Returns obligations only. Monthly mode uses stored fiscal reporting-period activity and defaults "
-        "to month; quarterly mode uses stored quarterly activity. Negative obligations are retained by "
-        "default. Set exclude_deobligations=true to aggregate only positive signed source-record activity "
-        "before period and cumulative rollups."
+        "Obligations use stored fiscal reporting-period activity. Outlays use stored fiscal-year-beginning-"
+        "to-period-end snapshots and derive period activity by differencing consecutive snapshots. "
+        "Set exclude_deobligations=true only for obligations."
     ),
 )
 def get_obligation_trends(
@@ -100,7 +99,7 @@ def get_obligation_trends(
     emergency_status: CdcFundingTrendEmergencyStatus = Query(default=CdcFundingTrendEmergencyStatus.all),
     award_type: CdcFundingTrendAwardType = Query(default=CdcFundingTrendAwardType.all),
     exclude_deobligations: bool = Query(default=False),
-    measure: str | None = Query(default=None),
+    measure: CdcFundingTrendMeasure = Query(default=CdcFundingTrendMeasure.obligations),
     db: Session = Depends(get_db),
 ) -> CdcFundingObligationTrendsResponse:
     return service.get_obligation_trends(

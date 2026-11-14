@@ -17,6 +17,8 @@ cd /home/john/places-app
 
 Script behavior:
 - Brings the demo stack up and opens `80/tcp` in UFW while running.
+- Waits for the restarted backend health endpoint before testing through Nginx,
+  preventing transient `502 Bad Gateway` failures during Uvicorn startup.
 - Verifies that the anonymous demo-access session route responds through the
   public HTTP URL before reporting the deployment as ready.
 - Blocks in foreground until `Ctrl+C`.

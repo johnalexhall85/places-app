@@ -167,7 +167,7 @@ function trendPayload(overrides = {}) {
       : ["Q1", "Q2", "Q3", "Q4"];
   return {
     scope: CDC_FUNDING_SCOPE_ALL_ACCOUNTS,
-    measure: "obligations",
+    measure: overrides.measure ?? "obligations",
     period,
     view: overrides.view ?? "total",
     calculation: "cumulative_fiscal_year_to_date",
@@ -326,6 +326,7 @@ function mockHappyApi() {
   fetchCdcFundingObligationTrends.mockImplementation((options) =>
     Promise.resolve(
       trendPayload({
+        measure: options?.measure ?? "obligations",
         period: options?.period ?? "month",
         view: options?.view ?? "total",
         filters: {
@@ -369,6 +370,8 @@ function readBlobText(blob) {
 
 async function renderOverview() {
   render(<CdcFundingOverview />);
+  await screen.findByRole("tab", { name: "Annual Funding" });
+  await openTab("Annual Funding");
   await screen.findByRole("heading", { name: "Executive summary" });
 }
 
@@ -389,11 +392,75 @@ describe("CdcFundingOverview redesign", () => {
     mockHappyApi();
   });
 
+  it("opens Trends by default with permanent filters, chart data, and all FY2022-present years", async () => {
+    render(<CdcFundingOverview />);
+
+    expect(await screen.findByRole("heading", { name: "Funding trends" })).toBeVisible();
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Trends",
+      "Annual Funding",
+      "Account Details",
+    ]);
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("Fiscal year")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Filters/ })).toBeVisible();
+    await screen.findByTestId("trend-series-2026");
+    expect(screen.getByRole("heading", { name: "Chart data" })).toBeVisible();
+    expect(document.querySelector(".cdc-filter-panel").tagName).toBe("SECTION");
+    expect(document.querySelector(".cdc-trend-data").tagName).toBe("SECTION");
+    [2022, 2023, 2024, 2025, 2026].forEach((year) =>
+      expect(screen.getByTestId(`trend-series-${year}`)).toBeVisible(),
+    );
+    expect(screen.queryByTestId("trend-series-2021")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /FY2025 · Sep/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /FY2026 · Sep/ })).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Fiscal years shown 5 fiscal years selected/,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(screen.queryByTestId("trend-series-2026")).not.toBeInTheDocument();
+    expect(screen.getByText("No funding activity matches these trend filters.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Chart data" })).toBeVisible();
+  });
+
+  it("switches to stored outlays and disables obligation-only deobligation filtering", async () => {
+    render(<CdcFundingOverview />);
+    await screen.findByTestId("trend-series-2026");
+
+    fireEvent.change(screen.getByLabelText("Funding measure"), {
+      target: { value: "outlays" },
+    });
+
+    await waitFor(() =>
+      expect(fetchCdcFundingObligationTrends).toHaveBeenLastCalledWith(
+        expect.objectContaining({ measure: "outlays", excludeDeobligations: false }),
+      ),
+    );
+    expect(screen.getByLabelText("Exclude deobligations")).toBeDisabled();
+    expect(screen.getByText("Deobligation filtering applies to obligations only.")).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Monthly outlay activity" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Cumulative fiscal-year-to-date outlays" })).toBeVisible();
+    expect(window.location.search).toContain("trend_funding_measure=outlays");
+  });
+
+  it("keeps the legacy overview tab URL mapped to Annual Funding", async () => {
+    window.history.pushState({}, "", "/cdc-funding?tab=overview&fiscal_year=2025");
+    render(<CdcFundingOverview />);
+
+    expect(await screen.findByRole("heading", { name: "Executive summary" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Annual Funding" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("Fiscal year")).toHaveValue("2025");
+  });
+
   it("loads the latest YTD overview with compact values and exact-value access", async () => {
     await renderOverview();
 
     expect(screen.getByRole("heading", { name: "CDC Funding" })).toBeVisible();
-    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Annual Funding" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -407,8 +474,9 @@ describe("CdcFundingOverview redesign", () => {
       screen.getByRole("heading", { name: "Top federal funding accounts" }),
     ).toBeVisible();
     fireEvent.click(screen.getByRole("link", { name: "Methodology" }));
-    expect(screen.getByText(/Monthly trends add activity/)).toBeVisible();
-    expect(window.location.search).toBe("?fiscal_year=2026");
+    expect(screen.getByText(/Monthly trends show the funding activity/)).toBeVisible();
+    expect(screen.getByText(/July 18, 2026.*July 10, 2026/)).toBeVisible();
+    expect(window.location.search).toContain("fiscal_year=2026");
     expect(fetchCdcFundingAccounts).toHaveBeenCalledWith(
       2025,
       expect.objectContaining({ scope: CDC_FUNDING_SCOPE_ALL_ACCOUNTS }),
@@ -430,14 +498,14 @@ describe("CdcFundingOverview redesign", () => {
 
   it("uses accessible keyboard tabs and stores the selected tab in the URL", async () => {
     await renderOverview();
-    const overviewTab = screen.getByRole("tab", { name: "Overview" });
+    const overviewTab = screen.getByRole("tab", { name: "Annual Funding" });
 
-    fireEvent.keyDown(overviewTab, { key: "ArrowRight" });
+    fireEvent.keyDown(overviewTab, { key: "ArrowLeft" });
     expect(
-      await screen.findByRole("heading", { name: "Obligation trends" }),
+      await screen.findByRole("heading", { name: "Funding trends" }),
     ).toBeVisible();
     expect(screen.getByRole("tab", { name: "Trends" })).toHaveFocus();
-    expect(window.location.search).toContain("tab=trends");
+    expect(window.location.search).not.toContain("tab=");
 
     fireEvent.keyDown(screen.getByRole("tab", { name: "Trends" }), {
       key: "End",
@@ -468,10 +536,11 @@ describe("CdcFundingOverview redesign", () => {
     );
     window.dispatchEvent(new PopStateEvent("popstate"));
     await waitFor(() =>
-      expect(screen.getByLabelText("Fiscal year")).toHaveValue("2025"),
+      expect(screen.getByRole("tab", { name: "Trends" })).toHaveAttribute("aria-selected", "true"),
     );
+    expect(screen.queryByLabelText("Fiscal year")).not.toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: "Obligation trends" }),
+      await screen.findByRole("heading", { name: "Funding trends" }),
     ).toBeVisible();
   });
 
@@ -557,7 +626,7 @@ describe("CdcFundingOverview redesign", () => {
     expect(screen.queryByText(/from FY2025/)).not.toBeInTheDocument();
   });
 
-  it("renders the emergency adjustment callout and a zero-centered chart", async () => {
+  it("renders the supplemental adjustment callout and a zero-centered chart", async () => {
     fetchCdcFundingOverview.mockImplementation((year) =>
       Promise.resolve(negativeOverviewPayload(year)),
     );
@@ -569,7 +638,7 @@ describe("CdcFundingOverview redesign", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /Emergency adjustments reduced net obligations by \$200/,
+        name: /Supplemental adjustments reduced net obligations by \$200/,
       }),
     ).toBeVisible();
     expect(
@@ -591,7 +660,7 @@ describe("CdcFundingOverview redesign", () => {
     fireEvent.click(screen.getByText("View classification details"));
     expect(
       screen.getByRole("table", {
-        name: "Emergency status by award type",
+        name: "Funding type by award type",
       }),
     ).toBeVisible();
   });
@@ -637,19 +706,22 @@ describe("CdcFundingOverview redesign", () => {
     expect(screen.getAllByText(officialName).length).toBeGreaterThan(0);
   });
 
-  it("focuses trends on the selected year and one comparison by default", async () => {
+  it("shows FY2022 through the latest fiscal year by default", async () => {
     await renderOverview();
     await openTab("Trends");
 
     expect(await screen.findByTestId("trend-series-2026")).toBeVisible();
     expect(screen.getByTestId("trend-series-2025")).toBeVisible();
-    expect(screen.queryByTestId("trend-series-2024")).not.toBeInTheDocument();
+    expect(screen.getByTestId("trend-series-2024")).toBeVisible();
+    expect(screen.getByTestId("trend-series-2023")).toBeVisible();
+    expect(screen.getByTestId("trend-series-2022")).toBeVisible();
     expect(screen.queryByTestId("trend-series-2021")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Reporting period")).toHaveValue("month");
-    expect(screen.getByLabelText("Trend measure")).toHaveValue("cumulative");
+    expect(screen.getByLabelText("Funding measure")).toHaveValue("obligations");
+    expect(screen.getByLabelText("Trend display")).toHaveValue("cumulative");
     expect(
       screen.getByRole("button", {
-        name: /Comparison fiscal years Prior fiscal year/,
+        name: /Fiscal years shown 5 fiscal years selected/,
       }),
     ).toBeVisible();
     expect(
@@ -659,21 +731,20 @@ describe("CdcFundingOverview redesign", () => {
     ).toHaveAttribute("tabindex", "0");
   });
 
-  it("supports no comparison and preserves exact accessible chart data", async () => {
+  it("removes one visible year and preserves exact always-visible chart data", async () => {
     await renderOverview();
     await openTab("Trends");
     await screen.findByTestId("trend-series-2026");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Comparison fiscal years/ }),
+      screen.getByRole("button", { name: /Fiscal years shown/ }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    fireEvent.click(screen.getByLabelText("FY2025"));
     expect(screen.queryByTestId("trend-series-2025")).not.toBeInTheDocument();
-    expect(window.location.search).toContain("trend_compare=none");
+    expect(window.location.search).toContain("trend_years=2022%2C2023%2C2024%2C2026");
 
-    fireEvent.click(screen.getByText("View accessible chart data"));
     const table = screen.getByRole("table", {
-      name: /Cumulative obligation values for the primary and comparison fiscal years/,
+      name: /Cumulative obligation values for the selected fiscal years/,
     });
     expect(table).toBeVisible();
     expect(table).toHaveTextContent("October-November");
@@ -681,31 +752,27 @@ describe("CdcFundingOverview redesign", () => {
     expect(table).toHaveTextContent("Not available");
   });
 
-  it("selects multiple comparison years and keeps FY2021 rules consistent", async () => {
+  it("supports arbitrary visible years and keeps FY2021 rules consistent", async () => {
     await renderOverview();
     await openTab("Trends");
     await screen.findByTestId("trend-series-2026");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Comparison fiscal years/ }),
+      screen.getByRole("button", { name: /Fiscal years shown/ }),
     );
     expect(screen.queryByLabelText("FY2021")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("FY2024"));
 
     expect(screen.getByTestId("trend-series-2025")).toBeVisible();
-    expect(screen.getByTestId("trend-series-2024")).toBeVisible();
-    expect(window.location.search).toContain("trend_compare=2025%2C2024");
-    expect(screen.getByText(/Also comparing FY2024/)).toBeVisible();
+    expect(screen.queryByTestId("trend-series-2024")).not.toBeInTheDocument();
+    expect(window.location.search).toContain("trend_years=");
 
     fireEvent.click(screen.getByLabelText("Include FY2021"));
-    fireEvent.click(screen.getByLabelText("FY2021"));
     expect(screen.getByTestId("trend-series-2021")).toBeVisible();
 
     fireEvent.click(screen.getByLabelText("Include FY2021"));
     expect(screen.queryByTestId("trend-series-2021")).not.toBeInTheDocument();
-    expect(new URLSearchParams(window.location.search).get("trend_compare")).toBe(
-      "2025,2024",
-    );
+    expect(new URLSearchParams(window.location.search).get("trend_years")).not.toContain("2021");
   });
 
   it("excludes deobligations across the request, narrative, table, chip, and clear filters", async () => {
@@ -732,14 +799,12 @@ describe("CdcFundingOverview redesign", () => {
       }),
     ).toBeVisible();
 
-    fireEvent.click(screen.getByText("View accessible chart data"));
     expect(
       screen.getByRole("table", {
         name: /Cumulative obligation values/,
       }),
     ).toHaveTextContent("$280.00");
 
-    fireEvent.click(screen.getByText("Filters"));
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByLabelText("Exclude deobligations")).not.toBeChecked();
     expect(window.location.search).not.toContain(
@@ -794,7 +859,7 @@ describe("CdcFundingOverview redesign", () => {
       "data-highlighted",
       "true",
     );
-    expect(screen.getByText(/2 overlapping series at Mar/)).toBeInTheDocument();
+    expect(screen.getByText(/5 overlapping series at Mar/)).toBeInTheDocument();
 
     fireEvent.click(marchPoint);
     expect(screen.getByTestId("trend-series-2025")).toHaveAttribute(
@@ -814,21 +879,6 @@ describe("CdcFundingOverview redesign", () => {
       "false",
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Comparison fiscal years/ }),
-    );
-    fireEvent.click(screen.getByLabelText("FY2024"));
-    const threeWayPoint = screen.getByRole("button", {
-      name: /FY2026 · Mar.*Activate to highlight FY2026/,
-    });
-    fireEvent.click(threeWayPoint);
-    fireEvent.click(threeWayPoint);
-    fireEvent.click(threeWayPoint);
-    expect(screen.getByTestId("trend-series-2024")).toHaveAttribute(
-      "data-highlighted",
-      "true",
-    );
-    expect(screen.getByText(/3 overlapping series at Mar/)).toBeInTheDocument();
     expect(fetchCdcFundingObligationTrends).toHaveBeenCalledTimes(calls);
   });
 
@@ -845,13 +895,11 @@ describe("CdcFundingOverview redesign", () => {
     await openTab("Trends");
     await screen.findByTestId("trend-series-2026");
 
-    fireEvent.change(screen.getByLabelText("Trend measure"), {
+    fireEvent.change(screen.getByLabelText("Trend display"), {
       target: { value: "activity" },
     });
 
-    expect(
-      document.querySelector(".cdc-activity-bar.is-negative"),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Monthly obligation activity: -\$50.00/ })).toBeVisible();
     expect(document.querySelector(".cdc-trend-zero")).toBeInTheDocument();
   });
 
@@ -862,7 +910,7 @@ describe("CdcFundingOverview redesign", () => {
     const annualCalls = fetchCdcFundingOverview.mock.calls.length;
     const beforeDisplay = fetchCdcFundingObligationTrends.mock.calls.length;
 
-    fireEvent.change(screen.getByLabelText("Trend measure"), {
+    fireEvent.change(screen.getByLabelText("Trend display"), {
       target: { value: "activity" },
     });
     expect(
@@ -905,8 +953,7 @@ describe("CdcFundingOverview redesign", () => {
     await openTab("Trends");
     await screen.findByTestId("trend-series-2026");
 
-    fireEvent.click(screen.getByText("Filters"));
-    fireEvent.change(screen.getByLabelText("Emergency classification"), {
+    fireEvent.change(screen.getByLabelText("Funding type"), {
       target: { value: "nonemergency" },
     });
     fireEvent.change(screen.getByLabelText("Award type"), {
@@ -929,7 +976,7 @@ describe("CdcFundingOverview redesign", () => {
     expect(screen.getByLabelText("Active trend filters")).toBeVisible();
     expect(window.location.search).toContain("trend_account=075-2000");
     fireEvent.click(
-      screen.getByRole("button", { name: /Nonemergency.*Remove filter/ }),
+      screen.getByRole("button", { name: /Non-supplemental.*Remove filter/ }),
     );
     expect(window.location.search).toContain("trend_emergency=all");
   });
@@ -944,10 +991,10 @@ describe("CdcFundingOverview redesign", () => {
 
     expect(await screen.findByTestId("trend-series-2021")).toBeVisible();
     expect(screen.getByLabelText("Reporting period")).toHaveValue("quarter");
-    expect(screen.getByLabelText("Trend measure")).toHaveValue("activity");
+    expect(screen.getByLabelText("Trend display")).toHaveValue("activity");
     expect(
       screen.getByRole("button", {
-        name: /Comparison fiscal years No comparisons/,
+        name: /Fiscal years shown FY2021, FY2025|Fiscal years shown 2 fiscal years selected/,
       }),
     ).toBeVisible();
     expect(screen.queryByTestId("trend-series-2024")).not.toBeInTheDocument();
@@ -1055,9 +1102,9 @@ describe("CdcFundingOverview redesign", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Obligation trends" }),
+      await screen.findByRole("heading", { name: "Funding trends" }),
     ).toBeVisible();
-    expect(window.location.search).toContain("tab=trends");
+    expect(window.location.search).not.toContain("tab=");
     expect(window.location.search).toContain("trend_view=federal_account");
     expect(window.location.search).toContain("trend_account=075-2000");
     await waitFor(() =>
