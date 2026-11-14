@@ -1,0 +1,19 @@
+[Unit]
+Description=CHIP FastAPI backend (staging, beta branch)
+After=network.target
+
+[Service]
+Type=simple
+User=john
+Group=john
+WorkingDirectory=/home/john/chip-beta/backend
+EnvironmentFile=/home/john/chip-beta/backend/.env
+Environment=PATH=/home/john/chip-beta/backend/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/john/chip-beta/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
+Restart=on-failure
+RestartSec=3
+MemoryMax=2G
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

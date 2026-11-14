@@ -24,7 +24,14 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app.db import Base
+from app.db import Base, DATABASE_URL as _APP_DATABASE_URL
+import os as _os
+
+# Migrations follow the application's DATABASE_URL when one is set (app.db has
+# already loaded backend/.env). Without it, alembic.ini's sqlalchemy.url applies,
+# so the live service environment, which sets no DATABASE_URL, is unchanged.
+if _os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", _APP_DATABASE_URL.replace("%", "%%"))
 from app import models  # noqa: F401
 from app.cms import models as cms_models  # noqa: F401
 from app.fema_nri import models as fema_nri_models  # noqa: F401

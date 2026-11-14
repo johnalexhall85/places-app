@@ -46,7 +46,8 @@ Shared rules for both agents:
 - **Only Claude creates migrations.** The product track needs none: saved views are URL state, and exports are files.
 - **Both write diary entries.** `docs/PROJECT_DIARY.md` gets a `merge=union` rule in `.gitattributes` so two agents adding entries does not conflict. Codex puts handbook-worthy facts in its diary entry; Claude folds them into the handbook.
 - **Status files.** Each agent keeps `docs/beta/status/<agent>.md`: work package, state, branch, what the other agent can now rely on. Each reads the other's file at the start of every work package.
-- **Merging.** Each agent opens a pull request into `beta`, runs its checks, merges its own PR without force, then runs `infra/staging/deploy-staging.sh` (which takes a lock). Neither merges to `main`.
+- **Merging.** Each agent runs its checks, then runs `infra/staging/deploy-staging.sh <branch>` from its worktree, which takes a lock, merges the branch into `beta` in `/home/john/chip-beta` without force, and deploys staging. (Correction 2026-11-14: `gh` is not signed in on the VM, so these are local merges, not GitHub pull requests. "Merged pull request" elsewhere in this plan means this.) Neither merges to `main`.
+- **Database.** Every worktree's `backend/.env` sets `DATABASE_URL` to `places_staging`; the app, area CLIs, and Alembic follow it. Do not run legacy importers outside `app/area_pilot` from a worktree. See `infra/staging/README.md`.
 - **Live is off limits** until Gate 3: no writes to the live database, `/var/www/places`, `places-backend`, or the `/home/john/places-app` checkout.
 - **When blocked** on the other agent, on a permission, or on a source that will not download: record it in the status file and move to the next work package. Do not wait.
 
@@ -64,7 +65,7 @@ Staging environment, all on this VM (289 GB free):
 
 - Database `places_staging` in the existing PostGIS container, restored from a fresh dump of the live database.
 - `places-backend-staging.service` on `127.0.0.1:8001`, with its own `.env` and its own demo-access secrets.
-- Nginx server on port 8080 serving `/var/www/places-staging`, with `/api/community/` passed through unstripped (same pattern as `/api/area/`). Port 8080 stays closed in the firewall; John views it through an SSH tunnel.
+- Nginx server on port 8080 serving `/var/www/places-staging`. The community router uses the FastAPI prefix `/community` and is reached at `/api/community/*` through the general `/api/` block, which strips `/api` (the same way `/api/area/*` reaches `/area/*`); no Nginx change is needed. Port 8080 stays closed in the firewall; John views it through an SSH tunnel.
 - Agent development backends on 8002 (Codex) and 8003 (Claude), both pointed at `places_staging`.
 
 ## Product design
