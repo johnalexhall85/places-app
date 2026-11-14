@@ -1,0 +1,51 @@
+{
+  "dataset_id": "cdc_places_county_2025_pilot",
+  "name": "PLACES 2025 county and tract pilot",
+  "publisher": "Centers for Disease Control and Prevention",
+  "landing_page": "https://data.cdc.gov/d/yjkw-uj5s",
+  "source_view_id": "yjkw-uj5s",
+  "source_api": "https://data.cdc.gov/resource/yjkw-uj5s.json",
+  "source_metadata_api": "https://data.cdc.gov/api/views/yjkw-uj5s.json",
+  "source_key_field": "tractfips",
+  "source_release_id": "2025-12-12",
+  "source_release_label": "December 2025 PLACES tract release, corrected December 12",
+  "refresh_policy": {"schedule": "weekly_full_content_verification", "auto_publish": false,
+    "supported_release_ids": ["2025-12-12"], "same_label_revision": "hold_for_review",
+    "new_release": "discover_and_hold", "schema_or_boundary_drift": "hold_for_review"},
+  "boundary_vintage": "TIGER/Line 2020 tract except Connecticut TIGER/Line 2023 planning-region tract",
+  "ct_boundary_url": "https://www2.census.gov/geo/tiger/TIGER2023/TRACT/tl_2023_09_tract.zip",
+  "ct_boundary_sha256": "1543bc035ab9934bf495b43f063facf29c5dc5a2676ff7ff6493f2222f4734a9",
+  "geographies": ["county", "tract"],
+  "aggregation_method": "none",
+  "expected_tract_count": 83522,
+  "expected_schema_sha256": "93a997e5427db4d348cf979b382bfdf192f97b2f06b441be17558d7c1c75af34",
+  "expected_unavailable_tract_count": 4707,
+  "value_type": "crude_prevalence",
+  "unit": "percent",
+  "measures": [
+    {
+      "measure_id": "dental_crudeprev",
+      "label": "Visited dentist or dental clinic in the past year",
+      "observation_period": "2022",
+      "population": "adults",
+      "source_value_field": "dental_crudeprev",
+      "source_ci_field": "dental_crude95ci",
+      "source_definition_contains": "visited dentist or dental clinic in the past year among adults, 2022"
+    },
+    {
+      "measure_id": "access2_crudeprev",
+      "label": "Current lack of health insurance",
+      "observation_period": "2023",
+      "population": "adults aged 18-64",
+      "source_value_field": "access2_crudeprev",
+      "source_ci_field": "access2_crude95ci",
+      "source_definition_contains": "lack of health insurance among adults aged 18-64 years, 2023",
+      "documented_unavailable_states": ["KY", "PA"]
+    }
+  ],
+  "documentation_urls": [
+    "https://www.cdc.gov/places/current-release-notes/index.html",
+    "https://www.cdc.gov/places/about/",
+    "https://www.cdc.gov/places/measure-definitions/index.html"
+  ]
+}

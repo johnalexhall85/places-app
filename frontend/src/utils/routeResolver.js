@@ -1,5 +1,14 @@
 export function resolveRoute(pathname) {
   const normalizedPath = String(pathname ?? "").trim();
+  if (/^\/area\/places-2025\/?$/i.test(normalizedPath)) {
+    return { type: "places-2025-pilot" };
+  }
+  if (/^\/area\/acs-2024\/?$/i.test(normalizedPath)) {
+    return { type: "acs-2024-area" };
+  }
+  if (/^\/area\/ahrf\/?$/i.test(normalizedPath)) {
+    return { type: "ahrf-area" };
+  }
   if (/^\/funding-model-builder\/?$/i.test(normalizedPath)) {
     return { type: "funding-model-builder" };
   }

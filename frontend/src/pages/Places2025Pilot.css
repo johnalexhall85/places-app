@@ -1,0 +1,197 @@
+.pilot-content {
+  height: calc(100vh - var(--chip-header-height));
+  min-height: 540px;
+  overflow: hidden;
+}
+
+.pilot-map {
+  height: 100%;
+  width: 100%;
+}
+
+.pilot-panel {
+  position: absolute;
+  z-index: 2200;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--pdo-border);
+  border-radius: 16px;
+  box-shadow: var(--pdo-overlay-shadow);
+  color: var(--pdo-text);
+  font-size: 12px;
+}
+
+.pilot-controls {
+  top: 16px;
+  left: 16px;
+  width: min(410px, calc(100vw - 32px));
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.pilot-controls h1 {
+  font-size: 17px;
+}
+
+.pilot-controls p,
+.pilot-legend p,
+.pilot-table p {
+  margin: 0;
+}
+
+.pilot-scope,
+.pilot-metadata,
+.pilot-release {
+  color: var(--pdo-text-muted);
+}
+
+.pilot-controls label {
+  display: grid;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.pilot-controls select {
+  width: 100%;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: white;
+  color: var(--pdo-text);
+  font-weight: 500;
+}
+
+.pilot-release {
+  overflow-wrap: anywhere;
+}
+
+.pilot-legend {
+  top: 16px;
+  right: 16px;
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.pilot-legend h2 {
+  font-family: var(--body-font);
+  font-size: 13px;
+}
+
+.pilot-swatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.pilot-swatches li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pilot-swatches i {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 1px solid #a9bac9;
+  border-radius: 2px;
+}
+
+.pilot-table {
+  bottom: 16px;
+  left: 16px;
+  width: min(690px, calc(100vw - 32px));
+  max-height: min(320px, 44vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.pilot-table-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--pdo-text);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+}
+
+.pilot-table-body {
+  min-height: 0;
+  padding: 0 14px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.pilot-table-scroll {
+  min-height: 0;
+  overflow: auto;
+  background: white;
+  border: 1px solid var(--pdo-border);
+}
+
+.pilot-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pilot-table caption {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--pdo-text-muted);
+}
+
+.pilot-table th,
+.pilot-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--pdo-border);
+}
+
+.pilot-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--pdo-surface-alt);
+}
+
+.pilot-table nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pilot-table nav button {
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 7px;
+  background: white;
+  padding: 3px 8px;
+  color: var(--pdo-text);
+  cursor: pointer;
+}
+
+.pilot-table nav button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pilot-panel :focus-visible {
+  outline: 2px solid var(--pdo-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .pilot-content { min-height: 650px; }
+  .pilot-controls { max-height: 34vh; overflow: auto; }
+  .pilot-legend { top: auto; bottom: 66px; max-height: 23vh; overflow: auto; }
+  .pilot-table { bottom: 16px; max-height: 32vh; }
+  .pilot-table.is-open { bottom: calc(23vh + 76px); }
+}

@@ -1,0 +1,25 @@
+{
+  "dataset_id": "hrsa_ahrf_county_2024_2025",
+  "name": "AHRF county health workforce and resources",
+  "publisher": "HRSA, Bureau of Health Workforce",
+  "landing_page": "https://data.hrsa.gov/topics/health-workforce/nchwa/ahrf",
+  "source_release_id": "AHRF 2024-2025 county release",
+  "source_data_url": "https://data.hrsa.gov/DataDownload/AHRF/AHRF_2024-2025_CSV.zip",
+  "source_documentation_url": "https://data.hrsa.gov/DataDownload/AHRF/AHRF_USER_TECH_2024-2025.zip",
+  "documentation_sha256": "aa03026107b8acf7fd5c5f2d0c96c30b44d254cbb122a31141a3aee2d726f680",
+  "expected_source_rows": 3235,
+  "boundary_vintage": "TIGER/Line 2024 county equivalents",
+  "geographies": ["county"],
+  "aggregation_method": "none",
+  "value_type": "administrative_count",
+  "unit": "count",
+  "refresh_policy": {"schedule": "manual_full_content", "auto_publish": false, "same_label_revision": "hold_for_review", "new_release": "hold_for_review"},
+  "source_only_geographies": ["02261", "09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015", "66010", "78010", "78020", "78030"],
+  "measures": [
+    {"measure_id":"phys_nf_prim_care_pc_exc_rsdt_23","label":"Primary care physicians in patient care","official_label":"Phys,Primary Care, Patient Care","characteristics":"Non-Fed;Excl Hsp Res & 75+ Yrs","source":"AMA Phys Master File","source_file":"AHRF2025hp.csv","observation_period":"2023","population":"nonfederal primary care physicians in patient care, excluding hospital residents and age 75+","unit":"physicians"},
+    {"measure_id":"dent_nf_fed_proflly_activ_23","label":"Professionally active dentists","official_label":"Dentists, Total Prof Active","characteristics":"Non-Fed & Fed","source":"ADA Masterfile","source_file":"AHRF2025hp.csv","observation_period":"2023","population":"federal and nonfederal professionally active dentists","unit":"dentists"},
+    {"measure_id":"md_nf_psych_all_pc_23","label":"Psychiatrists in patient care","official_label":"Psychiatry, Total Patient Care","characteristics":"Non-Fed;Patient Care","source":"AMA Phys Master File","source_file":"AHRF2025hp.csv","observation_period":"2023","population":"nonfederal MD psychiatrists in patient care","unit":"physicians"},
+    {"measure_id":"hosp_23","label":"Hospitals","official_label":"Total Number Hospitals","characteristics":"","source":"AHA Survey Database 23","source_file":"AHRF2025hf.csv","observation_period":"2023","population":"hospitals in the AHA survey database","unit":"hospitals"},
+    {"measure_id":"hosp_beds_23","label":"Hospital beds","official_label":"Hospital Beds","characteristics":"Total Hospitals","source":"AHA Survey Database 23","source_file":"AHRF2025hf.csv","observation_period":"2023","population":"beds in total hospitals in the AHA survey database","unit":"beds"}
+  ]
+}

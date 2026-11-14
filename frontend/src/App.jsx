@@ -100,6 +100,9 @@ import {
 import { API_BASE } from "./config/apiBase";
 const DATA_SOURCES = {
   PLACES: "places",
+  PLACES_2025_PILOT: "places_2025_pilot",
+  ACS_2024_AREA: "acs_2024_area",
+  AHRF_AREA: "ahrf_area",
   ACS_NMF: "acs_nmf",
   SVI: "svi",
   HPSA: "hpsa",
@@ -9662,6 +9665,18 @@ export default function App() {
                 value={selectedDataSource}
                 onChange={(event) => {
                   const nextSource = event.target.value;
+                  if (nextSource === DATA_SOURCES.PLACES_2025_PILOT) {
+                    window.location.assign("/area/places-2025");
+                    return;
+                  }
+                  if (nextSource === DATA_SOURCES.ACS_2024_AREA) {
+                    window.location.assign("/area/acs-2024");
+                    return;
+                  }
+                  if (nextSource === DATA_SOURCES.AHRF_AREA) {
+                    window.location.assign("/area/ahrf");
+                    return;
+                  }
                   setSelectedDataSource(nextSource);
                   setSelectedMeasureId("");
                   if (nextSource === DATA_SOURCES.USDA_FOOD_ENV) {
@@ -9700,6 +9715,9 @@ export default function App() {
                 style={controlSelectStyle}
               >
                 <option value={DATA_SOURCES.PLACES}>PLACES (modeled health estimates)</option>
+                <option value={DATA_SOURCES.PLACES_2025_PILOT}>PLACES 2025 pilot (counties)</option>
+                <option value={DATA_SOURCES.ACS_2024_AREA}>ACS 2020–2024 income (states, counties, tracts)</option>
+                <option value={DATA_SOURCES.AHRF_AREA}>AHRF 2023 workforce and hospitals (counties)</option>
                 <option value={DATA_SOURCES.CMS}>CMS (Medicare Fee-for-Service)</option>
                 <option value={DATA_SOURCES.CDC_FUNDING_STATE}>CDC Funding - State Map</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment</option>
