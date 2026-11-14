@@ -77,6 +77,8 @@ function Root() {
     routedPage = <Places2025Pilot dataset="clh" />;
   } else if (route.type === "epa-aqi-area") {
     routedPage = <Places2025Pilot dataset="aqi" />;
+  } else if (route.type === "cms-gv-area") {
+    routedPage = <Places2025Pilot dataset="cmsgv" />;
   } else {
     routedPage = <App />;
   }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null }));
@@ -356,5 +356,130 @@ describe("EPA annual county AQI", () => {
     expect(data.every((url) => url.includes("dataset_id=epa_airdata_aqi_county_2025") && url.includes("geography=county")
       && url.includes("release_id=release-aqi") && url.includes("period=2025"))).toBe(true);
     expect(data.some((url) => url.includes("measure_id=p90_aqi"))).toBe(true);
+  });
+});
+
+describe("CMS Original Medicare Geographic Variation", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; });
+  const population = "Original Medicare beneficiaries, all ages";
+  const measures = [
+    { measure_id: "om_beneficiaries", label: "Original Medicare beneficiaries", source_field: "BENES_OM_CNT", kind: "count",
+      unit: "beneficiaries", observation_period: "2024", population, denominator: "None (count).",
+      official_definition: "Count of Medicare beneficiaries who were enrolled in Part A and Part B.", interpretation: "Not a resident population." },
+    { measure_id: "std_payment_per_capita", label: "Standardized Medicare payment per beneficiary", source_field: "TOT_MDCR_STDZD_PYMT_PC",
+      kind: "currency", unit: "US dollars per Original Medicare beneficiary (2024, nominal)", observation_period: "2024", population,
+      denominator: "Original Medicare beneficiaries in the area (per capita).",
+      official_definition: "Actual per capita Original Medicare payment for beneficiaries, adjusted for geographic differences in payment rates.",
+      interpretation: "It is not adjusted for inflation. CMS's catalog states it does not adjust for beneficiaries' health status, so CHIP does not present it as risk-adjusted." },
+    { measure_id: "readmission_rate", label: "All-cause 30-day hospital readmission rate", source_field: "ACUTE_HOSP_READMSN_PCT",
+      kind: "proportion", unit: "percent of acute hospital stays (CMS stores 0-1)", observation_period: "2024", population,
+      denominator: "Acute hospital admissions where the beneficiary was discharged alive (not beneficiaries).",
+      official_definition: "Percentage of inpatient readmissions within 30 days of an acute hospital stay.", interpretation: "Not risk-adjusted." },
+  ];
+  const catalog = {
+    dataset_id: "cms_om_geographic_variation", active_release_id: "gv-release", value_type: "cms_om_gv_published",
+    geographies: ["state", "county"], state_to_county_zoom: 6, observation_year: 2024,
+    source_release_id: "OM GV PUF May 2026 update (2014-2024 CSV)",
+    population_label: "Original Medicare beneficiaries (Part A and Part B, no Medicare Advantage), all ages",
+    source_url: "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-geographic-comparisons/medicare-geographic-variation-by-national-state-county",
+    measures, limitations: ["Original Medicare (fee-for-service) beneficiaries with Part A and Part B only. Medicare Advantage enrollees are excluded.",
+      "State and county values are published separately by CMS. CHIP does not add counties into states."],
+  };
+
+  it("formats each unit and keeps suppressed, missing, not-published, and zero distinct", () => {
+    expect(gvGeography(4)).toBe("state");
+    expect(gvGeography(6)).toBe("county");
+    expect(gvGeography(12)).toBe("county");
+    expect(gvNumber(27732177, "count")).toBe("27,732,177");
+    expect(gvNumber(12553.26, "currency")).toBe("$12,553");
+    expect(gvNumber(224.8391, "per_1000")).toBe("224.8 per 1,000");
+    expect(gvNumber(0.1807, "proportion")).toBe("18.07%");
+    expect(gvValueText({ value: 0, status: "true_zero" }, measures[2])).toBe("0.00%");
+    const texts = ["suppressed", "missing", "not_published"].map((status) => gvValueText({ value: null, status }, measures[0]));
+    expect(new Set(texts).size).toBe(3);
+    expect(texts[0]).toMatch(/fewer than 11/);
+    expect(gvColor(null, "suppressed", [1])).not.toBe(gvColor(null, "not_published", [1]));
+    expect(gvColor(0, "true_zero", [0.15, 0.165])).not.toBe(gvColor(null, "missing", [0.15, 0.165]));
+    expect(gvBinLabels([0.15, 0.165, 0.18, 0.195], "proportion")).toEqual(
+      ["Under 15.00%", "15.00% to under 16.50%", "16.50% to under 18.00%", "18.00% to under 19.50%", "19.50% or more"]);
+    const popup = gvPopup({ name: "Baldwin<b>", geography_id: "01003", value: 0.2, status: "available", source_name: "AL-Baldwin" },
+      measures[2], "county", catalog);
+    expect(popup).toContain("County Baldwin&lt;b&gt; (01003)");
+    expect(popup).toContain("20.00%");
+    expect(popup).toContain("Medicare Advantage");
+  });
+
+  it("starts with states, switches to counties, keeps counties at tract zoom, and pins one exact selection", async () => {
+    expect(resolveRoute("/area/cms-gv")).toEqual({ type: "cms-gv-area" });
+    const urls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url); urls.push(path);
+      if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      const geography = path.includes("geography=county") ? "county" : "state";
+      const breaks = [10500, 11500, 12500, 13500];
+      const payload = path.includes("/map?") ? { features: [], legend_breaks: breaks }
+        : path.includes("/legend?") ? { legend_breaks: breaks, national_reference: { value: 12553.26, status: "available" },
+          statuses: [{ status: "available", n: 1, low: 11000, high: 11000 }, { status: "not_published", n: 1, low: null, high: null },
+            { status: "suppressed", n: 1, low: null, high: null }] }
+        : geography === "state" ? { total: 1, rows: [{ geography_id: "01", name: "Alabama", value: 11000.5, source_value: "11000.5", status: "available" }] }
+        : { total: 3, rows: [
+          { geography_id: "01001", name: "Autauga", value: 12527.77, source_value: "12527.77", status: "available" },
+          { geography_id: "02000", name: "Unknown", value: null, source_value: "*", status: "suppressed" },
+          { geography_id: "11001", name: "District of Columbia", value: null, source_value: null, status: "not_published" }] };
+      return { ok: true, json: async () => ({ ...payload, release_id: "gv-release", geography }) };
+    }));
+    render(<Places2025Pilot dataset="cmsgv" />);
+    expect(await screen.findByText("01")).toBeInTheDocument();
+    expect(screen.getByText("$11,001")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "CMS source value" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /95% CI|MOE|Uncertainty/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/United States \(CMS-published national value, reference only\): \$12,553/)).toBeInTheDocument();
+    expect(screen.getByText(/does not present it as risk-adjusted/)).toBeInTheDocument();
+    expect(screen.getByText(/legacy import/)).toBeInTheDocument();
+    expect(screen.getByText(/CHIP does not add counties into states/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "readmission_rate" } });
+    expect(await screen.findByText(/discharged alive \(not beneficiaries\)/)).toBeInTheDocument();
+    mapHarness.zoom = 6;
+    act(() => mapHarness.handlers.zoomend());
+    expect(await screen.findByText("01001")).toBeInTheDocument();
+    expect(screen.getAllByText("Suppressed by CMS (fewer than 11)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not published by CMS at this level").length).toBeGreaterThan(0);
+    act(() => { mapHarness.zoom = 12; mapHarness.handlers.zoomend(); });
+    expect(await screen.findByText(/CMS publishes no tract estimates/)).toBeInTheDocument();
+    const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
+    expect(data.every((url) => url.includes("dataset_id=cms_om_geographic_variation") && url.includes("release_id=gv-release")
+      && url.includes("period=2024") && url.includes(`population=${encodeURIComponent(population).replace(/%20/g, "+")}`)
+      && !url.includes("geography=tract"))).toBe(true);
+    const mapGeographies = data.filter((url) => url.includes("/map?")).map((url) => [
+      new URLSearchParams(url.split("?")[1]).get("geography"), new URLSearchParams(url.split("?")[1]).get("measure_id")]);
+    expect(mapGeographies[0]).toEqual(["state", "std_payment_per_capita"]);
+    expect(mapGeographies).toContainEqual(["state", "readmission_rate"]);
+    expect(mapGeographies).toContainEqual(["county", "readmission_rate"]);
+    expect(mapGeographies.filter(([geo, id]) => geo === "county" && id !== "readmission_rate")).toEqual([]);
+  });
+
+  it("ignores a slower response for a measure the user already left", async () => {
+    const pending = [];
+    vi.stubGlobal("fetch", vi.fn((url) => {
+      const path = String(url);
+      // Distinct release: the page's response cache is module-level and shared across tests.
+      if (path.includes("/catalog")) return Promise.resolve({ ok: true, json: async () => ({ ...catalog, active_release_id: "gv-stale" }) });
+      const measure = new URLSearchParams(path.split("?")[1]).get("measure_id");
+      const value = measure === "om_beneficiaries" ? 999999 : 12000;
+      const payload = path.includes("/map?") ? { features: [], legend_breaks: [1] }
+        : path.includes("/legend?") ? { legend_breaks: [1], statuses: [] }
+        : { total: 1, rows: [{ geography_id: "01", name: "Alabama", value, source_value: String(value), status: "available" }] };
+      return new Promise((resolve) => pending.push({ measure, resolve: () => resolve({ ok: true,
+        json: async () => ({ ...payload, release_id: "gv-stale", geography: "state" }) }) }));
+    }));
+    render(<Places2025Pilot dataset="cmsgv" />);
+    await screen.findByLabelText(/Measure/);
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "om_beneficiaries" } });
+    fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "std_payment_per_capita" } });
+    await act(async () => { pending.filter((item) => item.measure === "std_payment_per_capita").forEach((item) => item.resolve()); });
+    await act(async () => { pending.filter((item) => item.measure === "om_beneficiaries").forEach((item) => item.resolve()); });
+    expect(await screen.findByText("$12,000")).toBeInTheDocument();
+    expect(screen.queryByText("999,999")).not.toBeInTheDocument();
   });
 });

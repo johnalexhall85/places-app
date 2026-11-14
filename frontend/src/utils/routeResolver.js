@@ -15,6 +15,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/epa-aqi\/?$/i.test(normalizedPath)) {
     return { type: "epa-aqi-area" };
   }
+  if (/^\/area\/cms-gv\/?$/i.test(normalizedPath)) {
+    return { type: "cms-gv-area" };
+  }
   if (/^\/funding-model-builder\/?$/i.test(normalizedPath)) {
     return { type: "funding-model-builder" };
   }

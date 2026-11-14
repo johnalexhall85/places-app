@@ -2,6 +2,43 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T21:58:00+00:00 — CMS Original Medicare Geographic Variation 2024 shared product published and deployed (Claude)
+
+- **Objective/outcome:** Added CMS Original Medicare Geographic Variation (OM GV) as an independent shared area product, `cms_om_geographic_variation`. It has five 2024 measures at state and county level for the `All` age category, with its own release pointer. Published, deployed, and browser-verified. The legacy `cms.gv_*` integration was inspected and not run; its tables, routes, and behavior are unchanged, and only the main-map selector label changed. The weekly timer, backups, access controls, and funding methodology were not changed. The Codex sibling worktree was not touched.
+- **Source verified:**
+  - CMS catalog series `6219697b-…`, modified 2026-05-15, temporal 2024; methods paper "May 2026 Update" (data 2007–2024).
+  - CSV `2014-2024 … Public Use File.csv`: 57,865,948 bytes, SHA-256 `10c83040…6fad`, 36,994 rows, latest `YEAR` 2024. The data API showed no 2025 rows; its totals (36,994; 3,253 for 2024/All) and 7 sampled cells match the CSV.
+  - Dictionary and methods PDFs archived with checksums.
+- **Variables:** `BENES_OM_CNT`, `TOT_MDCR_STDZD_PYMT_PC`, `IP_CVRD_STAYS_PER_1000_BENES`, `ER_VISITS_PER_1000_BENES` (CMS term "Emergency Room"), and `ACUTE_HOSP_READMSN_PCT`. The readmission denominator is index admissions discharged alive.
+  - `_PCT` fields are 0–1, verified from methods tables: female 54.6% ↔ `0.546`, OM count 27,732,177. Values are stored as published and multiplied by 100 only for display.
+  - The suppression code is `*` (<11). The earlier inventory note about "." was not supported and was corrected.
+  - **Documentation conflict:** the methods paper mentions health-status adjustment; the catalog says standardization does not adjust for health status. CHIP never labels the measure risk- or inflation-adjusted.
+- **Geography:**
+  - Matched 52 states (50, DC, PR) and 3,143 counties (CT planning regions already in source); the national row is reference only.
+  - Excluded: VI state and 3 VI counties (no CHIP boundary), the `Territory` and `ZZ` state aggregates, and 51 `XX000` unknown-county rows.
+  - DC county 11001 and 78 PR municipios have no CMS county row and show "not published". No unexplained mismatches.
+  - Suppressed matched-county values per measure: 2/2/13/3/146. Six true-zero county readmission rates.
+- **Changes:**
+  - Registry `cms_om_gv.json`; modules `cms_gv.py`, `cms_gv_cli.py`, `cms_gv_api.py`; router dispatch.
+  - Additive migration `b7e3c5a9d2f4` (`stage_cms_gv`, `observation_cms_gv`, immutability triggers).
+  - Frontend `/area/cms-gv`: state below zoom 6, counties from zoom 6, an explicit no-tract message, a national reference line, and distinct status swatches. Main-map selector: a new entry plus the legacy option relabelled "legacy import, through 2023".
+  - Tests; operator guide `backend/docs/chip_cms_om_geographic_variation.md`; inventory row `cms-original-medicare-gv` updated in place (still 97 records); handbook.
+- **State-changing commands:**
+  - `alembic upgrade head` (`a4d9e7c2b6f1` → `b7e3c5a9d2f4`).
+  - `cms_gv_cli fetch-stage-validate` twice: ready candidate `73d93c74-7d59-4723-a862-25ecf7a6bc92` (12/12 checks), then a duplicate.
+  - `review`, then `approve-publish` at 21:47:59Z (semantic `1b5e4e68…5800`, schema `48209de5…325b`, metadata `25a54bab…9fc1`).
+  - Pointer drill: `deactivate`, a refused rollback to the AQI release, then `rollback 73d93c74…`. All nine pointers were rechecked.
+  - Webroot backed up to `data/deploy-recovery/cms-om-gv-20261114/webroot-before/`, then `rsync -a --delete frontend/dist/ /var/www/places/`.
+  - `sudo -n systemctl restart places-backend` at 21:48:25Z.
+  - Three temporary demo codes (ids 19–21, `agent-verification-cms-gv-20261114`) were created and deactivated, each used once; no plaintext was printed or stored.
+- **Verification:**
+  - Backend: 16 unit tests and 1 isolated PostGIS lifecycle test covering idempotency, same-label revision hold and release, failed and unexplained candidates, pointer isolation, rollback, immutability, and API parity. 153/153 focused area and CMS tests passed. Full suite: 618 passed, 1 failed (the known `test_all_six_real_source_years_match_acceptance_totals`).
+  - Frontend: 139/139; the build passed with the existing chunk-size warning.
+  - Review re-derived all 15,980 observations; an independent CSV-to-DB check of 50 cells had 0 mismatches. An update to a published row was refused.
+  - Authenticated Nginx browser check: 88/88. It covered all five measures at both levels, legacy CMS selector and routes, the HRSA, TRI, and nursing-home overlays, six shared catalogs, and the 390-pixel layout. Funding map/legend returned 200, and anonymous CMS GV routes returned 401.
+  - Benchmarks: national states 0.55–0.61 s; national counties 3.1–4.3 s / 1.8 MB, comparable to the AQI national county view at 3.1 s; local county views 16–18 ms.
+- **Git/next action:** Committed on new branch `claude/cms-geographic-variation` (from `ed42254`) and pushed to `origin` without force; the push outcome is recorded in the next entry. Not merged to `main`. Next: decide on merging the stacked branches, add GV to a fresh recovery set, and decide on legacy CMS retirement separately.
+
 ## 2026-11-14T20:39:45+00:00 — CMS nursing-home integration commit and push (Codex)
 
 - **Objective/outcome:** Complete the requested Git handoff for the CMS nursing-home integration documented below. Commit `115733d` includes application, migration, tests, source inventory, operator guide, handbook, and diary; pushed to `origin/claude/epa-tri-facilities` without force. No new application, database, or deployment changes were made in this handoff step.

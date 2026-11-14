@@ -1,0 +1,141 @@
+{
+  "dataset_id": "cms_om_geographic_variation",
+  "name": "CMS Original Medicare Geographic Variation (national, state, county)",
+  "short_name": "CMS Original Medicare GV",
+  "publisher": "Centers for Medicare & Medicaid Services, Office of Enterprise Data and Analytics (OEDA)",
+  "landing_page": "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-geographic-comparisons/medicare-geographic-variation-by-national-state-county",
+  "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+  "observation_year": 2024,
+  "age_level": "All",
+  "age_level_label": "All Beneficiaries",
+  "catalog": {
+    "url": "https://data.cms.gov/data.json",
+    "max_bytes": 64000000,
+    "series_identifier": "https://data.cms.gov/data-api/v1/dataset/6219697b-8f6c-4164-bed4-cd9317c58ebc/data",
+    "title_prefix": "Medicare Geographic Variation - by National, State & County : ",
+    "csv_url": "https://data.cms.gov/sites/default/files/2026-04/cc600d1e-d475-4b0e-80dc-1f64c01ca68c/2014-2024%20Original%20Medicare%20Geographic%20Variation%20Public%20Use%20File.csv",
+    "dictionary_url": "https://data.cms.gov/sites/default/files/2026-05/267755af-8e26-4bcd-a3ea-fef41c96b7fc/2014-2024%20Original%20Medicare%20Geographic%20Variation%20Data%20Dictionary.pdf",
+    "methods_url": "https://data.cms.gov/sites/default/files/2026-05/Original%20Medicare%20Geographic%20Variation%20Public%20Use%20File%20Methods%20Paper.pdf",
+    "resources_url": "https://data.cms.gov/data-api/v1/dataset-resources/6219697b-8f6c-4164-bed4-cd9317c58ebc",
+    "api_stats_url": "https://data.cms.gov/data-api/v1/dataset/6219697b-8f6c-4164-bed4-cd9317c58ebc/data/stats",
+    "api_data_url": "https://data.cms.gov/data-api/v1/dataset/6219697b-8f6c-4164-bed4-cd9317c58ebc/data"
+  },
+  "source_dimensions": ["YEAR", "BENE_GEO_LVL", "BENE_GEO_DESC", "BENE_GEO_CD", "BENE_AGE_LVL"],
+  "expected_column_count": 246,
+  "expected_header_sha256": "2c9d097415be8f240dd0d462f0d8907a2ce9209eb8742c840c771afe6f1465db",
+  "expected_levels": {"National": 1, "State": 55, "County": 3197},
+  "expected_age_levels": ["All", "<65", ">=65"],
+  "suppression_token": "*",
+  "api_sample_codes": ["US", "06", "72", "06037", "09110", "02013", "48301"],
+  "documentation_phrases": {
+    "dictionary": [
+      "All Beneficiaries, Beneficiaries under 65, or Beneficiaries 65 or older",
+      "Count of Medicare beneficiaries who were enrolled in Part A and Part B, as well as Original Medicare coverage for all Medicare entitled months. New enrollees and beneficiaries that died during the year are included as long as they met the above criteria.",
+      "Actual per capita Original Medicare payment for beneficiaries, adjusted for geographic differences in payment rates.",
+      "Number of Hospital Inpatient covered stays per 1,000 OM beneficiaries.",
+      "Number of inpatient or hospital outpatient Emergency Room (ER) visits per 1,000 OM beneficiaries.",
+      "Percentage of inpatient readmissions within 30 days of an acute hospital stay during the reference period, regardless of whether the readmission was planned or unplanned.",
+      "All variables are suppressed where the count of beneficiaries or count of users is less than 11.",
+      "Suppressed variables are marked with"
+    ],
+    "methods": [
+      "The May 2026 update to the OM GV PUF includes data for 2007-2024.",
+      "the study population for the OM GV PUF is comprised of individuals who have both Part A and Part B coverage and are fully enrolled in Original Medicare.",
+      "beneficiaries who had both Part A and Part B coverage and were enrolled at any point during the year in a Medicare Advantage (MA) plan are excluded.",
+      "We standardized payment rates using the same methodology that CMS uses to calculate its Medicare spending per beneficiary (MSPB) metric",
+      "Medicare often pays different amounts for the same service in different areas (for example, to reflect variation in local wages or input costs).",
+      "These figures were calculated across all beneficiaries in our study population, not just the beneficiaries who used that service.",
+      "the number of readmissions divided by the total number of admissions where the beneficiary was discharged alive",
+      "For all metrics related to ER visits, both inpatient and outpatient visits are counted in the number of ER visits.",
+      "27,732,177 39.0%",
+      "15,142,653 54.6%"
+    ],
+    "catalog": [
+      "for the Original Medicare population.",
+      "Spending is standardized to remove geographic differences in payment rates for individual services as a source of variation.",
+      "such as payments for medical education (both direct and indirect) and payments to hospitals that serve a disproportionate share of low-income patients.",
+      "Standardization does not adjust for differences in beneficiaries"
+    ]
+  },
+  "documentation_conflicts": [
+    {
+      "topic": "health-status adjustment of standardized payment",
+      "methods_paper": "By standardizing payment amounts and adjusting for differences in beneficiaries' health status, these data provide a more accurate picture of how resource use varies",
+      "catalog_description": "Standardization does not adjust for differences in beneficiaries' health status.",
+      "data_dictionary": "TOT_MDCR_STDZD_PYMT_PC is defined only as 'adjusted for geographic differences in payment rates'.",
+      "chip_decision": "CHIP labels the measure as adjusted for geographic payment-rate differences only. It is never labelled health-risk-adjusted or inflation-adjusted. The file has no risk-score field."
+    }
+  ],
+  "scale_evidence": [
+    {"field": "BENES_OM_CNT", "national_all_value": "27732177", "methods_phrase": "27,732,177 39.0%",
+     "meaning": "Methods Table 2 count of 2024 OM beneficiaries equals the national All row."},
+    {"field": "BENE_FEML_PCT", "national_all_value": "0.546", "methods_phrase": "15,142,653 54.6%",
+     "meaning": "Methods Table 4 reports 54.6% female in 2024; the CSV stores 0.546, so _PCT fields use 0-1 proportions."}
+  ],
+  "geography_rules": {
+    "national": "BENE_GEO_LVL 'National' with blank BENE_GEO_CD; stored as reference geoid 'US', never drawn as a state.",
+    "state": "BENE_GEO_LVL 'State' with a two-digit BENE_GEO_CD joined exactly to TIGER/Line 2024 state GEOID.",
+    "county": "BENE_GEO_LVL 'County' with a five-digit BENE_GEO_CD joined exactly to TIGER/Line 2024 county-equivalent GEOID. Connecticut rows are already the nine planning regions (09110-09190)."
+  },
+  "expected_source_exclusions": [
+    {"level": "State", "code": "", "desc": "Territory", "reason": "non_fips_state_aggregate"},
+    {"level": "State", "code": "", "desc": "ZZ", "reason": "non_fips_state_aggregate"},
+    {"level": "State", "code": "78", "desc": "VI", "reason": "territory_outside_chip_2024_boundary_layer"},
+    {"level": "County", "code_pattern": "^[0-9]{2}000$", "desc_pattern": "-UNKNOWN$", "reason": "unknown_county_of_residence", "expected_count": 51},
+    {"level": "County", "code_pattern": "^78[0-9]{3}$", "desc_pattern": "^VI-", "reason": "territory_outside_chip_2024_boundary_layer", "expected_count": 3}
+  ],
+  "expected_boundary_without_source": [
+    {"level": "county", "code_pattern": "^11001$", "reason": "cms_publishes_dc_at_state_level_only", "expected_count": 1},
+    {"level": "county", "code_pattern": "^72[0-9]{3}$", "reason": "cms_publishes_puerto_rico_at_state_level_only", "expected_count": 78}
+  ],
+  "boundary": {
+    "vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "geographies": ["state", "county"],
+  "state_to_county_zoom": 6,
+  "aggregation_method": "none",
+  "value_type": "cms_om_gv_published",
+  "population_label": "Original Medicare beneficiaries (Part A and Part B, no Medicare Advantage), all ages",
+  "refresh_policy": {"schedule": "manual_full_content", "auto_publish": false,
+    "same_label_revision": "hold_for_review", "new_observation_year": "hold_for_registry_review",
+    "distribution_url_change": "hold_for_registry_review"},
+  "measures": [
+    {"measure_id": "om_beneficiaries", "label": "Original Medicare beneficiaries", "source_field": "BENES_OM_CNT",
+     "kind": "count", "unit": "beneficiaries", "storage_scale": "count", "observation_period": "2024",
+     "population": "Original Medicare beneficiaries, all ages",
+     "denominator": "None (count).",
+     "official_definition": "Count of Medicare beneficiaries who were enrolled in Part A and Part B, as well as Original Medicare coverage for all Medicare entitled months. New enrollees and beneficiaries that died during the year are included as long as they met the above criteria.",
+     "interpretation": "Counts people in the Original Medicare study population only. Excludes Medicare Advantage enrollees and people with only Part A or only Part B. It is not a resident population or an age 65+ count.",
+     "min_published": 11,
+     "legend_breaks": {"state": [100000, 250000, 500000, 1000000], "county": [1000, 2500, 5000, 10000]}},
+    {"measure_id": "std_payment_per_capita", "label": "Standardized Medicare payment per beneficiary", "source_field": "TOT_MDCR_STDZD_PYMT_PC",
+     "kind": "currency", "unit": "US dollars per Original Medicare beneficiary (2024, nominal)", "storage_scale": "dollars",
+     "observation_period": "2024", "population": "Original Medicare beneficiaries, all ages",
+     "denominator": "Original Medicare beneficiaries in the area (per capita).",
+     "official_definition": "Actual per capita Original Medicare payment for beneficiaries, adjusted for geographic differences in payment rates.",
+     "interpretation": "Standardization removes geographic differences in Medicare payment rates for the same service, such as local wage and input-cost adjustments. CMS's catalog description says it also removes extra payments such as medical education and disproportionate-share hospital payments. It is not adjusted for inflation. CMS's catalog states it does not adjust for beneficiaries' health status, so CHIP does not present it as risk-adjusted.",
+     "legend_breaks": {"state": [10500, 11500, 12500, 13500], "county": [10500, 11500, 12500, 13500]}},
+    {"measure_id": "ip_stays_per_1000", "label": "Inpatient covered stays per 1,000 beneficiaries", "source_field": "IP_CVRD_STAYS_PER_1000_BENES",
+     "kind": "per_1000", "unit": "covered stays per 1,000 Original Medicare beneficiaries", "storage_scale": "per_1000",
+     "observation_period": "2024", "population": "Original Medicare beneficiaries, all ages",
+     "denominator": "All Original Medicare beneficiaries in the area, not only inpatient users.",
+     "official_definition": "Number of Hospital Inpatient covered stays per 1,000 OM beneficiaries.",
+     "interpretation": "Hospital inpatient includes IPPS acute hospitals, critical access hospitals, inpatient psychiatric facilities, and other inpatient Part A services. Only Medicare-covered stays are counted.",
+     "legend_breaks": {"state": [180, 205, 230, 255], "county": [180, 205, 230, 255]}},
+    {"measure_id": "er_visits_per_1000", "label": "Emergency room (ER) visits per 1,000 beneficiaries", "source_field": "ER_VISITS_PER_1000_BENES",
+     "kind": "per_1000", "unit": "ER visits per 1,000 Original Medicare beneficiaries", "storage_scale": "per_1000",
+     "observation_period": "2024", "population": "Original Medicare beneficiaries, all ages",
+     "denominator": "All Original Medicare beneficiaries in the area.",
+     "official_definition": "Number of inpatient or hospital outpatient Emergency Room (ER) visits per 1,000 OM beneficiaries.",
+     "interpretation": "CMS labels these Emergency Room (ER) visits; visits that led to an inpatient admission and hospital outpatient visits are both counted.",
+     "legend_breaks": {"state": [520, 580, 630, 690], "county": [520, 580, 630, 690]}},
+    {"measure_id": "readmission_rate", "label": "All-cause 30-day hospital readmission rate", "source_field": "ACUTE_HOSP_READMSN_PCT",
+     "kind": "proportion", "unit": "percent of acute hospital stays (CMS stores 0-1)", "storage_scale": "proportion_0_1",
+     "observation_period": "2024", "population": "Original Medicare beneficiaries, all ages",
+     "denominator": "Acute hospital admissions where the beneficiary was discharged alive (not beneficiaries).",
+     "official_definition": "Percentage of inpatient readmissions within 30 days of an acute hospital stay during the reference period, regardless of whether the readmission was planned or unplanned.",
+     "interpretation": "Counts all-cause readmissions, planned or unplanned. It is not risk-adjusted and is not the Hospital Readmissions Reduction Program measure. CHIP stores the CMS proportion unchanged and multiplies by 100 only for display.",
+     "legend_breaks": {"state": [0.15, 0.165, 0.18, 0.195], "county": [0.15, 0.165, 0.18, 0.195]}}
+  ]
+}
