@@ -1,0 +1,22 @@
+[
+ {
+  "level": "county",
+  "geoid": "01055",
+  "name": "Etowah",
+  "state_geoid": "01",
+  "state_name": "Alabama",
+  "county_geoid": "01055",
+  "county_name": "Etowah",
+  "bbox": [
+   -86.370152,
+   33.841598,
+   -85.737137,
+   34.200756
+  ],
+  "point": [
+   -86.04329530763957,
+   34.021117000000004
+  ],
+  "boundary_vintage": "TIGER/Line 2024"
+ }
+]

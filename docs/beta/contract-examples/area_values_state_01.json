@@ -1,0 +1,192 @@
+{
+ "level": "state",
+ "geoids": [
+  "01"
+ ],
+ "values": [
+  {
+   "product": "acs",
+   "dataset_id": "census_acs5_2024_b19013",
+   "measure_id": "B19013_001E",
+   "label": "Median household income in the past 12 months",
+   "unit": "2024 inflation-adjusted USD",
+   "kind": null,
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "households",
+   "value_type": "median_household_income",
+   "level": "state",
+   "geoid": "01",
+   "value": 63999,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 399,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686",
+   "source_release_id": "2020-2024 ACS 5-year detailed tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "om_beneficiaries",
+   "label": "Original Medicare beneficiaries",
+   "unit": "beneficiaries",
+   "kind": "count",
+   "storage_scale": "count",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "01",
+   "value": 370678,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "370678",
+    "source_desc": "AL"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "std_payment_per_capita",
+   "label": "Standardized Medicare payment per beneficiary",
+   "unit": "US dollars per Original Medicare beneficiary (2024, nominal)",
+   "kind": "currency",
+   "storage_scale": "dollars",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "01",
+   "value": 13308.73,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "13308.73",
+    "source_desc": "AL"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "ip_stays_per_1000",
+   "label": "Inpatient covered stays per 1,000 beneficiaries",
+   "unit": "covered stays per 1,000 Original Medicare beneficiaries",
+   "kind": "per_1000",
+   "storage_scale": "per_1000",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "01",
+   "value": 244.8918,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "244.8918",
+    "source_desc": "AL"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "er_visits_per_1000",
+   "label": "Emergency room (ER) visits per 1,000 beneficiaries",
+   "unit": "ER visits per 1,000 Original Medicare beneficiaries",
+   "kind": "per_1000",
+   "storage_scale": "per_1000",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "01",
+   "value": 598.4143,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "598.4143",
+    "source_desc": "AL"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "readmission_rate",
+   "label": "All-cause 30-day hospital readmission rate",
+   "unit": "percent of acute hospital stays (CMS stores 0-1)",
+   "kind": "proportion",
+   "storage_scale": "proportion_0_1",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "01",
+   "value": 0.1764,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "0.1764",
+    "source_desc": "AL"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  }
+ ],
+ "releases": {
+  "census_acs5_2024_b19013": {
+   "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686",
+   "source_release_id": "2020-2024 ACS 5-year detailed tables",
+   "published_at": "2026-11-13T23:46:15.861150+00:00"
+  },
+  "cms_om_geographic_variation": {
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "published_at": "2026-11-14T21:47:59.151543+00:00"
+  }
+ }
+}

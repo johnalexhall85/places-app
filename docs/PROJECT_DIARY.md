@@ -2,6 +2,23 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T01:10:00+00:00 — Beta Phase 0: staging files, single-place read module, data contract, coverage matrix (Claude)
+
+- **Outcome:** on branch `claude/beta-phase0` (local only): staging environment files, `app.area_pilot.lookup`, the [data contract](beta/DATA_CONTRACT.md) with real examples, and the [coverage matrix](beta/COVERAGE_MATRIX.md). No live application, data, or deployment change. Codex can start its API and pages against the contract examples.
+- **Hazard found and fixed:** `backend/alembic.ini` hard-codes the live database and `alembic/env.py` ignored `DATABASE_URL`, so a migration run from any worktree would have changed live. `env.py` now uses `DATABASE_URL` when it is set. The live service sets none and behaves as before.
+- **Staging (in progress):**
+  - Created database `places_staging` and started `pg_dump -Fc places | pg_restore` into it (read-only on live; 70 GB, half of it `usaspending_fed_account.fact_award_account_breakdown`). Still running at the time of this entry.
+  - Installed `/etc/systemd/system/places-backend-staging.service` (not started, not enabled) and Nginx site `places-staging` on port 8080 (`nginx -t` passed, reloaded). Port 8080 has no UFW rule. Live `/api/health` returned 200 afterwards.
+  - Wrote `backend/.env` in `chip-beta`, `chip-claude`, and `chip-codex` with `DATABASE_URL` for `places_staging` and newly generated staging-only demo-access secrets (not printed, not committed). Built virtual environments in `chip-beta` and `chip-claude` and `node_modules` in `chip-beta`.
+  - `infra/staging/deploy-staging.sh [branch]` merges into `beta` without force and deploys; it refuses unless `DATABASE_URL` ends in `/places_staging`. Not yet run.
+- **`area_pilot/lookup.py`:** `catalog`, `area_info`, `area_values`, `national_reference`, `county_tract_values`, `area_facilities`. Active releases only; no aggregation; areas without a stored row get the same read-time status as the product's map API, or `not_in_release`.
+  - Verification: 9 unit tests pass. Read-only run against the live releases: 28 measures in the catalog; Etowah County returns 28 rows in 0.05 s and 10 health center sites, 6 nursing homes, 10 TRI reporting facilities in 0.1 s; Connecticut, Puerto Rico, and DC return the expected distinct statuses; state level returns ACS and CMS only.
+  - Not yet verified on staging; full backend suite not run for this change.
+- **Coverage findings:** 586 counties have all 28 released measures (EPA AQI is the limit). No released chronic-disease measure exists yet. Showcase counties chosen: Person NC `37145`, Kanawha WV `54039`, Fresno CA `06019` (28 of 28 each).
+- **Corrections to the plan** (made in `docs/beta/EXECUTION_PLAN.md`): `/api/area/*` is stripped to `/area/*` by Nginx, so the community router needs prefix `/community` and no Nginx change; `gh` is not signed in on the VM, so "pull requests" into `beta` are local merges through the deploy script.
+- **Unresolved:** `main` and `beta` are not pushed (blocked by session policy). No staging access code yet.
+- **Next action:** when the copy finishes, analyze the database, start the staging service, run the first staging deploy, recheck `lookup` there, then begin C1 (PLACES expansion).
+
 ## 2026-11-14T23:40:00+00:00 — Funder beta plan approved; Phase 0 git base and repository setup (Claude)
 
 - **Decision:** John approved the [funder beta execution plan](beta/EXECUTION_PLAN.md): community profile, comparison, topics, exports, wider PLACES and ACS measures, and congressional district briefings in about 4–6 weeks. Claude takes the data and platform track, Codex the product track, on a staging copy with three review gates. New pages follow the PDO Brand & Style Guide v1.0.

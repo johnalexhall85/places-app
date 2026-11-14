@@ -1,0 +1,565 @@
+{
+ "level": "county",
+ "geoid": "01055",
+ "row_cap": 200,
+ "health_centers": {
+  "dataset_id": "hrsa_health_center_sites",
+  "published": true,
+  "count": 10,
+  "rows": [
+   {
+    "site_id": "BPS-H80-003493",
+    "name": "Canterberry Family Practice",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -86.04615388,
+     34.02427441
+    ]
+   },
+   {
+    "site_id": "BPS-H80-015075",
+    "name": "Gadsden Family and Student Health Solutions",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -85.96576489,
+     34.00156787
+    ]
+   },
+   {
+    "site_id": "BPS-H80-001782",
+    "name": "J.W. STEWART NEIGHBORHOOD HEALTH CENTER",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -85.9590851,
+     33.99501079
+    ]
+   },
+   {
+    "site_id": "BPS-H80-002246",
+    "name": "PROCARE - COLLEY HOMES",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -86.00604941,
+     34.01948126
+    ]
+   },
+   {
+    "site_id": "BPS-H80-012418",
+    "name": "Quality Health Express",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Mobile van (published base address)",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -85.95593108,
+     33.99831469
+    ]
+   },
+   {
+    "site_id": "BPS-H80-018152",
+    "name": "Quality Health Express II",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Mobile van (published base address)",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -85.95593108,
+     33.99831469
+    ]
+   },
+   {
+    "site_id": "BPS-H80-004123",
+    "name": "Quality of Life Health Complex",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Administrative and service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -85.95593108,
+     33.99831469
+    ]
+   },
+   {
+    "site_id": "BPS-H80-001877",
+    "name": "ROBERTA O. WATTS MEDICAL CENTER",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Gadsden",
+    "state": "AL",
+    "point": [
+     -86.01335935,
+     34.02380385
+    ]
+   },
+   {
+    "site_id": "BPS-H80-002034",
+    "name": "SARDIS CITY MEDICAL CENTER",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Boaz",
+    "state": "AL",
+    "point": [
+     -86.11008484,
+     34.1799126
+    ]
+   },
+   {
+    "site_id": "BPS-H80-004605",
+    "name": "W. T. SCRUGGS MEDICAL CENTER",
+    "organization": "QUALITY OF LIFE HEALTH SERVICES, INC.",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Walnut Grove",
+    "state": "AL",
+    "point": [
+     -86.30219554,
+     34.06632348
+    ]
+   }
+  ],
+  "truncated": false,
+  "release": {
+   "release_id": "e5cdea05-6518-454c-9418-353410c2309d",
+   "source_release_id": "HCSD site snapshot 2026-11-14",
+   "published_at": "2026-11-14T18:08:17.461264+00:00"
+  },
+  "method": "Mapped, eligible HRSA sites whose published coordinates fall inside the 2024 TIGER boundary.",
+  "limitations": [
+   "Sites without usable published coordinates, and locations HRSA suppresses, are not counted.",
+   "A site listing is not a service area, capacity, or travel-time measure."
+  ],
+  "name": "HRSA Health Center Service Delivery and Look-Alike Sites"
+ },
+ "nursing_homes": {
+  "dataset_id": "cms_nursing_home_provider_info",
+  "published": true,
+  "count": 6,
+  "rows": [
+   {
+    "ccn": "015101",
+    "name": "ALTOONA  HEALTH & REHAB",
+    "city": "ALTOONA",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 50,
+    "overall_rating": 3,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -86.319,
+     34.0348
+    ]
+   },
+   {
+    "ccn": "015203",
+    "name": "ATTALLA REHABILITATION AND NURSING CENTER",
+    "city": "ATTALLA",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 182,
+    "overall_rating": 1,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -86.108,
+     33.985
+    ]
+   },
+   {
+    "ccn": "015174",
+    "name": "COOSA VALLEY HEALTH AND REHAB",
+    "city": "GLENCOE",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 124,
+    "overall_rating": 3,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -85.923,
+     33.9541
+    ]
+   },
+   {
+    "ccn": "015180",
+    "name": "GADSDEN HEALTH AND REHAB CENTER",
+    "city": "GADSDEN",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Individual",
+    "certified_beds": 168,
+    "overall_rating": 4,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -86.029,
+     33.9898
+    ]
+   },
+   {
+    "ccn": "015202",
+    "name": "MCGUFFEY HEALTH & REHABILITATION CENTER",
+    "city": "GADSDEN",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 209,
+    "overall_rating": 5,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -86.02,
+     33.9713
+    ]
+   },
+   {
+    "ccn": "015223",
+    "name": "NORTHSIDE HEALTH CARE",
+    "city": "GADSDEN",
+    "state": "AL",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 115,
+    "overall_rating": 3,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -85.959,
+     34.0418
+    ]
+   }
+  ],
+  "truncated": false,
+  "release": {
+   "release_id": "13e56c1b-320f-4217-8955-8bb813055216",
+   "source_release_id": "NH Provider Information processed 2026-10-01",
+   "published_at": "2026-11-14T20:11:30.080006+00:00"
+  },
+  "method": "CMS nursing homes whose published address coordinates fall inside the 2024 TIGER boundary.",
+  "limitations": [
+   "Facilities with ZIP-based coordinates (CMS geocoding footnote) are not counted.",
+   "Certified beds are not vacancies. Star ratings are not averaged and are not a live care assessment.",
+   "A missing overall rating means unrated, not zero."
+  ],
+  "name": "CMS Nursing Home Provider Information"
+ },
+ "tri_facilities": {
+  "dataset_id": "epa_tri_facilities",
+  "published": true,
+  "count": 10,
+  "rows": [
+   {
+    "facility_id": "3590WFHRRT433BR",
+    "name": "FEHRER AUTOMOTIVE N.A. LLC",
+    "city": "GADSDEN",
+    "state": "AL",
+    "sector_codes": [
+     "326"
+    ],
+    "reported_chemicals": 4,
+    "forms": 4,
+    "point": [
+     -86.074398,
+     34.001804
+    ]
+   },
+   {
+    "facility_id": "35954MMCHMRT3BO",
+    "name": "GIANT RESOURCE RECOVERY-ATTALLA INC.",
+    "city": "ATTALLA",
+    "state": "AL",
+    "sector_codes": [
+     "562"
+    ],
+    "reported_chemicals": 1,
+    "forms": 1,
+    "point": [
+     -86.026635,
+     34.082366
+    ]
+   },
+   {
+    "facility_id": "3590WSHRMN246ST",
+    "name": "HEIDELBERG MATERIALS SOUTHEAST AGG LLC - RAINBOW CITY PLANT",
+    "city": "RAINBOW CITY",
+    "state": "AL",
+    "sector_codes": [
+     "327"
+    ],
+    "reported_chemicals": 1,
+    "forms": 1,
+    "point": [
+     -86.046247,
+     33.982417
+    ]
+   },
+   {
+    "facility_id": "3590WKYSTN2281S",
+    "name": "KEYSTONE FOODS LLC - ALABAMA DIV",
+    "city": "GADSDEN",
+    "state": "AL",
+    "sector_codes": [
+     "311"
+    ],
+    "reported_chemicals": 2,
+    "forms": 2,
+    "point": [
+     -86.071503,
+     33.965891
+    ]
+   },
+   {
+    "facility_id": "3595WKCHFR151BU",
+    "name": "KOCH FARMS OF GADSDEN LLC",
+    "city": "ATTALLA",
+    "state": "AL",
+    "sector_codes": [
+     "311"
+    ],
+    "reported_chemicals": 3,
+    "forms": 3,
+    "point": [
+     -86.137807,
+     33.982942
+    ]
+   },
+   {
+    "facility_id": "35903TYSNF501PA",
+    "name": "KOCH FOODS OF GADSDEN",
+    "city": "GADSDEN",
+    "state": "AL",
+    "sector_codes": [
+     "311"
+    ],
+    "reported_chemicals": 4,
+    "forms": 4,
+    "point": [
+     -85.97146,
+     33.971431
+    ]
+   },
+   {
+    "facility_id": "3627WKRNSPHIGHW",
+    "name": "KRONOSPAN LLC - OHATCHEE LOG YARD",
+    "city": "OHATCHEE",
+    "state": "AL",
+    "sector_codes": [
+     "321"
+    ],
+    "reported_chemicals": 1,
+    "forms": 1,
+    "point": [
+     -86.049314,
+     33.847236
+    ]
+   },
+   {
+    "facility_id": "35903MCNCX201IN",
+    "name": "STAMPED PRODUCTS INC",
+    "city": "GADSDEN",
+    "state": "AL",
+    "sector_codes": [
+     "332"
+    ],
+    "reported_chemicals": 1,
+    "forms": 1,
+    "point": [
+     -85.961751,
+     33.987666
+    ]
+   },
+   {
+    "facility_id": "35903CLPLM205SP",
+    "name": "TENNESSEE ALUMINUM PROCESSORS INC",
+    "city": "GADSDEN",
+    "state": "AL",
+    "sector_codes": [
+     "331"
+    ],
+    "reported_chemicals": 6,
+    "forms": 6,
+    "point": [
+     -85.966097,
+     33.989327
+    ]
+   },
+   {
+    "facility_id": "35954TYSNFHWY27",
+    "name": "TYSON FARMS INC IVALEE FEED MILL",
+    "city": "ATTALLA",
+    "state": "AL",
+    "sector_codes": [
+     "311"
+    ],
+    "reported_chemicals": 3,
+    "forms": 3,
+    "point": [
+     -86.156887,
+     34.048058
+    ]
+   }
+  ],
+  "truncated": false,
+  "release": {
+   "release_id": "3b6ecfb1-bf58-4122-a71f-432027994bd7",
+   "source_release_id": "TRI RY2024 basic US file",
+   "published_at": "2026-11-14T19:03:10.782780+00:00"
+  },
+  "method": "EPA TRI reporting facilities whose coordinates fall inside the 2024 TIGER boundary (county: the spatially derived county stored at publication).",
+  "limitations": [
+   "Reporting to TRI does not mean a release occurred, a violation, a health risk, or current operation.",
+   "Facilities below reporting thresholds or outside covered sectors do not appear; absence is not absence of pollution."
+  ],
+  "name": "EPA Toxics Release Inventory (TRI) reporting facilities"
+ }
+}
