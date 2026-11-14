@@ -2,6 +2,12 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T16:30:31+00:00 — Main branch push completed
+
+- **Objective/outcome:** All 30 nonignored pending paths were committed as `23b79c6` on `claude/improvements`. Local `main` fast-forwarded from `b1a0eba` to `23b79c6`; `git push origin main` succeeded without force. The push carried the branch's 14 commits beyond the former `origin/main`, including earlier CHIP work and the new consolidated commit. The existing sibling AHRF branch was not merged: its AHRF source and guide files matched the integrated versions, while its history lacked the later CLH work.
+- **Verification:** The staged diff passed `git diff --check` and a scan of staged files found no private-key or token patterns. Focused backend tests passed 50/50 after the import-path correction, frontend tests passed 117/117, production frontend build passed with a bundle-size warning, and Bash/Python syntax plus PowerPoint archive integrity passed. No full backend suite, deployed browser check, data publication, migration, service restart, or production deployment was performed.
+- **Files and next action:** Main now contains the funding trend/API/UI changes, demo startup fix, dossier and recovery scripts, presentation, agent notes, and project documentation. Git ignores source data, caches, environments, and generated frontend assets; they were not forced into version control. This entry and the handbook branch-status correction are the final documentation follow-up. A fresh AHRF/CLH-inclusive recovery set and off-host copy remain outstanding.
+
 ## 2026-11-14T16:28:50+00:00 — Consolidate approved work onto main
 
 - **Objective/outcome:** User approved committing all pending work and asked for the current branch to become `main` and be pushed. `origin/main` is an ancestor of `claude/improvements`, so a fast-forward is available; commit and push remain pending at this entry's creation.

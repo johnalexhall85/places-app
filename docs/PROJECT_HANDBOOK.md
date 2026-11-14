@@ -1,6 +1,6 @@
 # CHIP project handbook
 
-**Canonical entry point.** Last verified **2026-11-14T16:28:50Z** against this checkout, read-only production database queries, `systemctl`, listeners, and local health/proxy responses; Git branch and test status were rechecked for the November 14 main-branch integration. The product-specific guides linked below contain detailed methods and older measurements. Recheck live state before operating: a repository commit alone does not prove deployment.
+**Canonical entry point.** Last verified **2026-11-14T16:30:31Z** against this checkout, read-only production database queries, `systemctl`, listeners, and local health/proxy responses; Git branch and test status were rechecked for the November 14 main-branch integration. Local `main` was fast-forwarded from `claude/improvements` and pushed to `origin/main`. Source changes were **not deployed** by that Git push. The product-specific guides linked below contain detailed methods and older measurements. Recheck live state before operating: a repository commit alone does not prove deployment.
 
 ## Purpose and first route through the repo
 
