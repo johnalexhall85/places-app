@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.area_pilot.registry import load_registry
-from app.area_pilot import acs_api, ahrf_api, clh_api, cms_gv_api, epa_aqi_api
+from app.area_pilot import acs_api, ahrf_api, clh_api, cms_gv_api, epa_aqi_api, usda_fea_api
 
 router = APIRouter(prefix='/area', tags=['area-pilot'])
 CAP = 5000
@@ -76,6 +76,8 @@ def ensure_cap(db, query_params, geography='county'):
 
 @router.get('/catalog')
 def catalog(dataset_id: str | None = None, db: Session = Depends(get_db)):
+    if dataset_id == usda_fea_api.load_registry()['dataset_id']:
+        return usda_fea_api.catalog(db)
     if dataset_id == cms_gv_api.load_registry()['dataset_id']:
         return cms_gv_api.catalog(db)
     if dataset_id == epa_aqi_api.load_registry()['dataset_id']:
@@ -107,6 +109,11 @@ def catalog(dataset_id: str | None = None, db: Session = Depends(get_db)):
 @router.get('/map')
 def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
              geography: str, bbox: str, simplify: float = Query(0.04, ge=0, le=0.5), db: Session = Depends(get_db)):
+    if dataset_id == usda_fea_api.load_registry()['dataset_id']:
+        config, measure = usda_fea_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox)
+        count = usda_fea_api.ensure_cap(db,p)
+        return usda_fea_api.map_data(db,p,count,usda_fea_api.metadata(config,measure,release_id,bbox),simplify)
     if dataset_id == cms_gv_api.load_registry()['dataset_id']:
         config, measure = cms_gv_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
@@ -157,6 +164,11 @@ def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, po
 @router.get('/legend')
 def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
            geography: str, bbox: str, db: Session = Depends(get_db)):
+    if dataset_id == usda_fea_api.load_registry()['dataset_id']:
+        config, measure = usda_fea_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox)
+        usda_fea_api.ensure_cap(db,p)
+        return usda_fea_api.legend(db,p,usda_fea_api.metadata(config,measure,release_id,bbox))
     if dataset_id == cms_gv_api.load_registry()['dataset_id']:
         config, measure = cms_gv_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
@@ -196,6 +208,11 @@ def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, popu
 @router.get('/table')
 def table(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
           geography: str, bbox: str, limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0), db: Session = Depends(get_db)):
+    if dataset_id == usda_fea_api.load_registry()['dataset_id']:
+        config, measure = usda_fea_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox)
+        count = usda_fea_api.ensure_cap(db,p)
+        return usda_fea_api.table(db,p,usda_fea_api.metadata(config,measure,release_id,bbox),count,limit,offset)
     if dataset_id == cms_gv_api.load_registry()['dataset_id']:
         config, measure = cms_gv_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}

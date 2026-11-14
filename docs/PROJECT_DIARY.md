@@ -2,6 +2,69 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T22:50:00+00:00 — USDA Food Environment Atlas five county measures published and deployed (Claude)
+
+- **Objective/outcome:** Added the USDA ERS Food Environment Atlas as the independent shared area product `usda_ers_food_environment_atlas`. It has five county-only measures and its own release pointer, and is published and deployed at `/area/usda-fea`.
+  - The legacy `usda_food_env.*` integration was inspected and not run. Its tables and `/api/usda/food-environment/*` routes are unchanged; only the main-map option label changed, to "legacy import, all variables".
+  - The weekly timer, backups, access controls, and funding methodology were not changed. The Codex sibling worktree was not touched.
+  - **Not completed:** the authenticated browser check. See *Verification* below.
+- **Source verified:**
+  - The downloads page's "Current Version" CSV ZIP is `/media/5570/food-environment-atlas-csv-files.zip?v=40916`, "Last Updated 7/30/2025". The readme says the "original release date of this file is July 2025", and the ZIP member timestamps are 2025-07-30.
+  - The landing page ("Updated 8/12/2026") and the documentation page ("Updated 7/28/2026") are page revisions, not a new data release.
+  - ZIP SHA-256 `99750f54…3b8d` (6,501,079 bytes); `StateAndCountyData.csv` `03aa52c9…cd`: 957,753 rows and 304 variables.
+  - The files contain no state rows. State-level `*` variables repeat on county rows.
+  - Documentation confirms `-9999`/N/A (not available) and `-8888` (county did not exist), and the 5-year boundary policy with CT and Valdez-Cordova exceptions.
+- **Measures and periods:**
+  - `PCT_LACCESS_LOWI19` (2019): the denominator is the total county population, not low-income residents.
+  - `SNAPSPTH23` (2023).
+  - `WICSPTH22` (2022).
+  - `FMRKTPTH18` (2018).
+  - `PCT_LACCESS_HHNV19` (2019): housing units; substituted for grocery density.
+  - **Substitution reason:** `GROCPTH20` duplicates the published CLH `CCBP_SOGS_RATE` (same CBP NAICS 445110 per-1,000 concept, 2023), and 909 of 3,144 counties are `-9999`. `DSPTH20` is mislabelled "Dollar stores" (it covers NAICS 452319) and was not used.
+- **Geography and coverage:**
+  - Matched 2024 TIGER counties: 3,135 (3,144 for farmers' markets).
+  - Documented source-only rows, staged with reasons: the 8 former CT counties, Valdez-Cordova, and for 2018 also Wade Hampton, Shannon, Bedford city, and 5 FIPS-less Alaska "Area" rows.
+  - Read-time statuses: 9 CT planning regions as `boundary_not_comparable` for four measures, and 78 PR municipios as `not_covered`. No unexplained mismatches.
+  - Status counts:
+    - Low-income access: available 3,094, zero 39, n/a 2.
+    - SNAP: 3,114 and 21.
+    - WIC: 3,028 and 107.
+    - Farmers' markets: 2,259, zero 872, n/a 2, did-not-exist 11.
+    - No-car access: 3,121, zero 12, n/a 2.
+- **Changes:**
+  - Registry `usda_fea_2025.json`; modules `usda_fea.py`, `usda_fea_cli.py`, `usda_fea_api.py`; router dispatch.
+  - Additive migration `c8f1e4a7d3b6` (`stage_usda_fea`, `observation_usda_fea`, immutability triggers).
+  - Frontend: `/area/usda-fea` branch in `Places2025Pilot.jsx` and CSS, route, main-map option and relabel.
+  - Unit and PostGIS lifecycle tests; frontend tests.
+  - Operator guide `backend/docs/chip_usda_food_environment_atlas.md`; inventory child record `usda-food-environment-atlas` (now 98 records); handbook.
+- **State-changing commands:**
+  - `alembic upgrade head` (`b7e3c5a9d2f4` → `c8f1e4a7d3b6`).
+  - `usda_fea_cli fetch-stage-validate` twice: ready candidate `28a4824f-d403-454b-bc85-998fdd64bf92` (7/7 checks, 15,684 observations), then a duplicate.
+  - `review`, then `approve-publish` at 22:28:55Z (semantic `d15804aa…3343`, schema `23b4ddb1…56d9`, metadata `89722389…8ed6`).
+  - Pointer drill: `deactivate`, a refused rollback to the CMS GV release, then `rollback 28a4824f…`. All ten pointers were identical afterwards.
+  - Webroot backed up to `data/deploy-recovery/usda-fea-20261114/webroot-before/`, then `rsync -a --delete frontend/dist/ /var/www/places/`.
+  - `sudo -n systemctl restart places-backend` at 22:29:13Z.
+- **Verification:**
+  - Backend:
+    - 24 unit tests covering sentinels, lookup changes, ZIP safety, parsing, boundary classification, and API selection.
+    - 1 isolated PostGIS lifecycle test covering idempotency, failed retrieval, unexplained geography, undocumented values, source-total change, same-label revision hold and release, publication isolation, rollback and deactivate, immutability, the 413 cap, and map/legend/table parity.
+    - Focused area tests 175/175. Full suite: 643 passed, 1 failed (the known `test_all_six_real_source_years_match_acceptance_totals`).
+  - Frontend: 141/141, including sentinel colours and text, county-at-national-view, exact selection across zooms, and map/table parity. The build passed with the existing chunk-size warning.
+  - Review re-derived all observations. An independent check of 54 cells against both the archived CSV and the separate XLSX had 0 mismatches. All 15,684 values equal the legacy raw values.
+  - In-process router checks: 32/33. The single failure was my wrong expected literal (`13.02099800`); the CSV text is `13.020998`, which is what is stored. They covered:
+    - all five measures with national parity;
+    - state, tract, and release-year requests refused;
+    - CT, PR, and Alaska statuses;
+    - Kalawao not available rather than zero;
+    - the full world view of 3,222 counties within the cap.
+  - Regression: 21/21. All ten catalogs are on unchanged pointers; HRSA, TRI, and nursing-home maps work; CMS GV and AQI work; legacy USDA variables, map, legend, and county detail work; funding map and legend return 200.
+  - Nginx: anonymous FEA catalog, map, legend, and table return 401; pages return 200; the deployed bundle contains the new product.
+  - Benchmarks: national desktop viewport map 3.3 s / 1.8 MB, legend about 0.2 s, table 0.12 s; local views 15–37 ms.
+  - **The authenticated browser check was not performed.** The scripted run, which would mint a temporary demo code from backend secrets and deactivate it afterwards, was blocked by this session's permission classifier. No code was created.
+- **Git/next action:** Committed on new branch `claude/usda-food-environment-atlas` (from `75df32a`) and pushed without force; see the next entry for the push outcome. Not merged to `main`.
+  - Next: an operator runs the authenticated browser checklist in the guide.
+  - Separately: add USDA FEA to a fresh recovery set; decide on historical backfill, tract products, and legacy retirement.
+
 ## 2026-11-14T22:01:00+00:00 — CMS OM GV commit and push (Claude)
 
 - Commit `3a98647` (application, migration, tests, operator guide, inventory, handbook, diary) pushed as new branch `origin/claude/cms-geographic-variation` without force; `git diff --cached --check` passed. No application, data, or deployment changes in this step. Not merged to `main`.

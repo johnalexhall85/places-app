@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
-const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null }));
+const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null }));
 
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }) => <div>{children}</div>,
   TileLayer: () => null,
   ZoomControl: () => null,
-  GeoJSON: () => null,
+  GeoJSON: (props) => { mapHarness.geojson = props; return null; },
   useMapEvents: (handlers) => {
     mapHarness.handlers = handlers;
     return { getZoom: () => mapHarness.zoom,
@@ -481,5 +481,102 @@ describe("CMS Original Medicare Geographic Variation", () => {
     await act(async () => { pending.filter((item) => item.measure === "om_beneficiaries").forEach((item) => item.resolve()); });
     expect(await screen.findByText("$12,000")).toBeInTheDocument();
     expect(screen.queryByText("999,999")).not.toBeInTheDocument();
+  });
+});
+
+describe("USDA Food Environment Atlas county measures", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; });
+  const measures = [
+    { measure_id: "low_income_low_access_pct", variable_code: "PCT_LACCESS_LOWI19", label: "Low-income residents with low supermarket access (share of all residents)",
+      observation_period: "2019", kind: "percent", unit: "percent of total county population", population: "total county population",
+      denominator: "Total county population (2010 Census block population). The numerator is low-income residents only.",
+      official_definition: "Percentage of people in a county with low income and living more than 1 mile from a foodstore.",
+      contributing_sources: "ERS low-access tracts.", interpretation: "Not a food-desert designation.", source_boundary_basis: "2020 Census counties",
+      legend_breaks: [3, 6, 9, 13], geographies: ["county"] },
+    { measure_id: "snap_stores_per_1000", variable_code: "SNAPSPTH23", label: "SNAP-authorized stores per 1,000 residents",
+      observation_period: "2023", kind: "per_1000", unit: "stores per 1,000 residents", population: "county residents",
+      denominator: "County residents.", official_definition: "The average monthly number of stores in the county authorized to accept SNAP per 1,000 county residents.",
+      contributing_sources: "USDA FNS.", interpretation: "Not a current store directory.", source_boundary_basis: "2020 Census counties",
+      legend_breaks: [0.7, 0.9, 1.1, 1.3], geographies: ["county"] },
+    { measure_id: "farmers_markets_per_1000", variable_code: "FMRKTPTH18", label: "Farmers' markets per 1,000 residents",
+      observation_period: "2018", kind: "per_1000", unit: "markets per 1,000 residents", population: "county residents",
+      denominator: "County residents.", official_definition: "The number of farmers' markets in the county per 1,000 county residents.",
+      contributing_sources: "USDA AMS.", interpretation: "Voluntary listings.", source_boundary_basis: "Pre-2019 counties",
+      legend_breaks: [0.02, 0.04, 0.08, 0.15], geographies: ["county"] },
+  ];
+  const catalog = { dataset_id: FEA_DATASET_ID, release_label: "July 2025", value_type: "published_county_value",
+    geographies: ["county"], measures, active_release_id: "fea-release", boundary_vintage: "TIGER/Line 2024 county equivalents",
+    source_url: "https://www.ers.usda.gov/data-products/food-environment-atlas", documentation_url: "https://www.ers.usda.gov/doc",
+    limitations: ["Each measure has its own observation year (2018–2023); they are not one snapshot and not current conditions."] };
+
+  it("keeps sentinels, zero, and boundary exceptions distinct in text, color, and bins", () => {
+    expect(resolveRoute("/area/usda-fea")).toEqual({ type: "usda-fea-area" });
+    expect(feaNumber(13.020998, "percent")).toBe("13%");
+    expect(feaNumber(0.096, "per_1000")).toBe("0.096 per 1,000");
+    const statuses = ["not_available", "did_not_exist", "boundary_not_comparable", "not_covered"];
+    const texts = statuses.map((status) => feaValueText({ value: null, status }, measures[0]));
+    expect(new Set(texts).size).toBe(4);
+    expect(texts[0]).toMatch(/-9999/); expect(texts[1]).toMatch(/-8888/);
+    expect(feaValueText({ value: 0, status: "true_zero" }, measures[2])).toBe("0 (published zero)");
+    expect(feaColor(0, "true_zero", [0.02])).not.toBe(feaColor(null, "not_available", [0.02]));
+    expect(feaColor(0, "true_zero", [0.02])).not.toBe(feaColor(0.01, "available", [0.02]));
+    expect(feaColor(null, "did_not_exist", [1])).not.toBe(feaColor(null, "not_available", [1]));
+    expect(feaBinLabels([3, 6, 9, 13], "percent")).toEqual(
+      ["Above 0 to under 3%", "3% to under 6%", "6% to under 9%", "9% to under 13%", "13% or more"]);
+    const popup = feaPopup({ name: "Autauga<i>", geography_id: "01001", value: 13.02, source_value: "13.02099800", status: "available",
+      source_name: "Autauga, AL" }, measures[0]);
+    expect(popup).toContain("County Autauga&lt;i&gt; (01001)");
+    expect(popup).toContain("Observation year 2019");
+    expect(popup).toContain("USDA value: 13.02099800 (PCT_LACCESS_LOWI19)");
+  });
+
+  it("shows counties at national view, keeps the exact selection across zooms, and matches map and table", async () => {
+    const urls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url); urls.push(path);
+      if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      const query = new URLSearchParams(path.split("?")[1]);
+      const rows = [
+        { geography_id: "01001", name: "Autauga", value: 0, source_value: "0", status: "true_zero" },
+        { geography_id: "01003", name: "Baldwin", value: null, source_value: "-9999", status: "not_available" },
+        { geography_id: "02063", name: "Chugach", value: null, source_value: "-8888", status: "did_not_exist" },
+        { geography_id: "09110", name: "Capitol", value: null, source_value: null, status: "boundary_not_comparable" },
+        { geography_id: "72001", name: "Adjuntas", value: null, source_value: null, status: "not_covered" },
+      ];
+      const payload = path.includes("/map?")
+        ? { type: "FeatureCollection", legend_breaks: [0.02, 0.04, 0.08, 0.15],
+          features: rows.map((row) => ({ type: "Feature", geometry: null, properties: row })) }
+        : path.includes("/legend?") ? { legend_breaks: [0.02, 0.04, 0.08, 0.15], statuses: rows.map((row) => ({ status: row.status, n: 1, low: row.value, high: row.value })) }
+        : { total: rows.length, rows };
+      return { ok: true, json: async () => ({ ...payload, release_id: "fea-release", geography: query.get("geography") }) };
+    }));
+    render(<Places2025Pilot dataset="usdafea" />);
+    expect(await screen.findByText("01001")).toBeInTheDocument();
+    expect(screen.getByText(/Observation year 2019/)).toBeInTheDocument();
+    expect(screen.getByText(/State values are not published for this measure; counties are shown at the national view/)).toBeInTheDocument();
+    expect(screen.getByText(/numerator is low-income residents only/)).toBeInTheDocument();
+    expect(screen.getByText(/legacy import/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "USDA source value" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "farmers_markets_per_1000" } });
+    expect(await screen.findByText(/Observation year 2018/)).toBeInTheDocument();
+    expect(await screen.findByText("-8888")).toBeInTheDocument();
+    expect(screen.getAllByText(FEA_STATUS_TEXT.did_not_exist).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(FEA_STATUS_TEXT.not_available).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Published zero").length).toBeGreaterThan(0);
+    // Map/table parity: same counties in the same order, and every status has a distinct non-numeric color.
+    const tableIds = screen.getAllByRole("rowheader").map((cell) => cell.textContent);
+    expect(mapHarness.geojson.data.features.map((f) => f.properties.geography_id)).toEqual(tableIds);
+    const fills = mapHarness.geojson.data.features.map((f) => mapHarness.geojson.style(f).fillColor);
+    expect(new Set(fills.slice(0, 3)).size).toBe(3);
+    act(() => { mapHarness.zoom = 7; mapHarness.handlers.zoomend(); });
+    act(() => { mapHarness.zoom = 12; mapHarness.handlers.zoomend(); });
+    expect(await screen.findByText(/USDA publishes no tract values for these measures/)).toBeInTheDocument();
+    const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
+    expect(data.every((url) => url.includes(`dataset_id=${FEA_DATASET_ID}`) && url.includes("release_id=fea-release")
+      && url.includes("geography=county"))).toBe(true);
+    const fm = data.filter((url) => url.includes("measure_id=farmers_markets_per_1000"));
+    expect(fm.length).toBeGreaterThan(0);
+    expect(fm.every((url) => url.includes("period=2018") && url.includes("population=county+residents"))).toBe(true);
+    expect(data.filter((url) => url.includes("measure_id=low_income_low_access_pct")).every((url) => url.includes("period=2019"))).toBe(true);
   });
 });

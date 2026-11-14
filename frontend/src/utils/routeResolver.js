@@ -18,6 +18,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/cms-gv\/?$/i.test(normalizedPath)) {
     return { type: "cms-gv-area" };
   }
+  if (/^\/area\/usda-fea\/?$/i.test(normalizedPath)) {
+    return { type: "usda-fea-area" };
+  }
   if (/^\/funding-model-builder\/?$/i.test(normalizedPath)) {
     return { type: "funding-model-builder" };
   }

@@ -354,3 +354,12 @@
   .pilot-sites.is-open,
   .pilot-sites { left: 16px; right: 16px; width: auto; top: calc(34vh + 24px); bottom: auto; max-height: 30vh; }
 }
+
+/* USDA Food Environment Atlas: the observation year differs by measure, so keep it prominent. */
+.pilot-period {
+  margin: 0.5rem 0 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border-left: 4px solid #31a354;
+  background: #f3faf1;
+  color: #123247;
+}
