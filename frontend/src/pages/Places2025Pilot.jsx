@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { HealthCenterSiteLayer, HealthCenterSitePanel, useHealthCenterSites } from "../components/HealthCenterSites";
 import { TriFacilityLayer, TriFacilityPanel, useTriFacilities } from "../components/TriFacilities";
+import { NursingHomeLayer, NursingHomePanel, useNursingHomes } from "../components/NursingHomes";
 import "./Places2025Pilot.css";
 
 const cache = new Map();
@@ -164,6 +165,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const sites = useHealthCenterSites({ bbox, zoom: mapZoom });
   // Second, independent point overlay (EPA TRI). Both overlays may be shown together.
   const tri = useTriFacilities({ bbox, zoom: mapZoom });
+  const homes = useNursingHomes({ bbox, zoom: mapZoom });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -271,6 +273,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           }} />}
           {sites.enabled && <HealthCenterSiteLayer sites={sites} />}
           {tri.enabled && <TriFacilityLayer tri={tri} />}
+          {homes.enabled && <NursingHomeLayer homes={homes} />}
         </MapContainer>}
       </div>
       <section className="pilot-panel pilot-controls" aria-label="Analytical controls">
@@ -353,6 +356,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
         <div className="pilot-overlays">
           <HealthCenterSitePanel sites={sites} />
           <TriFacilityPanel tri={tri} />
+          <NursingHomePanel homes={homes} />
         </div>
       </>}
     </main>

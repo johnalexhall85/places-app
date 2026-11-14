@@ -319,6 +319,18 @@
 }
 .chip-site-cluster { border-radius: 50%; background: rgba(255, 255, 255, 0.88); border: 2px solid #213547; box-shadow: 0 0 0 4px rgba(33, 53, 71, 0.18); }
 .chip-site-colocated { border-radius: 4px; background: #213547; color: white; border: 1.5px solid white; }
+.chip-cms-cluster, .chip-cms-colocated {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font: 700 11px/1 system-ui, sans-serif;
+}
+.chip-cms-cluster { border-radius: 50%; background: #e9f2ff; border: 2px solid #1c5da6; color: #153a67; box-shadow: 0 0 0 4px rgba(28, 93, 166, 0.18); }
+.chip-cms-colocated { border-radius: 4px; background: #1c5da6; color: white; border: 1.5px solid white; }
+.pilot-cms-homes .chip-sites-detail dl { grid-template-columns: minmax(0, 10.5em) minmax(0, 1fr); }
+.pilot-cms-homes .pilot-sites-body { display: block; }
+.pilot-cms-homes .pilot-sites-body > * { margin-bottom: 8px; }
+.pilot-cms-homes .pilot-table-scroll { height: 220px; }
 .chip-tri-cluster, .chip-tri-colocated {
   display: flex !important;
   align-items: center;
