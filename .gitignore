@@ -31,6 +31,8 @@ infra/volumes/
 
 #Config
 config/
+# The frontend API base module holds no secrets and is required to build.
+!frontend/src/config/
 
 # JavaScript dependencies and build output
 node_modules/

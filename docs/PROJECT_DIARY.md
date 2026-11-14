@@ -2,6 +2,15 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-14T23:40:00+00:00 — Funder beta plan approved; Phase 0 git base and repository setup (Claude)
+
+- **Decision:** John approved the [funder beta execution plan](beta/EXECUTION_PLAN.md): community profile, comparison, topics, exports, wider PLACES and ACS measures, and congressional district briefings in about 4–6 weeks. Claude takes the data and platform track, Codex the product track, on a staging copy with three review gates. New pages follow the PDO Brand & Style Guide v1.0.
+- **AHRF branch check (read-only):** `codex/ahrf-county-five-measures` is not an ancestor of the deployed stack, but all 39 files it changed are present there: 30 byte-identical, 9 with later edits from the products added afterwards. Nothing is unmerged.
+- **State-changing commands:** created local branch `beta` at `0195959` and worktrees `/home/john/chip-beta` (`beta`), `/home/john/chip-claude` (`claude/beta-phase0`), and `/home/john/chip-codex` (`codex/beta-start`). The live checkout was not modified.
+- **Changes on `claude/beta-phase0`:** `frontend/src/config/apiBase.js` is now tracked (the `config/` ignore rule gets an exception; the file holds no secrets), which closes the clean-checkout gap; `.gitattributes` merges this diary by union; `AGENTS.md` gains the two-agent ownership rules; `docs/beta/` holds the plan and status files.
+- **Not done:** fast-forwarding and pushing `main`, and pushing `beta`, were blocked by this session's permission policy. `main` and `origin/main` are still `e35aee2`. No staging environment exists yet. No application, data, or deployment changes were made.
+- **Next action:** John fast-forwards and pushes `main` and pushes `beta`; then C0.3 (staging), C0.4 (coverage matrix), C0.5 (`area_pilot/lookup.py` and data contract).
+
 ## 2026-11-14T22:55:00+00:00 — USDA FEA commit and push (Claude)
 
 - Commit `cd21d55` (application, migration, tests, operator guide, inventory, handbook, diary) pushed as new branch `origin/claude/usda-food-environment-atlas` without force; `git diff --cached --check` passed. No application, data, or deployment changes in this step. Not merged to `main`. The authenticated browser check remains pending.
