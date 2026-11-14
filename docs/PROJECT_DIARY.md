@@ -2,6 +2,12 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T02:20:00+00:00 — `main` and `beta` pushed (John); live checkout switched to `main` (Claude)
+
+- John fast-forwarded and pushed `main` to `0195959` and pushed `beta` at `1e859e6`; verified with `git ls-remote`. `main` now contains the HRSA, TRI, nursing-home, CMS GV, and USDA FEA work that was already deployed.
+- `git checkout main` in `/home/john/places-app` (same commit as before, no file changes); live `/api/health` returned 200. No application, data, or deployment change.
+- Staging database copy still running (60 GB of about 70). Next: finish staging, then stage and publish the wider PLACES release there.
+
 ## 2026-11-15T01:10:00+00:00 — Beta Phase 0: staging files, single-place read module, data contract, coverage matrix (Claude)
 
 - **Outcome:** on branch `claude/beta-phase0` (local only): staging environment files, `app.area_pilot.lookup`, the [data contract](beta/DATA_CONTRACT.md) with real examples, and the [coverage matrix](beta/COVERAGE_MATRIX.md). No live application, data, or deployment change. Codex can start its API and pages against the contract examples.
