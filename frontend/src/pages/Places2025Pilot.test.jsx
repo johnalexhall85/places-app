@@ -140,6 +140,36 @@ describe("PLACES 2025 county pilot selection", () => {
     await act(async () => { pending.forEach((resolve) => resolve()); });
     expect(await screen.findByText("21001")).toBeInTheDocument();
   });
+  it("shows the logo overlay only on the first load and the small loading pill on later loads", async () => {
+    const pending = [];
+    vi.stubGlobal("fetch", vi.fn((url) => {
+      const path = String(url);
+      const payload = path.endsWith("/catalog") ? {
+        dataset_id: "cdc_places_county_2025_pilot", active_release_id: "release-a", value_type: "crude_prevalence", unit: "percent",
+        measures: [
+          { measure_id: "dental_crudeprev", label: "Dental", observation_period: "2022", population: "adults" },
+          { measure_id: "access2_crudeprev", label: "Insurance", observation_period: "2023", population: "adults aged 18-64" },
+        ],
+      } : path.includes("/map?") ? { release_id: "release-a", features: [] }
+        : path.includes("/legend?") ? { release_id: "release-a", statuses: [] }
+        : { release_id: "release-a", total: 1, rows: [{ county_fips: "01001", name: "County", value: 10, ci_low: 9, ci_high: 11, status: "available" }] };
+      const response = { ok: true, json: async () => ({ ...payload, geography: "county" }) };
+      if (path.includes("access2_crudeprev")) return new Promise((resolve) => pending.push(() => resolve(response)));
+      return Promise.resolve(response);
+    }));
+    render(<Places2025Pilot />);
+    expect(screen.getByTestId("map-loading-overlay")).toHaveTextContent(/Loading map/);
+    expect(await screen.findByText("01001")).toBeInTheDocument();
+    expect(screen.getByTestId("map-loading-overlay")).toHaveClass("is-leaving");
+    expect(screen.queryByTestId("map-loading-strip")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "access2_crudeprev" } });
+    expect(screen.getByTestId("map-loading-strip")).toHaveTextContent("Loading county shapes…");
+    expect(screen.getByText("Loading legend…")).toBeInTheDocument();
+    await act(async () => { pending.forEach((resolve) => resolve()); });
+    expect(await screen.findByText(/Page 1 of 1/)).toBeInTheDocument();
+    expect(screen.queryByTestId("map-loading-strip")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Loading map/)).not.toBeInTheDocument();
+  });
   it("switches an exact release and measure to tracts at the app threshold", async () => {
     const requests = [];
     vi.stubGlobal("fetch", vi.fn(async (url) => {

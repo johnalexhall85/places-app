@@ -1,0 +1,186 @@
+/* Map loading states: first-load overlay with the animated PDO mark, a progress pill for later loads,
+   and a legend skeleton. Every animation stops under prefers-reduced-motion. */
+
+/* ---- Animated mark (one 2.8 s loop) ---- */
+.pdo-mark { display: block; overflow: visible; }
+.pdo-mark.is-animated .pdo-mark-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pdo-draw 2.8s ease-in-out infinite;
+}
+.pdo-mark.is-animated .pdo-mark-path-b { animation-delay: .35s; }
+.pdo-mark.is-animated .pdo-mark-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pdo-twinkle 2.8s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+.pdo-mark.is-animated .pdo-mark-block {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: pdo-stack 2.8s cubic-bezier(.34, 1.4, .64, 1) infinite;
+  animation-delay: calc(var(--i) * 0.11s);
+}
+.pdo-mark.is-animated .pdo-mark-scope {
+  transform-box: view-box;
+  transform-origin: 395px 250px;
+  animation: pdo-sweep 2.8s ease-in-out infinite;
+}
+
+@keyframes pdo-draw {
+  0% { stroke-dashoffset: 1; }
+  35%, 80% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -1; }
+}
+@keyframes pdo-twinkle {
+  0%, 100% { transform: scale(.55); opacity: .55; }
+  30% { transform: scale(1.25); opacity: 1; }
+  50% { transform: scale(1); opacity: 1; }
+}
+@keyframes pdo-stack {
+  0%, 6% { transform: scaleY(0); opacity: 0; }
+  22%, 78% { transform: scaleY(1); opacity: 1; }
+  92%, 100% { transform: scaleY(0); opacity: 0; }
+}
+@keyframes pdo-sweep {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(6deg); }
+}
+
+/* ---- First-load overlay ---- */
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2600;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(242, 246, 251, .78), rgba(242, 246, 251, .94) 70%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: map-fade-in .25s ease-out both;
+  transition: opacity .42s ease, backdrop-filter .42s ease;
+}
+.map-loading-overlay.is-leaving { opacity: 0; pointer-events: none; }
+.map-loading-overlay.is-leaving .map-loading-card { transform: translateY(-6px) scale(.98); }
+
+.map-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 36px 24px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 18px 48px rgba(0, 63, 97, .16);
+  text-align: center;
+  transition: transform .42s ease;
+  animation: map-rise .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.map-loading-mark { position: relative; width: 104px; height: 104px; }
+.map-loading-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(53, 118, 186, .35);
+  animation: map-ring 2.8s ease-out infinite;
+}
+.map-loading-title {
+  margin: 4px 0 0;
+  font-family: var(--headline-font);
+  font-size: 18px;
+  color: var(--chip-navy, #003f61);
+}
+.map-loading-detail { margin: 0; max-width: 280px; font-size: 13px; color: var(--pdo-text-muted); }
+.map-loading-dots { display: inline-flex; gap: 3px; margin-left: 4px; }
+.map-loading-dots i {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor;
+  animation: map-dot 1.2s ease-in-out infinite;
+}
+.map-loading-dots i:nth-child(2) { animation-delay: .15s; }
+.map-loading-dots i:nth-child(3) { animation-delay: .3s; }
+
+@keyframes map-ring {
+  0% { transform: scale(.92); opacity: .9; }
+  70%, 100% { transform: scale(1.22); opacity: 0; }
+}
+@keyframes map-dot {
+  0%, 80%, 100% { opacity: .25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* ---- Later-load pill under the Map Tools strip ---- */
+.map-loading-strip {
+  position: absolute;
+  z-index: 2300;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  overflow: hidden;
+  border: 1px solid var(--pdo-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: var(--pdo-overlay-shadow-tight);
+  color: var(--chip-navy, #003f61);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  /* Cached views resolve almost at once; the delay keeps the pill from flashing for them. */
+  animation: map-pill-in .22s ease-out .18s both;
+}
+.map-loading-strip-mark { display: inline-flex; }
+.map-loading-strip-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #3576ba 30%, #ffd5b0 50%, #3576ba 70%, transparent);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: map-sweep 1.1s ease-in-out infinite;
+}
+@keyframes map-pill-in {
+  from { opacity: 0; transform: translate(-50%, -6px) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes map-sweep {
+  from { background-position: -60% 0; }
+  to { background-position: 160% 0; }
+}
+
+/* ---- Legend skeleton ---- */
+.legend-skeleton { display: grid; gap: 7px; order: 1; }
+.legend-skeleton-row { display: flex; align-items: center; gap: 7px; }
+.legend-skeleton-row i, .legend-skeleton-row b {
+  display: block;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #e6edf3 0%, #f5f8fb 40%, #e6edf3 80%);
+  background-size: 300% 100%;
+  animation: map-shimmer 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.08s);
+}
+.legend-skeleton-row i { width: 16px; flex: none; }
+.legend-skeleton-row b { width: calc(78% - var(--i) * 7%); }
+@keyframes map-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+/* ---- Shared small entrances ---- */
+@keyframes map-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes map-rise {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdo-mark.is-animated *, .map-loading-ring, .map-loading-dots i, .legend-skeleton-row i, .legend-skeleton-row b {
+    animation: none !important;
+  }
+  .pdo-mark.is-animated .pdo-mark-path { stroke-dashoffset: 0; }
+  .map-loading-overlay, .map-loading-card, .map-loading-strip { animation-duration: .01s !important; animation-delay: 0s !important; transition: none !important; }
+  .map-loading-strip-bar { animation: none; background-position: 50% 0; }
+}

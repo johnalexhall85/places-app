@@ -8,6 +8,7 @@ import { TriFacilityLayer, TriFacilityPanel, useTriFacilities } from "../compone
 import { NursingHomeLayer, NursingHomePanel, useNursingHomes } from "../components/NursingHomes";
 import PlaceSearch from "../components/PlaceSearch";
 import MapTools from "./areaMap/MapTools";
+import { LegendSkeleton, MapLoadingOverlay, MapLoadingStrip } from "../components/MapLoading";
 import { BASE_MAP_OPTIONS } from "../branding/baseMaps";
 import { BLUES, HOVER_LINE, SELECTION_CASING, SELECTION_LINE, quantileColor, quantileCuts, quantileLabels, rampColors } from "../branding/mapColors";
 import { gridForZoom } from "../utils/mapGrid";
@@ -386,6 +387,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [legendOpen, setLegendOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 1100);
   const focusedOnce = useRef(false);
+  // The full-map loading overlay belongs to the first load of the page only; later loads use the small pill.
+  const [firstLoadDone, setFirstLoadDone] = useState(false);
+  const [contentEl, setContentEl] = useState(null);
+  const [toolsEl, setToolsEl] = useState(null);
   const baseMap = BASE_MAP_OPTIONS.find((option) => option.id === baseMapId) || BASE_MAP_OPTIONS[0];
   // Optional point overlay: its own release, filters, and requests; it never changes the area selection.
   const sites = useHealthCenterSites({ bbox, zoom: mapZoom });
@@ -489,6 +494,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
   }, [dataSelection, bbox, page, releaseId, requestKey, geography, capSelectionKey]);
 
   const ready = Boolean(requestKey && loadedKey === requestKey);
+  const settled = ready || Boolean(error) || Boolean(catalogError) || Boolean(catalog && !releaseId);
+  useEffect(() => { if (settled) setFirstLoadDone(true); }, [settled]);
+  const sourceTitle = isBrfss ? "BRFSS state survey estimates" : isProfile ? "ACS 2020–2024 community characteristics" : isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA annual AQI by county, 2025" : isGv ? "CMS Original Medicare Geographic Variation, 2024" : isFea ? "USDA Food Environment Atlas: county food access and retailers" : "PLACES 2025 pilot";
   const features = ready ? mapData?.features || [] : [];
   // Quintile cut points for the whole release at this level (PLACES, ACS income, AHRF, CLH).
   const cuts = useMemo(() => quantileCuts(ready ? legend?.quantile_breaks : null), [ready, legend]);
@@ -557,7 +565,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const profileHref = profileHrefFor(selection);
   return <div className="app pilot-app">
     <Header />
-    <main className="app-content pilot-content">
+    <main className="app-content pilot-content" ref={setContentEl}>
       <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
         {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
@@ -621,7 +629,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
         </MapContainer>}
       </div>
       <section className="pilot-panel pilot-controls" aria-label="Analytical controls">
-        <h1>{isBrfss ? "BRFSS state survey estimates" : isProfile ? "ACS 2020–2024 community characteristics" : isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA annual AQI by county, 2025" : isGv ? "CMS Original Medicare Geographic Variation, 2024" : isFea ? "USDA Food Environment Atlas: county food access and retailers" : "PLACES 2025 pilot"}</h1>
+        <h1>{sourceTitle}</h1>
         {isBrfss ? <div className="pilot-scope">
           <p>CDC BRFSS crude prevalence is a direct state survey estimate, 2023 except dental visits (2022). State values are not computed from PLACES counties. PLACES county figures are modeled from the survey and serve a different geography.</p>
           <ul className="pilot-limitations" aria-label="Interpretation limits">{(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}</ul>
@@ -742,7 +750,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             {cuts.length > 0 && <p>Classes are quintiles of all published {areaName(geography)} values in this release, so each holds about a fifth of them and the colors do not change as the map moves.</p>}
             <p>In view: {legend.statuses.map((item) => `${item.status}: ${item.n}`).join(" · ")}</p>
             <p>Click a {areaName(geography)} for its value and {isAcs ? "90% margin of error" : isAhrf || isClh ? "source status" : "95% confidence interval"}. {isAcs ? "Open-ended medians use the published annotation." : isAhrf || isClh ? "Uncertainty was not supplied." : ""}</p>
-          </> : <p>{error ? "Data unavailable" : "Loading legend…"}</p>}
+          </> : error ? <p>Data unavailable</p> : <LegendSkeleton />}
           {selection && <div className="pilot-selected" data-testid="selected-area">
             <h3>Selected area</h3>
             <p className="pilot-selected-name">{areaTitle(selection.name, selection.level, selection.geoid)}</p>
@@ -757,7 +765,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           </>}
         </section>
         <div className="pilot-dock">
-        <section className={`pilot-panel pilot-tools ${toolsOpen ? "is-open" : ""}`} aria-label="Map tools and search">
+        <section ref={setToolsEl} className={`pilot-panel pilot-tools ${toolsOpen ? "is-open" : ""}`} aria-label="Map tools and search">
           <button type="button" className="pilot-tools-toggle" aria-expanded={toolsOpen} onClick={() => setToolsOpen((open) => !open)}>
             <span>Map Tools</span><span aria-hidden="true">{toolsOpen ? "\u2212" : "+"}</span>
           </button>
@@ -808,7 +816,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <TriFacilityPanel tri={tri} />
           <NursingHomePanel homes={homes} />
         </div>
+        <MapLoadingStrip active={firstLoadDone && Boolean(requestKey) && !ready && !error} anchor={toolsEl} container={contentEl}
+          watch={[toolsOpen, tableOpen]} label={`Loading ${geography === "cd" ? "district" : areaName(geography)} shapes…`} />
       </>}
+      <MapLoadingOverlay active={!firstLoadDone} detail={sourceTitle} />
     </main>
     <Footer />
   </div>;
