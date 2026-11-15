@@ -2,6 +2,13 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T17:00:00+00:00 — AHRF owner credits deployed to live (Claude)
+
+- **Approval/outcome:** John said to deploy the credits. Fast-forwarded the live checkout from `a0d1ff7` to `992c0d2`, ran `npm run build`, synced `/var/www/places`, and restarted `places-backend`. No schema, registry, or release change; eleven pointers.
+- **Verification:** live asset names equal the staging bundle that passed the walkthrough; `/`, `/api/health`, `/explore/map` 200; anonymous community catalog 401; service active; read-only `lookup` on live returns 46 Person County values, five with `source_credit`. The signed-in page, PDF, and CSV were not viewed on live by the agent.
+- **Rollback pair:** `data/deploy-recovery/ahrf-credits-20261115/`.
+- **Next:** John sends the question to HRSA NCHWA and pushes `main`; record HRSA's answer in the AHRF guide.
+
 ## 2026-11-15T16:50:00+00:00 — AHRF redistribution decision and owner credits on staging (Claude)
 
 - **Decision (John):** keep the five AHRF measures, behind the access code, credit the copyright owners beside HRSA, and ask HRSA's NCHWA in writing. Basis read from the archived source: HRSA's download page says “Usage limitations: None”; the bundled 2024–2025 County User Guide says reproduction for reuse needs the Bureau's permission and that ADA, AHA, and AMA data may not be reproduced without the owner's consent. All five CHIP fields come from those owners (AMA: primary care physicians, psychiatrists; ADA: dentists; AHA: hospitals, hospital beds). This is a reading of the documents, not legal advice.
