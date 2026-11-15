@@ -16,6 +16,7 @@ import Places2025Pilot from "./pages/Places2025Pilot";
 import "./index.css";
 import "./community/tokens.css";
 import { CommunityLanding, CommunityCounty } from "./community/CommunityPages";
+import { CommunityState } from "./community/CommunityState";
 import CommunityCompare from "./community/CommunityCompare";
 import { CommunityTopics, CommunityTopic } from "./community/CommunityTopics";
 import { CommunityAbout, CommunityMethodology } from "./community/CommunityInfo";
@@ -67,6 +68,8 @@ function Root() {
     routedPage = <CommunityLanding />;
   } else if (route.type === "community-county") {
     routedPage = <CommunityCounty geoid={route.id} />;
+  } else if (route.type === "community-state") {
+    routedPage = <CommunityState geoid={route.id} />;
   } else if (route.type === "community-compare") {
     routedPage = <CommunityCompare />;
   } else if (route.type === "community-districts") {

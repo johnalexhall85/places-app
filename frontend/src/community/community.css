@@ -325,6 +325,15 @@
   padding-block: 32px 80px;
 }
 
+.community-state-places {
+  columns: 3 220px;
+  padding-left: 24px;
+}
+
+.community-state-places li { break-inside: avoid; padding: 3px 0; }
+.community-state-profile #places details { margin: 12px 0; }
+.community-state-profile #places summary { cursor: pointer; font-weight: 700; }
+
 .community-back {
   display: inline-block;
   margin-bottom: 32px;
@@ -854,6 +863,7 @@
   #tract-patterns,
   .community-meta-links,
   .community-facility details,
+  .community-state-profile #places details,
   .community-app .app-footer { display: none !important; }
   .community-profile { width: 100%; padding: 16px 0 0; }
   .community-profile-head { max-width: 100%; padding: 16px; border-left-width: 6px; }

@@ -33,6 +33,10 @@ export function resolveRoute(pathname) {
   if (communityCountyMatch) {
     return { type: "community-county", id: communityCountyMatch[1] };
   }
+  const communityStateMatch = normalizedPath.match(/^\/community\/state\/(\d{2})\/?$/i);
+  if (communityStateMatch) {
+    return { type: "community-state", id: communityStateMatch[1] };
+  }
   if (/^\/area\/places-2025\/?$/i.test(normalizedPath)) {
     return { type: "places-2025-pilot" };
   }
