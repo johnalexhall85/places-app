@@ -25,6 +25,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Unresolved:** `main` and `beta` are not pushed (blocked by session policy). No staging access code yet.
 - **Next action:** when the copy finishes, analyze the database, start the staging service, run the first staging deploy, recheck `lookup` there, then begin C1 (PLACES expansion).
 
+## 2026-11-15T00:31:20+00:00 — X3 comparison and PDF briefing deployed to staging (Codex)
+
+- **Outcome:** On `codex/beta-x3-comparison-pdf`, added `/compare?counties=…` with up to four aligned county columns, URL state, county search, distinct missing-status display, and no ranking or score. Added `/api/community/county/{geoid}/pdf`, reusing the existing Playwright profile renderer with the validated demo-session cookie. Added print layout for the profile. Merged `ab5dbcb` to `beta` and deployed staging only; no live changes.
+- **Configuration:** Set `PROFILE_FRONTEND_BASE_URL=http://127.0.0.1:8080` in the ignored staging backend `.env` (mode 600), so the PDF renderer opens staging. `VITE_API_BASE_URL=/api` was supplied to the staging build. These settings need durable staging configuration and a live-appropriate PDF URL at promotion; no secrets were recorded.
+- **Verification:** Backend 656 tests passed with two unrelated source-dependent acceptance cases deselected (one has the documented FY2026 natural-key mismatch). Frontend 146/146 tests and Vite build passed. Authenticated Nginx comparison of Person NC, Kanawha WV, and Fresno CA displayed 28 aligned indicator rows, no page errors, and a horizontally scrollable table without document overflow at 390 px. Authenticated PDF returned 200 (107,961 bytes, nine pages); extracted text included Person County, `$63,300` income, source lines, and no access gate.
+- **Unresolved/next:** Gate 1 archived-source checks (ten indicators per showcase county) and broader legacy-route regression remain. C1's active staging PLACES county release still has no tract rows; X4 tract patterns depend on its combined release. Continue X4 topic pages and tract views while coordinating the data dependency through status files.
+
 ## 2026-11-15T00:25:20+00:00 — X2 landing and county profile deployed to staging (Codex)
 
 - **Outcome:** Merged X2 (`9f4cd4b`, then unit-display correction `8cd7412`) to `beta`; staging backend and webroot deployed. Root is now the place-first landing, `/explore/map` serves the legacy map, and `/community/county/{geoid}` shows released indicators, source period/population/release, uncertainty, state estimates only where published, facility inventories, CSV, and limitations. PDO brand tokens follow the supplied guide. Topic cards lead to existing source maps until X4.

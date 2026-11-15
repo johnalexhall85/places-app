@@ -637,6 +637,10 @@
   color: #fff;
 }
 
+.community-compare-table thead small {
+  color: #fff;
+}
+
 .community-compare-table tbody th {
   background: #f4f7fb;
 }
