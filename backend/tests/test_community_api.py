@@ -1,5 +1,7 @@
 """HTTP contract checks for place-first reads; source values stay in lookup."""
 import json
+import csv
+import io
 from pathlib import Path
 
 import pytest
@@ -84,6 +86,31 @@ def test_csv_carries_source_period_release_and_missing_status(client):
     assert len(lines) == 29
     assert "source_release" in lines[0] and "population" in lines[0]
     assert "f735c524" in response.text
+
+
+def test_paired_brfss_state_survey_is_in_county_csv_and_comparison(client, monkeypatch):
+    catalog = example("catalog.json")
+    catalog["measures"].append({"product": "brfss", "measure_id": "dental_visit", "publisher": "CDC",
+                                "product_name": "BRFSS state survey estimates", "landing_page": "https://data.cdc.gov",
+                                "source_credit": None})
+    monkeypatch.setattr(community.lookup, "catalog", lambda db: catalog)
+    survey = {"product": "brfss", "measure_id": "dental_visit", "value": 61.2, "status": "available",
+              "status_text": "Published estimate", "period": "2022", "population": "adults",
+              "uncertainty": {"kind": "ci95", "low": 59.8, "high": 62.6},
+              "source_release_id": "BRFSS 2022", "release_id": "brfss-release"}
+    monkeypatch.setattr(community.lookup, "state_survey_companions", lambda db, state: {
+        "companions": {"dental_crudeprev": survey}, "note": "Direct state survey estimate",
+    })
+    county = client.get("/community/county/01055").json()
+    assert county["survey_companions"]["dental_crudeprev"]["source"]["product_name"] == "BRFSS state survey estimates"
+    rows = list(csv.DictReader(io.StringIO(client.get("/community/county/01055/csv").text)))
+    dental = next(row for row in rows if row["measure_id"] == "dental_crudeprev")
+    assert dental["state_survey_label"] == "State survey estimate (BRFSS)"
+    assert dental["state_survey_value"] == "61.2" and dental["state_survey_ci_low"] == "59.8"
+    assert dental["state_survey_source_release"] == "BRFSS 2022"
+    assert not next(row for row in rows if row["product"] == "acs")["state_survey_label"]
+    comparison = client.get("/community/compare", params={"geoids": "01055,01073"}).json()
+    assert comparison["survey_companions"]["01"]["dental_crudeprev"]["value"] == 61.2
 
 
 def test_topics_and_tract_route(client):

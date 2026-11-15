@@ -252,6 +252,8 @@ def compare_counties(
     try:
         areas = lookup.area_info(db, "county", county_ids)
         values = lookup.area_values(db, "county", county_ids)
+        state_companions = {state: lookup.state_survey_companions(db, state)["companions"]
+                            for state in {geoid[:2] for geoid in county_ids}}
     except lookup.LookupError_ as error:
         raise _bad_request(error) from error
     by_geoid = {area["geoid"]: area for area in areas}
@@ -262,6 +264,8 @@ def compare_counties(
     return {
         "areas": [by_geoid[geoid] for geoid in county_ids],
         "values": rows,
+        "survey_companions": {state: {key: _enrich([row], measures)[0] for key, row in companions.items()}
+                              for state, companions in state_companions.items()},
         "releases": values["releases"],
         "note": "Values are source-published estimates for each county; no ranking or combined score is calculated.",
     }
@@ -319,20 +323,35 @@ def county_csv(geoid: str, db: Session = Depends(get_db)):
     info = _county_info(db, geoid)
     _, measures = _measure_catalog(db)
     rows = _enrich(lookup.area_values(db, "county", [geoid])["values"], measures)
+    companions = {key: _enrich([row], measures)[0] for key, row in
+                  lookup.state_survey_companions(db, geoid[:2])["companions"].items()}
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["county_geoid", "county_name", "state_name", "product", "measure_id", "indicator", "value",
                      "unit", "status", "status_text", "period", "population", "uncertainty_type", "uncertainty_low",
                      "uncertainty_high", "margin_of_error", "publisher", "source_product", "source_release",
-                     "release_id", "source_url", "boundary_vintage", "underlying_source_credit"])
+                     "release_id", "source_url", "boundary_vintage", "underlying_source_credit",
+                     "state_survey_label", "state_survey_value", "state_survey_status", "state_survey_status_text",
+                     "state_survey_period", "state_survey_population", "state_survey_ci_low", "state_survey_ci_high",
+                     "state_survey_publisher", "state_survey_product", "state_survey_source_release",
+                     "state_survey_release_id"])
     for row in rows:
         uncertainty = row["uncertainty"]
+        companion = companions.get(row["measure_id"]) if row["product"] == "places" else None
+        survey_uncertainty = companion["uncertainty"] if companion else {}
         writer.writerow([geoid, info["name"], info["state_name"], row["product"], row["measure_id"], row["label"],
                          row["value"], row["unit"], row["status"], row["status_text"], row["period"],
                          row["population"], uncertainty["kind"], uncertainty.get("low"), uncertainty.get("high"),
                          uncertainty.get("moe"), row["source"]["publisher"], row["source"]["product_name"],
                          row["source_release_id"], row["release_id"], row["source"]["landing_page"],
-                         row["boundary_vintage"], row["source"]["credit"] or ""])
+                         row["boundary_vintage"], row["source"]["credit"] or "",
+                         "State survey estimate (BRFSS)" if companion else "", companion["value"] if companion else "",
+                         companion["status"] if companion else "", companion["status_text"] if companion else "",
+                         companion["period"] if companion else "", companion["population"] if companion else "",
+                         survey_uncertainty.get("low", ""), survey_uncertainty.get("high", ""),
+                         companion["source"]["publisher"] if companion else "",
+                         companion["source"]["product_name"] if companion else "",
+                         companion["source_release_id"] if companion else "", companion["release_id"] if companion else ""])
     output.seek(0)
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="county-{geoid}-indicators.csv"'})

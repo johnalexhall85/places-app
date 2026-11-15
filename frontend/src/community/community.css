@@ -334,6 +334,17 @@
 .community-state-profile #places details { margin: 12px 0; }
 .community-state-profile #places summary { cursor: pointer; font-weight: 700; }
 
+.community-survey-companion {
+  margin-top: 16px;
+  padding: 12px;
+  border-left: 4px solid #067f89;
+  background: #eef8f8;
+  font-size: 13px;
+}
+.community-survey-companion p { margin: 6px 0; }
+.community-survey-companion .community-source { font-size: 11px; }
+.community-compare-table .community-survey-companion { margin-top: 8px; }
+
 .community-back {
   display: inline-block;
   margin-bottom: 32px;

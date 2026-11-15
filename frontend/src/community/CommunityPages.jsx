@@ -183,7 +183,18 @@ export function uncertaintyText(row) {
   return "No uncertainty published";
 }
 
-export function Indicator({ row, stateRow }) {
+export function SurveyCompanion({ row }) {
+  if (!row) return null;
+  return <div className="community-survey-companion">
+    <strong>State survey estimate (BRFSS)</strong>
+    <p>{formatIndicatorValue(row)} · {row.period} · {row.population}</p>
+    <p>{uncertaintyText(row)}</p>
+    <p className="community-source">Source: {row.source?.publisher} · {row.source?.product_name} · {row.period} · {row.source_release_id}</p>
+    <small>Direct state survey estimate for context; the county PLACES estimate is modeled from BRFSS.</small>
+  </div>;
+}
+
+export function Indicator({ row, stateRow, surveyCompanion }) {
   const hasValue = row.value != null;
   const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}${row.level === "cd" ? "&geography=cd" : ""}` : null;
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
@@ -193,6 +204,7 @@ export function Indicator({ row, stateRow }) {
     {row.status === "true_zero" && <p className="community-indicator-note">Published zero</p>}
     <p className="community-indicator-note">{uncertaintyText(row)}</p>
     {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population}; {stateRow.source?.publisher}; release {stateRow.source_release_id})</span></p>}
+    {row.product === "places" && <SurveyCompanion row={surveyCompanion} />}
     <p className="community-source">Source: {row.source?.publisher} · {row.source?.product_name} · {row.period} · {row.source_release_id}<br />Population: {row.population}{row.source?.credit && <><br />{row.source.credit}</>}</p>
     {row.notes?.estimate_annotation && <p className="community-indicator-note">Source annotation: {row.notes.estimate_annotation}</p>}
     {mapUrl && <a className="community-map-link" href={mapUrl}>Open source map →</a>}
@@ -274,6 +286,7 @@ export function CommunityCounty({ geoid }) {
           <p className="community-eyebrow">County profile · {profile.area.boundary_vintage}</p>
           <h1>{profile.area.name} County, {profile.area.state_name}</h1>
           <p>Published indicators and facility locations for county GEOID {profile.area.geoid}. Each indicator keeps its own period, population, source, and release.</p>
+          <p><a href={`/community/state/${profile.area.state_geoid}`}>Explore the {profile.area.state_name} state profile →</a></p>
           <div className="community-actions">
             <a href={`${API_BASE}/community/county/${geoid}/csv`} download>Download indicator CSV</a>
             <a href={`${API_BASE}/community/county/${geoid}/pdf`} download>Download PDF briefing</a>
@@ -288,7 +301,7 @@ export function CommunityCounty({ geoid }) {
         </nav>
         {SECTIONS.map((section) => bySection[section.key]?.length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
           <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
-          <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} />)}</div>
+          <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} />)}</div>
         </section>)}
         {selectedTractRow && <section className="community-profile-section" id="tract-patterns">
           <div className="community-section-heading"><h2>Within-county tract patterns</h2><p>Each shape is a source-published tract estimate. Darker blues show higher values for the selected measure within this county.</p></div>

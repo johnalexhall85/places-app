@@ -20,6 +20,11 @@ describe("county comparison", () => {
           population: "adults", period: "2022", source_release_id: "2025-12-12",
           source: { publisher: "CDC", product_name: "PLACES" }, uncertainty: { kind: "ci95" } },
       ],
+      survey_companions: {
+        "37": { dental_crudeprev: { value: 61.2, period: "2022", population: "adults", unit: "percent",
+          uncertainty: { kind: "ci95", low: 59.8, high: 62.6 }, source_release_id: "BRFSS 2022",
+          source: { publisher: "CDC", product_name: "BRFSS state survey estimates" } } },
+      },
     };
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => response })));
     render(<CommunityCompare />);
@@ -28,6 +33,8 @@ describe("county comparison", () => {
     expect(table.textContent).toContain("57.8%");
     expect(table.textContent).toContain("Suppressed by the source");
     expect(table.textContent).toContain("Release 2025-12-12");
+    expect(table.textContent).toContain("State survey estimate (BRFSS)");
+    expect(table.textContent).toContain("95% confidence interval: 59.8–62.6%");
     expect(table.textContent).not.toContain("rank");
   });
 });

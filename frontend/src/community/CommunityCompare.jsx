@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
-import { CommunityShell, formatIndicatorValue, uncertaintyText, unitText } from "./CommunityPages";
+import { CommunityShell, SurveyCompanion, formatIndicatorValue, uncertaintyText, unitText } from "./CommunityPages";
 
 const EXAMPLE_COUNTIES = ["37145", "54039", "06019"];
 
@@ -79,7 +79,7 @@ export default function CommunityCompare() {
             placeholder={maxReached ? "Four counties selected" : "Search county or state"} autoComplete="off" />
           <p aria-live="polite" className="community-search-status">{searchError || (query.length >= 2 && !matches.length ? "No matches yet" : "")}</p>
           {matches.length > 0 && !maxReached && <ul className="community-compare-matches" aria-label="County matches">
-            {matches.filter((match) => !selected.includes(match.county_fips)).map((match) => <li key={match.county_fips}>
+            {matches.filter((match) => match.type !== "state" && !selected.includes(match.county_fips)).map((match) => <li key={match.county_fips}>
               <button type="button" onClick={() => add(match.county_fips)}>{match.name} County, {match.state_abbr} ({match.county_fips})</button>
             </li>)}
           </ul>}
@@ -113,6 +113,7 @@ export default function CommunityCompare() {
                   <small>{unitText(row) || "Percent"} · {row.population}</small>
                   <small>{uncertaintyText(row)}</small>
                   <small>{row.period} · Release {row.source_release_id}</small>
+                  {row.product === "places" && <SurveyCompanion row={comparison.survey_companions?.[area.geoid.slice(0, 2)]?.[row.measure_id]} />}
                 </>}</td>;
               })}
             </tr>)}</tbody>
