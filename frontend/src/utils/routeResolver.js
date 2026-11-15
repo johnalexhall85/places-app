@@ -6,6 +6,9 @@ export function resolveRoute(pathname) {
   if (/^\/explore\/map\/?$/i.test(normalizedPath)) {
     return { type: "map" };
   }
+  if (/^\/compare\/?$/i.test(normalizedPath)) {
+    return { type: "community-compare" };
+  }
   const communityCountyMatch = normalizedPath.match(/^\/community\/county\/(\d{5})\/?$/i);
   if (communityCountyMatch) {
     return { type: "community-county", id: communityCountyMatch[1] };

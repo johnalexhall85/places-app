@@ -6,13 +6,15 @@ import io
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.area_pilot import lookup
 from app.db import get_db
 from app.routers.search import search_counties
+from app.demo_access.settings import get_demo_access_settings
+from app.services.profile_pdf_playwright import render_route_pdf_via_playwright
 
 router = APIRouter(prefix="/community", tags=["community"])
 TOPICS_PATH = Path(__file__).with_name("topics.json")
@@ -179,3 +181,19 @@ def county_csv(geoid: str, db: Session = Depends(get_db)):
     output.seek(0)
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="county-{geoid}-indicators.csv"'})
+
+
+@router.get("/county/{geoid}/pdf")
+def county_pdf(geoid: str, request: Request, db: Session = Depends(get_db)):
+    _county_info(db, geoid)
+    settings = get_demo_access_settings()
+    raw_cookie = request.cookies.get(settings.cookie_name)
+    session_cookie = (settings.cookie_name, raw_cookie) if raw_cookie else None
+    try:
+        content = render_route_pdf_via_playwright(
+            route_path=f"/community/county/{geoid}", session_cookie=session_cookie,
+        )
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="County PDF rendering is unavailable") from error
+    return Response(content=content, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="county-{geoid}-briefing.pdf"'})

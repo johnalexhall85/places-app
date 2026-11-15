@@ -6,6 +6,7 @@ describe("routeResolver", () => {
     expect(resolveRoute("/")).toEqual({ type: "community-landing" });
     expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
     expect(resolveRoute("/community/county/37145")).toEqual({ type: "community-county", id: "37145" });
+    expect(resolveRoute("/compare")).toEqual({ type: "community-compare" });
   });
   it("matches the funding model builder route", () => {
     expect(resolveRoute("/funding-model-builder")).toEqual({ type: "funding-model-builder" });

@@ -30,7 +30,7 @@ const MAP_ROUTES = {
   usda_fea: "/area/usda-fea",
 };
 
-function CommunityShell({ children }) {
+export function CommunityShell({ children }) {
   return (
     <div className="community-app">
       <a className="community-skip" href="#main">Skip to main content</a>
@@ -42,6 +42,7 @@ function CommunityShell({ children }) {
         <nav aria-label="Main navigation">
           <a href="/">Home</a>
           <a href="/#topics-heading">Topics</a>
+          <a href="/compare">Compare</a>
           <a href="/explore/map">Explore data</a>
           <a href="/cdc-funding">Funding</a>
         </nav>
@@ -159,13 +160,13 @@ export function formatIndicatorValue(row) {
   return formatted;
 }
 
-function unitText(row) {
+export function unitText(row) {
   if (row.storage_scale === "proportion_0_1") return "Percent of acute hospital stays";
   if (row.unit === "percent" || row.unit === "%") return null;
   return row.unit;
 }
 
-function uncertaintyText(row) {
+export function uncertaintyText(row) {
   const uncertainty = row.uncertainty || {};
   if (uncertainty.kind === "ci95") return uncertainty.low != null && uncertainty.high != null
     ? `95% confidence interval: ${uncertainty.low}–${uncertainty.high}${row.unit === "percent" ? "%" : ""}`
@@ -252,7 +253,9 @@ export function CommunityCounty({ geoid }) {
           <p>Published indicators and facility locations for county GEOID {profile.area.geoid}. Each indicator keeps its own period, population, source, and release.</p>
           <div className="community-actions">
             <a href={`${API_BASE}/community/county/${geoid}/csv`} download>Download indicator CSV</a>
+            <a href={`${API_BASE}/community/county/${geoid}/pdf`} download>Download PDF briefing</a>
             <button type="button" onClick={() => navigator.clipboard?.writeText(window.location.href)}>Copy link</button>
+            <a href={`/compare?counties=${geoid}`}>Compare counties</a>
           </div>
         </header>
         <nav className="community-section-nav" aria-label="Profile sections">

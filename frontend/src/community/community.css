@@ -481,6 +481,218 @@
   border: 1px solid #cfd8dc;
 }
 
+.community-app .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.community-compare {
+  padding-block: 56px 80px;
+}
+
+.community-compare h1 {
+  font-size: clamp(32px, 4vw, 48px);
+}
+
+.community-compare-intro {
+  max-width: 760px;
+  margin: 16px 0 32px;
+}
+
+.community-compare-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.community-compare-controls > div {
+  position: relative;
+  flex: 1 1 360px;
+  max-width: 520px;
+}
+
+.community-compare-controls label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.community-compare-controls input {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 1px solid #a8bac4;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.community-compare .community-search-status {
+  color: #546e7a;
+}
+
+.community-compare-example,
+.community-selected button {
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 1px solid #0277bd;
+  border-radius: 4px;
+  background: #fff;
+  color: #00679f;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.community-compare-example {
+  margin-top: 32px;
+}
+
+.community-compare-example:hover,
+.community-selected button:hover {
+  background: #e5f3fb;
+}
+
+.community-compare-matches {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  max-height: 320px;
+  margin: -16px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #cfd8dc;
+  box-shadow: 0 8px 24px rgba(0, 37, 60, .16);
+}
+
+.community-compare-matches button {
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: #fff;
+  color: #00679f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.community-compare-matches button:hover {
+  background: #edf5fa;
+}
+
+.community-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 32px;
+}
+
+.community-selected button span[aria-hidden] {
+  margin-left: 8px;
+}
+
+.community-compare-count {
+  color: #546e7a;
+  font-weight: 700;
+}
+
+.community-compare-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #cfd8dc;
+  background: #fff;
+}
+
+.community-compare-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.community-compare-table th,
+.community-compare-table td {
+  width: 25%;
+  min-width: 190px;
+  padding: 16px;
+  border-bottom: 1px solid #cfd8dc;
+  vertical-align: top;
+}
+
+.community-compare-table thead th {
+  position: sticky;
+  top: 0;
+  background: #003f61;
+  color: #fff;
+}
+
+.community-compare-table thead a {
+  color: #fff;
+}
+
+.community-compare-table tbody th {
+  background: #f4f7fb;
+}
+
+.community-compare-table strong,
+.community-compare-table small {
+  display: block;
+}
+
+.community-compare-table td strong {
+  color: #003f61;
+  font-family: "Roboto Slab", Georgia, serif;
+  font-size: 20px;
+}
+
+.community-compare-table td strong.community-compare-missing {
+  color: #546e7a;
+  font: 700 15px/1.4 Arial, sans-serif;
+}
+
+.community-compare-table small {
+  margin-top: 8px;
+  color: #546e7a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@page {
+  size: Letter;
+  margin: .5in;
+}
+
+@media print {
+  .community-app { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .community-header { min-height: 64px; padding: 8px 16px; }
+  .community-header nav,
+  .community-back,
+  .community-actions,
+  .community-section-nav,
+  .community-map-link,
+  .community-facility details,
+  .community-app .app-footer { display: none !important; }
+  .community-profile { width: 100%; padding: 16px 0 0; }
+  .community-profile-head { max-width: 100%; padding: 16px; border-left-width: 6px; }
+  .community-profile-head h1 { font-size: 28px; }
+  .community-profile-section { padding: 16px 0; break-inside: avoid; }
+  .community-section-heading { margin-bottom: 12px; }
+  .community-section-heading h2 { font-size: 20px; }
+  .community-indicator-grid,
+  .community-facility-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .community-indicator,
+  .community-facility { padding: 12px; break-inside: avoid; }
+  .community-value { margin: 8px 0; font-size: 21px; }
+  .community-source { font-size: 10px; }
+}
+
 @media (max-width: 900px) {
   .community-topic-grid,
   .community-indicator-grid,
@@ -502,4 +714,6 @@
   .community-facility-grid { grid-template-columns: 1fr; }
   .community-section { padding-block: 40px; }
   .community-profile-head { padding: 24px; }
+  .community-compare { padding-block: 32px 48px; }
+  .community-compare-example { margin-top: 0; }
 }

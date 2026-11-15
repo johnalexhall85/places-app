@@ -89,3 +89,14 @@ def test_topics_and_tract_route(client):
     assert client.get("/community/topics/unknown").status_code == 404
     assert client.get("/community/county/01055/tracts", params={"product": "places", "measure_id": "dental_crudeprev"}).status_code == 200
     assert client.get("/community/county/99999").status_code == 404
+
+
+def test_pdf_uses_current_session_cookie_and_rejects_unknown_county(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(community, "render_route_pdf_via_playwright", lambda **kwargs: calls.append(kwargs) or b"%PDF-1.4\n")
+    cookie_name = community.get_demo_access_settings().cookie_name
+    client.cookies.set(cookie_name, "session-value")
+    response = client.get("/community/county/01055/pdf")
+    assert response.status_code == 200 and response.content.startswith(b"%PDF")
+    assert calls == [{"route_path": "/community/county/01055", "session_cookie": (cookie_name, "session-value")}]
+    assert client.get("/community/county/99999/pdf").status_code == 404

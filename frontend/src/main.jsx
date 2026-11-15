@@ -16,6 +16,7 @@ import Places2025Pilot from "./pages/Places2025Pilot";
 import "./index.css";
 import "./community/tokens.css";
 import { CommunityLanding, CommunityCounty } from "./community/CommunityPages";
+import CommunityCompare from "./community/CommunityCompare";
 import { resolveRoute } from "./utils/routeResolver";
 
 installDemoAccessFetchCredentials(API_BASE);
@@ -63,6 +64,8 @@ function Root() {
     routedPage = <CommunityLanding />;
   } else if (route.type === "community-county") {
     routedPage = <CommunityCounty geoid={route.id} />;
+  } else if (route.type === "community-compare") {
+    routedPage = <CommunityCompare />;
   } else if (route.type === "cdc-state-funding-profile") {
     routedPage = <CdcStateFundingProfile stateCode={route.id} />;
   } else if (route.type === "cdc-funding-overview") {
