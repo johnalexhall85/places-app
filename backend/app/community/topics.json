@@ -2,7 +2,7 @@
   {
     "slug": "health-conditions",
     "title": "Health conditions",
-    "summary": "Published county and tract estimates of chronic conditions and mental health, when available.",
+    "summary": "Published modeled PLACES county and tract estimates and direct BRFSS state survey estimates of chronic conditions and mental health.",
     "measure_keys": [
       [
         "places",
@@ -39,15 +39,67 @@
       [
         "places",
         "mhlth_crudeprev"
+      ],
+      [
+        "brfss",
+        "diabetes"
+      ],
+      [
+        "brfss",
+        "high_blood_pressure"
+      ],
+      [
+        "brfss",
+        "obesity"
+      ],
+      [
+        "brfss",
+        "coronary_heart_disease"
+      ],
+      [
+        "brfss",
+        "stroke"
+      ],
+      [
+        "brfss",
+        "copd"
+      ],
+      [
+        "brfss",
+        "current_asthma"
+      ],
+      [
+        "brfss",
+        "depression"
+      ],
+      [
+        "brfss",
+        "frequent_mental_distress"
+      ],
+      [
+        "brfss",
+        "fair_or_poor_health"
+      ],
+      [
+        "brfss",
+        "frequent_physical_distress"
+      ],
+      [
+        "brfss",
+        "arthritis"
+      ],
+      [
+        "brfss",
+        "kidney_disease"
       ]
     ],
     "overlays": [],
-    "limits": "These are modeled PLACES estimates for the stated adult population and year. They do not diagnose an individual or establish a cause."
+    "limits": "PLACES county and tract figures are modeled; BRFSS state figures are direct survey estimates. They describe the stated adult population and year, do not diagnose an individual or establish a cause, and are not one ranked series."
   },
   {
     "slug": "prevention-and-access",
     "title": "Prevention and access",
-    "summary": "Published prevention measures and two distinct insurance estimates.",
+    "summary": "Published prevention and access measures, including distinct Census, modeled PLACES, and direct BRFSS insurance estimates.",
     "measure_keys": [
       [
         "places",
@@ -68,12 +120,40 @@
       [
         "acs_profile",
         "uninsured_pct"
+      ],
+      [
+        "brfss",
+        "current_smoking"
+      ],
+      [
+        "brfss",
+        "routine_checkup"
+      ],
+      [
+        "brfss",
+        "uninsured_18_64"
+      ],
+      [
+        "brfss",
+        "dental_visit"
+      ],
+      [
+        "brfss",
+        "binge_drinking"
+      ],
+      [
+        "brfss",
+        "no_leisure_physical_activity"
+      ],
+      [
+        "brfss",
+        "cost_barrier_to_care"
       ]
     ],
     "overlays": [
       "health_centers"
     ],
-    "limits": "ACS uninsured describes all ages in a household survey; PLACES lack of insurance models adults aged 18–64. They are different measures and cannot be compared as one series. A nearby health center does not establish access."
+    "limits": "ACS uninsured describes all ages in a household survey; PLACES models adults aged 18\u201364 at county and tract level; BRFSS surveys adults aged 18\u201364 at state level. They are distinct measures. A nearby health center does not establish access."
   },
   {
     "slug": "health-care-resources",

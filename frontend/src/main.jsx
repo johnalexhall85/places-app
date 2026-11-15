@@ -96,6 +96,8 @@ function Root() {
     routedPage = <ProfileTract tractGeoid={route.id} />;
   } else if (route.type === "places-2025-pilot") {
     routedPage = <Places2025Pilot />;
+  } else if (route.type === "brfss-state-area") {
+    routedPage = <Places2025Pilot dataset="brfss" />;
   } else if (route.type === "acs-2024-area") {
     routedPage = <Places2025Pilot dataset="acs" />;
   } else if (route.type === "acs-community-area") {

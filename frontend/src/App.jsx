@@ -107,6 +107,7 @@ const DATA_SOURCES = {
   EPA_AQI_AREA: "epa_aqi_area",
   CMS_GV_AREA: "cms_gv_area",
   USDA_FEA_AREA: "usda_fea_area",
+  BRFSS_AREA: "brfss_area",
   ACS_NMF: "acs_nmf",
   SVI: "svi",
   HPSA: "hpsa",
@@ -9697,6 +9698,10 @@ export default function App() {
                     window.location.assign("/area/usda-fea");
                     return;
                   }
+                  if (nextSource === DATA_SOURCES.BRFSS_AREA) {
+                    window.location.assign("/area/brfss");
+                    return;
+                  }
                   setSelectedDataSource(nextSource);
                   setSelectedMeasureId("");
                   if (nextSource === DATA_SOURCES.USDA_FOOD_ENV) {
@@ -9744,6 +9749,7 @@ export default function App() {
                 <option value={DATA_SOURCES.CMS}>CMS Medicare Fee-for-Service (legacy import, through 2023)</option>
                 <option value={DATA_SOURCES.CDC_FUNDING_STATE}>CDC Funding - State Map</option>
                 <option value={DATA_SOURCES.USDA_FEA_AREA}>USDA Food Environment Atlas, July 2025: five county measures (published release)</option>
+                <option value={DATA_SOURCES.BRFSS_AREA}>CDC BRFSS state survey estimates (published release)</option>
                 <option value={DATA_SOURCES.USDA_FOOD_ENV}>USDA Food Environment (legacy import, all variables)</option>
                 <option value={DATA_SOURCES.FEMA_NRI}>FEMA National Risk Index</option>
                 <option value={DATA_SOURCES.ACS_NMF}>ACS Non-medical factors</option>

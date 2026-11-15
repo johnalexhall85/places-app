@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup, brfssColor, brfssPopup, brfssValueText } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null }));
@@ -30,6 +30,15 @@ describe("PLACES 2025 county pilot selection", () => {
     expect(resolveRoute("/area/places-2025")).toEqual({ type: "places-2025-pilot" });
     expect(resolveRoute("/")).toEqual({ type: "community-landing" });
     expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
+    expect(resolveRoute("/area/brfss")).toEqual({ type: "brfss-state-area" });
+  });
+  it("keeps BRFSS state survey values, uncertainty, and not-published status distinct", () => {
+    expect(brfssColor(null, "not_published", [9, 11, 12, 14])).toBe("#a5a5a5");
+    expect(brfssColor(12.4, "available", [9, 11, 12, 14])).toBe("#6baed6");
+    expect(brfssValueText({ value: null, status_text: "Not published by CDC" })).toBe("Not published by CDC");
+    expect(brfssPopup({ name: "North Carolina", geography_id: "37", value: 12.4, ci_low: 11,
+      ci_high: 13.8, sample_size: 577 }, { label: "Diagnosed diabetes", observation_period: "2023", population: "adults" }))
+      .toContain("95% confidence interval: 11–13.8%");
   });
   it("pins every selection and viewport in each request key", () => {
     const selection = { datasetId: "cdc_places_county_2025_pilot", releaseId: "release-a", valueType: "crude_prevalence", measure: {

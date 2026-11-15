@@ -40,6 +40,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/places-2025\/?$/i.test(normalizedPath)) {
     return { type: "places-2025-pilot" };
   }
+  if (/^\/area\/brfss\/?$/i.test(normalizedPath)) {
+    return { type: "brfss-state-area" };
+  }
   if (/^\/area\/acs-2024\/?$/i.test(normalizedPath)) {
     return { type: "acs-2024-area" };
   }

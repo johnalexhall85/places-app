@@ -22,6 +22,7 @@ const TOPICS = [
 ];
 
 export const MAP_ROUTES = {
+  brfss: "/area/brfss",
   places: "/area/places-2025",
   acs: "/area/acs-2024",
   acs_profile: "/area/acs-community",
