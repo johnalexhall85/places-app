@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T15:05:00+00:00 — Gate 3 readiness recheck of the product track (Claude)
+
+- **Outcome:** independently rechecked Codex's X5/X6 handoff at staging `beta` `4633cad` and pushed `beta` to origin. No application code changed; documentation only (handbook, runbook open items, Claude status). No live change: live checkout clean on `main` `0195959`, ten pointers, Alembic `c8f1e4a7d3b6`, backend not restarted since 2026-11-14T22:29Z.
+- **Verification rerun on staging:** `npm run test:beta` passed all legs (landing/search/profile/PDF, comparison, topics, three showcase profiles, legacy and area pages, HRSA Details pointer clicks at desktop and mobile widths, mobile overflow, district `5401`); `deliverables/beta/verify_source_samples.py` passed 47 archived-source checks; frontend 149 tests and backend area/community 208 tests passed. Authenticated API: Person County profile returns 46 indicators with the ACS and PLACES insurance measures separate; district `5401` returns seven ACS estimates, facilities, and county relations. The full backend suite was not rerun here. The audit rerun rewrote only the timestamp in `gate3_source_samples.json` in the staging checkout; that change was discarded.
+- **Ownership note:** the 02:27 and 02:29 entries record Codex completing C4 and C5 on the data/platform track at John's instruction; the recovery set's 37 checksums were re-verified by Claude, the isolated restore was not repeated.
+- **Timestamp note:** this entry uses the VM clock. The C1–C3 entries stamped 15:30 and 17:40 on this date were stamped ahead of the clock and precede this entry in fact.
+- **Next:** John's Gate 3 review on staging and approval of a specific `beta` commit. Promotion then follows the runbook with a fresh live recovery set. AHRF redistribution terms remain open.
+
 ## 2026-11-15T17:40:00+00:00 — ACS community characteristics and 119th Congress districts published on staging (Claude, C2 and C3)
 
 - **Outcome:** new independent shared product `census_acs5_2024_community_profile` is published on **staging** as release `d90070e6-0358-499b-b992-4ca6b8b42eb3`: seven Census-published measures (total population; percent in poverty, 65 and over, under 18, with a disability, uninsured, limited English) for 52 states, 3,222 counties, 85,382 tracts, and 437 congressional districts. Live is unchanged. The B19013 income product was not touched.

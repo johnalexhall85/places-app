@@ -25,4 +25,4 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Updated at the end of ever
 
 ## Gate 3 handoff
 
-The data/platform packages have no remaining staging work. Promotion is **not approved or run**. Codex's X5 district page/search, measure integration, refreshed source audit, district walkthrough, and the HRSA pointer target fix must pass on staging; then John reviews Gate 3 and approves a specific beta commit. The [promotion runbook](../PROMOTION_RUNBOOK.md) requires a new live recovery set and exact digest comparison before any live release changes.
+Rechecked by Claude on 2026-11-15T15:03Z at staging `beta` `4633cad`: every product-track request above is done and deployed (district briefing and search, 46 measures in profiles and topics, ACS community source map, HRSA Details pointer fix, 47-check source audit, full district walkthrough leg). Both tracks have no remaining staging work. Promotion is **not approved or run**: John reviews Gate 3 and approves a specific `beta` commit, then the [promotion runbook](../PROMOTION_RUNBOOK.md) applies, starting with a new live recovery set and exact digest comparison.

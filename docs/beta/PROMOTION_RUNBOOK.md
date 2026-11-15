@@ -104,7 +104,7 @@ No Nginx change is needed: the community API is reached through the existing `/a
 
 - Anonymous `GET /api/area/catalog` and `GET /api/community/catalog` through Nginx return 401; `/` returns 200.
 - With an authorized session: the walkthrough (landing, search, the three showcase profiles, comparison, PDF, a topic, the district briefing) passes against the live address.
-- From the approved checkout's `frontend/`, run `CHIP_BETA_URL=http://127.0.0.1 CHIP_BETA_CODE_FILE=<private-live-code-file> CHIP_BETA_DISTRICT_GEOID=5401 node scripts/beta-walkthrough.mjs`. The script currently checks that the district route loads; inspect its values, facility list, and county relations separately until Codex expands that leg.
+- From the approved checkout's `frontend/`, run `CHIP_BETA_URL=http://127.0.0.1 CHIP_BETA_CODE_FILE=<private-live-code-file> CHIP_BETA_DISTRICT_GEOID=5401 node scripts/beta-walkthrough.mjs`. The district leg checks the seven estimates, facility sections, and county links.
 - `/explore/map`, every `/area/*` page, the three overlays, and the funding pages load.
 - Ten values per showcase county match staging.
 - Record commit, pointers, digests, and results in the diary; update the handbook's live state.
@@ -124,6 +124,4 @@ Data rollback and application rollback are independent. Never delete archives un
 ## Open items before this runbook is final
 
 - Confirm the live PDF frontend base through the authorized live PDF check after setting it. The live `.env.production` exists and sets `VITE_API_BASE_URL=/api` (verified 2026-11-15).
-- Expand the district walkthrough leg beyond route loading before Gate 3.
-- Fix and recheck the HRSA site-table “Details” pointer target at desktop and 390 px widths; the current staging overlay places other content over the button, although keyboard Enter works.
 - AHRF redistribution terms remain unsettled; the product stays behind the access code.
