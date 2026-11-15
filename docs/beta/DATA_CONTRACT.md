@@ -10,6 +10,7 @@ All functions take a SQLAlchemy session (`db`) as the first argument and read on
 |---|---|---|
 | `catalog(db)` | Every product and measure, the levels each is published at, the active release, product limitations, and `status_text` | `catalog.json` |
 | `area_info(db, level, geoids)` | Name, state, county, bounding box, and a point inside each area (2024 boundaries). Unknown GEOIDs are left out. | `area_info_county_01055.json` |
+| `area_info(db, level, geoids, geometry=True)` | The same record plus `geometry`, a simplified GeoJSON outline for drawing a selection (tolerance by level: state 0.02°, county and district 0.004°, tract 0.0005°). A display shape, not the stored boundary. Served at `GET /api/community/area/{level}/{geoid}` (400 for an unknown level, 404 for an unknown GEOID). | none; shape is `area_info` plus `geometry` |
 | `area_values(db, level, geoids, products=None, measure_ids=None)` | One row per area and measure published at exactly that level | `area_values_county_01055.json`, `area_values_state_01.json`, `area_values_county_edge_cases.json` |
 | `national_reference(db)` | National values the source itself publishes (CMS only) | `national_reference.json` |
 | `county_tract_values(db, county_geoid, product, measure_id)` | Every tract row of one measure in one county, without geometry | `county_tract_values_01055_places_access2.json` |
@@ -85,6 +86,11 @@ Catalog measure entries add `product_name`, `publisher`, `landing_page`, `levels
 ## Linking to maps
 
 Profile maps reuse the existing viewport API (`/api/area/map`, `/legend`, `/table`) with the area's `bbox` from `area_info` and the `release_id`, `measure_id`, `period`, `population`, and `value_type` from the value row. Existing pages are `/area/places-2025`, `/area/acs-2024`, `/area/ahrf`, `/area/clh`, `/area/epa-aqi`, `/area/cms-gv`, and `/area/usda-fea`.
+
+### Map focus and class breaks (added 2026-11-15, map consistency package)
+
+- **Focus link.** Every `/area/*` map accepts `focus=<level>:<geoid>` (`state`, `county`, `tract`, `cd`). The page reads `/api/community/area/{level}/{geoid}`, zooms to the box, outlines the area, and shows its published value in the legend when the map is drawing that level. When it is not (a state on a county-only product), the legend says so and shows no value; nothing is computed from the areas inside. The legacy map accepts `focus=county:<fips>` and `focus=state:<fips>`.
+- **Quintile breaks.** `/api/area/legend` for PLACES, ACS income (B19013), AHRF, and CLH also returns `quantile_breaks` (20th, 40th, 60th, 80th percentiles of published values for that release, measure, and level across the whole release, never the viewport) and `quantile_basis`. Only `available` and `true_zero` rows count. `null` when fewer than five values exist. These are display classes; no value is derived or stored. The other products keep the fixed `legend_breaks` from their registries.
 
 ## Routing
 

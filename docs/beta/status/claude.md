@@ -56,10 +56,17 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| M1 One header | Not started | `claude/map-consistency` | |
-| M2 Brand guide on maps | Not started | `claude/map-consistency` | |
-| M2b Quintile breaks and ramp contrast | Not started | `claude/map-consistency` | Added by John after plan approval. |
-| M3 Area read endpoint | Not started | `claude/map-consistency` | |
-| M4 Tooltip, legend, selection, tools, search on `/area/*` | Not started | `claude/map-consistency` | |
-| M5 Maps open zoomed to the place | Not started | `claude/map-consistency` | |
-| M6 Verify, staging, documents | Not started | `claude/map-consistency` | |
+| M1 One header | Done on staging | `claude/map-consistency` | `SiteHeader` on every page; Log out and gated Funding Model Builder kept; funding methodology on `/methodology`; old pop-ups removed. |
+| M2 Brand guide on maps | Done on staging | `claude/map-consistency` | Brand tokens in `index.css`; 229 legacy chrome colours swapped; one Blues ramp for `/area/*` and (beyond the first answer, see diary) the legacy map's sequential scales. |
+| M2b Quintile breaks and ramp contrast | Done on staging | `claude/map-consistency` | `quantile_breaks` in the PLACES, ACS income, AHRF, and CLH legends. Open: lopsided fixed breaks for three AQI and three state-level ACS community measures. |
+| M3 Area read endpoint | Done on staging | `claude/map-consistency` | `lookup.area_info(..., geometry=True)`; `GET /community/area/{level}/{geoid}`. |
+| M4 Tooltip, legend, selection, tools, search on `/area/*` | Done on staging | `claude/map-consistency` | Popups removed. |
+| M5 Maps open zoomed to the place | Done on staging | `claude/map-consistency` | `focus=<level>:<geoid>` from county, state, and district profiles; legacy map accepts county and state. |
+| M6 Verify, staging, documents | Done; waiting for John's review | `claude/map-consistency` | Frontend 155 tests, area/community backend 241, `npm run test:beta` all legs on staging `5fb2720`. Not on live. |
+
+### What Codex can rely on now (map consistency)
+
+- Import the header from `components/SiteHeader` (or the old `components/Header` path); do not add page-specific headers. `components/PlaceSearch` takes `onSelect` for in-page use.
+- Map links from any page can add `&focus=<level>:<geoid>`; `mapFocus(level, geoid)` in `CommunityPages.jsx` builds it.
+- Colours for any new map come from `branding/mapColors.js`; tooltips from `utils/mapTooltip.js`.
+- The source audit under `deliverables/` was **not** rerun: no pointer or value changed. Screenshots there predate the new header and ramps and need refreshing by Codex if John wants them current.
