@@ -27,6 +27,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
 - **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
 
+## 2026-11-15T16:51:05+00:00 — Y4 BRFSS state map and topic links deployed to staging (Codex)
+
+- **Request/outcome:** Completed Y4 on `codex/brfss-y4-state-map`; commit `5edec8c` merged into local `beta` and deployed to staging. Added `/area/brfss` to the route and both data-source selectors. The existing source-map page now pins BRFSS to state geography, shows CDC's fixed prevalence classes, confidence limits, response counts, source status, and the CDC-published median of states and DC as a reference only. Added all 20 BRFSS measures to the two health topics with preselected map links. No live changes, migrations, or direct published-data table reads in product code.
+- **Verification:** Focused source-map and route tests 28 passed, focused community API tests 9 passed, Vite build and staging deploy checks passed. Authenticated staging browser showed 52 state shapes and table rows, not-published status, median label, 2022 dental selection, and 13 health plus seven prevention topic map links. Two initial browser verification attempts failed on ambiguous/exact label locators in the check script; the corrected locator run passed without page errors.
+- **Files/state:** `Places2025Pilot.jsx` and test, `App.jsx`, community topic JSON and map route, route resolver and test, Codex status, and diary. The handbook is Claude-owned and was not edited; staging releases and pointers were unchanged.
+- **Unresolved/next:** Complete Y5 landing state search, walkthrough, three-state source audit, and screenshots; then hand off at staging for John's review. B4 promotion remains Claude-owned.
+
 ## 2026-11-15T16:45:58+00:00 — Y3 county BRFSS companions deployed to staging (Codex)
 
 - **Request/outcome:** Completed Y3 on `codex/brfss-y3-county-companion`; commit `21e11f7` merged into local `beta` and deployed to staging. County PLACES cards and the comparison table show paired direct state BRFSS values with the exact survey label, year, confidence interval, and source; the county CSV has companion columns and the profile links to its state. Comparison API obtains each state companion through `lookup.state_survey_companions`. No live changes, migrations, or direct published-data table reads.
