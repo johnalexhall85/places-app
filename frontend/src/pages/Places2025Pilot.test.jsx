@@ -21,7 +21,8 @@ describe("PLACES 2025 county pilot selection", () => {
   afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; });
   it("routes the pilot separately from the legacy map", () => {
     expect(resolveRoute("/area/places-2025")).toEqual({ type: "places-2025-pilot" });
-    expect(resolveRoute("/")).toEqual({ type: "map" });
+    expect(resolveRoute("/")).toEqual({ type: "community-landing" });
+    expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
   });
   it("pins every selection and viewport in each request key", () => {
     const selection = { datasetId: "cdc_places_county_2025_pilot", releaseId: "release-a", valueType: "crude_prevalence", measure: {

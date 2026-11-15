@@ -14,11 +14,16 @@ export const BRAND_FOOTER = {
 };
 
 export const PDO_TOKENS = {
-  primary: "#3576BA",
-  secondary: "#9ABBDD",
-  accent: "#FFD5B0",
-  background: "#F2F6FB",
-  text: "#123247",
+  primary: "#0277BD",
+  secondary: "#3D75C9",
+  accent: "#F0B97D",
+  background: "#F4F7FB",
+  text: "#1A2F3F",
+  deepNavy: "#003F61",
+  teal: "#009688",
+  forestGreen: "#558B2F",
+  steelGrey: "#CFD8DC",
+  mutedText: "#546E7A",
   legacyNavy: "#0F2D46",
   legacySlate: "#2C5F8A",
   legacyTeal: "#178B8B",

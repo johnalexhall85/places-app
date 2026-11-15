@@ -1,5 +1,15 @@
 export function resolveRoute(pathname) {
   const normalizedPath = String(pathname ?? "").trim();
+  if (/^\/?$/.test(normalizedPath)) {
+    return { type: "community-landing" };
+  }
+  if (/^\/explore\/map\/?$/i.test(normalizedPath)) {
+    return { type: "map" };
+  }
+  const communityCountyMatch = normalizedPath.match(/^\/community\/county\/(\d{5})\/?$/i);
+  if (communityCountyMatch) {
+    return { type: "community-county", id: communityCountyMatch[1] };
+  }
   if (/^\/area\/places-2025\/?$/i.test(normalizedPath)) {
     return { type: "places-2025-pilot" };
   }

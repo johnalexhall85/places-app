@@ -14,6 +14,8 @@ import ProfileCounty from "./pages/ProfileCounty";
 import ProfileTract from "./pages/ProfileTract";
 import Places2025Pilot from "./pages/Places2025Pilot";
 import "./index.css";
+import "./community/tokens.css";
+import { CommunityLanding, CommunityCounty } from "./community/CommunityPages";
 import { resolveRoute } from "./utils/routeResolver";
 
 installDemoAccessFetchCredentials(API_BASE);
@@ -57,7 +59,11 @@ function Root() {
     return <DemoAccessGate>{routedPage}</DemoAccessGate>;
   }
   const route = resolveRoute(window.location.pathname);
-  if (route.type === "cdc-state-funding-profile") {
+  if (route.type === "community-landing") {
+    routedPage = <CommunityLanding />;
+  } else if (route.type === "community-county") {
+    routedPage = <CommunityCounty geoid={route.id} />;
+  } else if (route.type === "cdc-state-funding-profile") {
     routedPage = <CdcStateFundingProfile stateCode={route.id} />;
   } else if (route.type === "cdc-funding-overview") {
     routedPage = <CdcFundingOverview />;

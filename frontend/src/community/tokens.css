@@ -1,0 +1,18 @@
+:root {
+  --pdo-primary: #0277bd;
+  --pdo-secondary: #3d75c9;
+  --pdo-accent: #f0b97d;
+  --pdo-background: #f4f7fb;
+  --pdo-surface: #ffffff;
+  --pdo-surface-alt: #f4f7fb;
+  --pdo-border: #cfd8dc;
+  --pdo-border-strong: #a8bac4;
+  --pdo-text: #1a2f3f;
+  --pdo-text-muted: #546e7a;
+  --pdo-text-subtle: #546e7a;
+  --chip-navy: #003f61;
+  --chip-slate: #0277bd;
+  --chip-teal: #009688;
+  --headline-font: "Roboto Slab", Georgia, serif;
+  --body-font: Arial, sans-serif;
+}
