@@ -284,16 +284,19 @@
   min-height: 0;
   overflow: auto;
   padding: 0 14px 12px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
+
+.pilot-sites-body > * { flex: 0 0 auto; }
 
 .pilot-sites-body p { margin: 0; }
 .pilot-sites-body table { width: 100%; border-collapse: collapse; text-align: left; }
 .pilot-sites-body th, .pilot-sites-body td { padding: 4px 6px; border-bottom: 1px solid var(--pdo-border); vertical-align: top; }
 .pilot-sites-body thead { position: sticky; top: 0; background: var(--pdo-surface-alt); }
 .pilot-sites-body caption { text-align: left; padding: 6px; color: var(--pdo-text-muted); }
-.pilot-sites-body .pilot-table-scroll { max-height: 220px; overflow: auto; background: white; border: 1px solid var(--pdo-border); }
+.pilot-sites-body .pilot-table-scroll { height: 220px; max-height: 220px; overflow: auto; background: white; border: 1px solid var(--pdo-border); }
 .pilot-sites-body nav { display: flex; align-items: center; gap: 8px; }
 .pilot-sites-filters fieldset { border: 1px solid var(--pdo-border); border-radius: 8px; margin: 6px 0; padding: 6px 8px; display: grid; gap: 2px; }
 .pilot-sites-filters legend { font-weight: 700; padding: 0 4px; }
