@@ -7,13 +7,14 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Codex updates this file at
 | X1 Community API | Done; merged and deployed to staging | `codex/beta-x1-community-api` | Staging `beta` at `6f76e0d`; authenticated Nginx reads passed for catalog, search, county profile, comparison, facilities, topics, tract route, and CSV. Local focused tests: 13 passed. Full suite: 655 passed, two unrelated source-dependent failures with ignored inputs absent; the known FY2026 source mismatch remains when inputs are linked. |
 | X2 Landing, navigation, county profile, brand tokens | Done; merged and deployed to staging | `codex/beta-x2-landing-profile` | Staging `beta` at `8cd7412`. Root landing, `/explore/map` legacy route, county profile, brand tokens. Frontend 144/144 tests and Vite build passed; authenticated desktop/mobile browser walkthrough passed with 28 Person County cards, seven topic tiles, no page errors or horizontal overflow. Topic cards currently link to existing source maps; X4 adds topic pages. |
 | X3 Comparison and PDF export | Done; merged and deployed to staging | `codex/beta-x3-comparison-pdf` | Three-showcase comparison renders 28 aligned indicators through authenticated Nginx, with no page errors or document overflow at 390 px. PDF endpoint reuses Playwright profile rendering with the current demo session cookie; 200 response, 9-page PDF, source and income text verified. Backend 656 tests passed with two unrelated source-dependent cases deselected; frontend 146/146 and build passed. |
-| X4 Topics and tract patterns | Not started | | |
+| X4 Topics and tract patterns | Done; merged and deployed to staging | `codex/beta-x4-topics-tracts` | Seven API-driven topic pages and source-map measure preselection; profile displays ACS published tract shapes and an explicit PLACES empty state until a combined release is active. Frontend 147/147 and build passed. Authenticated desktop/mobile browser checks passed. |
 | X5 District briefing | Waiting for C3 | | |
 | X6 End-to-end tests and polish | Not started | | |
 
 ## What Claude can rely on now
 
 - The X1 API is available through staging Nginx. A staging-only access code is stored outside the repository at `/home/john/.local/share/chip/staging-beta-access-code` (mode 600); ask John to retrieve it on the VM for review. The seven topic definitions are initial product copy; C1 and C2 measures must be added when published.
+- X4 topic routes and within-county tract view are on staging `beta`; ACS Person County shows seven source-published tracts from the profile's active release. The PLACES tract view correctly reports no rows under the current county-only active release.
 
 ## Blocked or waiting
 

@@ -25,6 +25,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Unresolved:** `main` and `beta` are not pushed (blocked by session policy). No staging access code yet.
 - **Next action:** when the copy finishes, analyze the database, start the staging service, run the first staging deploy, recheck `lookup` there, then begin C1 (PLACES expansion).
 
+## 2026-11-15T00:39:47+00:00 — X4 topics and tract patterns deployed to staging (Codex)
+
+- **Request/outcome:** After confirming the staging copy had ended successfully, continued the approved beta product track. Added `/topics` and seven topic detail pages with source-published measure descriptions, limits, and links that preselect the measure on its source map. Added a release-pinned within-county tract map to the county profile. Merged `e08e290` into local `beta` and deployed staging only; no live application, database, or deployment changes.
+- **Verification:** Frontend 147 tests and Vite build passed. Authenticated Nginx and browser checks showed seven topic cards, six food-environment measures, successful map measure preselection, and seven ACS tract polygons for Person County from the same active release as the profile. No browser errors or mobile document overflow. Direct staging API checks confirmed ACS seven tract rows and PLACES zero under its current county-only active release; the UI gives an explicit PLACES empty state.
+- **Files/state:** Product UI and route files under `frontend/src/community`, `frontend/src/main.jsx`, `frontend/src/pages/Places2025Pilot.jsx`, and route resolver. Staging `beta` at `e08e290`. No migrations or source data changed. The handbook remains Claude-owned under the execution plan; these operational facts are recorded here for Claude to fold into it.
+- **Unresolved/next:** Recheck the PLACES tract view after C1 publishes a combined release. Add C1/C2 measures to topic definitions after publication. X5 district data depends on C3; proceed with independent X6 walkthrough and polish meanwhile.
+
 ## 2026-11-15T00:31:20+00:00 — X3 comparison and PDF briefing deployed to staging (Codex)
 
 - **Outcome:** On `codex/beta-x3-comparison-pdf`, added `/compare?counties=…` with up to four aligned county columns, URL state, county search, distinct missing-status display, and no ranking or score. Added `/api/community/county/{geoid}/pdf`, reusing the existing Playwright profile renderer with the validated demo-session cookie. Added print layout for the profile. Merged `ab5dbcb` to `beta` and deployed staging only; no live changes.
