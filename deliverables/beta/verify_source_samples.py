@@ -1,4 +1,4 @@
-"""Check ten published indicators per showcase county against release-linked source archives.
+"""Check current staging county and district values against release-linked source archives.
 
 Run from the repository root with backend/.venv/bin/python. Reads staging and archive
 metadata only; it does not publish or modify application data.
@@ -23,11 +23,12 @@ from sqlalchemy import create_engine, text
 ROOT = Path(__file__).resolve().parents[2]
 BASE = "http://127.0.0.1:8080"
 CODE_FILE = Path("/home/john/.local/share/chip/staging-beta-access-code")
-REPORT = Path(__file__).with_name("gate1_source_samples.json")
+REPORT = Path(__file__).with_name("gate3_source_samples.json")
 COUNTIES = ("37145", "54039", "06019")
 SAMPLES = {
-    "places": ("dental_crudeprev", "access2_crudeprev"),
+    "places": ("dental_crudeprev", "access2_crudeprev", "diabetes_crudeprev", "obesity_crudeprev"),
     "acs": ("B19013_001E",),
+    "acs_profile": ("total_population", "poverty_pct", "uninsured_pct"),
     "ahrf": ("phys_nf_prim_care_pc_exc_rsdt_23",),
     "clh": ("ACS_PCT_HH_BROADBAND_ANY",),
     "cms_gv": ("om_beneficiaries",),
@@ -62,13 +63,20 @@ def main():
     source_files = {}
     engine = create_engine(dotenv_values(ROOT / "backend/.env")["DATABASE_URL"])
     with engine.connect() as db:
+        # The active PLACES tract release carries county observations from its reviewed parent.
+        # This reads release provenance only; published values continue to come from lookup via the API.
+        places_parent = db.execute(text("SELECT parent_county_release_id FROM area_pilot.release WHERE id=:release"),
+                                   {"release": releases["places"]}).scalar_one()
+        if not places_parent:
+            raise AssertionError("Active PLACES release has no county source parent")
         def archive(product, role):
             key = (product, role)
             if key in source_files:
                 return Path(source_files[key]["path"])
+            source_release = str(places_parent) if product == "places" and role.startswith("page_") else releases[product]
             rows = db.execute(text("SELECT path, sha256 FROM area_pilot.source_file "
                                    "WHERE release_id=:release AND role=:role ORDER BY path"),
-                              {"release": releases[product], "role": role}).mappings().all()
+                              {"release": source_release, "role": role}).mappings().all()
             for row in rows:
                 path = Path(row["path"])
                 if not path.is_file():
@@ -77,7 +85,7 @@ def main():
                     digest = hashlib.file_digest(source_file, "sha256").hexdigest()
                 if digest != row["sha256"]:
                     raise AssertionError(f"Archived source checksum mismatch: {product} {role}")
-                source_files[key] = {"path": str(path), "sha256": digest, "release_id": releases[product]}
+                source_files[key] = {"path": str(path), "sha256": digest, "release_id": source_release}
                 return path
             raise AssertionError(f"No intact archive tied to active release: {product} {role}")
 
@@ -98,6 +106,26 @@ def main():
                 geoid = row["state"] + row["county"]
                 if geoid in COUNTIES:
                     source[(geoid, "acs", "B19013_001E")] = number(row["B19013_001E"])
+        # The new ACS community profile uses published subject-table estimates, not calculated percentages.
+        profile_variables = {"total_population": "S0101_C01_001E", "poverty_pct": "S1701_C03_001E",
+                             "uninsured_pct": "S2701_C05_001E"}
+        for state in {geoid[:2] for geoid in COUNTIES}:
+            response = json.loads(archive("acs_profile", f"county_{state}").read_text())
+            headers = response[0]
+            for values in response[1:]:
+                row = dict(zip(headers, values))
+                geoid = row["state"] + row["county"]
+                if geoid in COUNTIES:
+                    for measure, variable in profile_variables.items():
+                        source[(geoid, "acs_profile", measure)] = number(row[variable])
+        district_source = {}
+        response = json.loads(archive("acs_profile", "cd_54").read_text())
+        headers = response[0]
+        for values in response[1:]:
+            row = dict(zip(headers, values))
+            if row["state"] + row["congressional district"] == "5401":
+                for measure in ("total_population", "poverty_pct"):
+                    district_source[measure] = number(row[profile_variables[measure]])
         # AHRF's unmodified person and physician CSV.
         for row in csv_rows(archive("ahrf", "AHRF2025hp.csv")):
             geoid = row["fips_st_cnty"]
@@ -153,6 +181,10 @@ def main():
             pdf_response.raise_for_status()
             pdf_text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(pdf_response.content)).pages))
             rendered[geoid] = (values, pdf_text)
+        page.goto(f"{BASE}/district/cd/5401")
+        page.locator("[data-testid=district-ready]").wait_for()
+        district_display = {card.locator("h3").inner_text(): card.locator(".community-value").inner_text()
+                            for card in page.locator("article.community-indicator").all()}
         browser.close()
 
     checks = []
@@ -178,8 +210,21 @@ def main():
                 checks.append({"geoid": geoid, "county": profile["area"]["name"], "product": product,
                                "measure_id": measure, "archive_value": str(raw), "api_value": str(api),
                                "profile_and_pdf_value": display, "release_id": row["release_id"]})
-    if len(checks) != 30:
-        raise AssertionError(f"Expected 30 checks, got {len(checks)}")
+    district_response = session.get(f"{BASE}/api/community/district/5401", timeout=40)
+    district_response.raise_for_status()
+    district = district_response.json()
+    district_values = {row["measure_id"]: row for row in district["values"]}
+    for measure, raw in district_source.items():
+        row = district_values[measure]
+        api = number(row["value"])
+        display = district_display[row["label"]]
+        if api != raw or number(display.replace(",", "").replace("%", "")) != raw:
+            raise AssertionError(f"District archive/API/page mismatch: {measure}")
+        checks.append({"geoid": "5401", "district": district["area"]["name"], "product": "acs_profile",
+                       "measure_id": measure, "archive_value": str(raw), "api_value": str(api),
+                       "profile_and_pdf_value": display, "release_id": row["release_id"], "surface": "district page"})
+    if len(checks) != 47:
+        raise AssertionError(f"Expected 47 checks, got {len(checks)}")
     # Catch publication while the report was being assembled.
     latest = session.get(f"{BASE}/api/community/county/{COUNTIES[0]}", timeout=40).json()
     if {row["product"]: row["release_id"] for row in latest["values"]} != releases:
@@ -188,7 +233,7 @@ def main():
                                   "staging_base": BASE, "count": len(checks),
                                   "source_archives": [dict(product=p, role=r, **data) for (p, r), data in sorted(source_files.items())],
                                   "checks": checks}, indent=2) + "\n")
-    print(f"{len(checks)} archived-source checks passed across {len(COUNTIES)} counties and {len(SAMPLES)} products; wrote {REPORT}")
+    print(f"{len(checks)} archived-source checks passed across {len(COUNTIES)} counties, one district, and {len(SAMPLES)} products; wrote {REPORT}")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 
 const base = (process.env.CHIP_BETA_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
 const codeFile = process.env.CHIP_BETA_CODE_FILE || '/home/john/.local/share/chip/staging-beta-access-code';
-const districtGeoid = process.env.CHIP_BETA_DISTRICT_GEOID;
+const districtGeoid = process.env.CHIP_BETA_DISTRICT_GEOID || '5401';
 const screenshotDir = process.env.CHIP_BETA_SCREENSHOT_DIR;
 const showcase = ['37145', '54039', '06019'];
 const browser = await chromium.launch({ headless: true });
@@ -24,6 +24,20 @@ async function visit(path, heading) {
   assert.deepEqual(errors, [], `${path} browser errors`);
 }
 
+async function contrast(selector, backgroundSelector, minimum) {
+  const ratio = await page.evaluate(([foreground, background]) => {
+    const channels = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const luminance = value => channels(value).map(n => {
+      const c = n / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, c, index) => sum + c * [0.2126, 0.7152, 0.0722][index], 0);
+    const a = luminance(getComputedStyle(document.querySelector(foreground)).color);
+    const b = luminance(getComputedStyle(document.querySelector(background)).backgroundColor);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }, [selector, backgroundSelector]);
+  assert.ok(ratio >= minimum, `${selector} contrast ${ratio.toFixed(2)} below ${minimum}`);
+}
+
 try {
   const anonymous = await browser.newContext();
   const protectedResponse = await anonymous.request.get(`${base}/api/community/catalog`);
@@ -41,9 +55,19 @@ try {
   await page.getByLabel('Find a county').fill('Person');
   await page.getByRole('link', { name: /Person County, NC/ }).first().click();
   await page.getByRole('heading', { name: 'Person County, North Carolina' }).waitFor();
-  assert.ok(await page.locator('.community-indicator').count() >= 28, 'Person profile indicators');
+  assert.equal(await page.locator('.community-indicator').count(), 46, 'Person profile indicators from eight products');
   await page.locator('.community-tract-map .leaflet-interactive').first().waitFor();
   assert.equal(await page.locator('.community-tract-map .leaflet-interactive').count(), 7, 'Person ACS tracts');
+  await page.getByLabel('Tract measure').selectOption('places:diabetes_crudeprev');
+  await page.waitForFunction(() => document.querySelectorAll('.community-tract-map .leaflet-interactive').length === 7);
+  assert.equal(await page.locator('.community-tract-map .leaflet-interactive').count(), 7, 'Person PLACES diabetes tracts');
+  const insurance = page.locator('.community-indicator').filter({ hasText: 'insurance' });
+  assert.equal(await insurance.count(), 2, 'separate ACS and PLACES insurance measures');
+  assert.ok((await page.locator('#people').innerText()).includes('all ages'), 'ACS insurance population');
+  assert.ok((await page.locator('#prevention').innerText()).includes('adults aged 18-64'), 'PLACES insurance population');
+  await contrast('.community-source', '.community-indicator', 4.5);
+  await contrast('.community-value', '.community-indicator', 3);
+  await contrast('.community-header nav a', '.community-header', 4.5);
   await screenshot('person-profile', true);
   const pdf = await context.request.get(`${base}/api/community/county/37145/pdf`);
   assert.equal(pdf.status(), 200, 'PDF briefing');
@@ -52,13 +76,17 @@ try {
 
   await visit('/compare?counties=37145,54039,06019', 'Compare published indicators');
   await page.getByText('Fresno County', { exact: false }).first().waitFor();
-  assert.ok(await page.locator('.community-compare-table tbody tr').count() >= 28, 'comparison rows');
+  assert.equal(await page.locator('.community-compare-table tbody tr').count(), 46, 'comparison rows');
   await screenshot('three-county-comparison');
   console.log('Three-county comparison: passed');
 
   await visit('/topics', 'Community health topics');
   await page.locator('.community-topic').first().waitFor();
   assert.equal(await page.locator('.community-topic').count(), 7, 'topic list');
+  await visit('/topics/health-conditions', 'Health conditions');
+  assert.equal(await page.locator('.community-topic-measures article').count(), 9, 'published PLACES condition measures');
+  await visit('/topics/prevention-and-access', 'Prevention and access');
+  assert.equal(await page.locator('.community-topic-measures article').count(), 5, 'published prevention and separate insurance measures');
   await visit('/topics/food-environment', 'Food environment');
   await page.locator('.community-topic-measures article').first().waitFor();
   assert.ok(await page.locator('.community-topic-measures article').count() >= 6, 'food measures');
@@ -77,33 +105,57 @@ try {
   for (const geoid of showcase) {
     await visit(`/community/county/${geoid}`);
     await page.locator('.community-indicator').first().waitFor();
-    assert.ok(await page.locator('.community-indicator').count() >= 28, `${geoid} published indicator rows`);
+    assert.equal(await page.locator('.community-indicator').count(), 46, `${geoid} published indicator rows`);
   }
+  await visit('/districts', 'Find a congressional district');
+  await page.locator('.community-district-list li').first().waitFor();
+  assert.equal(await page.locator('.community-district-list li').count(), 2, 'West Virginia district search');
+  await page.getByRole('link', { name: /Congressional District 1/ }).first().click();
+  await page.locator('[data-testid="district-ready"]').waitFor();
+  assert.equal(await page.locator('.community-indicator').count(), 7, 'Census-published district estimates');
+  assert.equal(await page.locator('.community-district-list li').count(), 28, 'named county context links');
+  assert.ok(await page.getByText(/not population shares/).count(), 'county overlap caveat');
+  await screenshot('wv01-district', true);
+  await visit('/area/acs-community?measure_id=poverty_pct&geography=cd&lat=38.2&lon=-81.2&zoom=7', 'ACS 2020–2024 community characteristics');
+  assert.equal(await page.getByLabel('Geography').inputValue(), 'cd', 'district geography selection');
+  await page.locator('.leaflet-interactive').first().waitFor();
+  await screenshot('acs-district-map');
   await visit('/about', 'Public data for a clearer view of communities');
   await visit('/methodology', 'How CHIP uses published data');
   await page.locator('.community-release-list li').first().waitFor();
   console.log('Three showcase profiles, About, and methodology: passed');
 
-  for (const path of ['/explore/map', '/area/places-2025', '/area/acs-2024', '/area/ahrf', '/area/clh', '/area/epa-aqi', '/area/cms-gv', '/area/usda-fea', '/cdc-funding']) {
+  for (const path of ['/explore/map', '/area/places-2025', '/area/acs-2024', '/area/acs-community', '/area/ahrf', '/area/clh', '/area/epa-aqi', '/area/cms-gv', '/area/usda-fea', '/cdc-funding']) {
     await visit(path);
     await page.locator('main, #root').first().waitFor();
   }
-  console.log('Legacy map, seven area pages, and funding page: loaded without browser errors');
+  console.log('Legacy map, eight area pages, and funding page: loaded without browser errors');
+
+  for (const [width, height] of [[1365, 900], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await visit('/area/usda-fea?lat=38.35&lon=-81.63&zoom=10');
+    await page.getByLabel('Show HRSA health center sites').check();
+    if (width === 390) await page.getByRole('button', { name: 'Show panel' }).click();
+    const detail = page.getByRole('button', { name: /Details for/ }).first();
+    await detail.waitFor();
+    await detail.click();
+    await page.locator('.chip-sites-detail h3').first().waitFor();
+    await page.waitForFunction(() => document.querySelector('.chip-sites-detail h3')?.textContent !== 'Loading site…');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width} overlay overflow`);
+  }
+  console.log('HRSA table Details pointer clicks: passed at desktop and mobile widths');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/compare?counties=37145,54039,06019', '/methodology']) {
+  for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/compare?counties=37145,54039,06019', '/district/cd/5401', '/methodology']) {
     await visit(path);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} mobile overflow`);
     if (path === '/community/county/37145') await screenshot('person-profile-mobile');
   }
-  console.log('Mobile layout: no document overflow on five key routes');
-
-  if (districtGeoid) {
-    await visit(`/district/cd/${districtGeoid}`);
-    console.log(`District ${districtGeoid}: loaded`);
-  } else {
-    console.log('District briefing: pending C3 published district release');
-  }
+  console.log('Mobile layout: no document overflow on six key routes');
+  await visit(`/district/cd/${districtGeoid}`);
+  await page.locator('[data-testid="district-ready"]').waitFor();
+  assert.equal(await page.locator('.community-indicator').count(), 7, `${districtGeoid} mobile district estimates`);
+  console.log(`District ${districtGeoid}: full briefing passed`);
   assert.deepEqual(errors, [], 'browser errors');
 } finally {
   await browser.close();
