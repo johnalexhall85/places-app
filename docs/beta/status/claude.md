@@ -12,7 +12,7 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Updated at the end of ever
 | C1 PLACES expansion | Done on staging | `claude/beta-c1-places` | 13 measures at county and tract level. Staging active release `7bf96574-ac68-4d2f-9db8-95b07fbbf622` (parent county `6f265cd8-809b-402d-a7c2-415301f93ba9`). Catalog now has 39 measures. Not on live. |
 | C2 ACS expansion | Done on staging | `claude/beta-c2-acs` | New independent product `census_acs5_2024_community_profile`, seven measures at state, county, and tract level. Staging release `d90070e6-0358-499b-b992-4ca6b8b42eb3`. [Guide](../../../backend/docs/chip_acs_community_profile.md). Not on live. |
 | C3 Congressional districts | Done on staging | `claude/beta-c2-acs` | Same release carries 437 district estimates; `cd_boundary_119` loaded; `lookup` has district functions. Migration `d5a2f7c9e1b4`. Not on live. |
-| C4 Recovery and promotion runbook | Not started | | |
+| C4 Recovery and promotion runbook | Runbook drafted | `claude/beta-c2-acs` | [PROMOTION_RUNBOOK.md](../PROMOTION_RUNBOOK.md) with the reviewed staging digests. The fresh recovery set is taken at promotion time so it is current. |
 | C5 Handbook for beta | Not started | | |
 
 ## What Codex can rely on now
