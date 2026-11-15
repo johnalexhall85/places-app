@@ -372,7 +372,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [table, setTable] = useState(null);
   const [error, setError] = useState("");
   const [loadedKey, setLoadedKey] = useState(null);
-  const [tableOpen, setTableOpen] = useState(true);
+  const [tableOpen, setTableOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 700);
   const requestId = useRef(0);
   const viewportRef = useRef(null);
   const datasetKey = isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "places";

@@ -246,7 +246,11 @@ try {
   for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/community/state/37', '/area/brfss', '/compare?counties=37145,54039,06019', '/district/cd/5401', '/methodology']) {
     await visit(path);
     if (path.startsWith('/community/')) await page.locator('[data-testid="profile-ready"]').waitFor();
-    if (path === '/area/brfss') await page.locator('.pilot-table tbody tr').first().waitFor();
+    if (path === '/area/brfss') {
+      // On a phone the table starts closed; opening it must still show every state.
+      await page.locator('.pilot-table-toggle').click();
+      await page.locator('.pilot-table tbody tr').first().waitFor();
+    }
     if (path.startsWith('/district/')) await page.locator('[data-testid="district-ready"]').waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} mobile overflow`);
     if (path === '/community/county/37145') await screenshot('person-profile-mobile');

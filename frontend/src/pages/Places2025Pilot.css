@@ -296,11 +296,15 @@
 }
 
 @media (max-width: 700px) {
-  .pilot-content { min-height: 650px; }
-  .pilot-controls { max-height: 34vh; overflow: auto; }
-  .pilot-legend { top: auto; bottom: 66px; max-height: 23vh; overflow: auto; }
-  .pilot-table { max-height: 32vh; }
-  .pilot-dock:has(.pilot-table.is-open) { bottom: calc(23vh + 76px); }
+  /* Phone: the header wraps and is tall, so the map area keeps a fixed workable height and the page scrolls.
+     Top to bottom: controls, point overlays, legend, then the dock (Map Tools and table, both closed at first).
+     An opened dock panel grows upward over the legend. */
+  .pilot-content { height: 760px; min-height: 760px; }
+  .pilot-controls { max-height: 280px; overflow: auto; }
+  .pilot-legend { top: auto; bottom: 116px; max-height: 180px; overflow: auto; }
+  .pilot-legend > .pilot-selected { order: 0; }
+  .pilot-dock { max-height: calc(100% - 32px); overflow-y: auto; }
+  .pilot-table { max-height: 300px; }
   .pilot-tools-row .chip-secondary-btn { padding: 6px 8px; }
 }
 
@@ -462,10 +466,10 @@
 }
 
 @media (max-width: 700px) {
-  .pilot-content:has(.pilot-sites.is-open) .pilot-legend { max-height: 23vh; }
-  .pilot-overlays { left: 16px; right: 16px; width: auto; top: calc(34vh + 24px); bottom: auto; max-height: 30vh; }
+  .pilot-content:has(.pilot-sites.is-open) .pilot-legend { max-height: 180px; }
+  .pilot-overlays { left: 16px; right: 16px; width: auto; top: 304px; bottom: auto; max-height: 250px; }
   .pilot-sites.is-open,
-  .pilot-sites { left: 16px; right: 16px; width: auto; top: calc(34vh + 24px); bottom: auto; max-height: 30vh; }
+  .pilot-sites { left: 16px; right: 16px; width: auto; top: 304px; bottom: auto; max-height: 250px; }
 }
 
 /* USDA Food Environment Atlas: the observation year differs by measure, so keep it prominent. */
