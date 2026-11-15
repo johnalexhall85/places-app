@@ -186,8 +186,13 @@ def fetch_stage_tract(engine, config, directory: Path, resume_directory=None):
             AND parent_county_release_id IS NOT NULL ORDER BY published_at DESC LIMIT 1'''),
             {'dataset':config['dataset_id'],'label':config['source_release_id']}).mappings().one_or_none()
         revision_hold = same_label_revision(previous_tract, config['source_release_id'], semantic)
-        active_metadata = conn.execute(text(f'''SELECT r.metadata_sha256 FROM {S}.active_release a
-            JOIN {S}.release r ON r.id=a.release_id WHERE a.dataset_id=:dataset'''),
+        # Compare with reviewed tract metadata. During a county-then-tract rollout the active release is
+        # the county-only parent, whose metadata describes a different CDC file; use the most recently
+        # published tract release in that case.
+        active_metadata = conn.execute(text(f'''SELECT r.metadata_sha256 FROM {S}.release r
+            LEFT JOIN {S}.active_release a ON a.release_id=r.id AND a.dataset_id=r.dataset_id
+            WHERE r.dataset_id=:dataset AND r.status='published' AND r.parent_county_release_id IS NOT NULL
+            ORDER BY (a.release_id IS NOT NULL) DESC, r.published_at DESC LIMIT 1'''),
             {'dataset':config['dataset_id']}).scalar_one_or_none()
         check['metadata_matches_active'] = active_metadata is None or active_metadata == metadata
         status = 'ready' if all(check.values()) and not revision_hold else 'held'
