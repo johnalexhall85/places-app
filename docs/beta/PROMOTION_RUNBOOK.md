@@ -128,7 +128,7 @@ Data rollback and application rollback are independent. Never delete archives un
 - Confirm the live PDF frontend base through the authorized live PDF check after setting it. The live `.env.production` exists and sets `VITE_API_BASE_URL=/api` (verified 2026-11-15).
 - AHRF redistribution terms remain unsettled; the product stays behind the access code.
 
-## BRFSS and state profiles promotion (prepared 2026-11-15; not run)
+## BRFSS and state profiles promotion (executed 2026-11-15T17:13Z–17:36Z for `2d35117`; see the diary)
 
 Run after John approves the staging review of the [BRFSS and state plan](BRFSS_STATE_PLAN.md), for one named `beta` commit. The general rules above apply: fresh recovery set and application rollback pair first, one agent, stop at the first unexpected result.
 

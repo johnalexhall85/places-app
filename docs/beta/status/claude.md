@@ -40,7 +40,7 @@ Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). The beta packages 
 | B1 Source specification | Done | `claude/brfss-b1` | Twenty measures fixed and verified at CDC; [guide](../../../backend/docs/chip_brfss_state_prevalence.md); registry `brfss_state_2023.json`. |
 | B2 BRFSS product | Done on staging | `claude/brfss-b1` | Release `8ca50183-0b61-4302-8e3b-6e06cc8a35dd`, migration `e6b3a8d0f2c5`, 1,082 observations, twelve values checked against CDC. Not on live. |
 | B3 Read layer and contract | Done on staging | `claude/brfss-b1` | `lookup` product `brfss`, `state_survey_companions`, `brfss_medians`, `state_counties`, `states`, `paired_measure`. [Contract section](../DATA_CONTRACT.md) and [examples](../contract-examples/after-brfss/). |
-| B4 Promotion | Runbook section prepared; waits for Codex's Y packages and John's staging review | | |
+| B4 Promotion | Done 2026-11-15 | `claude/brfss-b4-record` | `2d35117` promoted to live; live BRFSS release `5c61bade-38bb-41dd-8728-ce5f4921975f`; twelve pointers; digests matched staging. |
 
 ### What Codex can rely on now (BRFSS)
 

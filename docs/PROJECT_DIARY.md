@@ -2,6 +2,17 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T17:40:00+00:00 — BRFSS, state maps, and state profiles promoted to live (Claude, B4)
+
+- **Approval/outcome:** John reviewed staging and approved promotion after Codex finished Y1–Y5. Promoted `beta` commit `2d35117`. No step failed; no rollback used. Before promoting, Claude reran on staging at that commit: area/community tests 233 passed, frontend 150, `npm run test:beta` passed every leg including the new state leg, and the source audit passed 59 checks. Codex's commits touched no Claude-owned paths and added no migration.
+- **Recovery before any change:** `/home/john/chip-recovery/20261115T171328Z/` (11,713,951,402-byte dump, 17:13:28–17:34:03 UTC, empty stderr, 70-line validation baseline, source archive verified, `SHA256SUMS` passed). Isolated restore test **skipped**. Application rollback pair: `data/deploy-recovery/brfss-promotion-20261115/` (`webroot-before/`, `commit-before.txt` = `9201431`, pointer lists before and after).
+- **State-changing commands on live:** `git merge --ff-only 2d35117`; `alembic upgrade head` (`d5a2f7c9e1b4` → `e6b3a8d0f2c5`); `brfss_cli fetch-stage-validate`, `review`, `approve-publish` for `5c61bade-38bb-41dd-8728-ce5f4921975f`; `npm run build`; `rsync --delete` to `/var/www/places`; `systemctl restart places-backend` (17:35Z).
+- **Digests:** the live candidate passed all six checks and reproduced the staging semantic, schema, and metadata digests; approval used the runbook's literal values.
+- **Verification:** twelve pointers, the previous eleven unchanged; live asset names equal the staging bundle (`index-D7hePjXM.js`); `/`, `/api/health`, `/explore/map`, `/community/state/37`, `/area/brfss` 200; anonymous community and BRFSS catalogs 401; read-only `lookup` output is identical on live and staging apart from release IDs for three states (99 rows), three counties (138), North Carolina's 13 companions, and the 20 medians; catalog 66 measures.
+- **Not verified:** signed-in pages, PDFs, and the BRFSS map on live (no live access code for the agent). `origin/main` not pushed by this session.
+- **Timestamp note:** this entry uses the VM clock. The B1–B3 entry below was stamped 18:30Z ahead of the clock and precedes this entry in fact.
+- **Next:** John's signed-in check on live and `git push origin main`. Open: HRSA's answer on AHRF; off-VM encrypted backup.
+
 ## 2026-11-15T18:30:00+00:00 — BRFSS state prevalence published on staging; state read layer (Claude, B1–B3)
 
 - **Request/plan:** John asked for BRFSS statewide figures beside PLACES measures on county profiles, state maps of that data, and state profiles. Decisions: years match PLACES (2023; 2022 for dental visits); the 13 PLACES measures plus seven state-only ones; state profiles use only sources already published for states plus BRFSS; same two-agent split and staging-first route. Plan: [BRFSS_STATE_PLAN.md](beta/BRFSS_STATE_PLAN.md).

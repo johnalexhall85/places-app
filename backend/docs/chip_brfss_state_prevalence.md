@@ -1,6 +1,6 @@
 # CDC BRFSS state prevalence (shared product)
 
-**Status, 2026-11-15:** published on **staging** as release `8ca50183-0b61-4302-8e3b-6e06cc8a35dd`. Not on live. Additive migration `e6b3a8d0f2c5` (`stage_brfss`, `observation_brfss`).
+**Status, 2026-11-15:** published on **live** as release `5c61bade-38bb-41dd-8728-ce5f4921975f` and on staging as `8ca50183-0b61-4302-8e3b-6e06cc8a35dd`; both reproduce the digests below. Additive migration `e6b3a8d0f2c5` (`stage_brfss`, `observation_brfss`).
 
 ## Source
 
