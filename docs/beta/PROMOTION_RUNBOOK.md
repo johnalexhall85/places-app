@@ -1,6 +1,8 @@
 # Promotion runbook: staging beta to the live demo
 
-**Draft, 2026-11-15.** Nothing in this document has been run. It is executed only after John approves Gate 3, by one agent, in order. Stop at the first step that does not produce the stated result, and use the rollback section.
+**Executed 2026-11-15T15:05Z–15:32Z for `beta` commit `f48704e`** after John's Gate 3 approval; results are in the diary. The authenticated live walkthrough in step 6 is still outstanding. The text below is kept as written for the next promotion.
+
+**Originally a draft:** nothing in this document had been run when it was written. It is executed only after John approves Gate 3, by one agent, in order. Stop at the first step that does not produce the stated result, and use the rollback section.
 
 Live is `/home/john/places-app` (`main`), database `places`, service `places-backend` on 8000, webroot `/var/www/places`, Nginx port 80. Staging is described in [infra/staging/README.md](../../infra/staging/README.md).
 

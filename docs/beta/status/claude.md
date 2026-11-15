@@ -26,3 +26,7 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Updated at the end of ever
 ## Gate 3 handoff
 
 Rechecked by Claude on 2026-11-15T15:03Z at staging `beta` `4633cad`: every product-track request above is done and deployed (district briefing and search, 46 measures in profiles and topics, ACS community source map, HRSA Details pointer fix, 47-check source audit, full district walkthrough leg). Both tracks have no remaining staging work. Promotion is **not approved or run**: John reviews Gate 3 and approves a specific `beta` commit, then the [promotion runbook](../PROMOTION_RUNBOOK.md) applies, starting with a new live recovery set and exact digest comparison.
+
+## Promotion (2026-11-15)
+
+John approved Gate 3. Claude promoted `f48704e` to live between 15:05Z and 15:32Z following the runbook: fresh recovery set, fast-forward, migration, digest-matched PLACES county, PLACES tract, and ACS community releases, district boundaries, webroot, backend restart. Live has eleven pointers and serves the reviewed bundle. Outstanding: authenticated live walkthrough and PDF check (needs a live access code from John), and pushing `main`.
