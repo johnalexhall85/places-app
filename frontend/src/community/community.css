@@ -840,7 +840,11 @@
 }
 
 @media print {
-  .community-app { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  /* The page behind the report is white in print, with no screen-height filler after the last section. */
+  html:has(.community-app),
+  body:has(.community-app),
+  body:has(.community-app) #root { background: #fff !important; min-height: 0 !important; }
+  .community-app { min-height: 0; background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .community-header { min-height: 64px; padding: 8px 16px; }
   .community-header nav,
   .community-back,
@@ -854,8 +858,9 @@
   .community-profile { width: 100%; padding: 16px 0 0; }
   .community-profile-head { max-width: 100%; padding: 16px; border-left-width: 6px; }
   .community-profile-head h1 { font-size: 28px; }
-  .community-profile-section { padding: 16px 0; break-inside: avoid; }
-  .community-section-heading { margin-bottom: 12px; }
+  /* Sections flow across pages; only a card is kept whole, and a heading stays with its first row. */
+  .community-profile-section { padding: 16px 0; break-inside: auto; }
+  .community-section-heading { margin-bottom: 12px; break-after: avoid; break-inside: avoid; }
   .community-section-heading h2 { font-size: 20px; }
   .community-indicator-grid,
   .community-facility-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
