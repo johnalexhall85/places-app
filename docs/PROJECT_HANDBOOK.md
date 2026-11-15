@@ -24,6 +24,8 @@ The [execution plan](beta/EXECUTION_PLAN.md), [data contract](beta/DATA_CONTRACT
 
 **Staging browser follow-up:** authenticated Chromium checked all 13 PLACES measures and a diabetes tract viewport, all five USDA FEA and EPA AQI measures, selected CT/PR/Alaska exceptions, USDA national and tract messages, a county popup, and 390 px layout. HRSA overlay, filters, and keyboard Enter on a site detail worked, but a normal pointer click on the table's “Details” button was intercepted by sibling panel content at 1365 × 900; the product track needs to fix and recheck that interaction. The product guides record the exact findings. This does not claim an authenticated live check.
 
+**C4/C5 staging deployment:** recovery SQL and the promotion runbook were merged to `beta` as `6993096`; the source-map verification guides were merged as `0833d11`. Both staging deploys completed Alembic, frontend build, backend restart, health 200, anonymous catalog 401, and page 200. The authenticated core walkthrough then passed landing/search, three county profiles, comparison, PDF, topics, source-map links, legacy routes, About/Methodology, and five mobile routes. Its script still prints a stale “district pending C3” placeholder; C3 data exists, but the X5 page and meaningful district walkthrough are still pending. No live code, data, or deployment change was made by these staging deployments.
+
 The dated notes above and the inventory below include historical live and branch snapshots; use this section and direct runtime checks for current beta state.
 
 ## Purpose and first route through the repo
