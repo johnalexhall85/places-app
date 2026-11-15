@@ -210,3 +210,10 @@ At promotion:
 - **ACS district vintage** and the PLACES measure years are unverified until C0.4, C1, and C3 check them at the source.
 - **Staging access code:** an earlier session was blocked from minting a demo code. Staging has its own secrets, but John may need to create the code once.
 - **Legacy data in the profile** (SVI, FEMA, HPSA) is unpinned and older. It is shown separately and labelled, not mixed with the released indicators.
+
+## Amendment 2026-11-15: map consistency package (Claude)
+
+John asked for one header on every page, brand-guide consistency on the maps, and the legacy map's tooltip, legend, selection, tools, and search on the `/area/*` maps. The package is planned in [MAP_CONSISTENCY_PLAN.md](MAP_CONSISTENCY_PLAN.md). Two rules above are changed for this package only:
+
+- **Ownership exception.** John assigned the package to Claude, including `frontend/**` and `backend/app/community/**`. The split in "Who does what" otherwise stands.
+- **Legend colours.** "Existing map legends are not recoloured" no longer applies to the `/area/*` maps: their value ramps move to the brand Blues scale and the equal-width classes on four products become quintiles. Status styles (suppressed, missing, not published, zero, open-ended) stay distinct and non-blue. Legacy-map data ramps are unchanged.

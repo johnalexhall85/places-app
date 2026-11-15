@@ -49,3 +49,17 @@ Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). The beta packages 
 - `/api/area/*` serves `dataset_id=cdc_brfss_state_prevalence` with `geography=state`; see the contract for the extra `reference` block in `table`.
 - Suggested example state: North Carolina `37` (contains Person County). The current walkthrough still passes with the wider catalog.
 - **Requests:** follow the labelling rules in the contract's BRFSS section, especially "State survey estimate (BRFSS)" on county cards and "median of states and DC". The seven unpaired BRFSS measures go on state pages only.
+
+## Map consistency package (plan approved 2026-11-15)
+
+Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Codex:** by John's instruction Claude is editing `frontend/**` and `backend/app/community/**` on branch `claude/map-consistency` for this package. Please do not start frontend work on the same files until it is merged to `beta`; record any need here or in your status file.
+
+| Package | State | Branch | Notes |
+|---|---|---|---|
+| M1 One header | Not started | `claude/map-consistency` | |
+| M2 Brand guide on maps | Not started | `claude/map-consistency` | |
+| M2b Quintile breaks and ramp contrast | Not started | `claude/map-consistency` | Added by John after plan approval. |
+| M3 Area read endpoint | Not started | `claude/map-consistency` | |
+| M4 Tooltip, legend, selection, tools, search on `/area/*` | Not started | `claude/map-consistency` | |
+| M5 Maps open zoomed to the place | Not started | `claude/map-consistency` | |
+| M6 Verify, staging, documents | Not started | `claude/map-consistency` | |

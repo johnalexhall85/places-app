@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T21:45:00+00:00 — Map consistency package planned and approved (Claude)
+
+- **Request (John):** align the header on the maps, funding pages, and other legacy pages with the home page; follow the brand guide on the maps; give the `/area/*` maps the home-page search, the legacy tooltip, legend behaviour, selection highlight, and Map Tools bar; zoom to a searched place; open maps from a county, state, or district profile already zoomed to it. After approval John added: fix ramp contrast, because outliers make most counties light.
+- **Decisions with John:** Claude builds it, including Codex-owned `frontend/**` and `backend/app/community/**` (one-off exception). Recolour the CMS, USDA, and AQI ramps on `/area/*` to brand Blues; legacy-map data ramps stay. Shared header keeps Log out and the gated Funding Model Builder link; the funding methodology text moves to `/methodology`; Data Sources, Download, and Help pop-ups are retired. Map tools: all except "Analyze this area".
+- **Finding:** PLACES, ACS income, AHRF, and CLH legends return only min and max in view and the page cuts equal-width classes, which is the outlier skew. **Claude's choice, not yet confirmed by John:** quintiles over the whole release at the displayed level rather than over the viewport.
+- **Outcome so far:** read-only exploration; plan written as [MAP_CONSISTENCY_PLAN.md](beta/MAP_CONSISTENCY_PLAN.md); execution plan amended; status table added. Branch `claude/map-consistency` created from `beta` `33925a0` in `/home/john/chip-claude`. No application, data, staging, or live change in this entry.
+- **Next:** M1–M6 on the branch, then staging deploy and John's review. Nothing goes to live without approval.
+
 ## 2026-11-15T17:40:00+00:00 — BRFSS, state maps, and state profiles promoted to live (Claude, B4)
 
 - **Approval/outcome:** John reviewed staging and approved promotion after Codex finished Y1–Y5. Promoted `beta` commit `2d35117`. No step failed; no rollback used. Before promoting, Claude reran on staging at that commit: area/community tests 233 passed, frontend 150, `npm run test:beta` passed every leg including the new state leg, and the source audit passed 59 checks. Codex's commits touched no Claude-owned paths and added no migration.
