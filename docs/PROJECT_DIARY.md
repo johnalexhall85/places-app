@@ -2,6 +2,10 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T23:25:00+00:00 — main and beta pushed to GitHub (Claude)
+
+- At John's request: `git push origin main beta` from `/home/john/places-app`, fast-forward `33925a0..80abfab` for both, no force. `origin/main` and `origin/beta` now equal the live checkout. This closes the "push origin" item in earlier entries and the handbook. No application or data change.
+
 ## 2026-11-15T23:20:00+00:00 — Correction and live result for the legacy map retirement (Claude)
 
 - **Correction:** the entry below and the handbook note were stamped 2026-11-16T00:10Z by mistake; the VM clock read 2026-11-15T23:17Z at promotion. The rollback directory keeps the mistyped name `legacy-map-retirement-20261116`.
