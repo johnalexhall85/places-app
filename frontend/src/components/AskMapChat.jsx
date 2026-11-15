@@ -205,9 +205,9 @@ export default function AskMapChat({
     width: 24,
     height: 24,
     borderRadius: 999,
-    border: "1px solid #BFD0E1",
+    border: "1px solid #CFD8DC",
     background: "#ffffff",
-    color: "#3576BA",
+    color: "#0277BD",
     fontWeight: 700,
     cursor: "pointer",
     lineHeight: "20px",
@@ -235,7 +235,7 @@ export default function AskMapChat({
         maxHeight: isMinimized ? "none" : (compactLayout ? "34vh" : "46vh"),
         background: "white",
         borderRadius: 18,
-        border: "1px solid #D7E2EE",
+        border: "1px solid #CFD8DC",
         boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
         padding: 14,
         display: "grid",
@@ -255,7 +255,7 @@ export default function AskMapChat({
       >
         {isMinimized ? "+" : "\u2212"}
       </button>
-      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#123247" }}>
+      <div style={{ fontWeight: 700, fontSize: 13, paddingRight: 30, color: "#003F61" }}>
         CHIP analysis assistant
       </div>
       {!isMinimized ? (
@@ -263,7 +263,7 @@ export default function AskMapChat({
       <div
         ref={messagesContainerRef}
         style={{
-          border: "1px solid #D7E2EE",
+          border: "1px solid #CFD8DC",
           borderRadius: 14,
           padding: 8,
           minHeight: 120,
@@ -275,7 +275,7 @@ export default function AskMapChat({
         }}
       >
         {assistantMessages.length === 0 ? (
-          <div style={{ color: "#627A90", fontSize: 12, lineHeight: 1.5 }}>
+          <div style={{ color: "#546E7A", fontSize: 12, lineHeight: 1.5 }}>
             Ask a place-based question about the current geography. CHIP summarizes modeled and administrative signals using the active data layer and source context.
           </div>
         ) : (
@@ -286,7 +286,7 @@ export default function AskMapChat({
                 justifySelf: message.role === "user" ? "end" : "start",
                 maxWidth: "95%",
                 background: message.role === "user" ? "#F2F6FB" : "white",
-                border: "1px solid #D7E2EE",
+                border: "1px solid #CFD8DC",
                 borderRadius: 14,
                 padding: "8px 10px",
                 fontSize: 12,
@@ -307,8 +307,8 @@ export default function AskMapChat({
                             alignItems: "center",
                             gap: 4,
                             background: "#F2F6FB",
-                            border: "1px solid #D7E2EE",
-                            color: "#123247",
+                            border: "1px solid #CFD8DC",
+                            color: "#003F61",
                             borderRadius: 999,
                             fontSize: 11,
                             lineHeight: 1.2,
@@ -321,7 +321,7 @@ export default function AskMapChat({
                       ) : null}
 
                       {message.contextSummary.title ? (
-                        <div style={{ fontWeight: 700, color: "#123247" }}>
+                        <div style={{ fontWeight: 700, color: "#003F61" }}>
                           {String(message.contextSummary.title)}
                         </div>
                       ) : null}
@@ -348,7 +348,7 @@ export default function AskMapChat({
                       ) : null}
 
                       {message.contextSummary.methodology ? (
-                        <div style={{ color: "#627A90", fontSize: 11 }}>
+                        <div style={{ color: "#546E7A", fontSize: 11 }}>
                           Methodology: {String(message.contextSummary.methodology)}
                         </div>
                       ) : null}
@@ -356,7 +356,7 @@ export default function AskMapChat({
                       {Array.isArray(message.contextSummary.suggestedQuestions)
                       && message.contextSummary.suggestedQuestions.length > 0 ? (
                         <div style={{ display: "grid", gap: 4 }}>
-                          <div style={{ fontWeight: 600, color: "#334155" }}>
+                          <div style={{ fontWeight: 600, color: "#1A2F3F" }}>
                             Suggested follow-ups
                           </div>
                           <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
@@ -405,7 +405,7 @@ export default function AskMapChat({
         )}
 
         {assistantLoading ? (
-          <div style={{ color: "#627A90", fontSize: 12 }}>Reviewing the current data context...</div>
+          <div style={{ color: "#546E7A", fontSize: 12 }}>Reviewing the current data context...</div>
         ) : null}
       </div>
 
@@ -436,7 +436,7 @@ export default function AskMapChat({
           style={{
             padding: "8px 10px",
             borderRadius: 14,
-            border: "1px solid #BFD0E1",
+            border: "1px solid #CFD8DC",
             fontSize: 12,
             width: "100%",
             minHeight: 74,

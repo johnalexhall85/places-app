@@ -57,7 +57,7 @@ export function CommunityDistrict({ geoid }) {
         <h1>{data.area.state_name} · {data.area.name}</h1>
         <p>District GEOID {data.area.geoid}. The indicators below are source-published district estimates from the Census Bureau. County links and facility locations give geographic context.</p>
         <div className="community-actions"><button type="button" onClick={() => navigator.clipboard?.writeText(window.location.href)}>Copy link</button>
-          <a href="/area/acs-community?measure_id=poverty_pct&geography=cd">Open district source map</a></div>
+          <a href={`/area/acs-community?measure_id=poverty_pct&geography=cd&focus=cd:${geoid}`}>Open district source map</a></div>
       </header>
       <section className="community-profile-section" aria-labelledby="district-estimates">
         <div className="community-section-heading"><h2 id="district-estimates">District estimates (Census Bureau)</h2><p>ACS 2020–2024 five-year subject-table estimates for the 119th Congress district boundary. Each measure has its own population and 90% margin of error where published.</p></div>

@@ -388,7 +388,7 @@ export default function SearchBar({
             bottom: 58,
             background: "white",
             borderRadius: 18,
-            border: "1px solid #D7E2EE",
+            border: "1px solid #CFD8DC",
             boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
             overflow: "hidden",
           }}
@@ -400,7 +400,7 @@ export default function SearchBar({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                color: "#4d6880",
+                color: "#546E7A",
                 fontSize: 13,
               }}
             >
@@ -428,10 +428,10 @@ export default function SearchBar({
                   gap: 2,
                 }}
               >
-                <span style={{ fontSize: 13, color: "#123247", fontWeight: 700 }}>
+                <span style={{ fontSize: 13, color: "#003F61", fontWeight: 700 }}>
                   {suggestion.label}
                 </span>
-                <span style={{ fontSize: 11, color: "#627A90" }}>
+                <span style={{ fontSize: 11, color: "#546E7A" }}>
                   {suggestion.subtitle}
                 </span>
               </button>
@@ -442,7 +442,7 @@ export default function SearchBar({
             <div
               style={{
                 padding: "12px 14px",
-                color: "#627A90",
+                color: "#546E7A",
                 fontSize: 13,
               }}
             >
@@ -462,7 +462,7 @@ export default function SearchBar({
           gap: 8,
           padding: 8,
           borderRadius: 18,
-          border: "1px solid #D7E2EE",
+          border: "1px solid #CFD8DC",
           background: "#ffffff",
           boxShadow: "0 14px 32px rgba(18, 50, 71, 0.09)",
         }}
@@ -495,7 +495,7 @@ export default function SearchBar({
             background: "transparent",
             padding: "10px 10px",
             fontSize: 14,
-            color: "#123247",
+            color: "#003F61",
           }}
         />
 
@@ -507,7 +507,7 @@ export default function SearchBar({
             style={{
               border: "none",
               background: "rgba(53, 118, 186, 0.08)",
-              color: "#3576BA",
+              color: "#0277BD",
               width: 28,
               height: 28,
               borderRadius: 999,

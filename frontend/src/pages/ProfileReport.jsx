@@ -36,8 +36,8 @@ function formatTimestampLabel(value) {
 
 function compareBarData(local, state, us) {
   const points = [
-    { key: "local", label: "Local", value: toFiniteNumber(local), color: "#3576ba" },
-    { key: "state", label: "State", value: toFiniteNumber(state), color: "#5b90c7" },
+    { key: "local", label: "Local", value: toFiniteNumber(local), color: "#0277bd" },
+    { key: "state", label: "State", value: toFiniteNumber(state), color: "#f0b97d" },
     { key: "us", label: "U.S.", value: toFiniteNumber(us), color: "#123247" },
   ];
   const valid = points.filter((point) => point.value != null);

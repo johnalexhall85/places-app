@@ -128,9 +128,14 @@ export function SurveyCompanion({ row }) {
   </div>;
 }
 
+// Map links from a profile open the map zoomed to that place with it outlined.
+export function mapFocus(level, geoid) {
+  return level && geoid ? `&focus=${level}:${geoid}` : "";
+}
+
 export function Indicator({ row, stateRow, surveyCompanion }) {
   const hasValue = row.value != null;
-  const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}${row.level === "cd" ? "&geography=cd" : ""}` : null;
+  const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}${row.level === "cd" ? "&geography=cd" : ""}${mapFocus(row.level, row.geoid)}` : null;
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
     <h3>{row.label}</h3>
     <p className="community-value">{formatIndicatorValue(row)}</p>
@@ -244,7 +249,7 @@ export function CommunityCounty({ geoid }) {
             <select id="community-tract-measure" value={`${selectedTractRow.product}:${selectedTractRow.measure_id}`} onChange={(event) => setSelectedTractKey(event.target.value)}>
               {tractMeasures.map((row) => <option key={`${row.product}:${row.measure_id}`} value={`${row.product}:${row.measure_id}`}>{row.label} · {row.period}</option>)}
             </select>
-            <a href={`${MAP_ROUTES[selectedTractRow.product]}?measure_id=${encodeURIComponent(selectedTractRow.measure_id)}`}>Open full map →</a>
+            <a href={`${MAP_ROUTES[selectedTractRow.product]}?measure_id=${encodeURIComponent(selectedTractRow.measure_id)}${mapFocus("county", geoid)}`}>Open full map →</a>
           </div>
           <TractPatternMap area={profile.area} row={selectedTractRow} />
         </section>}
@@ -260,7 +265,7 @@ export function CommunityCounty({ geoid }) {
           <h2>What this data cannot tell you</h2>
           <ul>{profile.limitations.map((limit) => <li key={limit}>{limit}</li>)}</ul>
           <p>Some sources do not publish a value for every county. Missing, suppressed, and not published are distinct from a published zero.</p>
-          <p>Older SVI, FEMA NRI, and HPSA layers are available as <a href="/explore/map">additional context on the legacy map</a>; they are not part of this release-pinned indicator table.</p>
+          <p>Older SVI, FEMA NRI, and HPSA layers are available as <a href={`/explore/map?focus=county:${geoid}`}>additional context on the legacy map</a>; they are not part of this release-pinned indicator table.</p>
           <p>Explore <a href="/cdc-funding">public-health funding</a> separately. The funding view is state-level and follows its own methodology.</p>
         </section>
       </>}
