@@ -100,9 +100,13 @@ def test_clh_map_legend_table_parity_and_cap():
         def mappings(self): return self
         def all(self): return self.rows
         def scalar_one(self): return 1
+        def one(self): return self.rows[0]
     class DB:
         def execute(self, sql, params):
             query = str(sql)
+            if 'percentile_cont' in query:   # release-wide quintile breaks: no viewport, no boundary join
+                assert 'observation_clh' in query and 'ST_MakeEnvelope' not in query
+                return Result([{'n': 1, 'cuts': None}])
             assert 'observation_clh' in query and 'acs_boundary_2024' in query
             if 'GROUP BY' in query:
                 return Result([{'status':'true_zero','n':1,'low':0,'high':0}])
@@ -123,3 +127,4 @@ def test_clh_map_legend_table_parity_and_cap():
     assert mapped['features'][0]['properties']['value'] == table['rows'][0]['value'] == 0
     assert mapped['features'][0]['properties']['status'] == table['rows'][0]['status'] == 'true_zero'
     assert legend['statuses'][0]['n'] == mapped['count'] == table['total'] == 1
+    assert legend['quantile_breaks'] is None and legend['quantile_basis'] == 'quintiles_of_published_values_in_release'

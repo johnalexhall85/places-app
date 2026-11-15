@@ -155,6 +155,78 @@ try {
   }
   console.log('Legacy map, nine area pages, and funding page: loaded without browser errors');
 
+  // Map consistency package: one header everywhere, and legacy map behaviour on the /area maps.
+  await visit('/', 'Start with a place. Follow the evidence.');
+  const homeNav = await page.locator('.community-header nav a').allInnerTexts();
+  for (const path of ['/explore/map', '/area/ahrf', '/cdc-funding', '/cdc-funding/state/NC', '/profile/county/37145']) {
+    await visit(path);
+    await page.locator('.community-header nav a').first().waitFor();
+    assert.deepEqual(await page.locator('.community-header nav a').allInnerTexts(), homeNav, `${path} header links match the home page`);
+    await contrast('.community-header nav a', '.community-header', 4.5);
+    assert.equal(await page.locator('.chip-header, .chip-brand-line').count(), 0, `${path} has no legacy header`);
+  }
+  console.log('Shared header on legacy map, area map, funding, and legacy profile pages: passed');
+
+  const selectedArea = page.locator('[data-testid="selected-area"]');
+  const zoomParam = () => Number(new URL(page.url()).searchParams.get('zoom'));
+  await visit('/community/county/37145');
+  await page.locator('[data-testid="profile-ready"]').waitFor();
+  await page.locator('#health .community-map-link').first().click();
+  await selectedArea.getByText('Person · County 37145').waitFor();
+  await selectedArea.locator('.pilot-selected-value strong').waitFor();
+  assert.match(await selectedArea.locator('.pilot-selected-value strong').innerText(), /%$/, 'focused county value in legend');
+  assert.ok((await selectedArea.innerText()).includes('95% confidence interval'), 'focused county uncertainty in legend');
+  await page.waitForFunction(() => new URLSearchParams(location.search).get('focus') === 'county:37145' && Number(new URLSearchParams(location.search).get('zoom')) >= 8);
+  assert.ok(zoomParam() < 10, 'focused county stays at county level');
+  assert.equal(await page.locator('.leaflet-area-selection-pane path').count(), 2, 'selection outline (casing and line)');
+  assert.ok((await page.locator('.pilot-legend').innerText()).includes('quintiles of all published county values'), 'quintile class note');
+  await screenshot('map-focused-county');
+  await page.locator('.leaflet-overlay-pane path.leaflet-interactive').first().hover();
+  await page.locator('.pdo-map-tooltip').waitFor();
+  assert.match(await page.locator('.pdo-map-tooltip').innerText(), /· County \d{5}\n.+\n.+ • 2023\nModeled adult prevalence estimate from CDC PLACES\./, 'legacy-format hover tooltip');
+  assert.equal(await page.locator('.leaflet-popup').count(), 0, 'no click popup');
+  await page.getByRole('button', { name: 'Clear Selection (Esc)' }).click();
+  assert.equal(await selectedArea.count(), 0, 'clear selection');
+  await page.locator('.leaflet-overlay-pane path.leaflet-interactive').first().click({ force: true });
+  await selectedArea.locator('.pilot-selected-value strong').waitFor();
+  await page.keyboard.press('Escape');
+  assert.equal(await selectedArea.count(), 0, 'Escape clears selection');
+  assert.equal(await page.getByRole('button', { name: /Analyze/ }).count(), 0, 'no assistant button on area maps');
+
+  await visit('/community/state/37');
+  await page.locator('[data-testid="profile-ready"]').waitFor();
+  await page.locator('#health .community-map-link').first().click();
+  await selectedArea.getByText('North Carolina · State 37').waitFor();
+  await selectedArea.locator('.pilot-selected-value strong').waitFor();
+  assert.ok((await selectedArea.innerText()).includes('95% confidence interval'), 'focused state BRFSS interval');
+  assert.equal(await page.getByRole('link', { name: 'Open profile' }).getAttribute('href'), '/community/state/37', 'state profile tool');
+  await screenshot('map-focused-state');
+
+  await visit(`/district/cd/${districtGeoid}`);
+  await page.locator('[data-testid="district-ready"]').waitFor();
+  await page.getByRole('link', { name: 'Open district source map' }).click();
+  await selectedArea.getByText(`· District ${districtGeoid}`).waitFor();
+  await selectedArea.locator('.pilot-selected-value strong').waitFor();
+  assert.ok((await selectedArea.innerText()).includes('margin'), 'focused district margin of error');
+  await screenshot('map-focused-district');
+
+  await visit('/area/ahrf');
+  await page.locator('.pilot-table tbody tr').first().waitFor();
+  await page.getByLabel('Find a county or state on the map').fill('Kanawha');
+  await page.getByRole('link', { name: /Kanawha County, WV/ }).first().click();
+  await selectedArea.getByText('Kanawha · County 54039').waitFor();
+  await selectedArea.locator('.pilot-selected-value strong').waitFor();
+  assert.equal(new URL(page.url()).pathname, '/area/ahrf', 'map search stays on the map');
+  await page.waitForFunction(() => Number(new URLSearchParams(location.search).get('zoom')) >= 7);
+  await page.getByLabel('Find a county or state on the map').fill('District of Columbia');
+  await page.getByRole('link', { name: /District of Columbia · State/ }).first().click();
+  await selectedArea.getByText('District of Columbia · State 11').waitFor();
+  assert.ok((await selectedArea.innerText()).includes('none is calculated'), 'state selected on a county-only map shows no derived value');
+  await page.getByLabel('Select base map').selectOption('topographic');
+  await visit('/explore/map?focus=county:54039');
+  await page.locator('.legend-details').getByText(/Kanawha/).first().waitFor({ timeout: 30000 });
+  console.log('Profile-to-map focus (county, state, district), tooltip, legend selection, tools, and map search: passed');
+
   for (const [width, height] of [[1365, 900], [390, 844]]) {
     await page.setViewportSize({ width, height });
     await visit('/area/usda-fea?lat=38.35&lon=-81.63&zoom=10');

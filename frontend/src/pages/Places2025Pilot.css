@@ -83,7 +83,12 @@
   gap: 10px;
 }
 
-.pilot-legend { max-height: calc(46% - 24px); overflow-y: auto; }
+/* Classes first, then the selected area, then the explanatory notes; the panel scrolls when long. */
+.pilot-legend { max-height: calc(100% - 200px); overflow-y: auto; }
+.pilot-legend > h2, .pilot-legend > .pilot-panel-toggle { order: 0; }
+.pilot-legend > .pilot-swatches { order: 1; }
+.pilot-legend > .pilot-selected { order: 2; }
+.pilot-legend > p { order: 3; }
 .pilot-legend.is-minimized { gap: 0; }
 
 .pilot-legend h2 {

@@ -17,7 +17,7 @@ import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
 import { useSiteHeaderHeight } from "./components/SiteHeader";
 import { BASE_MAP_OPTIONS } from "./branding/baseMaps";
-import { SELECTION_LINE } from "./branding/mapColors";
+import { BLUES, SELECTION_LINE } from "./branding/mapColors";
 import { MAP_HOVER_TOOLTIP_OPTIONS, formatTooltipExplanationLine, formatTooltipMetaLine } from "./utils/mapTooltip";
 import { APP_NAME } from "./branding/pdoBrand";
 import {
@@ -294,22 +294,23 @@ const USDA_STATE_LAYER_MAX_ZOOM = 5;
 const COUNTY_RELOAD_ZOOM = 8;
 const BBOX_PRECISION = 4;
 const BIN_COUNT = 5;
-const COLORS = ["#F2F6FB", "#D9E5F2", "#9ABBDD", "#5B90C7", "#3576BA"];
+// Brand Blues with evenly spaced steps (shared with the /area maps) so quintile classes stay distinct.
+const COLORS = BLUES;
 const NO_DATA_COLOR = "#D7E2EE";
 const USDA_HEAT_LAYER_GRADIENT = {
-  0.10: "#f2f6fb",
-  0.35: "#d9e5f2",
-  0.55: "#9abbdd",
-  0.75: "#5b90c7",
-  1.0: "#3576ba",
+  0.10: BLUES[0],
+  0.35: BLUES[1],
+  0.55: BLUES[2],
+  0.75: BLUES[3],
+  1.0: BLUES[4],
 };
-const USDA_HEAT_RAMP_CSS = "linear-gradient(to right, #f2f6fb, #d9e5f2, #9abbdd, #5b90c7, #3576ba)";
+const USDA_HEAT_RAMP_CSS = `linear-gradient(to right, ${BLUES.join(", ")})`;
 const FEMA_RATING_COLORS = {
-  "Very Low": "#f2f6fb",
-  Low: "#d9e5f2",
-  Moderate: "#9abbdd",
-  High: "#5b90c7",
-  "Very High": "#3576ba",
+  "Very Low": BLUES[0],
+  Low: BLUES[1],
+  Moderate: BLUES[2],
+  High: BLUES[3],
+  "Very High": BLUES[4],
 };
 const HPSA_TIER_COLORS = {
   1: COLORS[0],

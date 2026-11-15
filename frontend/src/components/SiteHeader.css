@@ -16,11 +16,11 @@
   position: relative;
   z-index: 2600;
   min-height: 88px;
-  padding: 16px max(24px, calc((100vw - 1200px) / 2));
+  padding: 16px max(24px, calc((100vw - 1320px) / 2));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px 24px;
   background: #003f61;
   color: #fff;
   font: 16px/1.55 Arial, sans-serif;
@@ -51,6 +51,7 @@
 .community-brand strong {
   font-size: 16px;
   letter-spacing: .06em;
+  white-space: nowrap;
 }
 
 .community-brand small {
@@ -62,7 +63,9 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  justify-content: flex-end;
+  gap: 8px 20px;
+  font-size: 15px;
 }
 
 .community-header nav a,
@@ -99,7 +102,8 @@
   .community-header nav { display: none !important; }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .community-header { align-items: flex-start; flex-direction: column; padding: 16px; }
-  .community-header nav { gap: 8px 16px; }
+  .community-header nav { justify-content: flex-start; gap: 8px 16px; }
+  .community-brand strong { white-space: normal; }
 }
