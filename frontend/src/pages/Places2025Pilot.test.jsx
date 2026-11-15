@@ -29,11 +29,20 @@ describe("PLACES 2025 county pilot selection", () => {
     expect(initialMapView("?lat=36.4&lon=-79&zoom=10")).toEqual({ center: [36.4, -79], zoom: 10 });
     expect(initialMapView("?lat=999&lon=-79&zoom=10").center).toEqual([38, -104]);
   });
-  it("routes the pilot separately from the legacy map", () => {
+  it("routes each area map, and /explore/map now opens the published-release map", () => {
     expect(resolveRoute("/area/places-2025")).toEqual({ type: "places-2025-pilot" });
     expect(resolveRoute("/")).toEqual({ type: "community-landing" });
     expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
     expect(resolveRoute("/area/brfss")).toEqual({ type: "brfss-state-area" });
+  });
+  it("lists only published-release maps in the Data source menu", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ active_release_id: null, measures: [] }) }));
+    render(<Places2025Pilot />);
+    const menu = await screen.findByLabelText("Data source");
+    const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
+    expect(options).toHaveLength(9);
+    expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
+    expect(screen.queryByRole("link", { name: /legacy map/i })).not.toBeInTheDocument();
   });
   it("keeps BRFSS state survey values, uncertainty, and not-published status distinct", () => {
     expect(brfssColor(null, "not_published", [9, 11, 12, 14])).toBe("#a5a5a5");
@@ -457,7 +466,7 @@ describe("CMS Original Medicare Geographic Variation", () => {
     expect(screen.queryByRole("columnheader", { name: /95% CI|MOE|Uncertainty/ })).not.toBeInTheDocument();
     expect(screen.getByText(/United States \(CMS-published national value, reference only\): \$12,553/)).toBeInTheDocument();
     expect(screen.getByText(/does not present it as risk-adjusted/)).toBeInTheDocument();
-    expect(screen.getByText(/legacy import/)).toBeInTheDocument();
+    expect(screen.queryByText(/legacy import/)).not.toBeInTheDocument();
     expect(screen.getByText(/CHIP does not add counties into states/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "readmission_rate" } });
     expect(await screen.findByText(/discharged alive \(not beneficiaries\)/)).toBeInTheDocument();
@@ -578,7 +587,7 @@ describe("USDA Food Environment Atlas county measures", () => {
     expect(screen.getByText(/Observation year 2019/)).toBeInTheDocument();
     expect(screen.getByText(/State values are not published for this measure; counties are shown at the national view/)).toBeInTheDocument();
     expect(screen.getByText(/numerator is low-income residents only/)).toBeInTheDocument();
-    expect(screen.getByText(/legacy import/)).toBeInTheDocument();
+    expect(screen.queryByText(/legacy import/)).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "USDA source value" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Measure/), { target: { value: "farmers_markets_per_1000" } });
     expect(await screen.findByText(/Observation year 2018/)).toBeInTheDocument();

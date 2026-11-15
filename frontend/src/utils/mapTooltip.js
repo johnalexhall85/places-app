@@ -1,4 +1,4 @@
-// Hover tooltip shared by the legacy map and the /area maps.
+// Hover tooltip for the /area maps (same format as the retired legacy map).
 export const MAP_HOVER_TOOLTIP_OPTIONS = {
   sticky: true,
   direction: "top",

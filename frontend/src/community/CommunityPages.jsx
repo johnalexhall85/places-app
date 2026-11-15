@@ -265,7 +265,6 @@ export function CommunityCounty({ geoid }) {
           <h2>What this data cannot tell you</h2>
           <ul>{profile.limitations.map((limit) => <li key={limit}>{limit}</li>)}</ul>
           <p>Some sources do not publish a value for every county. Missing, suppressed, and not published are distinct from a published zero.</p>
-          <p>Older SVI, FEMA NRI, and HPSA layers are available as <a href={`/explore/map?focus=county:${geoid}`}>additional context on the legacy map</a>; they are not part of this release-pinned indicator table.</p>
           <p>Explore <a href="/cdc-funding">public-health funding</a> separately. The funding view is state-level and follows its own methodology.</p>
         </section>
       </>}

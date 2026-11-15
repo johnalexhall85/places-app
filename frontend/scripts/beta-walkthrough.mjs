@@ -153,9 +153,9 @@ try {
     await visit(path);
     await page.locator('main, #root').first().waitFor();
   }
-  console.log('Legacy map, nine area pages, and funding page: loaded without browser errors');
+  console.log('Explore map, nine area pages, and funding page: loaded without browser errors');
 
-  // Map consistency package: one header everywhere, and legacy map behaviour on the /area maps.
+  // One header everywhere; the legacy map is retired and /explore/map opens the published-release map.
   await visit('/', 'Start with a place. Follow the evidence.');
   const homeNav = await page.locator('.community-header nav a').allInnerTexts();
   for (const path of ['/explore/map', '/area/ahrf', '/cdc-funding', '/cdc-funding/state/NC', '/profile/county/37145']) {
@@ -165,7 +165,12 @@ try {
     await contrast('.community-header nav a', '.community-header', 4.5);
     assert.equal(await page.locator('.chip-header, .chip-brand-line').count(), 0, `${path} has no legacy header`);
   }
-  console.log('Shared header on legacy map, area map, funding, and legacy profile pages: passed');
+  console.log('Shared header on explore map, area map, funding, and legacy profile pages: passed');
+  await visit('/explore/map', 'PLACES 2025 pilot');
+  const sourceOptions = await page.getByLabel('Data source').locator('option').allInnerTexts();
+  assert.equal(sourceOptions.length, 9, 'nine published-release map sources');
+  assert.ok(!sourceOptions.some((label) => /legacy|main/i.test(label)), 'no legacy entries in the Data source menu');
+  assert.equal(await page.locator('.measure-controls-panel, .legend-panel').count(), 0, 'legacy map panels gone');
 
   const selectedArea = page.locator('[data-testid="selected-area"]');
   const zoomParam = () => Number(new URL(page.url()).searchParams.get('zoom'));
@@ -225,7 +230,7 @@ try {
   assert.ok((await selectedArea.innerText()).includes('none is calculated'), 'state selected on a county-only map shows no derived value');
   await page.getByLabel('Select base map').selectOption('topographic');
   await visit('/explore/map?focus=county:54039');
-  await page.locator('.legend-details').getByText(/Kanawha/).first().waitFor({ timeout: 30000 });
+  await selectedArea.getByText('Kanawha · County 54039').waitFor();
   console.log('Profile-to-map focus (county, state, district), tooltip, legend selection, tools, and map search: passed');
 
   for (const [width, height] of [[1365, 900], [390, 844]]) {

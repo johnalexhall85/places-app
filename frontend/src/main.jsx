@@ -1,7 +1,6 @@
 import "leaflet/dist/leaflet.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.jsx";
 import { applyDocumentBranding } from "./branding/pdoBrand";
 import { API_BASE } from "./config/apiBase";
 import DemoAccessGate from "./demoAccess/DemoAccessGate";
@@ -113,7 +112,8 @@ function Root() {
   } else if (route.type === "usda-fea-area") {
     routedPage = <Places2025Pilot dataset="usdafea" />;
   } else {
-    routedPage = <App />;
+    // /explore/map and any unknown path open the published-release map (the legacy map was retired 2026-11-16).
+    routedPage = <Places2025Pilot />;
   }
   return <DemoAccessGate>{routedPage}</DemoAccessGate>;
 }

@@ -1,7 +1,6 @@
 import { BASE_MAP_OPTIONS } from "../../branding/baseMaps";
 
-// The legacy map's "Map Tools" bar for the /area maps. "Analyze this area" is not carried over:
-// the assistant reads the legacy datasets, not the release-pinned values shown here.
+// Map Tools bar for the /area maps (carried over from the retired legacy map, without its assistant).
 export default function MapTools({
   map, home, hasSelection, zoomToSelectedLabel = "Zoom to selected area", onZoomToSelected, onClearSelection,
   profileHref, profileLabel = "Open profile", profileDisabledReason = "Select a county, state, or district first",

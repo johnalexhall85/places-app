@@ -627,13 +627,11 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <ul className="pilot-limitations" aria-label="Interpretation limits">{(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}</ul>
         </div> : isFea ? <div className="pilot-scope">
           <p>Five published county measures from USDA ERS's Food Environment Atlas, {catalog?.release_label ?? "July 2025"} release. <strong>Each measure has its own observation year (2018–2023)</strong>; none describes 2025 or current conditions. USDA publishes no state value for these measures, so counties are shown at every zoom and none is averaged or summed. No tract values exist.</p>
-          <p className="pilot-metadata">This is a separate, release-pinned product. The main map's “USDA Food Environment (legacy import)” option reads the older tables and is unchanged.</p>
           <ul className="pilot-limitations" aria-label="Interpretation limits">
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
         </div> : isGv ? <div className="pilot-scope">
           <p>Published CMS values for the Original Medicare (fee-for-service) population with Part A and Part B, all ages. Medicare Advantage enrollees are excluded. Observation year {catalog?.observation_year ?? "2024"}; source release “{catalog?.source_release_id ?? "OM GV PUF May 2026 update"}”. States are shown at broad zoom and counties from zoom {catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM}. No tract values exist.</p>
-          <p className="pilot-metadata">This is a separate, release-pinned product. The main map's “CMS Medicare Fee-for-Service (legacy import)” option reads older tables and is unchanged.</p>
           <ul className="pilot-limitations" aria-label="Interpretation limits">
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
@@ -643,8 +641,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
         </div> : <p className="pilot-scope">{isProfile ? "Census Bureau published community characteristics for states, counties, tracts, and 119th Congress districts. The percentages and 90% margins of error come from ACS 2020–2024 subject tables; population totals may have no sampling margin." : isAcs ? "Published median household income for states, counties, and census tracts. Values are 2024 inflation-adjusted dollars; margins of error use 90% confidence." : isAhrf ? "HRSA AHRF 2024–2025 release, with 2023 observations. County counts only; no state or tract values are inferred. Connecticut planning-region values are unavailable for four measures. Uncertainty was not supplied." : isClh ? "AHRQ CLH September 2025 release. ACS measures cover 2019–2023 at county and tract levels; business densities describe 2023 counties only. No state estimates or uncertainty fields are supplied." : "Official county and census tract estimates. No state estimates are provided by this pilot."}</p>}
-        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { main: "/explore/map", brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
-          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="brfss">BRFSS state survey estimates</option><option value="acs">ACS 2020–2024 5-year income</option><option value="acs_profile">ACS 2020–2024 community characteristics</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option><option value="main">Legacy CHIP map</option>
+        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
+          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="brfss">BRFSS state survey estimates</option><option value="acs">ACS 2020–2024 5-year income</option><option value="acs_profile">ACS 2020–2024 community characteristics</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option>
         </select></label>
         {catalogError && <p role="alert">{catalogError}</p>}
         {!catalog && !catalogError && <p role="status">Loading catalog…</p>}
@@ -678,7 +676,6 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <p className="pilot-release">Release {releaseId}</p>
           <div className="pilot-share"><button type="button" onClick={copyMapLink}>Copy map link</button><span role="status">{copyStatus}</span></div>
         </>}
-        <a href="/explore/map">← Legacy map with older layers</a>
       </section>
       {catalog && releaseId && <>
         <section className={`pilot-panel pilot-legend ${legendOpen ? "" : "is-minimized"}`} aria-label="Legend">
