@@ -2,6 +2,8 @@
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from app.area_pilot import legend_breaks
+
 from app.area_pilot.ahrf import load_registry
 
 S = 'area_pilot'
@@ -80,7 +82,8 @@ def legend(db,p,base):
     rows=db.execute(text(f'''SELECT status,count(*) AS n,min(value) AS low,max(value) AS high
         {COMMON} GROUP BY status ORDER BY status'''),p).mappings().all()
     return base|{'statuses':[{**dict(r),'low':int(r['low']) if r['low'] is not None else None,
-                              'high':int(r['high']) if r['high'] is not None else None} for r in rows]}
+                              'high':int(r['high']) if r['high'] is not None else None} for r in rows],
+                   **legend_breaks.legend_fields(db, f'{S}.observation_ahrf', p, False)}
 
 
 def table(db,p,base,count,limit,offset):

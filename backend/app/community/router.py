@@ -85,6 +85,20 @@ def county_search(
     return (matches + [county | {"type": "county"} for county in counties])[:limit]
 
 
+@router.get("/area/{level}/{geoid}")
+def area_outline(level: str, geoid: str, db: Session = Depends(get_db)):
+    """Name, bounding box, inside point, and a simplified outline for one area, for map focus."""
+    if level not in lookup.LEVELS:
+        raise HTTPException(status_code=400, detail="Level must be state, county, tract, or cd")
+    try:
+        info = lookup.area_info(db, level, [geoid], geometry=True)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    if not info:
+        raise HTTPException(status_code=404, detail="Area not found on the published boundary")
+    return info[0]
+
+
 @router.get("/catalog")
 def community_catalog(db: Session = Depends(get_db)):
     return lookup.catalog(db)

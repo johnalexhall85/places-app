@@ -4,6 +4,8 @@ from __future__ import annotations
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from app.area_pilot import legend_breaks
+
 from app.area_pilot.acs import load_registry
 
 S = 'area_pilot'
@@ -90,7 +92,8 @@ def legend(db, p, base):
     rows = db.execute(text(f'''SELECT status,count(*) AS n,min(value) AS low,max(value) AS high
         {COMMON} GROUP BY status ORDER BY status'''), p).mappings().all()
     return base | {'statuses': [{**dict(row), 'low': int(row['low']) if row['low'] is not None else None,
-                                 'high': int(row['high']) if row['high'] is not None else None} for row in rows]}
+                                 'high': int(row['high']) if row['high'] is not None else None} for row in rows],
+                   **legend_breaks.legend_fields(db, f'{S}.observation_acs', p, True)}
 
 
 def table(db, p, base, count, limit, offset):

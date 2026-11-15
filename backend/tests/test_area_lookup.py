@@ -150,3 +150,38 @@ def test_ahrf_measures_carry_a_copyright_owner_credit_and_others_do_not():
     places = by_key['places']
     pconfig = places.load()
     assert lookup._measure_meta(places, pconfig, pconfig['measures'][0])['source_credit'] is None
+
+
+def test_area_info_outline_is_opt_in_and_simplified_by_level():
+    row = {'geoid': '37145', 'name': 'Person', 'west': -79.2, 'south': 36.2, 'east': -78.8, 'north': 36.5,
+           'lon': -79.0, 'lat': 36.4, 'state_name': 'North Carolina', 'county_name': None,
+           'geometry': {'type': 'Polygon', 'coordinates': []}}
+    db = FakeDb({'acs_boundary_2024': [row]})
+    plain = lookup.area_info(db, 'county', ['37145'])
+    assert 'geometry' not in plain[0] and 'ST_AsGeoJSON' not in db.calls[-1][0]
+    outlined = lookup.area_info(db, 'county', ['37145'], geometry=True)
+    assert outlined[0]['geometry']['type'] == 'Polygon' and outlined[0]['bbox'] == [-79.2, 36.2, -78.8, 36.5]
+    assert db.calls[-1][1]['tolerance'] == lookup.OUTLINE_TOLERANCE['county']
+
+
+def test_quintile_breaks_use_published_values_for_the_whole_release_not_the_viewport():
+    from app.area_pilot import legend_breaks
+
+    class One:
+        def __init__(self, row): self.row = row
+        def mappings(self): return self
+        def one(self): return self.row
+
+    class Db:
+        def __init__(self, row): self.row, self.calls = row, []
+        def execute(self, statement, params=None):
+            self.calls.append((str(statement), params)); return One(self.row)
+
+    p = {'release': 'r', 'measure': 'm', 'period': '2023', 'population': 'adults', 'value_type': 'crude',
+         'level': 'county', 'west': -80, 'south': 30, 'east': -70, 'north': 40}
+    db = Db({'n': 3100, 'cuts': [Decimal('9.1'), Decimal('10.4'), Decimal('11.6'), Decimal('13.2')]})
+    assert legend_breaks.quantile_breaks(db, 'area_pilot.observation_acs', p, by_level=True) == [9.1, 10.4, 11.6, 13.2]
+    sql, params = db.calls[0]
+    assert 'ST_MakeEnvelope' not in sql and "status IN ('available','true_zero')" in sql and 'level=:level' in sql
+    assert 'west' not in params
+    assert legend_breaks.quantile_breaks(Db({'n': 3, 'cuts': [1, 2, 3, 4]}), 'area_pilot.observation', p) is None

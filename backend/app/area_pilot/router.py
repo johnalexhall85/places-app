@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.area_pilot.registry import load_registry
+from app.area_pilot import legend_breaks
 from app.area_pilot import acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, epa_aqi_api, usda_fea_api
 
 router = APIRouter(prefix='/area', tags=['area-pilot'])
@@ -226,7 +227,8 @@ def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, popu
     return {'dataset_id':config['dataset_id'],'release_id':str(release_id),'measure_id':measure_id,
             'period':period,'population':population,'value_type':value_type,'geography':geography,'unit':config['unit'],
             'bbox':bbox,'statuses':[{**dict(r),'low':float(r['low']) if r['low'] is not None else None,
-                                    'high':float(r['high']) if r['high'] is not None else None} for r in stats]}
+                                    'high':float(r['high']) if r['high'] is not None else None} for r in stats],
+            **legend_breaks.legend_fields(db,'area_pilot.observation_tract' if geography == 'tract' else 'area_pilot.observation',p)}
 
 
 @router.get('/table')

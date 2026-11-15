@@ -156,3 +156,21 @@ def test_district_briefing_uses_only_published_district_rows(monkeypatch):
     assert len(body["counties"]["counties"]) == 28
     assert body["facilities"]["health_centers"]["count"] == 347
     assert client.get("/community/district/9999").status_code == 404
+
+
+def test_area_outline_returns_bbox_and_outline_and_rejects_unknowns(client, monkeypatch):
+    calls = []
+
+    def area_info(db, level, geoids, geometry=False):
+        calls.append((level, geoids, geometry))
+        if geoids == ["99999"]:
+            return []
+        return [{"level": level, "geoid": geoids[0], "name": "Person", "bbox": [-79.2, 36.2, -78.8, 36.5],
+                 "point": [-79.0, 36.4], "geometry": {"type": "Polygon", "coordinates": []}}]
+
+    monkeypatch.setattr(community.lookup, "area_info", area_info)
+    body = client.get("/community/area/county/37145").json()
+    assert body["bbox"] == [-79.2, 36.2, -78.8, 36.5] and body["geometry"]["type"] == "Polygon"
+    assert calls == [("county", ["37145"], True)]
+    assert client.get("/community/area/county/99999").status_code == 404
+    assert client.get("/community/area/zip/27573").status_code == 400

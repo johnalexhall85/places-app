@@ -229,22 +229,29 @@ def catalog(db) -> dict:
     return {'products': products, 'measures': measures, 'status_text': STATUS_TEXT}
 
 
-def area_info(db, level: str, geoids: list[str]) -> list[dict]:
+OUTLINE_TOLERANCE = {'state': 0.02, 'county': 0.004, 'cd': 0.004, 'tract': 0.0005}   # degrees
+
+
+def area_info(db, level: str, geoids: list[str], geometry: bool = False) -> list[dict]:
     """Name, parent areas, bounding box, and a point inside each area. Unknown GEOIDs are omitted.
 
     States, counties, and tracts use the 2024 TIGER boundaries; `cd` uses the 119th Congress districts.
+    With `geometry=True` each record also carries `geometry`, a simplified GeoJSON outline for drawing
+    a selection on a map. It is a display shape, not the stored boundary.
     """
     geoids = _check(level, geoids)
+    outline = (',ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom,:tolerance),5)::json AS geometry'
+               if geometry else '')
     rows = db.execute(text(f'''SELECT b.geoid,b.name,ST_XMin(b.geom) AS west,ST_YMin(b.geom) AS south,
         ST_XMax(b.geom) AS east,ST_YMax(b.geom) AS north,
         ST_X(ST_PointOnSurface(b.geom)) AS lon,ST_Y(ST_PointOnSurface(b.geom)) AS lat,
-        s.name AS state_name,c.name AS county_name
+        s.name AS state_name,c.name AS county_name{outline}
         FROM {BOUNDARY} b
         LEFT JOIN {S}.acs_boundary_2024 s ON s.level='state' AND s.geoid=left(b.geoid,2)
         LEFT JOIN {S}.acs_boundary_2024 c ON c.level='county' AND b.level='tract' AND c.geoid=left(b.geoid,5)
         WHERE b.level=:level AND b.geoid = ANY(:geoids) ORDER BY b.geoid'''),
-        {'level': level, 'geoids': geoids}).mappings().all()
-    return [{'level': level, 'geoid': r['geoid'], 'name': r['name'],
+        {'level': level, 'geoids': geoids} | ({'tolerance': OUTLINE_TOLERANCE[level]} if geometry else {})).mappings().all()
+    return [({'geometry': r['geometry']} if geometry else {}) | {'level': level, 'geoid': r['geoid'], 'name': r['name'],
              'state_geoid': r['geoid'][:2], 'state_name': r['state_name'],
              'county_geoid': r['geoid'][:5] if level == 'tract' else (r['geoid'] if level == 'county' else None),
              'county_name': r['county_name'] if level == 'tract' else (r['name'] if level == 'county' else None),
