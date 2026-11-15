@@ -2,6 +2,16 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T23:05:00+00:00 — County shapes made to fit together on every map; staging verified (Claude, M7)
+
+- **Request (John, after reviewing staging):** county shapes did not line up when zoomed in (example: ACS community map around Pike County, Alabama). Fix it on every county map; then the package can go to live.
+- **Cause:** every map query simplified each polygon separately (`ST_SimplifyPreserveTopology`), and the `/area/*` pages sent one tolerance sized for the national view (0.04°, about 15 pixels at zoom 9).
+- **Fix:** [geometry_sql.py](../backend/app/geometry_sql.py) snaps vertices to a common grid and removes only collinear points; applied to 9 area and 13 legacy shape queries (not the funding or TAGGS state maps). Both map generations send about one pixel for the current zoom. The selection outline follows the drawn shape. Two legacy-map faults found on the way and fixed: it did not redraw when newly loaded shapes arrived under the same view, and it dropped a response when a selection re-ran the load.
+- **Verification on staging `e5335d0`:** gap area between Alabama, Georgia, and North Carolina counties 0.87 square degrees before and 0 after (read-only SQL); national county payload about 1.1 MB (0.8 MB before); screenshots of Alabama, Virginia, Kansas, and New Orleans tracts on new and legacy maps; frontend 156 tests; backend 674 passed, 5 failed (funding source tests that also fail without these changes in this worktree); `npm run test:beta` all legs.
+- **Also corrected:** `tests/test_taggs_methodology_copy.py` read the old header file for the funding methodology text; it now reads `frontend/src/content/fundingMethodology.js`. This was a miss in M1 that the earlier, narrower test run did not catch.
+- **State-changing commands:** branch commits; `infra/staging/deploy-staging.sh claude/map-consistency` four more times. Nothing on live in this entry.
+- **Next:** promotion to live, approved by John on condition of this fix.
+
 ## 2026-11-15T22:10:00+00:00 — Map consistency package built and deployed to staging (Claude, M1–M6)
 
 - **Outcome:** all six packages of [MAP_CONSISTENCY_PLAN.md](beta/MAP_CONSISTENCY_PLAN.md) are on staging at `beta` `5fb2720` (branch `claude/map-consistency`, fast-forward merges). **Nothing was changed on live**: checked `main` `33925a0`, live bundle `index-D7hePjXM.js`, `places-backend` start time 17:35:58Z. No migration, release, or pointer change; staging database read only.

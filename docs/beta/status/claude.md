@@ -64,9 +64,12 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 | M5 Maps open zoomed to the place | Done on staging | `claude/map-consistency` | `focus=<level>:<geoid>` from county, state, and district profiles; legacy map accepts county and state. |
 | M6 Verify, staging, documents | Done; waiting for John's review | `claude/map-consistency` | Frontend 155 tests, area/community backend 241, `npm run test:beta` all legs on staging `5fb2720`. Not on live. |
 
+| M7 County shapes fit together | Done on staging | `claude/map-consistency` | Added after John's staging review: grid snapping in `backend/app/geometry_sql.py`, zoom-based grid from both map generations, legacy layer redraw fix. |
+
 ### What Codex can rely on now (map consistency)
 
 - Import the header from `components/SiteHeader` (or the old `components/Header` path); do not add page-specific headers. `components/PlaceSearch` takes `onSelect` for in-page use.
 - Map links from any page can add `&focus=<level>:<geoid>`; `mapFocus(level, geoid)` in `CommunityPages.jsx` builds it.
 - Colours for any new map come from `branding/mapColors.js`; tooltips from `utils/mapTooltip.js`.
 - The source audit under `deliverables/` was **not** rerun: no pointer or value changed. Screenshots there predate the new header and ramps and need refreshing by Codex if John wants them current.
+- Shape queries must use `fitted_geom()` from `app/geometry_sql.py`; pages pass `gridForZoom(zoom)` as `simplify`.
