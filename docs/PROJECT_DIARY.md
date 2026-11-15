@@ -27,6 +27,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
 - **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
 
+## 2026-11-15T16:42:58+00:00 — Y2 state profile page deployed to staging (Codex)
+
+- **Request/outcome:** Completed the next product package Y2 on `codex/brfss-y2-state-profile`, merged commit `c1569a1` into local `beta`, and deployed to staging. The state page reuses community indicator, facility, brand, and print components; it shows ACS, BRFSS, CMS, facility counts, county and district links, and the existing state funding profile. No live changes, migrations, or direct published-data table reads.
+- **Verification:** Route test (5 passed), Vite build, and staging deploy checks passed. Authenticated staging rendered North Carolina and Kentucky with 33 indicators each, including 20 BRFSS cards; Kentucky displays not-published statuses. State funding and county links resolved. North Carolina PDF returned HTTP 200 and a valid seven-page PDF containing the state heading, BRFSS diabetes, confidence interval, facilities, and limits. The PDF rendering validates the Y1 state PDF route end to end.
+- **Files/state:** `CommunityState.jsx`, community print/places CSS, `main.jsx`, route resolver and test, Codex status, and this diary. The handbook is Claude-owned under the beta plan and was not edited; staging BRFSS release and other pointers were not changed.
+- **Unresolved/next:** Implement and deploy Y3 county and comparison BRFSS companion presentation. B4 promotion is Claude-owned and awaits John's staging review after Y5.
+
 ## 2026-11-15T16:39:03+00:00 — Y1 state community API deployed to staging (Codex)
 
 - **Request/outcome:** Merged `beta` into the clean product branch, then implemented Y1 in `backend/app/community/router.py`: state-name search through `lookup.states`, a state profile from `lookup.area_info`, `area_values`, `area_facilities`, `state_counties`, and `state_districts`, state CSV and PDF routes, and 13 BRFSS companion rows keyed to PLACES measures on county API responses. Commit `bd7e4db` merged into local `beta` and deployed to staging. No live changes, migrations, or direct published-data table reads.
