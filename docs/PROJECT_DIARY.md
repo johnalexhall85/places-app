@@ -27,6 +27,12 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
 - **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
 
+## 2026-11-15T16:59:31+00:00 — Final Y1–Y5 staging handoff check (Codex)
+
+- **Outcome:** Final Y5 evidence and status commit `2ca19ab` is on both the product branch and local `beta`; the staging deploy script completed its build, Alembic-head, health, anonymous-access, and page checks. All Y packages remain staging-only and ready for Gate 3 review of that commit. No live system, migration, or published release was changed.
+- **Read-only verification:** Staging Nginx returned health 200, anonymous catalog 401, and state page 200. `app.area_pilot.lookup.catalog` returned 66 measures; `lookup.area_values` returned 40 BRFSS rows across North Carolina and Kentucky on one release, including 19 Kentucky `not_published` rows. The first lookup command was launched from the repository root without `PYTHONPATH`, failed to import `app`, and was rerun successfully from `backend/`.
+- **Unresolved/next:** John reviews the specific staging `beta` commit at Gate 3. Claude owns B4 promotion and the handbook update after approval; Codex stops here. The handbook was not edited because it is Claude-owned under the beta plan.
+
 ## 2026-11-15T16:58:02+00:00 — Y5 state walkthrough and evidence deployed to staging (Codex)
 
 - **Request/outcome:** Completed Y5 on `codex/brfss-y5-evidence`; code commits `8643f8f` and `9d9069f` merged into local `beta` and deployed to staging. Landing search accepts state names and two-digit FIPS, and North Carolina is an example state. The walkthrough covers state search, North Carolina and Kentucky profiles, state PDF, BRFSS map, and mobile layout. Refreshed 11 screenshots and extended the archived-source audit to 59 checks including BRFSS in North Carolina, West Virginia, and Kentucky. No live changes, migrations, or direct published-data table reads in product code.
