@@ -143,3 +143,5 @@ The registries now list 13 measures at county and tract level: the original two 
 **Order of operations.** Publish the county candidate first, then stage and publish the tract candidate. The tract candidate requires the active county parent to carry the same measure set (`county_parent_measure_set` check). Between the two publications the active release is county-only, so tract values are briefly unavailable.
 
 **Rollback.** Rolling back to an older two-measure release keeps the pointer mechanics unchanged. The eleven added measures then have no rows: maps for them are empty and `app.area_pilot.lookup` reports `not_in_release`. Roll forward again by selecting the wider release.
+
+**Staging browser follow-up (2026-11-15):** An authenticated Chromium session through staging Nginx selected all 13 county measures on `/area/places-2025`; each rendered county polygons and a table without page errors. At zoom 11 near Person County, the diabetes tract layer rendered polygons and 49 tracts in the viewport table. This closes the C1 measure-switch browser check on staging only; it is not a new live check.

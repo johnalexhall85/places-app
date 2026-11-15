@@ -198,3 +198,5 @@ These national timings are comparable to the CMS GV and EPA AQI national county 
 - a county popup;
 - overlay toggles;
 - a 390-pixel layout.
+
+**Staging follow-up, 2026-11-15:** An existing staging-only demo session closed this checklist on the staging deployment. Headless Chromium exercised all five measures with their observation years, county polygons and table, the national state-value message, the tract-zoom message, a county popup, and all three independent overlay toggles (HRSA, TRI, CMS nursing homes) on and off. At 390 px the page had no document overflow. The table showed Capitol planning region `09110` as not published on the current boundary, Mayagüez `72097` as outside Atlas coverage, and Anchorage `02020` with a published value. This verifies staging behavior; the earlier live authenticated check remains unperformed. HRSA site detail had a pointer-click obstruction in the staging overlay; see the [site guide](chip_hrsa_health_center_sites.md).

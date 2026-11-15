@@ -208,3 +208,5 @@ Identical content fetched on a later day is recorded as a `duplicate` run with `
   - A measure switch issued no site requests.
   - The overlay persisted across area pages and could be toggled off.
 - **Outstanding:** an operator should repeat the check with a real demo session.
+
+**Staging follow-up, 2026-11-15:** Using an existing staging-only demo session through Nginx, Chromium loaded the HRSA overlay, changed a filter, and opened a site detail with keyboard Enter; the detail showed its organization, site type, address, published coordinates, and snapshot. A normal pointer click on the table's first “Details” button failed at a 1365 × 900 viewport: Chromium reported sibling panel content intercepting the button, even after scrolling the overlay body. A 390 × 844 viewport had no document overflow and the detail still opened by keyboard, but the button also sat under other content. This is a staging frontend layout defect for the product track to fix. The original live authenticated check remains outstanding; the staging data and keyboard detail route were verified.
