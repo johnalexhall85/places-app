@@ -205,6 +205,7 @@ export function FacilityBlock({ title, block }) {
     <h3>{title}</h3>
     <p className="community-facility-count">{block.published ? new Intl.NumberFormat("en-US").format(block.count) : "No published release"}</p>
     <p>{block.method}</p>
+    {block.release && <p className="community-source">Source: {title} · {block.release.source_release_id} · release {block.release.release_id}</p>}
     <details><summary>See listed locations{block.truncated ? " (first 200)" : ""}</summary>
       <ul>{block.rows.map((item) => <li key={item.site_id || item.ccn || item.facility_id || item.trifd || item.name}>{item.name}{item.city ? ` · ${item.city}` : ""}</li>)}</ul>
     </details>
