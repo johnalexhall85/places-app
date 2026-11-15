@@ -244,7 +244,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const isFea = dataset === "usdafea";
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
-  const [measureId, setMeasureId] = useState(isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev");
+  const [measureId, setMeasureId] = useState(() => new URLSearchParams(window.location.search).get("measure_id") ||
+    (isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev"));
   const [bbox, setBBox] = useState(null);
   const [mapZoom, setMapZoom] = useState(initialMapZoom);
   const [tractCapKey, setTractCapKey] = useState(null);

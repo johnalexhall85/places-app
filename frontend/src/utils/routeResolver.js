@@ -9,6 +9,13 @@ export function resolveRoute(pathname) {
   if (/^\/compare\/?$/i.test(normalizedPath)) {
     return { type: "community-compare" };
   }
+  if (/^\/topics\/?$/i.test(normalizedPath)) {
+    return { type: "community-topics" };
+  }
+  const topicMatch = normalizedPath.match(/^\/topics\/([a-z0-9-]+)\/?$/i);
+  if (topicMatch) {
+    return { type: "community-topic", slug: topicMatch[1] };
+  }
   const communityCountyMatch = normalizedPath.match(/^\/community\/county\/(\d{5})\/?$/i);
   if (communityCountyMatch) {
     return { type: "community-county", id: communityCountyMatch[1] };

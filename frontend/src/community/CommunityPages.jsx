@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import pdoMark from "../assets/brand/pdo-observatory-mark.png";
 import Footer from "../components/Footer";
+import TractPatternMap from "./TractPatternMap";
 import "./community.css";
 
 const SHOWCASE = [
@@ -20,7 +21,7 @@ const TOPICS = [
   { slug: "medicare-use-and-spending", title: "Medicare use and spending", copy: "Original Medicare beneficiaries, use, spending, and readmissions.", map: "/area/cms-gv" },
 ];
 
-const MAP_ROUTES = {
+export const MAP_ROUTES = {
   places: "/area/places-2025",
   acs: "/area/acs-2024",
   ahrf: "/area/ahrf",
@@ -41,7 +42,7 @@ export function CommunityShell({ children }) {
         </a>
         <nav aria-label="Main navigation">
           <a href="/">Home</a>
-          <a href="/#topics-heading">Topics</a>
+          <a href="/topics">Topics</a>
           <a href="/compare">Compare</a>
           <a href="/explore/map">Explore data</a>
           <a href="/cdc-funding">Funding</a>
@@ -121,9 +122,9 @@ export function CommunityLanding() {
     <section className="community-wrap community-section" aria-labelledby="topics-heading">
       <div className="community-section-heading"><p className="community-eyebrow">Explore a question</p><h2 id="topics-heading">Seven ways to explore a community</h2></div>
       <div className="community-topic-grid">
-        {TOPICS.map((topic, index) => <a className="community-topic" href={topic.map} key={topic.slug}>
+        {TOPICS.map((topic, index) => <a className="community-topic" href={`/topics/${topic.slug}`} key={topic.slug}>
           <span className="community-topic-index">{String(index + 1).padStart(2, "0")}</span>
-          <h3>{topic.title}</h3><p>{topic.copy}</p><span className="community-topic-cta">Open data map →</span>
+          <h3>{topic.title}</h3><p>{topic.copy}</p><span className="community-topic-cta">Explore topic →</span>
         </a>)}
       </div>
     </section>
@@ -179,7 +180,7 @@ export function uncertaintyText(row) {
 
 function Indicator({ row, stateRow }) {
   const hasValue = row.value != null;
-  const mapUrl = MAP_ROUTES[row.product];
+  const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}` : null;
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
     <h3>{row.label}</h3>
     <p className="community-value">{formatIndicatorValue(row)}</p>
@@ -219,6 +220,8 @@ const SECTIONS = [
 
 export function CommunityCounty({ geoid }) {
   const [profile, setProfile] = useState(null);
+  const [catalog, setCatalog] = useState(null);
+  const [selectedTractKey, setSelectedTractKey] = useState("acs:B19013_001E");
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -233,6 +236,14 @@ export function CommunityCounty({ geoid }) {
       .catch((failure) => { if (failure.name !== "AbortError") setError(failure.message); });
     return () => controller.abort();
   }, [geoid]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE}/community/catalog`, { signal: controller.signal })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then(setCatalog)
+      .catch((failure) => { if (failure.name !== "AbortError") setCatalog(null); });
+    return () => controller.abort();
+  }, []);
 
   const bySection = useMemo(() => {
     const groups = Object.fromEntries(SECTIONS.map((section) => [section.key, []]));
@@ -240,6 +251,12 @@ export function CommunityCounty({ geoid }) {
     return groups;
   }, [profile]);
   const stateValues = useMemo(() => new Map((profile?.state_values || []).map((row) => [`${row.product}:${row.measure_id}`, row])), [profile]);
+  const tractMeasures = useMemo(() => {
+    const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published)
+      .map((measure) => `${measure.product}:${measure.measure_id}`));
+    return (profile?.values || []).filter((row) => capable.has(`${row.product}:${row.measure_id}`));
+  }, [catalog, profile]);
+  const selectedTractRow = tractMeasures.find((row) => `${row.product}:${row.measure_id}` === selectedTractKey) || tractMeasures[0];
 
   return <CommunityShell>
     <div className="community-wrap community-profile">
@@ -260,12 +277,24 @@ export function CommunityCounty({ geoid }) {
         </header>
         <nav className="community-section-nav" aria-label="Profile sections">
           {SECTIONS.filter((section) => bySection[section.key]?.length).map((section) => <a href={`#${section.key}`} key={section.key}>{section.title}</a>)}
+          {tractMeasures.length > 0 && <a href="#tract-patterns">Tract patterns</a>}
           <a href="#facilities">Facilities</a><a href="#limitations">What this data cannot tell you</a>
         </nav>
         {SECTIONS.map((section) => bySection[section.key]?.length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
           <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
           <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} />)}</div>
         </section>)}
+        {selectedTractRow && <section className="community-profile-section" id="tract-patterns">
+          <div className="community-section-heading"><h2>Within-county tract patterns</h2><p>Each shape is a source-published tract estimate. Darker blues show higher values for the selected measure within this county.</p></div>
+          <div className="community-tract-controls">
+            <label htmlFor="community-tract-measure">Tract measure</label>
+            <select id="community-tract-measure" value={`${selectedTractRow.product}:${selectedTractRow.measure_id}`} onChange={(event) => setSelectedTractKey(event.target.value)}>
+              {tractMeasures.map((row) => <option key={`${row.product}:${row.measure_id}`} value={`${row.product}:${row.measure_id}`}>{row.label} · {row.period}</option>)}
+            </select>
+            <a href={`${MAP_ROUTES[selectedTractRow.product]}?measure_id=${encodeURIComponent(selectedTractRow.measure_id)}`}>Open full map →</a>
+          </div>
+          <TractPatternMap area={profile.area} row={selectedTractRow} />
+        </section>}
         <section className="community-profile-section" id="facilities">
           <div className="community-section-heading"><h2>Mapped facility locations</h2><p>These are source-listed locations inside the county boundary, not a measure of access, capacity, exposure, or quality.</p></div>
           <div className="community-facility-grid">
