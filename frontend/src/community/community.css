@@ -860,6 +860,7 @@
   .community-profile-head h1 { font-size: 28px; }
   /* Sections flow across pages; only a card is kept whole, and a heading stays with its first row. */
   .community-profile-section { padding: 16px 0; break-inside: auto; }
+  .community-limits { break-inside: avoid; }
   .community-section-heading { margin-bottom: 12px; break-after: avoid; break-inside: avoid; }
   .community-section-heading h2 { font-size: 20px; }
   .community-indicator-grid,
