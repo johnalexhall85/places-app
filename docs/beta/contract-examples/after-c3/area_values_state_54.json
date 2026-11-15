@@ -1,0 +1,388 @@
+{
+ "level": "state",
+ "geoids": [
+  "54"
+ ],
+ "values": [
+  {
+   "product": "acs",
+   "dataset_id": "census_acs5_2024_b19013",
+   "measure_id": "B19013_001E",
+   "label": "Median household income in the past 12 months",
+   "unit": "2024 inflation-adjusted USD",
+   "kind": null,
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "households",
+   "value_type": "median_household_income",
+   "level": "state",
+   "geoid": "54",
+   "value": 59608,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 691,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686",
+   "source_release_id": "2020-2024 ACS 5-year detailed tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "total_population",
+   "label": "Total population",
+   "unit": "people",
+   "kind": "count",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 1778373,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": null,
+    "label": "No sampling margin: the estimate is controlled to official population totals"
+   },
+   "notes": {
+    "moe_annotation": "*****"
+   },
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 16.7,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.4,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "age_65_plus_pct",
+   "label": "Population aged 65 and over",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 21.0,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "age_under_18_pct",
+   "label": "Population under 18",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 20.0,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "disability_pct",
+   "label": "People with a disability",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 19.1,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.3,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "uninsured_pct",
+   "label": "People without health insurance",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 6.0,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.2,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "limited_english_pct",
+   "label": "People who speak English less than \"very well\"",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population 5 years and over",
+   "value_type": "acs5_published_estimate",
+   "level": "state",
+   "geoid": "54",
+   "value": 0.7,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "om_beneficiaries",
+   "label": "Original Medicare beneficiaries",
+   "unit": "beneficiaries",
+   "kind": "count",
+   "storage_scale": "count",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "54",
+   "value": 181595,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "181595",
+    "source_desc": "WV"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "std_payment_per_capita",
+   "label": "Standardized Medicare payment per beneficiary",
+   "unit": "US dollars per Original Medicare beneficiary (2024, nominal)",
+   "kind": "currency",
+   "storage_scale": "dollars",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "54",
+   "value": 11982.38,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "11982.38",
+    "source_desc": "WV"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "ip_stays_per_1000",
+   "label": "Inpatient covered stays per 1,000 beneficiaries",
+   "unit": "covered stays per 1,000 Original Medicare beneficiaries",
+   "kind": "per_1000",
+   "storage_scale": "per_1000",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "54",
+   "value": 254.3462,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "254.3462",
+    "source_desc": "WV"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "er_visits_per_1000",
+   "label": "Emergency room (ER) visits per 1,000 beneficiaries",
+   "unit": "ER visits per 1,000 Original Medicare beneficiaries",
+   "kind": "per_1000",
+   "storage_scale": "per_1000",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "54",
+   "value": 688.4826,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "688.4826",
+    "source_desc": "WV"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  },
+  {
+   "product": "cms_gv",
+   "dataset_id": "cms_om_geographic_variation",
+   "measure_id": "readmission_rate",
+   "label": "All-cause 30-day hospital readmission rate",
+   "unit": "percent of acute hospital stays (CMS stores 0-1)",
+   "kind": "proportion",
+   "storage_scale": "proportion_0_1",
+   "period": "2024",
+   "population": "Original Medicare beneficiaries, all ages",
+   "value_type": "cms_om_gv_published",
+   "level": "state",
+   "geoid": "54",
+   "value": 0.1993,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "none",
+    "label": "No uncertainty published"
+   },
+   "notes": {
+    "source_value": "0.1993",
+    "source_desc": "WV"
+   },
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "boundary_vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)"
+  }
+ ],
+ "releases": {
+  "census_acs5_2024_b19013": {
+   "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686",
+   "source_release_id": "2020-2024 ACS 5-year detailed tables",
+   "published_at": "2026-11-13T23:46:15.861150+00:00"
+  },
+  "census_acs5_2024_community_profile": {
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "published_at": "2026-11-15T01:11:57.655388+00:00"
+  },
+  "cms_om_geographic_variation": {
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "published_at": "2026-11-14T21:47:59.151543+00:00"
+  }
+ }
+}

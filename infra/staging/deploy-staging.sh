@@ -53,7 +53,6 @@ cd "$BETA_DIR/frontend"
 if [ ! -d node_modules ] || changed frontend/package-lock.json; then npm ci --no-audit --no-fund; fi
 # frontend/.env.production is git-ignored, so set the API base here: the bundle must call /api on its own origin.
 VITE_API_BASE_URL=/api npm run build
-grep -rq 'localhost:8000' dist/assets/*.js && echo 'Warning: bundle still references localhost:8000 (fallback only if VITE_API_BASE_URL was unset)' >&2 || true
 sudo -n rsync -a --delete dist/ "$WEBROOT/"
 
 sudo -n systemctl restart "$SERVICE"

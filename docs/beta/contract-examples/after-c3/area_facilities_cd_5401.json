@@ -1,0 +1,253 @@
+{
+ "level": "cd",
+ "geoid": "5401",
+ "row_cap": 200,
+ "health_centers": {
+  "dataset_id": "hrsa_health_center_sites",
+  "published": true,
+  "count": 347,
+  "rows": [
+   {
+    "site_id": "BPS-H80-038087",
+    "name": "AccessHealth Associates OB/GYN Clinic",
+    "organization": "COMMUNITY HEALTH SYSTEMS INC",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Beckley",
+    "state": "WV",
+    "point": [
+     -81.20434022,
+     37.7884945
+    ]
+   },
+   {
+    "site_id": "BPS-H80-017820",
+    "name": "AccessHealth Beckley",
+    "organization": "COMMUNITY HEALTH SYSTEMS INC",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Permanent",
+    "setting": "All other clinic types",
+    "in_default_map_view": true,
+    "city": "Beckley",
+    "state": "WV",
+    "point": [
+     -81.1576211,
+     37.78164407
+    ]
+   },
+   {
+    "site_id": "BPS-H80-033063",
+    "name": "AccessHealth Beckley Elementary Clinic",
+    "organization": "COMMUNITY HEALTH SYSTEMS INC",
+    "program": "Health Center Program awardee (FQHC)",
+    "site_type": "Service delivery site",
+    "location_type": "Seasonal",
+    "setting": "School",
+    "in_default_map_view": true,
+    "city": "Beckley",
+    "state": "WV",
+    "point": [
+     -81.15508782,
+     37.78315745
+    ]
+   }
+  ],
+  "truncated": true,
+  "release": {
+   "release_id": "e5cdea05-6518-454c-9418-353410c2309d",
+   "source_release_id": "HCSD site snapshot 2026-11-14",
+   "published_at": "2026-11-14T18:08:17.461264+00:00"
+  },
+  "method": "Mapped, eligible HRSA sites whose published coordinates fall inside the area boundary (2024 TIGER, or 119th Congress district).",
+  "limitations": [
+   "Sites without usable published coordinates, and locations HRSA suppresses, are not counted.",
+   "A site listing is not a service area, capacity, or travel-time measure."
+  ],
+  "name": "HRSA Health Center Service Delivery and Look-Alike Sites"
+ },
+ "nursing_homes": {
+  "dataset_id": "cms_nursing_home_provider_info",
+  "published": true,
+  "count": 56,
+  "rows": [
+   {
+    "ccn": "515133",
+    "name": "ANSTED CENTER",
+    "city": "ANSTED",
+    "state": "WV",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 60,
+    "overall_rating": 2,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -81.095,
+     38.1349
+    ]
+   },
+   {
+    "ccn": "515193",
+    "name": "ARTHUR B HODGES CENTER, THE",
+    "city": "CHARLESTON",
+    "state": "WV",
+    "provider_type": "Medicare",
+    "ownership_type": "Non profit - Corporation",
+    "certified_beds": 20,
+    "overall_rating": 5,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -81.637,
+     38.376
+    ]
+   },
+   {
+    "ccn": "515086",
+    "name": "BECKLEY HEALTHCARE CENTER",
+    "city": "BECKLEY",
+    "state": "WV",
+    "provider_type": "Medicare and Medicaid",
+    "ownership_type": "For profit - Corporation",
+    "certified_beds": 191,
+    "overall_rating": 2,
+    "rating_footnotes": {
+     "overall": {
+      "code": null,
+      "explanation": null
+     },
+     "staffing": {
+      "code": null,
+      "explanation": null
+     },
+     "quality_measure": {
+      "code": null,
+      "explanation": null
+     },
+     "health_inspection": {
+      "code": null,
+      "explanation": null
+     }
+    },
+    "point": [
+     -81.225,
+     37.7987
+    ]
+   }
+  ],
+  "truncated": false,
+  "release": {
+   "release_id": "13e56c1b-320f-4217-8955-8bb813055216",
+   "source_release_id": "NH Provider Information processed 2026-10-01",
+   "published_at": "2026-11-14T20:11:30.080006+00:00"
+  },
+  "method": "CMS nursing homes whose published address coordinates fall inside the area boundary (2024 TIGER, or 119th Congress district).",
+  "limitations": [
+   "Facilities with ZIP-based coordinates (CMS geocoding footnote) are not counted.",
+   "Certified beds are not vacancies. Star ratings are not averaged and are not a live care assessment.",
+   "A missing overall rating means unrated, not zero."
+  ],
+  "name": "CMS Nursing Home Provider Information"
+ },
+ "tri_facilities": {
+  "dataset_id": "epa_tri_facilities",
+  "published": true,
+  "count": 60,
+  "rows": [
+   {
+    "facility_id": "24740CMWDPROGER",
+    "name": "ACME WOOD PRESERVING INC",
+    "city": "PRINCETON",
+    "state": "WV",
+    "sector_codes": [
+     "321"
+    ],
+    "reported_chemicals": 4,
+    "forms": 4,
+    "point": [
+     -81.084273,
+     37.361848
+    ]
+   },
+   {
+    "facility_id": "25143CSNCXWEST1",
+    "name": "AC&S INC",
+    "city": "NITRO",
+    "state": "WV",
+    "sector_codes": [
+     "325"
+    ],
+    "reported_chemicals": 8,
+    "forms": 8,
+    "point": [
+     -81.846624,
+     38.42464
+    ]
+   },
+   {
+    "facility_id": "2553WLCNRS2VISB",
+    "name": "ALCON RESEARCH LTD. LESAGE",
+    "city": "LESAGE",
+    "state": "WV",
+    "sector_codes": [
+     "339"
+    ],
+    "reported_chemicals": 1,
+    "forms": 1,
+    "point": [
+     -82.28312,
+     38.570812
+    ]
+   }
+  ],
+  "truncated": false,
+  "release": {
+   "release_id": "3b6ecfb1-bf58-4122-a71f-432027994bd7",
+   "source_release_id": "TRI RY2024 basic US file",
+   "published_at": "2026-11-14T19:03:10.782780+00:00"
+  },
+  "method": "EPA TRI reporting facilities whose coordinates fall inside the area boundary (county: the spatially derived county stored at publication).",
+  "limitations": [
+   "Reporting to TRI does not mean a release occurred, a violation, a health risk, or current operation.",
+   "Facilities below reporting thresholds or outside covered sectors do not appear; absence is not absence of pollution."
+  ],
+  "name": "EPA Toxics Release Inventory (TRI) reporting facilities"
+ },
+ "_note": "rows truncated to 3 per block for this example"
+}

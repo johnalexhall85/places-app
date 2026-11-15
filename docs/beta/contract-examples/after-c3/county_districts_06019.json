@@ -1,0 +1,46 @@
+{
+ "county_geoid": "06019",
+ "note": "Shares are of total land and water area from the official boundaries. They are not population shares, and a county value is context for the district, never a district estimate.",
+ "districts": [
+  {
+   "county_geoid": "06019",
+   "county_name": "Fresno",
+   "state_name": "California",
+   "district_geoid": "0605",
+   "district_name": "Congressional District 5",
+   "county_area_share_in_district": 0.3602,
+   "district_area_share_in_county": 0.2172,
+   "county_wholly_in_district": false
+  },
+  {
+   "county_geoid": "06019",
+   "county_name": "Fresno",
+   "state_name": "California",
+   "district_geoid": "0613",
+   "district_name": "Congressional District 13",
+   "county_area_share_in_district": 0.4356,
+   "district_area_share_in_county": 0.4124,
+   "county_wholly_in_district": false
+  },
+  {
+   "county_geoid": "06019",
+   "county_name": "Fresno",
+   "state_name": "California",
+   "district_geoid": "0620",
+   "district_name": "Congressional District 20",
+   "county_area_share_in_district": 0.1282,
+   "district_area_share_in_county": 0.0792,
+   "county_wholly_in_district": false
+  },
+  {
+   "county_geoid": "06019",
+   "county_name": "Fresno",
+   "state_name": "California",
+   "district_geoid": "0621",
+   "district_name": "Congressional District 21",
+   "county_area_share_in_district": 0.076,
+   "district_area_share_in_county": 0.5114,
+   "county_wholly_in_district": false
+  }
+ ]
+}

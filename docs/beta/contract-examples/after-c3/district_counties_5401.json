@@ -1,0 +1,286 @@
+{
+ "district_geoid": "5401",
+ "note": "Shares are of total land and water area from the official boundaries. They are not population shares, and a county value is context for the district, never a district estimate.",
+ "counties": [
+  {
+   "county_geoid": "54005",
+   "county_name": "Boone",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0349,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54007",
+   "county_name": "Braxton",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0357,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54011",
+   "county_name": "Cabell",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0199,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54013",
+   "county_name": "Calhoun",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0194,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54015",
+   "county_name": "Clay",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0238,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54019",
+   "county_name": "Fayette",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0463,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54021",
+   "county_name": "Gilmer",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0235,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54025",
+   "county_name": "Greenbrier",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0709,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54035",
+   "county_name": "Jackson",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0326,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54039",
+   "county_name": "Kanawha",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.063,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54043",
+   "county_name": "Lincoln",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0304,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54045",
+   "county_name": "Logan",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0315,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54047",
+   "county_name": "McDowell",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.037,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54053",
+   "county_name": "Mason",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0308,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54055",
+   "county_name": "Mercer",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0291,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54059",
+   "county_name": "Mingo",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0293,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54063",
+   "county_name": "Monroe",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0328,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54067",
+   "county_name": "Nicholas",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0453,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54071",
+   "county_name": "Pendleton",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0483,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54075",
+   "county_name": "Pocahontas",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0652,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54079",
+   "county_name": "Putnam",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0242,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54081",
+   "county_name": "Raleigh",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0421,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54087",
+   "county_name": "Roane",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0335,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54089",
+   "county_name": "Summers",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0254,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54099",
+   "county_name": "Wayne",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0354,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54101",
+   "county_name": "Webster",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0385,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54105",
+   "county_name": "Wirt",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0162,
+   "county_wholly_in_district": true
+  },
+  {
+   "county_geoid": "54109",
+   "county_name": "Wyoming",
+   "state_name": "West Virginia",
+   "district_geoid": "5401",
+   "district_name": "Congressional District 1",
+   "county_area_share_in_district": 1.0,
+   "district_area_share_in_county": 0.0347,
+   "county_wholly_in_district": true
+  }
+ ]
+}

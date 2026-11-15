@@ -22,12 +22,16 @@ from typing import Any, Callable
 
 from sqlalchemy import text
 
-from app.area_pilot import (acs_api, ahrf_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
+from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
                             hrsa_sites_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
-LEVELS = {'state': 2, 'county': 5, 'tract': 11}
+LEVELS = {'state': 2, 'county': 5, 'tract': 11, 'cd': 4}
+# Every area CHIP can name: 2024 TIGER states, counties, tracts, and 119th Congress districts.
+BOUNDARY = f'''(SELECT level,geoid,name,geom FROM {S}.acs_boundary_2024
+  UNION ALL SELECT 'cd',geoid,name,geom FROM {S}.cd_boundary_119)'''
+SLIVER = 0.001   # ignore county/district overlaps below 0.1% of the smaller area (shared edges)
 MAX_GEOIDS = 200
 FACILITY_ROW_CAP = 200
 NOT_IN_RELEASE = 'not_in_release'
@@ -79,6 +83,9 @@ SPECS: tuple[Spec, ...] = (
     Spec('acs', acs_api.load_registry,
          {lvl: ('observation_acs', 'geoid', 'level') for lvl in ('state', 'county', 'tract')},
          ('moe', 'estimate_annotation', 'moe_annotation', 'moe_confidence'), 'moe90', acs_api),
+    Spec('acs_profile', acs_profile_api.load_registry,
+         {lvl: ('observation_acs_profile', 'geoid', 'level') for lvl in ('state', 'county', 'tract', 'cd')},
+         ('moe', 'estimate_annotation', 'moe_annotation', 'moe_confidence'), 'moe90', acs_profile_api),
     Spec('ahrf', ahrf_api.load_registry, {'county': ('observation_ahrf', 'geoid', None)},
          ('source_code',), 'none', ahrf_api),
     Spec('clh', clh_api.load_registry,
@@ -109,7 +116,7 @@ def _num(value):
 
 def _check(level: str, geoids: list[str]) -> list[str]:
     if level not in LEVELS:
-        raise LookupError_(f'Unsupported level {level!r}; use state, county, or tract')
+        raise LookupError_(f'Unsupported level {level!r}; use state, county, tract, or cd')
     unique = list(dict.fromkeys(str(g).strip() for g in geoids))
     if not unique or len(unique) > MAX_GEOIDS:
         raise LookupError_(f'Provide between 1 and {MAX_GEOIDS} GEOIDs')
@@ -150,6 +157,11 @@ def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
     }
 
 
+def _limitations(spec: Spec) -> list[str]:
+    value = getattr(spec.api, 'LIMITATIONS', None)
+    return list(value() if callable(value) else value or [])
+
+
 def active_releases(db) -> dict[str, dict]:
     """Active published release per dataset_id, including the three point products."""
     rows = db.execute(text(f'''SELECT a.dataset_id,r.id,r.source_release_id,r.published_at
@@ -172,7 +184,7 @@ def catalog(db) -> dict:
             'name': config.get('short_name') or config['name'], 'publisher': config['publisher'],
             'landing_page': config.get('landing_page'), 'levels': list(spec.tables),
             'published': release is not None, 'release': release,
-            'limitations': list(getattr(spec.api, 'LIMITATIONS', []) or []),
+            'limitations': _limitations(spec),
         })
         for measure in config['measures']:
             measures.append(_measure_meta(spec, config, measure) | {'published': release is not None})
@@ -180,13 +192,16 @@ def catalog(db) -> dict:
 
 
 def area_info(db, level: str, geoids: list[str]) -> list[dict]:
-    """Name, parent areas, bounding box, and centroid on the 2024 boundaries. Unknown GEOIDs are omitted."""
+    """Name, parent areas, bounding box, and a point inside each area. Unknown GEOIDs are omitted.
+
+    States, counties, and tracts use the 2024 TIGER boundaries; `cd` uses the 119th Congress districts.
+    """
     geoids = _check(level, geoids)
     rows = db.execute(text(f'''SELECT b.geoid,b.name,ST_XMin(b.geom) AS west,ST_YMin(b.geom) AS south,
         ST_XMax(b.geom) AS east,ST_YMax(b.geom) AS north,
         ST_X(ST_PointOnSurface(b.geom)) AS lon,ST_Y(ST_PointOnSurface(b.geom)) AS lat,
         s.name AS state_name,c.name AS county_name
-        FROM {S}.acs_boundary_2024 b
+        FROM {BOUNDARY} b
         LEFT JOIN {S}.acs_boundary_2024 s ON s.level='state' AND s.geoid=left(b.geoid,2)
         LEFT JOIN {S}.acs_boundary_2024 c ON c.level='county' AND b.level='tract' AND c.geoid=left(b.geoid,5)
         WHERE b.level=:level AND b.geoid = ANY(:geoids) ORDER BY b.geoid'''),
@@ -197,7 +212,7 @@ def area_info(db, level: str, geoids: list[str]) -> list[dict]:
              'county_name': r['county_name'] if level == 'tract' else (r['name'] if level == 'county' else None),
              'bbox': [float(r['west']), float(r['south']), float(r['east']), float(r['north'])],
              'point': [float(r['lon']), float(r['lat'])],
-             'boundary_vintage': 'TIGER/Line 2024'} for r in rows]
+             'boundary_vintage': '119th Congress (TIGER/Line 2024)' if level == 'cd' else 'TIGER/Line 2024'} for r in rows]
 
 
 def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, spec: Spec) -> dict:
@@ -213,6 +228,8 @@ def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, s
     elif spec.uncertainty == 'moe90':
         uncertainty |= {'moe': _num(row['moe']) if stored else None,
                         'label': f"{(row['moe_confidence'] if stored and row['moe_confidence'] else 90)}% margin of error"}
+        if stored and row['moe'] is None and row['moe_annotation'] == '*****':
+            uncertainty['label'] = 'No sampling margin: the estimate is controlled to official population totals'
     else:
         uncertainty |= {'label': 'No uncertainty published'}
     notes = {name: _num(row[name]) for name in spec.extra
@@ -220,7 +237,8 @@ def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, s
     return {k: meta[k] for k in ('product', 'dataset_id', 'measure_id', 'label', 'unit', 'kind', 'storage_scale',
                                  'period', 'population', 'value_type')} | {
         'level': level, 'geoid': geoid, 'value': value, 'status': status,
-        'status_text': STATUS_TEXT.get(status, status), 'stored': stored,
+        'status_text': (getattr(spec.api, 'STATUS_TEXT', None) or {}).get(status) or STATUS_TEXT.get(status, status),
+        'stored': stored,
         'uncertainty': uncertainty, 'notes': notes,
         'release_id': release['release_id'], 'source_release_id': release['source_release_id'],
         'boundary_vintage': _boundary_vintage(config, level, spec.key),
@@ -313,7 +331,7 @@ def county_tract_values(db, county_geoid: str, product: str, measure_id: str) ->
 
 # --- facilities -----------------------------------------------------------------------------
 
-_AREA = f'(SELECT geom FROM {S}.acs_boundary_2024 WHERE level=:level AND geoid=:geoid)'
+_AREA = f'(SELECT geom FROM {BOUNDARY} area WHERE level=:level AND geoid=:geoid)'
 
 
 def _facility_block(db, dataset_id, releases, count_sql, rows_sql, params, shape, method, limitations):
@@ -329,13 +347,13 @@ def _facility_block(db, dataset_id, releases, count_sql, rows_sql, params, shape
 
 
 def area_facilities(db, level: str, geoid: str) -> dict:
-    """Facilities from the three published point products located inside one state or county.
+    """Facilities from the three published point products located inside one state, county, or district.
 
     Counts are of mapped records only, the same records the map overlays draw. They are an
     inventory of listed sites, not a measure of capacity, access, exposure, or quality.
     """
-    if level not in ('state', 'county'):
-        raise LookupError_('Facilities are listed for a state or county')
+    if level not in ('state', 'county', 'cd'):
+        raise LookupError_('Facilities are listed for a state, county, or congressional district')
     (geoid,) = _check(level, [geoid])
     releases = active_releases(db)
     params = {'level': level, 'geoid': geoid}
@@ -357,7 +375,7 @@ def area_facilities(db, level: str, geoid: str) -> dict:
                    'setting': hrsa_labels['setting'].get(r['setting_code'], r['setting_code']),
                    'in_default_map_view': all(r[f'{name}_code'] in defaults[name] for name in hrsa_sites_api.FILTERS),
                    'city': r['city'], 'state': r['state_abbr'], 'point': [float(r['lon']), float(r['lat'])]},
-        'Mapped, eligible HRSA sites whose published coordinates fall inside the 2024 TIGER boundary.',
+        'Mapped, eligible HRSA sites whose published coordinates fall inside the area boundary (2024 TIGER, or 119th Congress district).',
         ['Sites without usable published coordinates, and locations HRSA suppresses, are not counted.',
          'A site listing is not a service area, capacity, or travel-time measure.'])
 
@@ -372,7 +390,7 @@ def area_facilities(db, level: str, geoid: str) -> dict:
                    'provider_type': r['provider_type'], 'ownership_type': r['ownership_type'],
                    'certified_beds': r['certified_beds'], 'overall_rating': r['overall_rating'],
                    'rating_footnotes': r['rating_footnotes'], 'point': [float(r['lon']), float(r['lat'])]},
-        'CMS nursing homes whose published address coordinates fall inside the 2024 TIGER boundary.',
+        'CMS nursing homes whose published address coordinates fall inside the area boundary (2024 TIGER, or 119th Congress district).',
         ['Facilities with ZIP-based coordinates (CMS geocoding footnote) are not counted.',
          'Certified beds are not vacancies. Star ratings are not averaged and are not a live care assessment.',
          'A missing overall rating means unrated, not zero.'])
@@ -389,7 +407,7 @@ def area_facilities(db, level: str, geoid: str) -> dict:
                    'state': r['state_abbr'], 'sector_codes': r['sector_codes'],
                    'reported_chemicals': r['chemical_count'], 'forms': r['report_count'],
                    'point': [float(r['lon']), float(r['lat'])]},
-        'EPA TRI reporting facilities whose coordinates fall inside the 2024 TIGER boundary '
+        'EPA TRI reporting facilities whose coordinates fall inside the area boundary '
         '(county: the spatially derived county stored at publication).',
         ['Reporting to TRI does not mean a release occurred, a violation, a health risk, or current operation.',
          'Facilities below reporting thresholds or outside covered sectors do not appear; absence is not absence of pollution.'])
@@ -398,3 +416,52 @@ def area_facilities(db, level: str, geoid: str) -> dict:
     tri['name'] = tri_config['name']
     return {'level': level, 'geoid': geoid, 'row_cap': FACILITY_ROW_CAP,
             'health_centers': health_centers, 'nursing_homes': nursing_homes, 'tri_facilities': tri}
+
+
+# --- congressional districts ---------------------------------------------------------------
+
+_OVERLAP = f'''SELECT c.geoid AS county_geoid,c.name AS county_name,s.name AS state_name,
+    d.geoid AS district_geoid,d.name AS district_name,
+    ST_Area(ST_Intersection(c.geom,d.geom)::geography) AS shared,
+    ST_Area(c.geom::geography) AS county_area,ST_Area(d.geom::geography) AS district_area
+    FROM {S}.cd_boundary_119 d JOIN {S}.acs_boundary_2024 c ON c.level='county'
+      AND left(c.geoid,2)=d.state_fips AND c.geom && d.geom AND ST_Intersects(c.geom,d.geom)
+    LEFT JOIN {S}.acs_boundary_2024 s ON s.level='state' AND s.geoid=d.state_fips'''
+OVERLAP_NOTE = ('Shares are of total land and water area from the official boundaries. They are not population '
+                'shares, and a county value is context for the district, never a district estimate.')
+
+
+def _overlaps(db, where, params, order):
+    out = []
+    for r in db.execute(text(f'{_OVERLAP} WHERE {where}'), params).mappings():
+        shared, county_area, district_area = float(r['shared']), float(r['county_area']), float(r['district_area'])
+        if shared < SLIVER * min(county_area, district_area):
+            continue
+        county_share = shared / county_area
+        out.append({'county_geoid': r['county_geoid'], 'county_name': r['county_name'], 'state_name': r['state_name'],
+                    'district_geoid': r['district_geoid'], 'district_name': r['district_name'],
+                    'county_area_share_in_district': round(min(county_share, 1.0), 4),
+                    'district_area_share_in_county': round(min(shared / district_area, 1.0), 4),
+                    'county_wholly_in_district': county_share >= 1 - SLIVER})
+    return sorted(out, key=lambda item: item[order])
+
+
+def district_counties(db, district_geoid: str) -> dict:
+    """Counties whose 2024 boundary overlaps one 119th Congress district."""
+    (district_geoid,) = _check('cd', [district_geoid])
+    return {'district_geoid': district_geoid, 'note': OVERLAP_NOTE,
+            'counties': _overlaps(db, 'd.geoid=:geoid', {'geoid': district_geoid}, 'county_geoid')}
+
+
+def county_districts(db, county_geoid: str) -> dict:
+    """119th Congress districts that overlap one county."""
+    (county_geoid,) = _check('county', [county_geoid])
+    return {'county_geoid': county_geoid, 'note': OVERLAP_NOTE,
+            'districts': _overlaps(db, 'c.geoid=:geoid', {'geoid': county_geoid}, 'district_geoid')}
+
+
+def state_districts(db, state_geoid: str) -> list[dict]:
+    """All 119th Congress districts of one state (for search and navigation)."""
+    (state_geoid,) = _check('state', [state_geoid])
+    return [dict(r) for r in db.execute(text(f'''SELECT geoid,name,district_code FROM {S}.cd_boundary_119
+        WHERE state_fips=:state ORDER BY geoid'''), {'state': state_geoid}).mappings()]

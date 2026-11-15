@@ -1,0 +1,206 @@
+{
+ "level": "cd",
+ "geoids": [
+  "5401"
+ ],
+ "values": [
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "total_population",
+   "label": "Total population",
+   "unit": "people",
+   "kind": "count",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 877069,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": null,
+    "label": "No sampling margin: the estimate is controlled to official population totals"
+   },
+   "notes": {
+    "moe_annotation": "*****"
+   },
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 18.8,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.6,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "age_65_plus_pct",
+   "label": "Population aged 65 and over",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 22.2,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "age_under_18_pct",
+   "label": "Population under 18",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 20.3,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "disability_pct",
+   "label": "People with a disability",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 21.7,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.4,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "uninsured_pct",
+   "label": "People without health insurance",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 5.9,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.3,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "limited_english_pct",
+   "label": "People who speak English less than \"very well\"",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population 5 years and over",
+   "value_type": "acs5_published_estimate",
+   "level": "cd",
+   "geoid": "5401",
+   "value": 0.5,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 0.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "119th Congress (TIGER/Line 2024 congressional districts)"
+  }
+ ],
+ "releases": {
+  "census_acs5_2024_community_profile": {
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "published_at": "2026-11-15T01:11:57.655388+00:00"
+  }
+ }
+}

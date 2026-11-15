@@ -1,0 +1,373 @@
+{
+  "dataset_id": "census_acs5_2024_community_profile",
+  "name": "ACS 2020–2024 5-year community characteristics",
+  "short_name": "ACS community characteristics",
+  "publisher": "U.S. Census Bureau",
+  "landing_page": "https://www.census.gov/programs-surveys/acs/news/data-releases/2024/release.html",
+  "source_api": "https://api.census.gov/data/2024/acs/acs5/subject",
+  "source_release_id": "2020-2024 ACS 5-year subject tables",
+  "refresh_policy": {
+    "schedule": "manual",
+    "auto_publish": false,
+    "supported_release_ids": [
+      "2020-2024 ACS 5-year subject tables"
+    ],
+    "same_label_revision": "hold_for_review",
+    "new_release": "discover_and_hold"
+  },
+  "product": "2020–2024 ACS 5-year Subject Tables",
+  "observation_period": "2020–2024",
+  "boundary_vintage": {
+    "state": "January 1, 2024",
+    "county": "January 1, 2024",
+    "tract": "2020 Census with 2024 legal-area updates",
+    "cd": "119th Congress (TIGER/Line 2024 congressional districts)"
+  },
+  "geographies": [
+    "state",
+    "county",
+    "tract",
+    "cd"
+  ],
+  "aggregation_method": "none",
+  "value_type": "acs5_published_estimate",
+  "moe_confidence": 90,
+  "uncertainty": "90% margin of error as published. Controlled population totals have no sampling margin (annotation *****).",
+  "measures": [
+    {
+      "measure_id": "total_population",
+      "label": "Total population",
+      "variable": "S0101_C01_001",
+      "source_table": "S0101",
+      "kind": "count",
+      "unit": "people",
+      "observation_period": "2020–2024",
+      "population": "total population",
+      "official_definition": "Estimate › Total › Total population (Age and Sex)",
+      "interpretation": "Count of all residents. State and county totals are controlled to official population estimates, so the Census Bureau publishes no sampling margin for them.",
+      "legend_breaks": {
+        "state": [
+          1000000,
+          3000000,
+          6000000,
+          10000000
+        ],
+        "county": [
+          10000,
+          50000,
+          200000,
+          1000000
+        ],
+        "tract": [
+          1500,
+          3000,
+          4500,
+          6000
+        ],
+        "cd": [
+          700000,
+          740000,
+          770000,
+          800000
+        ]
+      }
+    },
+    {
+      "measure_id": "poverty_pct",
+      "label": "People below the poverty level",
+      "variable": "S1701_C03_001",
+      "source_table": "S1701",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "population for whom poverty status is determined",
+      "official_definition": "Estimate › Percent below poverty level › Population for whom poverty status is determined (Poverty Status in the Past 12 Months)",
+      "interpretation": "Share of people whose family income in the past 12 months was below the federal poverty threshold. Excludes people in institutions, military group quarters, college dormitories, and unrelated children under 15.",
+      "legend_breaks": [
+        5,
+        10,
+        15,
+        20,
+        30
+      ]
+    },
+    {
+      "measure_id": "age_65_plus_pct",
+      "label": "Population aged 65 and over",
+      "variable": "S0101_C02_030",
+      "source_table": "S0101",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "total population",
+      "official_definition": "Estimate › Percent › Total population › SELECTED AGE CATEGORIES › 65 years and over (Age and Sex)",
+      "interpretation": "Share of all residents aged 65 or older.",
+      "legend_breaks": [
+        10,
+        15,
+        20,
+        25,
+        30
+      ]
+    },
+    {
+      "measure_id": "age_under_18_pct",
+      "label": "Population under 18",
+      "variable": "S0101_C02_022",
+      "source_table": "S0101",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "total population",
+      "official_definition": "Estimate › Percent › Total population › SELECTED AGE CATEGORIES › Under 18 years (Age and Sex)",
+      "interpretation": "Share of all residents younger than 18.",
+      "legend_breaks": [
+        15,
+        20,
+        23,
+        26,
+        30
+      ]
+    },
+    {
+      "measure_id": "disability_pct",
+      "label": "People with a disability",
+      "variable": "S1810_C03_001",
+      "source_table": "S1810",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "civilian noninstitutionalized population",
+      "official_definition": "Estimate › Percent with a disability › Total civilian noninstitutionalized population (Disability Characteristics)",
+      "interpretation": "Share of civilian residents not living in institutions who report a hearing, vision, cognitive, ambulatory, self-care, or independent-living difficulty.",
+      "legend_breaks": [
+        8,
+        12,
+        16,
+        20,
+        25
+      ]
+    },
+    {
+      "measure_id": "uninsured_pct",
+      "label": "People without health insurance",
+      "variable": "S2701_C05_001",
+      "source_table": "S2701",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "civilian noninstitutionalized population",
+      "official_definition": "Estimate › Percent Uninsured › Civilian noninstitutionalized population (Selected Characteristics of Health Insurance Coverage in the United States)",
+      "interpretation": "Share of civilian residents of all ages not living in institutions who had no health insurance coverage when surveyed. This is a survey estimate for all ages; the PLACES insurance measure is a modeled estimate for adults aged 18-64 and the two are not interchangeable.",
+      "legend_breaks": [
+        4,
+        7,
+        10,
+        15,
+        20
+      ]
+    },
+    {
+      "measure_id": "limited_english_pct",
+      "label": "People who speak English less than \"very well\"",
+      "variable": "S1601_C06_001",
+      "source_table": "S1601",
+      "kind": "percent",
+      "unit": "percent",
+      "observation_period": "2020–2024",
+      "population": "population 5 years and over",
+      "official_definition": "Estimate › Percent speak English less than \"very well\" › Percent of specified language speakers › Population 5 years and over (Language Spoken at Home)",
+      "interpretation": "Share of residents aged 5 or older who speak a language other than English at home and speak English less than \"very well\".",
+      "legend_breaks": [
+        1,
+        3,
+        6,
+        12,
+        20
+      ]
+    }
+  ],
+  "source_variables": {
+    "S0101_C01_001E": {
+      "label": "Estimate!!Total!!Total population",
+      "concept": "Age and Sex"
+    },
+    "S0101_C01_001M": {
+      "label": "Margin of Error!!Total!!Total population",
+      "concept": "Age and Sex"
+    },
+    "S1701_C03_001E": {
+      "label": "Estimate!!Percent below poverty level!!Population for whom poverty status is determined",
+      "concept": "Poverty Status in the Past 12 Months"
+    },
+    "S1701_C03_001M": {
+      "label": "Margin of Error!!Percent below poverty level!!Population for whom poverty status is determined",
+      "concept": "Poverty Status in the Past 12 Months"
+    },
+    "S0101_C02_030E": {
+      "label": "Estimate!!Percent!!Total population!!SELECTED AGE CATEGORIES!!65 years and over",
+      "concept": "Age and Sex"
+    },
+    "S0101_C02_030M": {
+      "label": "Margin of Error!!Percent!!Total population!!SELECTED AGE CATEGORIES!!65 years and over",
+      "concept": "Age and Sex"
+    },
+    "S0101_C02_022E": {
+      "label": "Estimate!!Percent!!Total population!!SELECTED AGE CATEGORIES!!Under 18 years",
+      "concept": "Age and Sex"
+    },
+    "S0101_C02_022M": {
+      "label": "Margin of Error!!Percent!!Total population!!SELECTED AGE CATEGORIES!!Under 18 years",
+      "concept": "Age and Sex"
+    },
+    "S1810_C03_001E": {
+      "label": "Estimate!!Percent with a disability!!Total civilian noninstitutionalized population",
+      "concept": "Disability Characteristics"
+    },
+    "S1810_C03_001M": {
+      "label": "Margin of Error!!Percent with a disability!!Total civilian noninstitutionalized population",
+      "concept": "Disability Characteristics"
+    },
+    "S2701_C05_001E": {
+      "label": "Estimate!!Percent Uninsured!!Civilian noninstitutionalized population",
+      "concept": "Selected Characteristics of Health Insurance Coverage in the United States"
+    },
+    "S2701_C05_001M": {
+      "label": "Margin of Error!!Percent Uninsured!!Civilian noninstitutionalized population",
+      "concept": "Selected Characteristics of Health Insurance Coverage in the United States"
+    },
+    "S1601_C06_001E": {
+      "label": "Estimate!!Percent speak English less than \"very well\"!!Percent of specified language speakers!!Population 5 years and over",
+      "concept": "Language Spoken at Home"
+    },
+    "S1601_C06_001M": {
+      "label": "Margin of Error!!Percent speak English less than \"very well\"!!Percent of specified language speakers!!Population 5 years and over",
+      "concept": "Language Spoken at Home"
+    }
+  },
+  "source_variables_sha256": "b0c8a7f77257d684030da13f911f10291fc6dd073febcf44468fa825005c56e0",
+  "required_geography_levels": [
+    [
+      "040",
+      "2024-01-01"
+    ],
+    [
+      "050",
+      "2024-01-01"
+    ],
+    [
+      "140",
+      "2024-01-01"
+    ],
+    [
+      "500",
+      "2024-01-01"
+    ]
+  ],
+  "supported_state_fips": [
+    "01",
+    "02",
+    "04",
+    "05",
+    "06",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "40",
+    "41",
+    "42",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51",
+    "53",
+    "54",
+    "55",
+    "56",
+    "72"
+  ],
+  "unsupported_territories": {
+    "60": "American Samoa",
+    "66": "Guam",
+    "69": "Northern Mariana Islands",
+    "78": "U.S. Virgin Islands"
+  },
+  "boundary_only_tracts": [
+    "36103122406",
+    "36103122501",
+    "36103145601",
+    "36103145602",
+    "36103145603",
+    "36103145604",
+    "36103145605",
+    "36103145702",
+    "36103146001",
+    "36103146105",
+    "36103146106",
+    "36103146201",
+    "36103146204",
+    "36103201200"
+  ],
+  "cd": {
+    "expected_count": 437,
+    "boundary_url_template": "https://www2.census.gov/geo/tiger/TIGER2024/CD/tl_2024_{state}_cd119.zip",
+    "excluded_codes": {
+      "ZZ": "Congressional districts not defined (water or unassigned area); no residents and no district estimate"
+    },
+    "expected_excluded_states": [
+      "09",
+      "17",
+      "33"
+    ],
+    "delegate_codes": {
+      "98": "Delegate or Resident Commissioner district (District of Columbia, Puerto Rico)",
+      "00": "At-large district"
+    },
+    "note": "District GEOID is state FIPS plus the two-character district code. Estimates are the Census Bureau's own district tabulations, never built from counties or tracts."
+  },
+  "limitations": [
+    "Five-year survey estimates for 2020–2024, not a single year and not current conditions.",
+    "Each percentage has its own universe (see the population for each measure); they are not shares of the same group.",
+    "Margins of error are 90% and can be large for tracts; a tract estimate with a wide margin may not differ from its neighbours.",
+    "Values are the Census Bureau's published estimates. CHIP does not compute, combine, or re-base them.",
+    "Congressional district values are for the 119th Congress boundaries. County or tract values shown near a district are context, not district estimates.",
+    "The uninsured share is for all ages and is not comparable with the PLACES insurance measure (modeled, adults 18-64)."
+  ],
+  "documentation_urls": [
+    "https://www.census.gov/data/developers/data-sets/acs-5year/2024.html",
+    "https://www.census.gov/programs-surveys/acs/technical-documentation/code-lists.html",
+    "https://www.census.gov/programs-surveys/acs/geography-acs/geography-boundaries-by-year.html"
+  ]
+}

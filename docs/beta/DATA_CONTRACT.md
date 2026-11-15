@@ -13,12 +13,37 @@ All functions take a SQLAlchemy session (`db`) as the first argument and read on
 | `area_values(db, level, geoids, products=None, measure_ids=None)` | One row per area and measure published at exactly that level | `area_values_county_01055.json`, `area_values_state_01.json`, `area_values_county_edge_cases.json` |
 | `national_reference(db)` | National values the source itself publishes (CMS only) | `national_reference.json` |
 | `county_tract_values(db, county_geoid, product, measure_id)` | Every tract row of one measure in one county, without geometry | `county_tract_values_01055_places_access2.json` |
-| `area_facilities(db, level, geoid)` | Health center sites, nursing homes, and TRI reporting facilities located in a state or county | `area_facilities_county_01055.json` |
+| `area_facilities(db, level, geoid)` | Health center sites, nursing homes, and TRI reporting facilities located in a state, county, or district | `area_facilities_county_01055.json` |
 | `active_releases(db)` | Active release per `dataset_id`, including the three point products | |
 
-`level` is `state` (2-digit GEOID), `county` (5), or `tract` (11). At most 200 GEOIDs per call. Invalid input raises `lookup.LookupError_`; turn it into HTTP 400.
+`level` is `state` (2-digit GEOID), `county` (5), `tract` (11), or `cd` (4: state FIPS plus district code, 119th Congress). At most 200 GEOIDs per call. Invalid input raises `lookup.LookupError_`; turn it into HTTP 400.
 
-Product keys: `places`, `acs`, `ahrf`, `clh`, `cms_gv`, `epa_aqi`, `usda_fea`. More measures and a `cd` (congressional district) level arrive with work packages C1–C3. They appear in `catalog` without a change to the row shape.
+Product keys: `places` (13 measures), `acs` (median income), `acs_profile` (seven community characteristics), `ahrf`, `clh`, `cms_gv`, `epa_aqi`, `usda_fea`: 46 measures on staging since 2026-11-15.
+
+The files directly in `contract-examples/` are the original 28-measure payloads. Current payloads are in `contract-examples/after-c1/` (13 PLACES measures) and `contract-examples/after-c3/` (46 measures, districts).
+
+## Congressional districts (119th Congress)
+
+| Function | Returns | Example file (`after-c3/`) |
+|---|---|---|
+| `area_info(db, 'cd', geoids)` | District name, state, bounding box, point | `area_info_cd_5401.json` |
+| `area_values(db, 'cd', geoids)` | The seven `acs_profile` measures, which are the only district-level values CHIP has | `area_values_cd_5401.json` |
+| `area_facilities(db, 'cd', geoid)` | Facilities located inside the district | `area_facilities_cd_5401.json` |
+| `district_counties(db, district_geoid)` | Counties overlapping the district, with area shares | `district_counties_5401.json` |
+| `county_districts(db, county_geoid)` | Districts overlapping a county | `county_districts_06019.json` |
+| `state_districts(db, state_geoid)` | All districts of a state, for search and navigation | `state_districts_54.json` |
+
+Rules for the district briefing:
+
+- Only `acs_profile` rows at level `cd` are district estimates. Label them "district estimate (Census Bureau)".
+- Anything read for an overlapping county (`area_values(db, 'county', …)`) is **context**. Show it under its county's name and never merge, average, or weight it into a district figure.
+- `county_area_share_in_district` and `district_area_share_in_county` are area shares from the boundaries, not population shares. Show the function's `note`. `county_wholly_in_district` tells you whether a county lies entirely inside.
+- District codes `00` (at-large) and `98` (DC and Puerto Rico delegates) are real districts. There are 437 in total.
+- A GEOID that does not exist returns rows with status `not_in_release`; validate with `area_info` first.
+
+`acs_profile` rows use `uncertainty.kind` `moe90`. State and county population totals have `moe` null with the label "No sampling margin: the estimate is controlled to official population totals"; show that text, not a zero margin. The ACS `uninsured_pct` (all ages, survey) and the PLACES `access2_crudeprev` (adults 18–64, modeled) must not be presented as the same measure.
+
+Maps for `acs_profile` use `dataset_id=census_acs5_2024_community_profile` on `/api/area/{catalog,map,legend,table}` with `geography` `state`, `county`, `tract`, or `cd`. The map and legend responses include `legend_breaks`, `label`, `unit`, and `kind`. No frontend page exists for this product yet.
 
 ## The value row
 

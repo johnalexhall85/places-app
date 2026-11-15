@@ -1,0 +1,119 @@
+{
+ "county_geoid": "54039",
+ "measure": {
+  "product": "acs_profile",
+  "dataset_id": "census_acs5_2024_community_profile",
+  "product_name": "ACS community characteristics",
+  "publisher": "U.S. Census Bureau",
+  "landing_page": "https://www.census.gov/programs-surveys/acs/news/data-releases/2024/release.html",
+  "measure_id": "poverty_pct",
+  "label": "People below the poverty level",
+  "unit": "percent",
+  "kind": "percent",
+  "storage_scale": null,
+  "category": null,
+  "period": "2020–2024",
+  "population": "population for whom poverty status is determined",
+  "value_type": "acs5_published_estimate",
+  "levels": [
+   "state",
+   "county",
+   "tract",
+   "cd"
+  ],
+  "uncertainty_kind": "moe90",
+  "definition": "Estimate › Percent below poverty level › Population for whom poverty status is determined (Poverty Status in the Past 12 Months)",
+  "denominator": null,
+  "interpretation": "Share of people whose family income in the past 12 months was below the federal poverty threshold. Excludes people in institutions, military group quarters, college dormitories, and unrelated children under 15.",
+  "underlying_source": null
+ },
+ "release": {
+  "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+  "source_release_id": "2020-2024 ACS 5-year subject tables",
+  "published_at": "2026-11-15T01:11:57.655388+00:00"
+ },
+ "values": [
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "level": "tract",
+   "geoid": "54039000100",
+   "value": 40.3,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 13.1,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "2020 Census with 2024 legal-area updates"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "level": "tract",
+   "geoid": "54039000200",
+   "value": 29.1,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 11.6,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "2020 Census with 2024 legal-area updates"
+  },
+  {
+   "product": "acs_profile",
+   "dataset_id": "census_acs5_2024_community_profile",
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "level": "tract",
+   "geoid": "54039000300",
+   "value": 11.3,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "moe90",
+    "moe": 5.2,
+    "label": "90% margin of error"
+   },
+   "notes": {},
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "boundary_vintage": "2020 Census with 2024 legal-area updates"
+  }
+ ],
+ "_note": "values truncated to 3 tracts for this example"
+}

@@ -2,6 +2,21 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T17:40:00+00:00 — ACS community characteristics and 119th Congress districts published on staging (Claude, C2 and C3)
+
+- **Outcome:** new independent shared product `census_acs5_2024_community_profile` is published on **staging** as release `d90070e6-0358-499b-b992-4ca6b8b42eb3`: seven Census-published measures (total population; percent in poverty, 65 and over, under 18, with a disability, uninsured, limited English) for 52 states, 3,222 counties, 85,382 tracts, and 437 congressional districts. Live is unchanged. The B19013 income product was not touched.
+- **Design decisions:** a separate product rather than widening B19013, so the published income release keeps its own pointer; subject-table variables only, so every percentage and margin is the Census Bureau's own; district estimates fetched in the same run because they come from the same endpoint (this merges C3's data into C2).
+- **Source verified:** variable labels and concepts pinned in the registry; summary levels 040/050/140/500 at reference date 2024-01-01; districts named "(119th Congress)"; three zero-population "not defined" (`ZZ`) rows in CT, IL, NH excluded and recorded; TIGER/Line 2024 district shapes exist only as per-state archives (the national file URL returns 404).
+- **Changes:** registry `acs_2024_profile.json`; modules `acs_profile.py`, `acs_profile_cli.py`, `acs_profile_api.py`; router dispatch; additive migration `d5a2f7c9e1b4` (`cd_boundary_119`, `stage_acs_profile`, `observation_acs_profile`, immutability triggers); `lookup` gains product `acs_profile`, level `cd`, `district_counties`, `county_districts`, `state_districts`, and facilities inside a district; operator guide `backend/docs/chip_acs_community_profile.md`; inventory record (now 99); data contract and examples under `docs/beta/contract-examples/after-c3/`.
+- **State-changing commands (staging only):** `alembic upgrade head` (`c8f1e4a7d3b6` → `d5a2f7c9e1b4`); `acs_profile_cli load-cd-boundaries` (52 archives, 437 shapes, all valid); `fetch-stage-validate` (11/11 checks, 623,651 observations, ready on the first run); `review` (221 archived files, 89,093 staged rows, 623,651 observations re-derived); `approve-publish` with semantic `227317d9…3443`, schema `b0c8a7f7…56e0`, metadata `897472a5…e41c`; drill: `deactivate`, a refused rollback to a PLACES release ID, `rollback` to the release.
+- **Verification:**
+  - 13 values each for Kanawha County, WV-01, West Virginia, and tract `54039000100` equal a separate Census API request.
+  - A direct `UPDATE` of a published row was rejected by the immutability trigger. Eleven active pointers afterwards; only the new product was added.
+  - `lookup` on staging: 46 catalog measures; Person, Kanawha, and Fresno counties 46 of 46 available; WV-01 returns 28 counties, all wholly inside; Fresno County overlaps four districts; facilities in WV-01 returned in 0.1 s.
+  - Tests: 14 new unit tests for the product, 2 new lookup tests; all 207 area and community tests pass. Full backend suite: 651 passed, 12 failed, plus one module that cannot be collected; all 13 need untracked funding data files that exist only in the live checkout (`data/recon/*.csv`, `data/chipfunding/*`), none touch this change.
+  - **Not done:** no PostGIS lifecycle test was written for this product (the unit tests and the staging run cover it); no browser check, because no frontend page for the product exists yet.
+- **Next action:** Codex builds the district briefing (X5) and adds the new measures to topics and profiles. Claude: C4 (fresh recovery set and promotion runbook), then C5.
+
 ## 2026-11-15T15:30:00+00:00 — Staging live; PLACES widened to 13 measures on staging (Claude, C0.3 and C1)
 
 - **Outcome:** the staging stack is running, and the shared PLACES product on **staging** now publishes 13 measures at county and tract level. Live is unchanged: database `places`, its ten pointers, `/var/www/places`, and `places-backend` were not touched.

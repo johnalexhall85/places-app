@@ -1,0 +1,22 @@
+[
+ {
+  "level": "cd",
+  "geoid": "5401",
+  "name": "Congressional District 1",
+  "state_geoid": "54",
+  "state_name": "West Virginia",
+  "county_geoid": null,
+  "county_name": null,
+  "bbox": [
+   -82.644591,
+   37.20154,
+   -79.057253,
+   39.185572
+  ],
+  "point": [
+   -81.24944065109057,
+   38.1934745
+  ],
+  "boundary_vintage": "119th Congress (TIGER/Line 2024)"
+ }
+]

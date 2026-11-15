@@ -108,8 +108,10 @@ def test_uncertainty_kinds_stay_distinct():
 def test_level_filter_returns_only_products_published_at_that_level():
     state = {r['product'] for r in lookup.area_values(FakeDb({}), 'state', ['01'])['values']}
     tract = {r['product'] for r in lookup.area_values(FakeDb({}), 'tract', ['01055000100'])['values']}
-    assert state == {'acs', 'cms_gv'}
-    assert tract == {'places', 'acs', 'clh'}
+    assert state == {'acs', 'acs_profile', 'cms_gv'}
+    assert tract == {'places', 'acs', 'acs_profile', 'clh'}
+    district = {r['product'] for r in lookup.area_values(FakeDb({}), 'cd', ['0103'])['values']}
+    assert district == {'acs_profile'}   # no other product publishes district values; none is derived
     tract_measures = {r['measure_id'] for r in lookup.area_values(FakeDb({}), 'tract', ['01055000100'], products=['clh'])['values']}
     assert 'CCBP_SOGS_RATE' not in tract_measures and len(tract_measures) == 3
 
@@ -117,6 +119,21 @@ def test_level_filter_returns_only_products_published_at_that_level():
 def test_tract_pattern_rejects_county_only_measures():
     with pytest.raises(lookup.LookupError_): lookup.county_tract_values(FakeDb({}), '01055', 'ahrf', 'hosp_23')
     with pytest.raises(lookup.LookupError_): lookup.county_tract_values(FakeDb({}), '01055', 'clh', 'CCBP_SOGS_RATE')
+
+
+def test_district_geoid_is_four_digits():
+    assert lookup._check('cd', ['0103']) == ['0103']
+    with pytest.raises(lookup.LookupError_): lookup._check('cd', ['01ZZ'])
+    with pytest.raises(lookup.LookupError_): lookup.district_counties(FakeDb({}), '01055')
+
+
+def test_controlled_population_total_has_no_margin_and_says_why():
+    meta = measure('acs_profile')
+    db = FakeDb({'observation_acs_profile': [stored(meta, '01055', value=Decimal('103436'), moe=None, estimate_annotation=None,
+                                                    moe_annotation='*****', moe_confidence=90)]})
+    row = lookup.area_values(db, 'county', ['01055'], products=['acs_profile'], measure_ids=[meta['measure_id']])['values'][0]
+    assert row['value'] == 103436 and row['uncertainty']['moe'] is None
+    assert 'controlled' in row['uncertainty']['label'] and row['notes'] == {'moe_annotation': '*****'}
 
 
 def test_facilities_only_for_state_or_county():
