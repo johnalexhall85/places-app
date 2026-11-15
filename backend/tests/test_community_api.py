@@ -43,6 +43,9 @@ def client(monkeypatch):
     monkeypatch.setattr(community.lookup, "county_tract_values", lambda db, county, product, measure: {
         "county_geoid": county, "measure": measure, "values": [], "release": None,
     })
+    monkeypatch.setattr(community.lookup, "state_survey_companions", lambda db, state: {
+        "companions": {}, "note": "State survey estimate (BRFSS) is context, not a benchmark.",
+    })
     app = FastAPI()
     app.include_router(community.router)
     app.dependency_overrides[get_db] = lambda: object()

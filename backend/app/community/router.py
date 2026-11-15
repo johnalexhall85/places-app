@@ -34,6 +34,16 @@ def _county_info(db: Session, geoid: str) -> dict:
     return info[0]
 
 
+def _state_info(db: Session, geoid: str) -> dict:
+    try:
+        info = lookup.area_info(db, "state", [geoid])
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    if not info:
+        raise HTTPException(status_code=404, detail="State not found on the published boundary")
+    return info[0]
+
+
 def _district_info(db: Session, geoid: str) -> dict:
     try:
         info = lookup.area_info(db, "cd", [geoid])
@@ -66,13 +76,93 @@ def county_search(
     limit: int = Query(default=8, ge=1, le=25),
     db: Session = Depends(get_db),
 ):
-    """Use the existing county-name search; indicator reads still go through lookup."""
-    return search_counties(q=q, limit=limit, db=db)
+    """Find counties and state-level areas without reading published values outside lookup."""
+    needle = q.strip().casefold()
+    matches = [state | {"type": "state", "state_geoid": state["geoid"]}
+               for state in lookup.states(db)
+               if needle in state["name"].casefold() or needle == state["geoid"]]
+    counties = search_counties(q=q, limit=limit, db=db)
+    return (matches + [county | {"type": "county"} for county in counties])[:limit]
 
 
 @router.get("/catalog")
 def community_catalog(db: Session = Depends(get_db)):
     return lookup.catalog(db)
+
+
+@router.get("/states")
+def community_states(db: Session = Depends(get_db)):
+    return lookup.states(db)
+
+
+@router.get("/state/{geoid}")
+def state_profile(geoid: str, db: Session = Depends(get_db)):
+    info = _state_info(db, geoid)
+    catalog, measures = _measure_catalog(db)
+    try:
+        state = lookup.area_values(db, "state", [geoid])
+        facilities = lookup.area_facilities(db, "state", geoid)
+        counties = lookup.state_counties(db, geoid)
+        districts = lookup.state_districts(db, geoid)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    return {
+        "area": info,
+        "values": _enrich(state["values"], measures),
+        "facilities": facilities,
+        "counties": counties,
+        "districts": districts,
+        "releases": state["releases"],
+        "products": catalog["products"],
+        "limitations": [
+            "BRFSS values are direct state survey estimates; PLACES county values are modeled and are not used to derive state values.",
+            "Workforce, food, air quality, and other county-only measures are not summed or averaged into a state figure.",
+            "Facility locations are context, not evidence of capacity, access, exposure, quality, or cause.",
+        ],
+    }
+
+
+@router.get("/state/{geoid}/csv")
+def state_csv(geoid: str, db: Session = Depends(get_db)):
+    info = _state_info(db, geoid)
+    _, measures = _measure_catalog(db)
+    try:
+        rows = _enrich(lookup.area_values(db, "state", [geoid])["values"], measures)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["state_geoid", "state_name", "product", "measure_id", "indicator", "value", "unit", "status",
+                     "status_text", "period", "population", "uncertainty_type", "uncertainty_low", "uncertainty_high",
+                     "margin_of_error", "publisher", "source_product", "source_release", "release_id", "source_url",
+                     "boundary_vintage", "underlying_source_credit"])
+    for row in rows:
+        uncertainty = row["uncertainty"]
+        writer.writerow([geoid, info["name"], row["product"], row["measure_id"], row["label"], row["value"],
+                         row["unit"], row["status"], row["status_text"], row["period"], row["population"],
+                         uncertainty["kind"], uncertainty.get("low"), uncertainty.get("high"), uncertainty.get("moe"),
+                         row["source"]["publisher"], row["source"]["product_name"], row["source_release_id"],
+                         row["release_id"], row["source"]["landing_page"], row["boundary_vintage"],
+                         row["source"]["credit"] or ""])
+    output.seek(0)
+    return StreamingResponse(iter([output.getvalue()]), media_type="text/csv; charset=utf-8",
+                             headers={"Content-Disposition": f'attachment; filename="state-{geoid}-indicators.csv"'})
+
+
+@router.get("/state/{geoid}/pdf")
+def state_pdf(geoid: str, request: Request, db: Session = Depends(get_db)):
+    _state_info(db, geoid)
+    settings = get_demo_access_settings()
+    raw_cookie = request.cookies.get(settings.cookie_name)
+    session_cookie = (settings.cookie_name, raw_cookie) if raw_cookie else None
+    try:
+        content = render_route_pdf_via_playwright(
+            route_path=f"/community/state/{geoid}", session_cookie=session_cookie,
+        )
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="State PDF rendering is unavailable") from error
+    return Response(content=content, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="state-{geoid}-briefing.pdf"'})
 
 
 @router.get("/districts/states")
@@ -131,10 +221,14 @@ def county_profile(geoid: str, db: Session = Depends(get_db)):
     catalog, measures = _measure_catalog(db)
     county = lookup.area_values(db, "county", [geoid])
     state = lookup.area_values(db, "state", [info["state_geoid"]])
+    companions = lookup.state_survey_companions(db, info["state_geoid"])
     return {
         "area": info,
         "values": _enrich(county["values"], measures),
         "state_values": _enrich(state["values"], measures),
+        "survey_companions": {key: _enrich([row], measures)[0]
+                              for key, row in companions["companions"].items()},
+        "survey_note": companions["note"],
         "facilities": lookup.area_facilities(db, "county", geoid),
         "releases": county["releases"],
         "state_releases": state["releases"],
