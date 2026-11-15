@@ -7177,28 +7177,30 @@ export default function App() {
   // Counties reuse the search-selection path; states only fit the view.
   const [legacyMapReady, setLegacyMapReady] = useState(false);
   const legacyFocusDoneRef = useRef(false);
+  const legacyFocusSelectRef = useRef(handleCountySearchSelection);
+  legacyFocusSelectRef.current = handleCountySearchSelection;
+  const legacyLayerLoaded = Boolean(activeGeojson);
   useEffect(() => {
-    if (!legacyMapReady || legacyFocusDoneRef.current) return undefined;
+    // Wait for the first data layer: the initial load resets any earlier selection.
+    if (!legacyMapReady || !legacyLayerLoaded || legacyFocusDoneRef.current) return;
     const match = /^(state|county):(\d{2}|\d{5})$/.exec(new URLSearchParams(window.location.search).get("focus") || "");
-    if (!match || match[2].length !== (match[1] === "state" ? 2 : 5)) return undefined;
+    if (!match || match[2].length !== (match[1] === "state" ? 2 : 5)) return;
     legacyFocusDoneRef.current = true;
-    const controller = new AbortController();
-    fetch(`${API_BASE}/community/area/${match[1]}/${match[2]}`, { signal: controller.signal })
+    fetch(`${API_BASE}/community/area/${match[1]}/${match[2]}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((area) => {
         const map = mapRef.current;
         if (!area || !map) return;
         if (match[1] === "county") {
           map.setView([area.point[1], area.point[0]], 9);
-          handleCountySearchSelection(area.geoid);
+          legacyFocusSelectRef.current(area.geoid);
         } else {
           const [west, south, east, north] = area.bbox;
           map.fitBounds([[south, west], [north, east]]);
         }
       })
       .catch(() => {});
-    return () => controller.abort();
-  }, [legacyMapReady, handleCountySearchSelection]);
+  }, [legacyMapReady, legacyLayerLoaded]);
 
   const handleAssistantHighlight = useCallback(
     ({ level, geoid }) => {

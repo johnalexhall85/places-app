@@ -181,13 +181,14 @@ try {
   assert.equal(await page.locator('.leaflet-area-selection-pane path').count(), 2, 'selection outline (casing and line)');
   assert.ok((await page.locator('.pilot-legend').innerText()).includes('quintiles of all published county values'), 'quintile class note');
   await screenshot('map-focused-county');
-  await page.locator('.leaflet-overlay-pane path.leaflet-interactive').first().hover();
+  await page.mouse.move(730, 395);
+  await page.mouse.move(740, 400);   // open map inside the focused county, clear of the panels
   await page.locator('.pdo-map-tooltip').waitFor();
   assert.match(await page.locator('.pdo-map-tooltip').innerText(), /· County \d{5}\n.+\n.+ • 2023\nModeled adult prevalence estimate from CDC PLACES\./, 'legacy-format hover tooltip');
   assert.equal(await page.locator('.leaflet-popup').count(), 0, 'no click popup');
   await page.getByRole('button', { name: 'Clear Selection (Esc)' }).click();
   assert.equal(await selectedArea.count(), 0, 'clear selection');
-  await page.locator('.leaflet-overlay-pane path.leaflet-interactive').first().click({ force: true });
+  await page.mouse.click(740, 400);
   await selectedArea.locator('.pilot-selected-value strong').waitFor();
   await page.keyboard.press('Escape');
   assert.equal(await selectedArea.count(), 0, 'Escape clears selection');
