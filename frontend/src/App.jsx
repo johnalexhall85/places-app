@@ -3172,6 +3172,7 @@ export default function App() {
   
   // Per-layer request tracking
   const latestCountyReqRef = useRef(0);
+  const latestCountyKeyRef = useRef(null);
   const latestTractReqRef = useRef(0);
   const latestOutlineReqRef = useRef(0);
   const latestStateReqRef = useRef(0);
@@ -6470,6 +6471,10 @@ export default function App() {
       )}|reload:${countyReloadNonce}`;
       
       // Check cache first
+      // A rerun of this effect for the same view shares the in-flight request, so a response is
+      // current when either its request number or its view key is still the latest.
+      latestCountyKeyRef.current = countyKey;
+      const isCurrentCountyRequest = () => latestCountyReqRef.current === countyReqId || latestCountyKeyRef.current === countyKey;
       const cachedCountyData = getCached(countyKey);
       if (cachedCountyData) {
         setCountyGeojson(cachedCountyData);
@@ -6483,12 +6488,12 @@ export default function App() {
         fetchWithDedupe(countyKey, async () => {
           try {
             const data = await fetchCountyChoropleth(bbox);
-            if (latestCountyReqRef.current === countyReqId) {
+            if (isCurrentCountyRequest()) {
               setCached(countyKey, data);
               setCountyGeojson(data);
             }
           } catch (err) {
-            if (latestCountyReqRef.current === countyReqId) {
+            if (isCurrentCountyRequest()) {
               if (isAbortLikeError(err)) {
                 return;
               }
@@ -6505,14 +6510,14 @@ export default function App() {
         fetchWithDedupe(countyKey, async () => {
           try {
             const data = await fetchCountyChoropleth(bbox);
-            if (latestCountyReqRef.current === countyReqId) {
+            if (isCurrentCountyRequest()) {
               setCached(countyKey, data);
               setCountyGeojson(data);
               setCountyBoundaryOverlay(null);
               setError(null);
             }
           } catch (err) {
-            if (latestCountyReqRef.current === countyReqId) {
+            if (isCurrentCountyRequest()) {
               if (isAbortLikeError(err)) {
                 return;
               }
@@ -6521,7 +6526,7 @@ export default function App() {
               // Don't clear county geojson—keep it visible
             }
           } finally {
-            if (latestCountyReqRef.current === countyReqId) {
+            if (isCurrentCountyRequest()) {
               setIsCountyLoading(false);
             }
           }
