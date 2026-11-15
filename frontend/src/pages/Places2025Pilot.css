@@ -505,7 +505,8 @@
 /* Shapes and the selection outline ease in instead of popping. */
 .pilot-map .leaflet-overlay-pane path.leaflet-interactive { animation: pilot-fade .35s ease-out both; }
 .pilot-map .leaflet-area-selection-pane path { animation: pilot-fade .25s ease-out both; }
-.pilot-map .leaflet-tooltip { animation: pilot-fade .12s ease-out; }
+/* Hover tooltips appear instantly; a fade looked janky following the pointer across counties (John, 2026-11-16). */
+.pilot-map .leaflet-tooltip { animation: none; transition: none; }
 
 /* Legend classes, the selected-area block and opened panel bodies. */
 .pilot-swatches li { animation: pilot-fade .25s ease-out both; }
