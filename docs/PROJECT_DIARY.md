@@ -25,6 +25,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Unresolved:** `main` and `beta` are not pushed (blocked by session policy). No staging access code yet.
 - **Next action:** when the copy finishes, analyze the database, start the staging service, run the first staging deploy, recheck `lookup` there, then begin C1 (PLACES expansion).
 
+## 2026-11-15T00:25:20+00:00 — X2 landing and county profile deployed to staging (Codex)
+
+- **Outcome:** Merged X2 (`9f4cd4b`, then unit-display correction `8cd7412`) to `beta`; staging backend and webroot deployed. Root is now the place-first landing, `/explore/map` serves the legacy map, and `/community/county/{geoid}` shows released indicators, source period/population/release, uncertainty, state estimates only where published, facility inventories, CSV, and limitations. PDO brand tokens follow the supplied guide. Topic cards lead to existing source maps until X4.
+- **Verification:** Frontend suite 144/144 passed and Vite build passed. Through authenticated staging Nginx, the landing rendered seven topic cards; search opened Person County; its profile rendered 28 indicator cards; the legacy map loaded at `/explore/map`; desktop and 390 px mobile had no page errors or horizontal overflow. Visual review found unit formatting problems; correction `8cd7412` now displays ACS income as `$63,300`, percentages with `%`, and long units on a separate line. Focused format tests and rebuild passed after that correction.
+- **Staging setting:** The first X2 bundle used the fallback browser `localhost:8000` because the staging build had no `VITE_API_BASE_URL`. Redeployed with `VITE_API_BASE_URL=/api`, then the browser walkthrough passed. Claude-owned deploy script needs that staging default made durable before future unqualified deploys.
+- **No live change. Unresolved:** C1's current staging PLACES county pointer still has no tract rows; X4 tract patterns depend on the combined release. Comparison and PDF remain X3. Next: X3 comparison and PDF on a separate branch.
+
 ## 2026-11-15T00:21:02+00:00 — Staging restored; X1 deployed; X2 underway (Codex)
 
 - **Request/outcome:** Verified the `places_staging` restore ended with `exit=0`; staging backend is active and `/api/health` returned 200. Read-only staging lookup found 10 active releases, 28 county indicators for Person County NC (`37145`), and mapped facility counts of 4 HRSA sites, 2 nursing homes, and 6 TRI reporting facilities. Merged X1 (`6f76e0d`) into `beta` with `infra/staging/deploy-staging.sh`, which ran Alembic, built the frontend, restarted staging, and passed its health, anonymous 401, and page checks. No live changes.
