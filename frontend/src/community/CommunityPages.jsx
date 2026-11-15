@@ -193,7 +193,7 @@ export function Indicator({ row, stateRow }) {
     {row.status === "true_zero" && <p className="community-indicator-note">Published zero</p>}
     <p className="community-indicator-note">{uncertaintyText(row)}</p>
     {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population}; {stateRow.source?.publisher}; release {stateRow.source_release_id})</span></p>}
-    <p className="community-source">Source: {row.source?.publisher} · {row.source?.product_name} · {row.period} · {row.source_release_id}<br />Population: {row.population}</p>
+    <p className="community-source">Source: {row.source?.publisher} · {row.source?.product_name} · {row.period} · {row.source_release_id}<br />Population: {row.population}{row.source?.credit && <><br />{row.source.credit}</>}</p>
     {row.notes?.estimate_annotation && <p className="community-indicator-note">Source annotation: {row.notes.estimate_annotation}</p>}
     {mapUrl && <a className="community-map-link" href={mapUrl}>Open source map →</a>}
   </article>;

@@ -56,6 +56,7 @@ def _enrich(rows: list[dict], measures: dict) -> list[dict]:
         "publisher": measures[(row["product"], row["measure_id"])]["publisher"],
         "product_name": measures[(row["product"], row["measure_id"])]["product_name"],
         "landing_page": measures[(row["product"], row["measure_id"])]["landing_page"],
+        "credit": measures[(row["product"], row["measure_id"])].get("source_credit"),
     }} for row in rows]
 
 
@@ -229,7 +230,7 @@ def county_csv(geoid: str, db: Session = Depends(get_db)):
     writer.writerow(["county_geoid", "county_name", "state_name", "product", "measure_id", "indicator", "value",
                      "unit", "status", "status_text", "period", "population", "uncertainty_type", "uncertainty_low",
                      "uncertainty_high", "margin_of_error", "publisher", "source_product", "source_release",
-                     "release_id", "source_url", "boundary_vintage"])
+                     "release_id", "source_url", "boundary_vintage", "underlying_source_credit"])
     for row in rows:
         uncertainty = row["uncertainty"]
         writer.writerow([geoid, info["name"], info["state_name"], row["product"], row["measure_id"], row["label"],
@@ -237,7 +238,7 @@ def county_csv(geoid: str, db: Session = Depends(get_db)):
                          row["population"], uncertainty["kind"], uncertainty.get("low"), uncertainty.get("high"),
                          uncertainty.get("moe"), row["source"]["publisher"], row["source"]["product_name"],
                          row["source_release_id"], row["release_id"], row["source"]["landing_page"],
-                         row["boundary_vintage"]])
+                         row["boundary_vintage"], row["source"]["credit"] or ""])
     output.seek(0)
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="county-{geoid}-indicators.csv"'})

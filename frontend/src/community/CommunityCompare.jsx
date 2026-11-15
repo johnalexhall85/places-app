@@ -105,7 +105,7 @@ export default function CommunityCompare() {
               </th>)}
             </tr></thead>
             <tbody>{rows.map(({ key, exemplar, byGeoid }) => <tr key={key}>
-              <th scope="row"><strong>{exemplar.label}</strong><small>Source: {exemplar.source?.publisher} · {exemplar.source?.product_name}</small></th>
+              <th scope="row"><strong>{exemplar.label}</strong><small>Source: {exemplar.source?.publisher} · {exemplar.source?.product_name}{exemplar.source?.credit ? ` · ${exemplar.source.credit}` : ""}</small></th>
               {comparison.areas.map((area) => {
                 const row = byGeoid.get(area.geoid);
                 return <td key={area.geoid}>{row && <>

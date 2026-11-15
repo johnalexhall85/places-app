@@ -138,3 +138,15 @@ def test_controlled_population_total_has_no_margin_and_says_why():
 
 def test_facilities_only_for_state_or_county():
     with pytest.raises(lookup.LookupError_): lookup.area_facilities(FakeDb({}), 'tract', '01055000100')
+
+
+def test_ahrf_measures_carry_a_copyright_owner_credit_and_others_do_not():
+    from app.area_pilot import lookup
+    by_key = {spec.key: spec for spec in lookup.SPECS}
+    ahrf = by_key['ahrf']
+    config = ahrf.load()
+    credits = [lookup._measure_meta(ahrf, config, m)['source_credit'] for m in config['measures']]
+    assert len(credits) == 5 and all(c and '©' in c and 'Area Health Resources Files' in c for c in credits)
+    places = by_key['places']
+    pconfig = places.load()
+    assert lookup._measure_meta(places, pconfig, pconfig['measures'][0])['source_credit'] is None

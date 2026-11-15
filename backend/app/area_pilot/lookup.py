@@ -138,6 +138,23 @@ def _measure_levels(spec: Spec, config: dict, measure: dict) -> list[str]:
     return [lvl for lvl in spec.tables if lvl in declared]
 
 
+# AHRF's user guide states that AMA, ADA, and AHA data are subject to copyright. The credit travels with every
+# value so pages and exports name the owner beside HRSA. It is attribution, not a statement of permission.
+_AHRF = "as published in HRSA's Area Health Resources Files"
+SOURCE_CREDITS = {
+    ('ahrf', 'phys_nf_prim_care_pc_exc_rsdt_23'):
+        f'Underlying data: AMA Physician Professional Data, © American Medical Association, {_AHRF}.',
+    ('ahrf', 'md_nf_psych_all_pc_23'):
+        f'Underlying data: AMA Physician Professional Data, © American Medical Association, {_AHRF}.',
+    ('ahrf', 'dent_nf_fed_proflly_activ_23'):
+        f'Underlying data: ADA Masterfile, © American Dental Association, {_AHRF}.',
+    ('ahrf', 'hosp_23'):
+        f'Underlying data: AHA Annual Survey of Hospitals, © American Hospital Association, {_AHRF}.',
+    ('ahrf', 'hosp_beds_23'):
+        f'Underlying data: AHA Annual Survey of Hospitals, © American Hospital Association, {_AHRF}.',
+}
+
+
 def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
     source = measure.get('source')
     return {
@@ -154,6 +171,7 @@ def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
         'definition': measure.get('official_definition') or measure.get('official_label'),
         'denominator': measure.get('denominator'), 'interpretation': measure.get('interpretation'),
         'underlying_source': source if isinstance(source, str) else None,
+        'source_credit': SOURCE_CREDITS.get((spec.key, measure['measure_id'])),
     }
 
 
@@ -235,7 +253,7 @@ def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, s
     notes = {name: _num(row[name]) for name in spec.extra
              if stored and name not in ('ci_low', 'ci_high', 'moe', 'moe_confidence') and row[name] is not None}
     return {k: meta[k] for k in ('product', 'dataset_id', 'measure_id', 'label', 'unit', 'kind', 'storage_scale',
-                                 'period', 'population', 'value_type')} | {
+                                 'period', 'population', 'value_type', 'source_credit')} | {
         'level': level, 'geoid': geoid, 'value': value, 'status': status,
         'status_text': (getattr(spec.api, 'STATUS_TEXT', None) or {}).get(status) or STATUS_TEXT.get(status, status),
         'stored': stored,

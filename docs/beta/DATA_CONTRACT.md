@@ -89,3 +89,7 @@ Profile maps reuse the existing viewport API (`/api/area/map`, `/legend`, `/tabl
 ## Routing
 
 Register the community router with the FastAPI prefix `/community`. Through Nginx it is reached at `/api/community/*`: the general `/api/` block strips `/api`, the same way `/api/area/*` reaches `/area/*`. The demo-access middleware protects it like every other route.
+
+## Source credit (added 2026-11-15)
+
+Every catalog measure and value row carries `source_credit`: a string naming a third-party copyright owner whose data the publisher redistributes, or `null`. Today only the five AHRF measures have one (AMA, ADA, AHA). Pages and exports must show it beside the source line. It is attribution only.
