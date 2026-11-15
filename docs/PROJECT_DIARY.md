@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T16:10:00+00:00 — Live check passed by John; profile PDF pagination fix on staging (Claude)
+
+- **Live verification:** John opened the live site with his own access code after promotion and reported that everything works as intended, and supplied the Person County PDF downloaded from live (13 pages, all 46 indicators, facility counts 4/2/6). This closes the authenticated live walkthrough left open in the promotion entry; the automated `beta-walkthrough.mjs` script was not run against live.
+- **Defect John reported:** the PDF's first page was almost empty. Cause: the print rule `break-inside: avoid` on every `.community-profile-section` pushed each section that could not fit to a new page; the last page also showed a screen-height tinted filler.
+- **Change (frontend print CSS, a Codex-owned file, edited by Claude at John's request while Codex was idle):** `frontend/src/community/community.css` print block only: sections flow across pages, cards stay whole, section headings stay with their first row, the limitations section stays on one page, and the page background and minimum height are reset for print. Commits `522f2a6` and `ae68c3f` on `beta`, deployed to **staging** by `infra/staging/deploy-staging.sh`.
+- **Verification on staging:** Person and Fresno PDFs are 11 pages with page 1 carrying the title and the first four indicators and no filler on the last page (pages rasterized and inspected); frontend 149 tests and the full `npm run test:beta` walkthrough passed.
+- **Deployment status:** staging only. Live still serves the promoted bundle `index-BYohp3_t.js`; the fix goes to live when John approves. `origin/main` push is still John's.
+
 ## 2026-11-15T15:40:00+00:00 — Beta promoted to live after Gate 3 approval (Claude)
 
 - **Approval/outcome:** John reviewed staging and approved promotion; `beta` commit `f48704e` was named to him beforehand. The funder beta is now the live application. Followed the [promotion runbook](beta/PROMOTION_RUNBOOK.md) in order; no step failed and no rollback was used.
