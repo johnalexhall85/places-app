@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { CommunityShell } from "./CommunityPages";
+import { FUNDING_METHODOLOGY_INTRO, FUNDING_METHODOLOGY_SECTIONS } from "../content/fundingMethodology";
 
 export function CommunityAbout() {
   useEffect(() => { document.title = "About CHIP | CHIP"; }, []);
@@ -46,6 +47,14 @@ export function CommunityMethodology() {
         <strong>{product.name}</strong> · {product.publisher} · {product.published ? `active source release ${product.release.source_release_id}` : "no active published release"}
         {product.landing_page && <> · <a href={product.landing_page}>Source page</a></>}
       </li>)}</ul>}
+    </section>
+    <section id="funding-methodology"><h2>CDC funding methodology</h2>
+      <p>The <a href="/cdc-funding">funding pages</a> follow their own methods, separate from the release-pinned indicators above. {FUNDING_METHODOLOGY_INTRO}</p>
+      {FUNDING_METHODOLOGY_SECTIONS.map((section) => <div className="community-funding-method" key={section.title}>
+        <h3>{section.title}</h3>
+        {(section.paragraphs || []).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        {section.bullets?.length > 0 && <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}
+      </div>)}
     </section>
     <p>Check each indicator's source line for its period and population. <a href="/topics">Explore topics →</a></p>
   </div></CommunityShell>;

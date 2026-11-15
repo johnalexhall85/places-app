@@ -1,0 +1,105 @@
+/* Shared site header (PDO brand guide: Deep Navy ground, white Arial Bold links). */
+.community-skip {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: #fff;
+}
+
+.community-skip:focus {
+  left: 8px;
+}
+
+.community-header {
+  position: relative;
+  z-index: 2600;
+  min-height: 88px;
+  padding: 16px max(24px, calc((100vw - 1200px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #003f61;
+  color: #fff;
+  font: 16px/1.55 Arial, sans-serif;
+}
+
+.community-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff !important;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.community-brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex: none;
+}
+
+.community-brand span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.community-brand strong {
+  font-size: 16px;
+  letter-spacing: .06em;
+}
+
+.community-brand small {
+  font-size: 12px;
+  color: #fff;
+}
+
+.community-header nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.community-header nav a,
+.community-header-logout {
+  color: #fff;
+  text-decoration: none;
+  font: inherit;
+  font-weight: 700;
+}
+
+.community-header-logout {
+  padding: 4px 12px;
+  border: 1px solid #9fc5e8;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.community-header nav a:hover,
+.community-header nav a:focus-visible,
+.community-header-logout:hover {
+  text-decoration: underline;
+}
+
+.community-header nav a:focus-visible,
+.community-header-logout:focus-visible,
+.community-brand:focus-visible {
+  outline: 3px solid #9fc5e8;
+  outline-offset: 3px;
+}
+
+@media print {
+  .community-header { min-height: 64px; padding: 8px 16px; }
+  .community-header nav { display: none !important; }
+}
+
+@media (max-width: 640px) {
+  .community-header { align-items: flex-start; flex-direction: column; padding: 16px; }
+  .community-header nav { gap: 8px 16px; }
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
-import pdoMark from "../assets/brand/pdo-observatory-mark.png";
+import SiteHeader from "../components/SiteHeader";
 import Footer from "../components/Footer";
 import TractPatternMap from "./TractPatternMap";
 import "./community.css";
@@ -37,22 +37,7 @@ export const MAP_ROUTES = {
 export function CommunityShell({ children }) {
   return (
     <div className="community-app">
-      <a className="community-skip" href="#main">Skip to main content</a>
-      <header className="community-header">
-        <a className="community-brand" href="/" aria-label="CHIP home">
-          <img src={pdoMark} alt="" width="44" height="44" />
-          <span><strong>PUBLIC DATA OBSERVATORY</strong><small>CHIP · Community Health Intelligence Platform</small></span>
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="/">Home</a>
-          <a href="/topics">Topics</a>
-          <a href="/compare">Compare</a>
-          <a href="/districts">Districts</a>
-          <a href="/explore/map">Explore data</a>
-          <a href="/cdc-funding">Funding</a>
-          <a href="/about">About</a>
-        </nav>
-      </header>
+      <SiteHeader />
       <main id="main">{children}</main>
       <div className="community-meta-links"><a href="/about">About CHIP</a><a href="/methodology">Data methodology</a></div>
       <Footer />

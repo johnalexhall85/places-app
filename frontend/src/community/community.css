@@ -35,83 +35,9 @@
   outline-offset: 3px;
 }
 
-.community-skip {
-  position: absolute;
-  left: -9999px;
-  top: 8px;
-  z-index: 9999;
-  padding: 8px 16px;
-  background: #fff;
-}
-
-.community-skip:focus {
-  left: 8px;
-}
-
 .community-wrap {
   width: min(1200px, calc(100% - 48px));
   margin-inline: auto;
-}
-
-.community-header {
-  min-height: 88px;
-  padding: 16px max(24px, calc((100vw - 1200px) / 2));
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  background: #003f61;
-  color: #fff;
-}
-
-.community-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: #fff !important;
-  text-decoration: none;
-  min-width: 0;
-}
-
-.community-brand img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  flex: none;
-}
-
-.community-brand span {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.community-brand strong {
-  font-size: 16px;
-  letter-spacing: .06em;
-}
-
-.community-brand small {
-  font-size: 12px;
-  color: #fff;
-}
-
-.community-header nav {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-}
-
-.community-header nav a {
-  color: #fff;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.community-header nav a:hover,
-.community-header nav a:focus-visible {
-  text-decoration: underline;
 }
 
 .community-hero {
@@ -865,8 +791,6 @@
   body:has(.community-app),
   body:has(.community-app) #root { background: #fff !important; min-height: 0 !important; }
   .community-app { min-height: 0; background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .community-header { min-height: 64px; padding: 8px 16px; }
-  .community-header nav,
   .community-back,
   .community-actions,
   .community-section-nav,
@@ -904,8 +828,6 @@
 
 @media (max-width: 640px) {
   .community-wrap { width: min(100% - 32px, 1200px); }
-  .community-header { align-items: flex-start; flex-direction: column; padding: 16px; }
-  .community-header nav { gap: 8px 16px; }
   .community-hero { padding: 48px 0 64px; }
   .community-lede { font-size: 18px; }
   .community-search-row { flex-direction: column; }

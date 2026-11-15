@@ -1,28 +1,25 @@
 :root {
-  --pdo-primary: #3576ba;
-  --pdo-secondary: #9abbdd;
-  --pdo-accent: #ffd5b0;
-  --pdo-background: #f2f6fb;
+  --pdo-primary: #0277bd;
+  --pdo-secondary: #3d75c9;
+  --pdo-accent: #f0b97d;
+  --pdo-background: #f4f7fb;
   --pdo-surface: #ffffff;
-  --pdo-surface-alt: #f7fafd;
-  --pdo-border: #d7e2ee;
-  --pdo-border-strong: #bfd0e1;
-  --pdo-text: #123247;
-  --pdo-text-muted: #4d6880;
-  --pdo-text-subtle: #627a90;
-  --pdo-overlay-shadow: 0 12px 34px rgba(18, 50, 71, 0.08);
-  --pdo-overlay-shadow-tight: 0 6px 18px rgba(18, 50, 71, 0.08);
-  --chip-legacy-navy: #0f2d46;
-  --chip-legacy-slate: #2c5f8a;
-  --chip-legacy-teal: #178b8b;
-  --chip-header-height: 74px;
+  --pdo-surface-alt: #f4f7fb;
+  --pdo-border: #cfd8dc;
+  --pdo-border-strong: #a8bac4;
+  --pdo-text: #1a2f3f;
+  --pdo-text-muted: #546e7a;
+  --pdo-text-subtle: #546e7a;
+  --pdo-overlay-shadow: 0 12px 34px rgba(0, 63, 97, 0.1);
+  --pdo-overlay-shadow-tight: 0 6px 18px rgba(0, 63, 97, 0.1);
+  --chip-header-height: 88px;
   --chip-footer-height: 108px;
   --headline-font: "Roboto Slab", Georgia, "Times New Roman", serif;
-  --body-font: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --chip-navy: var(--pdo-text);
-  --chip-slate: var(--pdo-primary);
-  --chip-teal: var(--chip-legacy-teal);
-  --chip-teal-hover: #126f6f;
+  --body-font: Arial, sans-serif;
+  --chip-navy: #003f61;
+  --chip-slate: #0277bd;
+  --chip-teal: #009688;
+  --chip-teal-hover: #00796b;
   --chip-bg: var(--pdo-background);
   --chip-panel-border: var(--pdo-border);
   --chip-panel-shadow: var(--pdo-overlay-shadow-tight);
@@ -38,7 +35,7 @@ body {
   margin: 0;
   color: var(--pdo-text);
   background:
-    radial-gradient(circle at top left, rgba(154, 187, 221, 0.26), transparent 28%),
+    radial-gradient(circle at top left, rgba(159, 197, 232, 0.26), transparent 28%),
     linear-gradient(180deg, #f7fbff 0%, var(--pdo-background) 35%, #edf3f9 100%);
   font-family: var(--body-font);
 }
@@ -116,7 +113,7 @@ textarea {
 
 .leaflet-control-zoom a:hover,
 .leaflet-control-layers-toggle:hover {
-  background: rgba(53, 118, 186, 0.06) !important;
+  background: rgba(2, 119, 189, 0.06) !important;
 }
 
 .leaflet-tooltip.pdo-map-tooltip {
@@ -133,136 +130,6 @@ textarea {
 
 .leaflet-tooltip.pdo-map-tooltip::before {
   border-top-color: var(--pdo-border);
-}
-
-.chip-header {
-  position: relative;
-  z-index: 2600;
-  min-height: var(--chip-header-height);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(10px);
-  color: var(--pdo-text);
-  border-bottom: 1px solid rgba(191, 208, 225, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px 13px;
-}
-
-.chip-header::after {
-  content: "";
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(53, 118, 186, 0), rgba(53, 118, 186, 0.3), rgba(53, 118, 186, 0));
-}
-
-.chip-header-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.chip-header-logo-wrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(242, 246, 251, 0.98), rgba(255, 255, 255, 0.98)),
-    #ffffff;
-  border: 1px solid var(--pdo-border);
-  box-shadow: 0 6px 16px rgba(53, 118, 186, 0.12);
-  flex: 0 0 auto;
-}
-
-.chip-header-logo {
-  height: 30px;
-  width: 30px;
-  display: block;
-  object-fit: contain;
-}
-
-.chip-header-brand-text {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.chip-header-meta {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--pdo-primary);
-}
-
-.chip-header-wordmark {
-  font-family: var(--headline-font);
-  font-size: 1.08rem;
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--pdo-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: min(52vw, 520px);
-}
-
-.chip-header-subline {
-  font-size: 12px;
-  color: var(--pdo-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: min(52vw, 560px);
-}
-
-.chip-header-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.chip-header-link {
-  background: transparent;
-  color: var(--pdo-text-muted);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 11px;
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.chip-header-link:hover {
-  background: rgba(53, 118, 186, 0.08);
-  color: var(--pdo-text);
-  border-color: rgba(53, 118, 186, 0.12);
-}
-
-.chip-header-logout {
-  border-color: rgba(23, 139, 139, 0.24);
-  color: var(--chip-legacy-teal);
-}
-
-.chip-menu-button {
-  display: none;
-  border: 1px solid var(--pdo-border-strong);
-  background: #ffffff;
-  color: var(--pdo-text);
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .demo-access-page {
@@ -349,7 +216,7 @@ textarea {
 .demo-admin-create-form textarea:focus,
 .demo-admin-secret-form input:focus {
   border-color: var(--pdo-primary);
-  box-shadow: 0 0 0 3px rgba(53, 118, 186, 0.14);
+  box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.14);
 }
 
 .demo-access-form button,
@@ -357,9 +224,9 @@ textarea {
 .demo-admin-secret-form button,
 .demo-admin-section-heading button,
 .demo-admin-table button {
-  border: 1px solid rgba(23, 139, 139, 0.28);
+  border: 1px solid rgba(0, 150, 136, 0.28);
   border-radius: 8px;
-  background: var(--chip-legacy-teal);
+  background: var(--chip-teal);
   color: #ffffff;
   cursor: pointer;
   font-weight: 800;
@@ -470,7 +337,7 @@ textarea {
 
 .demo-admin-summary span {
   display: block;
-  color: var(--chip-legacy-teal);
+  color: var(--chip-teal);
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;
@@ -501,9 +368,9 @@ textarea {
 
 .demo-admin-new-code {
   margin: 0;
-  border: 1px solid rgba(23, 139, 139, 0.24);
+  border: 1px solid rgba(0, 150, 136, 0.24);
   border-radius: 8px;
-  background: rgba(23, 139, 139, 0.08);
+  background: rgba(0, 150, 136, 0.08);
   color: var(--pdo-text);
   padding: 8px 10px;
 }
@@ -593,30 +460,6 @@ textarea {
   }
 }
 
-.chip-brand-line {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2050;
-  pointer-events: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  color: var(--pdo-text-muted);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(191, 208, 225, 0.95);
-  border-radius: 999px;
-  box-shadow: 0 8px 20px rgba(53, 118, 186, 0.08);
-  padding: 6px 12px;
-  white-space: nowrap;
-}
-
-.chip-brand-line strong {
-  color: var(--pdo-text);
-}
-
 .chip-primary-btn,
 .chip-primary-link {
   border: 1px solid var(--pdo-primary);
@@ -664,8 +507,8 @@ textarea {
 }
 
 .chip-secondary-btn:hover:not(:disabled) {
-  background: rgba(53, 118, 186, 0.06);
-  border-color: rgba(53, 118, 186, 0.3);
+  background: rgba(2, 119, 189, 0.06);
+  border-color: rgba(2, 119, 189, 0.3);
   color: var(--pdo-primary);
 }
 
@@ -687,68 +530,12 @@ textarea {
   color: var(--pdo-text);
 }
 
-.chip-nav-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  display: grid;
-  place-items: center;
-  background: rgba(18, 50, 71, 0.36);
-  padding: 16px;
-}
-
-.chip-nav-modal {
-  width: min(640px, 96vw);
-  max-height: min(84vh, 860px);
-  overflow-y: auto;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid var(--pdo-border);
-  border-radius: 20px;
-  box-shadow: var(--pdo-overlay-shadow);
-  padding: 20px;
-  color: var(--pdo-text);
-}
-
-.chip-nav-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.chip-nav-modal-header h2 {
-  font-size: 1.25rem;
-}
-
-.chip-nav-modal p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--pdo-text-muted);
-}
-
-.chip-nav-modal-close {
-  border: 1px solid var(--pdo-border-strong);
-  background: #ffffff;
-  color: var(--pdo-text);
-  border-radius: 999px;
-  padding: 7px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chip-nav-modal-close:hover {
-  background: rgba(53, 118, 186, 0.06);
-}
-
 .chip-search-suggestion {
   background: #ffffff;
 }
 
 .chip-search-suggestion:hover {
-  background: rgba(53, 118, 186, 0.06);
+  background: rgba(2, 119, 189, 0.06);
 }
 
 @keyframes search-spin {
@@ -760,7 +547,7 @@ textarea {
 .search-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(98, 122, 144, 0.35);
+  border: 2px solid rgba(84, 110, 122, 0.35);
   border-top-color: var(--pdo-primary);
   border-radius: 50%;
   display: inline-block;
@@ -777,11 +564,8 @@ textarea {
 .measure-controls-panel textarea:focus-visible,
 .legend-panel select:focus-visible,
 .legend-panel button:focus-visible,
-.chip-header-link:focus-visible,
-.chip-menu-button:focus-visible,
 .chip-primary-btn:focus-visible,
-.chip-secondary-btn:focus-visible,
-.chip-nav-modal-close:focus-visible {
+.chip-secondary-btn:focus-visible {
   outline: 2px solid var(--pdo-primary);
   outline-offset: 2px;
 }
@@ -803,7 +587,7 @@ textarea {
 .app-footer {
   min-height: var(--chip-footer-height);
   background: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(191, 208, 225, 0.95);
+  border-top: 1px solid rgba(207, 216, 220, 0.95);
   padding: 14px 20px 16px;
   display: grid;
   gap: 10px;
@@ -841,67 +625,10 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(191, 208, 225, 0.85);
-}
-
-@media (max-width: 1200px) {
-  .chip-brand-line {
-    display: none;
-  }
+  border-top: 1px solid rgba(207, 216, 220, 0.85);
 }
 
 @media (max-width: 920px) {
-  .chip-menu-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .chip-header {
-    padding: 12px 16px;
-  }
-
-  .chip-header-wordmark {
-    max-width: min(56vw, 320px);
-    font-size: 0.96rem;
-  }
-
-  .chip-header-subline {
-    max-width: min(56vw, 320px);
-    font-size: 11px;
-  }
-
-  .chip-header-nav {
-    display: none;
-    position: absolute;
-    top: calc(var(--chip-header-height) - 8px);
-    right: 16px;
-    min-width: 210px;
-    background: #ffffff;
-    border: 1px solid var(--pdo-border);
-    border-radius: 18px;
-    box-shadow: var(--pdo-overlay-shadow-tight);
-    padding: 8px;
-    gap: 4px;
-    z-index: 2800;
-  }
-
-  .chip-header-nav.is-open {
-    display: grid;
-  }
-
-  .chip-header-link {
-    width: 100%;
-    text-align: left;
-    color: var(--pdo-text);
-    border-radius: 12px;
-  }
-
-  .chip-header-link:hover {
-    color: var(--pdo-text);
-    background: rgba(53, 118, 186, 0.06);
-  }
-
   .app-footer {
     padding: 14px 16px 18px;
   }

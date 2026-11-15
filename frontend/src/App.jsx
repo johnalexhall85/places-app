@@ -15,6 +15,7 @@ import AskMapChat from "./components/AskMapChat";
 import Footer from "./components/Footer";
 import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
+import { useSiteHeaderHeight } from "./components/SiteHeader";
 import { APP_NAME } from "./branding/pdoBrand";
 import {
   getSviBins,
@@ -281,7 +282,6 @@ const USDA_PLAIN_DESCRIPTIONS_BY_FIELD = Object.entries(USDA_PLAIN_DESCRIPTIONS)
 }, {});
 const DEFAULT_SVI_YEAR = 2022;
 const SVI_FALLBACK_YEARS = [2022, 2020, 2018];
-const HEADER_HEIGHT = 56;
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
 const BASE_MAP_OPTIONS = [
@@ -9415,7 +9415,8 @@ export default function App() {
   ]);
 
   const compactOverlayLayout = viewportWidth <= 1200;
-  const mapViewportHeight = Math.max(420, viewportHeight - HEADER_HEIGHT);
+  const siteHeaderHeight = useSiteHeaderHeight();
+  const mapViewportHeight = Math.max(420, viewportHeight - siteHeaderHeight);
   const profilePanelWidth = profilePanelOpen
     ? Math.min(460, Math.round(viewportWidth * 0.92))
     : 0;
@@ -9626,10 +9627,6 @@ export default function App() {
         className="app-content"
         style={{ width: "100vw", height: mapViewportHeight }}
       >
-        <div className="chip-brand-line">
-          <strong>{APP_NAME}</strong>
-          <span>Local data. Strategic Insight.</span>
-        </div>
         <div
           ref={measurePanelRef}
           className="measure-controls-panel"
