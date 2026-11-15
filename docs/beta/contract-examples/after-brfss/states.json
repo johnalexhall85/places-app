@@ -1,0 +1,210 @@
+[
+ {
+  "geoid": "01",
+  "name": "Alabama"
+ },
+ {
+  "geoid": "02",
+  "name": "Alaska"
+ },
+ {
+  "geoid": "04",
+  "name": "Arizona"
+ },
+ {
+  "geoid": "05",
+  "name": "Arkansas"
+ },
+ {
+  "geoid": "06",
+  "name": "California"
+ },
+ {
+  "geoid": "08",
+  "name": "Colorado"
+ },
+ {
+  "geoid": "09",
+  "name": "Connecticut"
+ },
+ {
+  "geoid": "10",
+  "name": "Delaware"
+ },
+ {
+  "geoid": "11",
+  "name": "District of Columbia"
+ },
+ {
+  "geoid": "12",
+  "name": "Florida"
+ },
+ {
+  "geoid": "13",
+  "name": "Georgia"
+ },
+ {
+  "geoid": "15",
+  "name": "Hawaii"
+ },
+ {
+  "geoid": "16",
+  "name": "Idaho"
+ },
+ {
+  "geoid": "17",
+  "name": "Illinois"
+ },
+ {
+  "geoid": "18",
+  "name": "Indiana"
+ },
+ {
+  "geoid": "19",
+  "name": "Iowa"
+ },
+ {
+  "geoid": "20",
+  "name": "Kansas"
+ },
+ {
+  "geoid": "21",
+  "name": "Kentucky"
+ },
+ {
+  "geoid": "22",
+  "name": "Louisiana"
+ },
+ {
+  "geoid": "23",
+  "name": "Maine"
+ },
+ {
+  "geoid": "24",
+  "name": "Maryland"
+ },
+ {
+  "geoid": "25",
+  "name": "Massachusetts"
+ },
+ {
+  "geoid": "26",
+  "name": "Michigan"
+ },
+ {
+  "geoid": "27",
+  "name": "Minnesota"
+ },
+ {
+  "geoid": "28",
+  "name": "Mississippi"
+ },
+ {
+  "geoid": "29",
+  "name": "Missouri"
+ },
+ {
+  "geoid": "30",
+  "name": "Montana"
+ },
+ {
+  "geoid": "31",
+  "name": "Nebraska"
+ },
+ {
+  "geoid": "32",
+  "name": "Nevada"
+ },
+ {
+  "geoid": "33",
+  "name": "New Hampshire"
+ },
+ {
+  "geoid": "34",
+  "name": "New Jersey"
+ },
+ {
+  "geoid": "35",
+  "name": "New Mexico"
+ },
+ {
+  "geoid": "36",
+  "name": "New York"
+ },
+ {
+  "geoid": "37",
+  "name": "North Carolina"
+ },
+ {
+  "geoid": "38",
+  "name": "North Dakota"
+ },
+ {
+  "geoid": "39",
+  "name": "Ohio"
+ },
+ {
+  "geoid": "40",
+  "name": "Oklahoma"
+ },
+ {
+  "geoid": "41",
+  "name": "Oregon"
+ },
+ {
+  "geoid": "42",
+  "name": "Pennsylvania"
+ },
+ {
+  "geoid": "72",
+  "name": "Puerto Rico"
+ },
+ {
+  "geoid": "44",
+  "name": "Rhode Island"
+ },
+ {
+  "geoid": "45",
+  "name": "South Carolina"
+ },
+ {
+  "geoid": "46",
+  "name": "South Dakota"
+ },
+ {
+  "geoid": "47",
+  "name": "Tennessee"
+ },
+ {
+  "geoid": "48",
+  "name": "Texas"
+ },
+ {
+  "geoid": "49",
+  "name": "Utah"
+ },
+ {
+  "geoid": "50",
+  "name": "Vermont"
+ },
+ {
+  "geoid": "51",
+  "name": "Virginia"
+ },
+ {
+  "geoid": "53",
+  "name": "Washington"
+ },
+ {
+  "geoid": "54",
+  "name": "West Virginia"
+ },
+ {
+  "geoid": "55",
+  "name": "Wisconsin"
+ },
+ {
+  "geoid": "56",
+  "name": "Wyoming"
+ }
+]

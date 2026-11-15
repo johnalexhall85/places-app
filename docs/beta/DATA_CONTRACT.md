@@ -93,3 +93,33 @@ Register the community router with the FastAPI prefix `/community`. Through Ngin
 ## Source credit (added 2026-11-15)
 
 Every catalog measure and value row carries `source_credit`: a string naming a third-party copyright owner whose data the publisher redistributes, or `null`. Today only the five AHRF measures have one (AMA, ADA, AHA). Pages and exports must show it beside the source line. It is attribution only.
+
+## BRFSS state estimates and state profiles (added 2026-11-15)
+
+Plan: [BRFSS_STATE_PLAN.md](BRFSS_STATE_PLAN.md). Real output from staging is in [contract-examples/after-brfss/](contract-examples/after-brfss/). The catalog now has 66 measures; county and district output is unchanged.
+
+**New product key `brfss`** (dataset `cdc_brfss_state_prevalence`): 20 CDC BRFSS crude-prevalence measures, **state level only**, 2023 except dental visits (2022). It appears in `area_values(db, 'state', …)` like any other product. Uncertainty is `ci95` (CDC's 95% confidence limits). `notes.sample_size` is the number of respondents who gave the published response, not the survey denominator.
+
+| Function | Returns |
+|---|---|
+| `area_values(db, 'state', [fips])` | Every state-published row: `acs` (1), `acs_profile` (7), `brfss` (20), `cms_gv` (5). 33 rows per state. |
+| `state_survey_companions(db, state_fips)` | `companions[places_measure_id]` → that state's BRFSS row, for the 13 PLACES measures. Use this on county and tract profiles. |
+| `brfss_medians(db)` | CDC's "All States and DC (median)" per measure. `reference_kind` is `median_of_states_and_dc`; no confidence interval. |
+| `state_counties(db, state_fips)` | County GEOIDs and names in the state, for navigation. |
+| `state_districts(db, state_fips)` | Existing: 119th Congress districts in the state. |
+| `states(db)` | The 52 state-level areas CHIP can name (50 states, DC, Puerto Rico), for search. |
+| `area_facilities(db, 'state', fips)` | Existing: facility counts and rows inside the state. |
+| `area_info(db, 'state', [fips])` | Existing: name, bounding box, point. |
+
+**Pairing.** Each catalog measure has `paired_measure`: `{product, measure_id}` or `null`. The 13 PLACES measures point at their BRFSS measure and back. Seven BRFSS measures (binge drinking, no leisure-time physical activity, fair or poor health, frequent physical distress, arthritis, kidney disease, cost barrier) have no pair and belong on state pages only.
+
+**Rules for pages and exports:**
+
+- On a county or tract card, label the companion "State survey estimate (BRFSS)" and show its own year, confidence interval, and source line (CDC · BRFSS state survey estimates · year · release). Never present it as a target, rank, or difference from the county figure. The county figure is modeled; the state figure is a direct survey estimate.
+- A companion or state row with status `not_published` means CDC has no result for that state and year (Kentucky and Pennsylvania in 2023). Show the status text; do not fall back to another year or to the median.
+- Never compute a state figure from counties, and never show a PLACES value as a state value.
+- The median is "median of states and DC", not "U.S." or "national".
+- Three insurance measures now exist and stay separate: `acs_profile.uninsured_pct` (all ages), `places.access2_crudeprev` (18–64, modeled, county and tract), `brfss.uninsured_18_64` (18–64, state survey).
+- A state profile has no workforce, food, air-quality, or community-condition section: those sources are published for counties only in CHIP. Say so; do not sum counties.
+
+**Map API** (`/api/area/catalog|map|legend|table` with `dataset_id=cdc_brfss_state_prevalence`, `geography=state`): the same parameters as the other source maps. `map` and `table` return all 52 state shapes; a state without a result has `status: not_published` and `value: null`. Properties carry `ci_low`, `ci_high`, `sample_size`. `table` adds `reference.median` (two CDC median rows) and `reference.source_only` (Guam and the Virgin Islands, which CHIP has no boundary for). `legend_breaks` are per measure.

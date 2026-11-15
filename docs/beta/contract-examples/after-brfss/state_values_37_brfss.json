@@ -1,0 +1,635 @@
+{
+ "level": "state",
+ "geoids": [
+  "37"
+ ],
+ "values": [
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "diabetes",
+   "label": "Diagnosed diabetes",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 12.4,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 11,
+    "high": 13.8,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 577
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "high_blood_pressure",
+   "label": "High blood pressure",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 37.5,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 35.4,
+    "high": 39.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 1697
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "obesity",
+   "label": "Obesity",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 34,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 31.9,
+    "high": 36.1,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 1326
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "coronary_heart_disease",
+   "label": "Coronary heart disease",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 4.9,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 3.9,
+    "high": 5.8,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 220
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "stroke",
+   "label": "Stroke",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 3.9,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 3,
+    "high": 4.7,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 168
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "copd",
+   "label": "Chronic obstructive pulmonary disease (COPD)",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 7,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 5.9,
+    "high": 8.1,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 322
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "current_asthma",
+   "label": "Current asthma",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 10,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 8.7,
+    "high": 11.4,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 440
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "depression",
+   "label": "Depression",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 23.1,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 21.2,
+    "high": 24.9,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 931
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "frequent_mental_distress",
+   "label": "Frequent mental distress",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 15.2,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 13.6,
+    "high": 16.7,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 583
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "current_smoking",
+   "label": "Current cigarette smoking",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 13.2,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 11.6,
+    "high": 14.9,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 485
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "routine_checkup",
+   "label": "Routine checkup within the past year",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 80.5,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 78.8,
+    "high": 82.3,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 3365
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "uninsured_18_64",
+   "label": "Current lack of health insurance",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 12,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 10.4,
+    "high": 13.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 311
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "dental_visit",
+   "label": "Visited dentist or dental clinic in the past year",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2022",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 63.6,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 61.6,
+    "high": 65.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 2894
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "binge_drinking",
+   "label": "Binge drinking",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 13.6,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 12.1,
+    "high": 15.2,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 463
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "no_leisure_physical_activity",
+   "label": "No leisure-time physical activity",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 21.8,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 20.1,
+    "high": 23.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 987
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "fair_or_poor_health",
+   "label": "Fair or poor self-rated health",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 19.4,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 17.6,
+    "high": 21.2,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 792
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "frequent_physical_distress",
+   "label": "Frequent physical distress",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 12.2,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 10.7,
+    "high": 13.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 489
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "arthritis",
+   "label": "Arthritis",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 27.2,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 25.3,
+    "high": 29,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 1303
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "kidney_disease",
+   "label": "Kidney disease",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 3.8,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 3,
+    "high": 4.6,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 184
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "cost_barrier_to_care",
+   "label": "Could not see a doctor because of cost",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "37",
+   "value": 10.7,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 9.4,
+    "high": 12,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 430
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  }
+ ],
+ "releases": {
+  "cdc_brfss_state_prevalence": {
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "published_at": "2026-11-15T16:27:29.768552+00:00"
+  }
+ }
+}

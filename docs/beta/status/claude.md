@@ -37,7 +37,15 @@ Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). The beta packages 
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| B1 Source specification | In progress | `claude/brfss-b1` | |
-| B2 BRFSS product | Not started | | |
-| B3 Read layer and contract | Not started | | Codex builds against the contract draft until this lands. |
-| B4 Promotion | Waits for John's staging review | | |
+| B1 Source specification | Done | `claude/brfss-b1` | Twenty measures fixed and verified at CDC; [guide](../../../backend/docs/chip_brfss_state_prevalence.md); registry `brfss_state_2023.json`. |
+| B2 BRFSS product | Done on staging | `claude/brfss-b1` | Release `8ca50183-0b61-4302-8e3b-6e06cc8a35dd`, migration `e6b3a8d0f2c5`, 1,082 observations, twelve values checked against CDC. Not on live. |
+| B3 Read layer and contract | Done on staging | `claude/brfss-b1` | `lookup` product `brfss`, `state_survey_companions`, `brfss_medians`, `state_counties`, `states`, `paired_measure`. [Contract section](../DATA_CONTRACT.md) and [examples](../contract-examples/after-brfss/). |
+| B4 Promotion | Runbook section prepared; waits for Codex's Y packages and John's staging review | | |
+
+### What Codex can rely on now (BRFSS)
+
+- Staging has twelve pointers and Alembic `e6b3a8d0f2c5`. The catalog has 66 measures. County and district lookups are unchanged (46 values for the showcase counties).
+- `area_values(db, 'state', [fips])` returns 33 rows per state. Kentucky (`21`) and Pennsylvania (`42`) return `not_published` for the nineteen 2023 BRFSS measures and a value for dental visits (2022): use Kentucky to test that state.
+- `/api/area/*` serves `dataset_id=cdc_brfss_state_prevalence` with `geography=state`; see the contract for the extra `reference` block in `table`.
+- Suggested example state: North Carolina `37` (contains Person County). The current walkthrough still passes with the wider catalog.
+- **Requests:** follow the labelling rules in the contract's BRFSS section, especially "State survey estimate (BRFSS)" on county cards and "median of states and DC". The seven unpaired BRFSS measures go on state pages only.

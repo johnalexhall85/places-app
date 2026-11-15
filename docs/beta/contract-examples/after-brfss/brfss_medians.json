@@ -1,0 +1,501 @@
+[
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "diabetes",
+  "label": "Diagnosed diabetes",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "diabetes_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 11.5,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "high_blood_pressure",
+  "label": "High blood pressure",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "bphigh_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 34,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "obesity",
+  "label": "Obesity",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "obesity_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 34.3,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "coronary_heart_disease",
+  "label": "Coronary heart disease",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "chd_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 4,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "stroke",
+  "label": "Stroke",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "stroke_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 3.3,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "copd",
+  "label": "Chronic obstructive pulmonary disease (COPD)",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "copd_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 6.4,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "current_asthma",
+  "label": "Current asthma",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "casthma_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 10.3,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "depression",
+  "label": "Depression",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "depression_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 22,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "frequent_mental_distress",
+  "label": "Frequent mental distress",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "mhlth_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 15.4,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "current_smoking",
+  "label": "Current cigarette smoking",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "csmoking_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 12.1,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "routine_checkup",
+  "label": "Routine checkup within the past year",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "checkup_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 78.2,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "uninsured_18_64",
+  "label": "Current lack of health insurance",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults aged 18-64",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "access2_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 9.2,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "dental_visit",
+  "label": "Visited dentist or dental clinic in the past year",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2022",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": {
+   "product": "places",
+   "measure_id": "dental_crudeprev"
+  },
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 65.9,
+  "status": "available",
+  "jurisdictions": 51,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "binge_drinking",
+  "label": "Binge drinking",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 15.2,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "no_leisure_physical_activity",
+  "label": "No leisure-time physical activity",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 24.2,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "fair_or_poor_health",
+  "label": "Fair or poor self-rated health",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 18.2,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "frequent_physical_distress",
+  "label": "Frequent physical distress",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 12.6,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "arthritis",
+  "label": "Arthritis",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 26.3,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "kidney_disease",
+  "label": "Kidney disease",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 3.7,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ },
+ {
+  "product": "brfss",
+  "dataset_id": "cdc_brfss_state_prevalence",
+  "measure_id": "cost_barrier_to_care",
+  "label": "Could not see a doctor because of cost",
+  "unit": "percent",
+  "kind": "percent",
+  "period": "2023",
+  "population": "adults",
+  "value_type": "crude_prevalence",
+  "paired_measure": null,
+  "reference_kind": "median_of_states_and_dc",
+  "reference_label": "All States and DC (median)",
+  "value": 10.6,
+  "status": "available",
+  "jurisdictions": 49,
+  "uncertainty": {
+   "kind": "none",
+   "label": "CDC publishes this median without a confidence interval"
+  },
+  "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+  "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall"
+ }
+]

@@ -1,0 +1,213 @@
+{
+ "products": [
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "name": "BRFSS state survey estimates",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+   "levels": [
+    "state"
+   ],
+   "published": true,
+   "release": {
+    "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+    "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+    "published_at": "2026-11-15T16:27:29.768552+00:00"
+   },
+   "limitations": [
+    "State survey estimates from telephone interviews with adults; they are self-reported and weighted by CDC.",
+    "A BRFSS state estimate is a direct survey result. A PLACES county or tract estimate is modeled from the same survey. A state figure shown beside a county figure is context, not a ranking benchmark.",
+    "Crude prevalence, not age-adjusted: states with older populations tend to show higher rates of chronic conditions.",
+    "Kentucky and Pennsylvania have no 2023 result in this CDC file and are shown as not published for 2023 measures.",
+    "The \"All States and DC (median)\" figure is the middle state value, not a national estimate, and has no confidence interval.",
+    "The insurance measure covers adults aged 18 to 64 and is not comparable with the Census all-ages uninsured share.",
+    "Values are as published by CDC. CHIP does not derive a state value from counties or combine responses."
+   ]
+  }
+ ],
+ "measures": [
+  {
+   "product": "places",
+   "dataset_id": "cdc_places_county_2025_pilot",
+   "product_name": "PLACES 2025 county and tract pilot",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://data.cdc.gov/d/yjkw-uj5s",
+   "measure_id": "access2_crudeprev",
+   "label": "Current lack of health insurance",
+   "unit": "percent",
+   "kind": null,
+   "storage_scale": null,
+   "category": "prevention",
+   "period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "county",
+    "tract"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": null,
+   "denominator": null,
+   "interpretation": null,
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "brfss",
+    "measure_id": "uninsured_18_64"
+   },
+   "published": true
+  },
+  {
+   "product": "places",
+   "dataset_id": "cdc_places_county_2025_pilot",
+   "product_name": "PLACES 2025 county and tract pilot",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://data.cdc.gov/d/yjkw-uj5s",
+   "measure_id": "diabetes_crudeprev",
+   "label": "Diagnosed diabetes",
+   "unit": "percent",
+   "kind": null,
+   "storage_scale": null,
+   "category": "health_outcomes",
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "county",
+    "tract"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": null,
+   "denominator": null,
+   "interpretation": null,
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "brfss",
+    "measure_id": "diabetes"
+   },
+   "published": true
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "product_name": "BRFSS state survey estimates",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+   "measure_id": "diabetes",
+   "label": "Diagnosed diabetes",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "category": "health_outcomes",
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "state"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": "Have you ever been told by a doctor that you have diabetes? Response published: Yes.",
+   "denominator": null,
+   "interpretation": "Adults who report that a doctor told them they have diabetes. Diabetes only during pregnancy and pre-diabetes are separate responses and are not counted.",
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "places",
+    "measure_id": "diabetes_crudeprev"
+   },
+   "published": true
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "product_name": "BRFSS state survey estimates",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+   "measure_id": "high_blood_pressure",
+   "label": "High blood pressure",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "category": "health_outcomes",
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "state"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": "Adults who have been told they have high blood pressure (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "denominator": null,
+   "interpretation": "Adults who report being told by a health professional that they have high blood pressure.",
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "places",
+    "measure_id": "bphigh_crudeprev"
+   },
+   "published": true
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "product_name": "BRFSS state survey estimates",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+   "measure_id": "obesity",
+   "label": "Obesity",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "category": "health_outcomes",
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "state"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": "Weight classification by Body Mass Index (BMI) (variable calculated from one or more BRFSS questions) Response published: Obese (BMI 30.0 - 99.8).",
+   "denominator": null,
+   "interpretation": "Adults whose body mass index, calculated from self-reported height and weight, is 30 or higher.",
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "places",
+    "measure_id": "obesity_crudeprev"
+   },
+   "published": true
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "product_name": "BRFSS state survey estimates",
+   "publisher": "Centers for Disease Control and Prevention",
+   "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+   "measure_id": "coronary_heart_disease",
+   "label": "Coronary heart disease",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "category": "health_outcomes",
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "levels": [
+    "state"
+   ],
+   "uncertainty_kind": "ci95",
+   "definition": "Ever told you had angina or coronary heart disease? Response published: Yes.",
+   "denominator": null,
+   "interpretation": "Adults who report being told they had angina or coronary heart disease.",
+   "underlying_source": null,
+   "source_credit": null,
+   "paired_measure": {
+    "product": "places",
+    "measure_id": "chd_crudeprev"
+   },
+   "published": true
+  }
+ ]
+}

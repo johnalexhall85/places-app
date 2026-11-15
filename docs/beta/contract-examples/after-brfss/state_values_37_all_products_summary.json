@@ -1,0 +1,31 @@
+{
+ "count": 33,
+ "by_product": {
+  "acs": 1,
+  "acs_profile": 7,
+  "brfss": 20,
+  "cms_gv": 5
+ },
+ "releases": {
+  "census_acs5_2024_b19013": {
+   "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686",
+   "source_release_id": "2020-2024 ACS 5-year detailed tables",
+   "published_at": "2026-11-13T23:46:15.861150+00:00"
+  },
+  "census_acs5_2024_community_profile": {
+   "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
+   "source_release_id": "2020-2024 ACS 5-year subject tables",
+   "published_at": "2026-11-15T01:11:57.655388+00:00"
+  },
+  "cdc_brfss_state_prevalence": {
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "published_at": "2026-11-15T16:27:29.768552+00:00"
+  },
+  "cms_om_geographic_variation": {
+   "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92",
+   "source_release_id": "OM GV PUF May 2026 update (2014-2024 CSV)",
+   "published_at": "2026-11-14T21:47:59.151543+00:00"
+  }
+ }
+}

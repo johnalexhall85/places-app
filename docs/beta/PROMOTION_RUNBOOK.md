@@ -127,3 +127,28 @@ Data rollback and application rollback are independent. Never delete archives un
 
 - Confirm the live PDF frontend base through the authorized live PDF check after setting it. The live `.env.production` exists and sets `VITE_API_BASE_URL=/api` (verified 2026-11-15).
 - AHRF redistribution terms remain unsettled; the product stays behind the access code.
+
+## BRFSS and state profiles promotion (prepared 2026-11-15; not run)
+
+Run after John approves the staging review of the [BRFSS and state plan](BRFSS_STATE_PLAN.md), for one named `beta` commit. The general rules above apply: fresh recovery set and application rollback pair first, one agent, stop at the first unexpected result.
+
+| Item | From (live) | To |
+|---|---|---|
+| Code | `main` at the last promoted commit | fast-forwarded to the approved `beta` commit |
+| Schema | Alembic `d5a2f7c9e1b4` | `e6b3a8d0f2c5` (additive: `stage_brfss`, `observation_brfss`) |
+| BRFSS product | not present | new release created on live (twelfth pointer) |
+| Other eleven pointers | unchanged | unchanged (verified before and after) |
+
+Reviewed staging digests for the BRFSS candidate:
+
+| Semantic | Schema | Metadata |
+|---|---|---|
+| `5dcbd5bdfef6ae4d35d02992a37f85f6f2de8684d6d1a0c4e412c58f0908951d` | `9904968919efd340425d72e7d28d61ecec94a4af038d7fc19e147e6f9a45905e` | `05839404d17d7fa755012d888b0a63112075995616f20dbbe9208654d3de389d` |
+
+Steps: recovery set and rollback pair; `git merge --ff-only <approved commit>`; `alembic upgrade head`; `python -m app.area_pilot.brfss_cli fetch-stage-validate`, `review`, compare with the table, `approve-publish`; build and sync the webroot; restart `places-backend`; verify (twelve pointers, eleven unchanged; anonymous 401; live and staging `lookup` output equal for three states and three counties apart from release IDs; John's signed-in check of a state profile, its PDF, and the state map).
+
+The metadata digest does not include CDC's revision timestamps, so a CDC update to other years does not change it. If the **semantic** digest differs, CDC has revised a selected value: do not publish; review it as a new release on staging first.
+
+Rollback: `python -m app.area_pilot.brfss_cli deactivate` hides the product (state profiles then show BRFSS measures as not in release; county cards lose the state line). Application rollback is as above. Do not downgrade the schema.
+
+The old code on live ignores the new tables, so the migration and ingest can precede the application deploy. The new application code tolerates a missing BRFSS pointer.

@@ -1,0 +1,75 @@
+{
+ "level": "state",
+ "geoids": [
+  "21"
+ ],
+ "values": [
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "diabetes",
+   "label": "Diagnosed diabetes",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "21",
+   "value": null,
+   "status": "not_published",
+   "status_text": "No result for this state and year in the CDC file",
+   "stored": false,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": null,
+    "high": null,
+    "label": "95% confidence interval"
+   },
+   "notes": {},
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  },
+  {
+   "product": "brfss",
+   "dataset_id": "cdc_brfss_state_prevalence",
+   "measure_id": "dental_visit",
+   "label": "Visited dentist or dental clinic in the past year",
+   "unit": "percent",
+   "kind": "percent",
+   "storage_scale": null,
+   "period": "2022",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "source_credit": null,
+   "level": "state",
+   "geoid": "21",
+   "value": 60.3,
+   "status": "available",
+   "status_text": "Published estimate",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 58.2,
+    "high": 62.4,
+    "label": "95% confidence interval"
+   },
+   "notes": {
+    "sample_size": 2337
+   },
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "boundary_vintage": "January 1, 2024"
+  }
+ ],
+ "releases": {
+  "cdc_brfss_state_prevalence": {
+   "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd",
+   "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+   "published_at": "2026-11-15T16:27:29.768552+00:00"
+  }
+ }
+}
