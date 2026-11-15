@@ -57,15 +57,22 @@ try {
   console.log('Three-county comparison: passed');
 
   await visit('/topics', 'Community health topics');
+  await page.locator('.community-topic').first().waitFor();
   assert.equal(await page.locator('.community-topic').count(), 7, 'topic list');
   await visit('/topics/food-environment', 'Food environment');
+  await page.locator('.community-topic-measures article').first().waitFor();
   assert.ok(await page.locator('.community-topic-measures article').count() >= 6, 'food measures');
   await screenshot('food-topic', true);
   const mapHref = await page.locator('.community-topic-measures article a').first().getAttribute('href');
   await visit(mapHref);
   const selected = await page.locator('select').filter({ has: page.locator('option[value="low_income_low_access_pct"]') }).inputValue();
   assert.equal(selected, 'low_income_low_access_pct', 'source map measure preselection');
-  console.log('Topics and preselected source map: passed');
+  await page.getByRole('button', { name: 'Copy map link' }).waitFor();
+  await page.waitForFunction(() => ['lat', 'lon', 'zoom'].every(key => new URLSearchParams(location.search).has(key)));
+  const sharedMapUrl = page.url();
+  await page.goto(sharedMapUrl);
+  assert.equal(await page.locator('select').filter({ has: page.locator('option[value="low_income_low_access_pct"]') }).inputValue(), 'low_income_low_access_pct', 'shared map selection');
+  console.log('Topics, preselected source map, and shareable map view: passed');
 
   for (const geoid of showcase) {
     await visit(`/community/county/${geoid}`);

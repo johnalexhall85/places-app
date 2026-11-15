@@ -33,6 +33,11 @@
   font-size: 17px;
 }
 
+.pilot-share { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0; }
+.pilot-share button { padding: 8px 12px; border: 1px solid #0277bd; border-radius: 4px; background: #fff; color: #003f61; cursor: pointer; font: inherit; font-weight: 700; }
+.pilot-share button:hover { background: #e8f3fa; }
+.pilot-share button:focus-visible { outline: 3px solid #0277bd; outline-offset: 2px; }
+
 .pilot-controls p,
 .pilot-legend p,
 .pilot-table p {

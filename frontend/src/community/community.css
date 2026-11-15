@@ -837,9 +837,8 @@
   .community-actions,
   .community-section-nav,
   .community-map-link,
-  .community-tract-controls,
-  .community-tract-map,
-  .community-tract-legend,
+  #tract-patterns,
+  .community-meta-links,
   .community-facility details,
   .community-app .app-footer { display: none !important; }
   .community-profile { width: 100%; padding: 16px 0 0; }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null }));
@@ -13,12 +13,19 @@ vi.mock("react-leaflet", () => ({
   useMapEvents: (handlers) => {
     mapHarness.handlers = handlers;
     return { getZoom: () => mapHarness.zoom,
+      getCenter: () => ({ lat: 35, lng: -95 }),
       getBounds: () => ({ getWest: () => -100, getSouth: () => 30, getEast: () => -90, getNorth: () => 40 }) };
   },
 }));
 
+afterEach(() => window.history.replaceState(null, "", "/"));
+
 describe("PLACES 2025 county pilot selection", () => {
   afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; });
+  it("restores a valid shared map view and rejects invalid coordinates", () => {
+    expect(initialMapView("?lat=36.4&lon=-79&zoom=10")).toEqual({ center: [36.4, -79], zoom: 10 });
+    expect(initialMapView("?lat=999&lon=-79&zoom=10").center).toEqual([38, -104]);
+  });
   it("routes the pilot separately from the legacy map", () => {
     expect(resolveRoute("/area/places-2025")).toEqual({ type: "places-2025-pilot" });
     expect(resolveRoute("/")).toEqual({ type: "community-landing" });
