@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { GeoJSON, MapContainer } from "react-leaflet";
 import { API_BASE } from "../config/apiBase";
 import { formatIndicatorValue } from "./CommunityPages";
+import { BLUES } from "../branding/mapColors";
 
-const BLUES = ["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#003f61"];
 const STATUS_COLORS = {
   suppressed: "#b9a7b1",
   missing: "#d4dce1",

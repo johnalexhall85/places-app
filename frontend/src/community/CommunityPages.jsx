@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import SiteHeader from "../components/SiteHeader";
+import PlaceSearch from "../components/PlaceSearch";
 import Footer from "../components/Footer";
 import TractPatternMap from "./TractPatternMap";
 import "./community.css";
@@ -41,64 +42,6 @@ export function CommunityShell({ children }) {
       <main id="main">{children}</main>
       <div className="community-meta-links"><a href="/about">About CHIP</a><a href="/methodology">Data methodology</a></div>
       <Footer />
-    </div>
-  );
-}
-
-function PlaceSearch({ label = "Find a county or state" }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [status, setStatus] = useState("");
-
-  useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      setStatus("");
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch(`${API_BASE}/community/search?q=${encodeURIComponent(query)}&limit=8`, { signal: controller.signal });
-        if (!response.ok) throw new Error("Search is unavailable right now.");
-        const matches = await response.json();
-        setResults(matches);
-        setStatus(matches.length ? `${matches.length} places found` : "No places found");
-      } catch (error) {
-        if (error.name !== "AbortError") setStatus(error.message);
-      }
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [query]);
-
-  function submit(event) {
-    event.preventDefault();
-    const value = query.trim();
-    const state = /^\d{2}$/.test(value) ? { geoid: value, type: "state" } : null;
-    const county = /^\d{5}$/.test(value) ? { county_fips: value, type: "county" } : null;
-    const result = state || county || results[0];
-    if (result) window.location.assign(result.type === "state" ? `/community/state/${result.state_geoid || result.geoid}` : `/community/county/${result.county_fips}`);
-  }
-
-  return (
-    <div className="community-search">
-      <form onSubmit={submit} role="search">
-        <label htmlFor="community-county-query">{label}</label>
-        <div className="community-search-row">
-          <input id="community-county-query" value={query} onChange={(event) => setQuery(event.target.value)}
-            autoComplete="off" placeholder="State or county name, or FIPS code" />
-          <button type="submit">View profile</button>
-        </div>
-      </form>
-      <p className="community-search-status" aria-live="polite">{status}</p>
-      {results.length > 0 && (
-        <ul className="community-search-results" aria-label="Place matches">
-          {results.map((result) => <li key={result.type === "state" ? `state:${result.geoid}` : `county:${result.county_fips}`}>
-            {result.type === "state" ? <a href={`/community/state/${result.geoid}`}>{result.name} · State profile <span>{result.geoid}</span></a>
-              : <a href={`/community/county/${result.county_fips}`}>{result.name} County, {result.state_abbr} <span>{result.county_fips}</span></a>}
-          </li>)}
-        </ul>
-      )}
     </div>
   );
 }

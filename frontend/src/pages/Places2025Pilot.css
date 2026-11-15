@@ -30,8 +30,12 @@
 }
 
 .pilot-controls h1 {
-  font-size: 17px;
+  font-family: var(--headline-font);
+  font-size: 18px;
+  color: #003f61;
 }
+
+.pilot-controls { max-height: calc(100% - 32px); overflow-y: auto; }
 
 .pilot-share { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0; }
 .pilot-share button { padding: 8px 12px; border: 1px solid #0277bd; border-radius: 4px; background: #fff; color: #003f61; cursor: pointer; font: inherit; font-weight: 700; }
@@ -79,9 +83,101 @@
   gap: 10px;
 }
 
+.pilot-legend { max-height: calc(46% - 24px); overflow-y: auto; }
+.pilot-legend.is-minimized { gap: 0; }
+
 .pilot-legend h2 {
   font-family: var(--body-font);
   font-size: 13px;
+  font-weight: 700;
+  color: #003f61;
+  padding-right: 32px;
+}
+
+.pilot-panel-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 4px;
+  background: #fff;
+  color: #003f61;
+  font-weight: 700;
+  line-height: 20px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Selected area, shown under the classes as on the legacy map's legend. */
+.pilot-selected {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 2px solid #003f61;
+}
+.pilot-selected h3 { font-family: var(--body-font); font-size: 12px; font-weight: 700; color: #0277bd; text-transform: uppercase; letter-spacing: .06em; }
+.pilot-selected-name { font-weight: 700; color: #003f61; font-size: 14px; }
+.pilot-selected-value strong { font-family: var(--headline-font); font-size: 16px; color: #003f61; }
+.pilot-selected a { color: #00679f; font-weight: 700; }
+
+/* Map Tools above the place search, as on the legacy map. Wide screens: a strip between the
+   controls and the legend. Narrower screens: docked above the table. */
+.pilot-dock { display: contents; }
+.pilot-tools {
+  top: 16px;
+  left: 442px;
+  right: 312px;
+  padding: 8px 16px;
+  display: grid;
+  gap: 8px;
+}
+.pilot-tools-toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  color: #003f61;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pilot-tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pilot-tools-row .chip-secondary-btn { text-decoration: none; font-size: 12px; padding: 6px 12px; border-radius: 4px; }
+.pilot-tools-basemap { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #003f61; font-size: 11px; }
+.pilot-tools-basemap select { height: 32px; padding: 0 8px; border: 1px solid var(--pdo-border-strong); border-radius: 4px; background: #fff; color: var(--pdo-text); font-weight: 400; }
+.pilot-focus-status { margin: 0; color: var(--pdo-text-muted); }
+
+.pilot-tools .community-search { max-width: none; position: relative; }
+.pilot-tools .community-search label { display: block; margin-bottom: 4px; color: #003f61; font-weight: 700; }
+.pilot-tools .community-search-row { display: flex; gap: 8px; }
+.pilot-tools .community-search-row input { flex: 1; min-width: 0; min-height: 36px; padding: 6px 12px; border: 1px solid var(--pdo-border-strong); border-radius: 4px; color: var(--pdo-text); background: #fff; }
+.pilot-tools .community-search-row button { min-height: 36px; padding: 6px 16px; border: 1px solid #0277bd; border-radius: 4px; background: #0277bd; color: #fff; font-weight: 700; cursor: pointer; }
+.pilot-tools .community-search-row button:hover { background: #005c91; }
+.pilot-tools .community-search-status { min-height: 0; margin: 4px 0 0; color: var(--pdo-text-muted); font-size: 12px; }
+.pilot-tools .community-search-status:empty { display: none; }
+.pilot-tools .community-search-results { position: absolute; z-index: 10; width: 100%; max-height: 240px; margin: 0; padding: 0; overflow-y: auto; list-style: none; background: #fff; border: 1px solid var(--pdo-border); box-shadow: 0 8px 24px rgba(0, 37, 60, .16); }
+.pilot-tools .community-search-results a { display: flex; justify-content: space-between; gap: 16px; padding: 8px 12px; text-decoration: none; color: #00679f; }
+.pilot-tools .community-search-results a:hover { background: #edf5fa; }
+.pilot-tools .community-search-results span { color: var(--pdo-text-muted); }
+
+@media (max-width: 1100px) {
+  .pilot-dock {
+    position: absolute;
+    z-index: 2200;
+    left: 16px;
+    bottom: 16px;
+    width: min(690px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pilot-dock > .pilot-panel { position: relative; top: auto; left: auto; right: auto; bottom: auto; width: auto; }
 }
 
 .pilot-swatches {
@@ -100,9 +196,10 @@
 
 .pilot-swatches i {
   display: inline-block;
-  width: 13px;
-  height: 13px;
-  border: 1px solid #a9bac9;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #a8bac4;
   border-radius: 2px;
 }
 
@@ -197,8 +294,9 @@
   .pilot-content { min-height: 650px; }
   .pilot-controls { max-height: 34vh; overflow: auto; }
   .pilot-legend { top: auto; bottom: 66px; max-height: 23vh; overflow: auto; }
-  .pilot-table { bottom: 16px; max-height: 32vh; }
-  .pilot-table.is-open { bottom: calc(23vh + 76px); }
+  .pilot-table { max-height: 32vh; }
+  .pilot-dock:has(.pilot-table.is-open) { bottom: calc(23vh + 76px); }
+  .pilot-tools-row .chip-secondary-btn { padding: 6px 8px; }
 }
 
 .pilot-scope p {
@@ -369,7 +467,7 @@
 .pilot-period {
   margin: 0.5rem 0 0.25rem;
   padding: 0.35rem 0.5rem;
-  border-left: 4px solid #31a354;
-  background: #f3faf1;
-  color: #123247;
+  border-left: 4px solid #0277bd;
+  background: #f4f7fb;
+  color: #1a2f3f;
 }

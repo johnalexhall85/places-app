@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiPopup, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, gvPopup, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, feaPopup, brfssColor, brfssPopup, brfssValueText } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
-const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null }));
+const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
+  map: { setView: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), getBoundsZoom: () => 8 } }));
 
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }) => <div>{children}</div>,
   TileLayer: () => null,
   ZoomControl: () => null,
-  GeoJSON: (props) => { mapHarness.geojson = props; return null; },
+  GeoJSON: (props) => { if (props.onEachFeature) mapHarness.geojson = props; else mapHarness.outline = props; return null; },
+  Pane: ({ children }) => <div>{children}</div>,
+  useMap: () => mapHarness.map,
   useMapEvents: (handlers) => {
     mapHarness.handlers = handlers;
     return { getZoom: () => mapHarness.zoom,
@@ -34,10 +37,10 @@ describe("PLACES 2025 county pilot selection", () => {
   });
   it("keeps BRFSS state survey values, uncertainty, and not-published status distinct", () => {
     expect(brfssColor(null, "not_published", [9, 11, 12, 14])).toBe("#a5a5a5");
-    expect(brfssColor(12.4, "available", [9, 11, 12, 14])).toBe("#6baed6");
+    expect(brfssColor(12.4, "available", [9, 11, 12, 14])).toBe("#0277bd");
     expect(brfssValueText({ value: null, status_text: "Not published by CDC" })).toBe("Not published by CDC");
-    expect(brfssPopup({ name: "North Carolina", geography_id: "37", value: 12.4, ci_low: 11,
-      ci_high: 13.8, sample_size: 577 }, { label: "Diagnosed diabetes", observation_period: "2023", population: "adults" }))
+    expect(areaFeatureDetails("brfss", { name: "North Carolina", geography_id: "37", value: 12.4, ci_low: 11,
+      ci_high: 13.8, sample_size: 577 }, { label: "Diagnosed diabetes", observation_period: "2023", population: "adults" }, { geography: "state" }).lines)
       .toContain("95% confidence interval: 11–13.8%");
   });
   it("pins every selection and viewport in each request key", () => {
@@ -331,8 +334,9 @@ describe("EPA annual county AQI", () => {
     expect(aqiColor(0, "true_zero", [25, 50])).not.toBe(aqiColor(null, "no_reported_value", [25, 50]));
     // No daily health-category palette (green/yellow/orange/red/purple/maroon).
     expect(["#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023"]).not.toContain(aqiColor(40, "available", [25, 50, 100, 150]));
-    const popup = aqiPopup({ name: "Baldwin<script>", geography_id: "01003", value: 42, status: "available", days_with_aqi: 355,
-      source_name: "Baldwin, Alabama" }, measures[0]);
+    const popup = areaTooltip("aqi", { name: "Baldwin<script>", geography_id: "01003", value: 42, status: "available", days_with_aqi: 355,
+      source_name: "Baldwin, Alabama" }, measures[0], { geography: "county" })
+      + areaFeatureDetails("aqi", { name: "Baldwin", geography_id: "01003", value: 42, status: "available", days_with_aqi: 355 }, measures[0], { geography: "county" }).lines.join(" | ");
     expect(popup).toContain("355 of 365 days with AQI");
     expect(popup).toContain("historical, not current");
     expect(popup).not.toContain("<script>");
@@ -419,9 +423,10 @@ describe("CMS Original Medicare Geographic Variation", () => {
     expect(gvColor(0, "true_zero", [0.15, 0.165])).not.toBe(gvColor(null, "missing", [0.15, 0.165]));
     expect(gvBinLabels([0.15, 0.165, 0.18, 0.195], "proportion")).toEqual(
       ["Under 15.00%", "15.00% to under 16.50%", "16.50% to under 18.00%", "18.00% to under 19.50%", "19.50% or more"]);
-    const popup = gvPopup({ name: "Baldwin<b>", geography_id: "01003", value: 0.2, status: "available", source_name: "AL-Baldwin" },
-      measures[2], "county", catalog);
-    expect(popup).toContain("County Baldwin&lt;b&gt; (01003)");
+    const gvItem = { name: "Baldwin<b>", geography_id: "01003", value: 0.2, status: "available", source_name: "AL-Baldwin" };
+    const popup = areaTooltip("cmsgv", gvItem, measures[2], { geography: "county", catalog })
+      + areaFeatureDetails("cmsgv", gvItem, measures[2], { geography: "county", catalog }).lines.join(" | ");
+    expect(popup).toContain("Baldwin&lt;b&gt; · County 01003");
     expect(popup).toContain("20.00%");
     expect(popup).toContain("Medicare Advantage");
   });
@@ -540,9 +545,10 @@ describe("USDA Food Environment Atlas county measures", () => {
     expect(feaColor(null, "did_not_exist", [1])).not.toBe(feaColor(null, "not_available", [1]));
     expect(feaBinLabels([3, 6, 9, 13], "percent")).toEqual(
       ["Above 0 to under 3%", "3% to under 6%", "6% to under 9%", "9% to under 13%", "13% or more"]);
-    const popup = feaPopup({ name: "Autauga<i>", geography_id: "01001", value: 13.02, source_value: "13.02099800", status: "available",
-      source_name: "Autauga, AL" }, measures[0]);
-    expect(popup).toContain("County Autauga&lt;i&gt; (01001)");
+    const feaItem = { name: "Autauga<i>", geography_id: "01001", value: 13.02, source_value: "13.02099800", status: "available", source_name: "Autauga, AL" };
+    const popup = areaTooltip("usdafea", feaItem, measures[0], { geography: "county" })
+      + areaFeatureDetails("usdafea", feaItem, measures[0], { geography: "county" }).lines.join(" | ");
+    expect(popup).toContain("Autauga&lt;i&gt; · County 01001");
     expect(popup).toContain("Observation year 2019");
     expect(popup).toContain("USDA value: 13.02099800 (PCT_LACCESS_LOWI19)");
   });
@@ -595,5 +601,99 @@ describe("USDA Food Environment Atlas county measures", () => {
     expect(fm.length).toBeGreaterThan(0);
     expect(fm.every((url) => url.includes("period=2018") && url.includes("population=county+residents"))).toBe(true);
     expect(data.filter((url) => url.includes("measure_id=low_income_low_access_pct")).every((url) => url.includes("period=2019"))).toBe(true);
+  });
+});
+
+describe("area map selection, focus, and class breaks", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.outline = null; mapHarness.map.setView.mockClear(); });
+
+  const placesStub = (extra = {}) => vi.fn(async (url) => {
+    const path = String(url);
+    if (path.includes("/community/area/")) {
+      return { ok: true, json: async () => ({ level: "county", geoid: "37145", name: "Person", bbox: [-79.2, 36.2, -78.8, 36.5],
+        geometry: { type: "Polygon", coordinates: [] } }) };
+    }
+    const payload = path.endsWith("/catalog") ? {
+      dataset_id: "cdc_places_county_2025_pilot", active_release_id: "release-a", value_type: "crude_prevalence", unit: "percent",
+      measures: [{ measure_id: "diabetes_crudeprev", label: "Diagnosed diabetes", observation_period: "2023", population: "adults" }],
+    } : path.includes("/map?") ? { release_id: "release-a", features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [] },
+        properties: { county_fips: "37145", geography_id: "37145", name: "Person", value: 13.4, ci_low: 11.9, ci_high: 15, status: "available" } }] }
+      : path.includes("/legend?") ? { release_id: "release-a", quantile_breaks: [11.4, 12.7, 13.9, 15.7], statuses: [{ status: "available", n: 1, low: 13.4, high: 13.4 }], ...extra }
+      : { release_id: "release-a", total: 1, rows: [{ county_fips: "37145", name: "Person", value: 13.4, ci_low: 11.9, ci_high: 15, status: "available" }] };
+    return { ok: true, json: async () => ({ ...payload, geography: "county" }) };
+  });
+
+  it("classes values by release quintiles so an outlier cannot wash out the map", () => {
+    const cuts = [11.4, 12.7, 13.9, 15.7];
+    const shades = [9, 12, 13.4, 15, 27.1].map((value) => quintileColor(value, "available", cuts));
+    expect(new Set(shades).size).toBe(5);
+    expect(shades[4]).toBe("#003f61");
+    expect(quintileColor(null, "suppressed", cuts)).not.toBe(quintileColor(null, "missing", cuts));
+    expect(shades).not.toContain(quintileColor(null, "not_published", cuts));
+  });
+
+  it("reads focus links and maps each level to its profile and zoom limits", () => {
+    expect(parseFocus("?focus=county:37145")).toEqual({ level: "county", geoid: "37145" });
+    expect(parseFocus("?focus=cd:5401")).toEqual({ level: "cd", geoid: "5401" });
+    expect(parseFocus("?focus=county:37")).toBeNull();
+    expect(parseFocus("?focus=zip:27573")).toBeNull();
+    expect(profileHrefFor({ level: "state", geoid: "37" })).toBe("/community/state/37");
+    expect(profileHrefFor({ level: "cd", geoid: "5401" })).toBe("/district/cd/5401");
+    expect(profileHrefFor({ level: "tract", geoid: "37145920100" })).toBeNull();
+    expect(focusZoomRange("state", { stateBelow: 6 }).max).toBeLessThan(6);
+    expect(focusZoomRange("county", { countyFrom: 6, tractFrom: 10 })).toEqual({ min: 6, max: 9.75 });
+  });
+
+  it("opens zoomed to a focused county, outlines it, and shows its value in the legend", async () => {
+    window.history.replaceState(null, "", "/area/places-2025?measure_id=diabetes_crudeprev&focus=county:37145");
+    const fetchMock = placesStub();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Places2025Pilot />);
+    const block = await screen.findByTestId("selected-area");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/community/area/county/37145"))).toBe(true);
+    expect(mapHarness.map.setView).toHaveBeenCalledWith([36.35, -79], 8);
+    expect(block).toHaveTextContent("Person · County 37145");
+    expect(await screen.findByText("13.4%", { selector: "strong" })).toBeInTheDocument();
+    expect(block).toHaveTextContent("95% confidence interval: 11.9–15%");
+    expect(mapHarness.outline.data).toEqual({ type: "Polygon", coordinates: [] });
+    expect(screen.getByRole("link", { name: "Open county profile →" })).toHaveAttribute("href", "/community/county/37145");
+    fireEvent.click(screen.getByRole("button", { name: /Map Tools/ }));
+    expect(screen.getByRole("link", { name: "Open profile" })).toHaveAttribute("href", "/community/county/37145");
+    expect(screen.getByRole("button", { name: "Zoom to selected county" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Analyze/ })).not.toBeInTheDocument();
+    expect(window.location.search).toContain("focus=county%3A37145");
+    expect(screen.getByText(/quintiles of all published county values/i)).toBeInTheDocument();
+    expect(screen.getByText("11.4% or less")).toBeInTheDocument();
+  });
+
+  it("selects a clicked area, keeps it across a viewport change, and clears on Escape", async () => {
+    vi.stubGlobal("fetch", placesStub());
+    render(<Places2025Pilot />);
+    await screen.findByText("37145");
+    const handlers = {};
+    const layer = { on: (name, handler) => { handlers[name] = handler; }, setStyle: vi.fn(), bindTooltip: vi.fn(),
+      getBounds: () => ({ isValid: () => true, getWest: () => -79.2, getSouth: () => 36.2, getEast: () => -78.8, getNorth: () => 36.5 }) };
+    const feature = mapHarness.geojson.data.features[0];
+    mapHarness.geojson.onEachFeature(feature, layer);
+    expect(layer.bindTooltip.mock.calls[0][0]).toContain("Person · County 37145<br/>Diagnosed diabetes<br/>13.4% • 2023");
+    expect(layer.bindTooltip.mock.calls[0][1].className).toBe("pdo-map-tooltip");
+    expect(screen.queryByTestId("selected-area")).not.toBeInTheDocument();
+    act(() => handlers.click());
+    expect(screen.getByTestId("selected-area")).toHaveTextContent("Person · County 37145");
+    mapHarness.zoom = 7;
+    await act(async () => { mapHarness.handlers.moveend(); });
+    expect(screen.getByTestId("selected-area")).toHaveTextContent("Person · County 37145");
+    expect(await screen.findByText("13.4%", { selector: "strong" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("selected-area")).not.toBeInTheDocument();
+  });
+
+  it("says so, and computes nothing, when the selected state has no value at the level drawn", async () => {
+    window.history.replaceState(null, "", "/area/places-2025?focus=state:37");
+    vi.stubGlobal("fetch", placesStub());
+    render(<Places2025Pilot />);
+    const block = await screen.findByTestId("selected-area");
+    expect(block).toHaveTextContent(/showing county values/i);
+    expect(block).toHaveTextContent(/none is calculated/i);
   });
 });

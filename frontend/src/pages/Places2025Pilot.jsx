@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GeoJSON, MapContainer, TileLayer, ZoomControl, useMapEvents } from "react-leaflet";
+import { GeoJSON, MapContainer, Pane, TileLayer, ZoomControl, useMap, useMapEvents } from "react-leaflet";
 import { API_BASE } from "../config/apiBase";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { HealthCenterSiteLayer, HealthCenterSitePanel, useHealthCenterSites } from "../components/HealthCenterSites";
 import { TriFacilityLayer, TriFacilityPanel, useTriFacilities } from "../components/TriFacilities";
 import { NursingHomeLayer, NursingHomePanel, useNursingHomes } from "../components/NursingHomes";
+import PlaceSearch from "../components/PlaceSearch";
+import MapTools from "./areaMap/MapTools";
+import { BASE_MAP_OPTIONS } from "../branding/baseMaps";
+import { BLUES, HOVER_LINE, SELECTION_CASING, SELECTION_LINE, quantileColor, quantileCuts, quantileLabels, rampColors } from "../branding/mapColors";
+import { MAP_HOVER_TOOLTIP_OPTIONS, areaTooltipHtml, isCoarsePointer } from "../utils/mapTooltip";
 import "./Places2025Pilot.css";
 
 const cache = new Map();
@@ -50,9 +55,9 @@ function profileUncertainty(item) {
 export const AQI_DATASET_ID = "epa_airdata_aqi_county_2025";
 export const AQI_NO_VALUE = "no_reported_value";
 const integer = new Intl.NumberFormat("en-US");
-// Neutral sequential shading. Deliberately not the daily AQI health-category colors:
+// Brand Blues sequential shading. Deliberately not the daily AQI health-category colors:
 // these are annual summary statistics, not a day's health category.
-const aqiColors = ["#f1eef6", "#d0d1e6", "#a6bddb", "#3690c0", "#034e7b"];
+const aqiColors = BLUES;
 const AQI_NO_VALUE_COLOR = "#ffffff";
 
 export function aqiBinLabels(breaks, unit) {
@@ -74,15 +79,6 @@ export function aqiValueText(item, measure) {
   const beyond = item.value_note === "above_500_beyond_aqi_scale" ? " (above 500: beyond the AQI scale)" : "";
   return `${integer.format(item.value)}${unit}${beyond}`;
 }
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
-}
-export function aqiPopup(item, measure) {
-  const source = item.source_name ? `<br>EPA source name: ${escapeHtml(item.source_name)}` : "";
-  return `County ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(aqiValueText(item, measure))}`
-    + `<br>${escapeHtml(aqiReportingText(item, measure?.observation_period))}${source}`
-    + `<br>${escapeHtml(measure?.observation_period)} annual summary · historical, not current conditions`;
-}
 export function aqiReportingText(item, year) {
   if (item.days_with_aqi == null) return "No EPA county summary for this year";
   const total = Number(year) % 4 === 0 && (Number(year) % 100 !== 0 || Number(year) % 400 === 0) ? 366 : 365;
@@ -91,7 +87,7 @@ export function aqiReportingText(item, year) {
 
 export const GV_DATASET_ID = "cms_om_geographic_variation";
 // Fixed display classes from the registry, shared by map, legend, and table. Not statistics.
-const gvColors = ["#edf8fb", "#b3cde3", "#8c96c6", "#8856a7", "#810f7c"];
+const gvColors = BLUES;
 const GV_STATUS_COLORS = { suppressed: "#8f6b74", missing: "#d8dee3", not_published: "#ffffff" };
 const GV_STATUS_TEXT = {
   suppressed: "Suppressed by CMS (fewer than 11)",
@@ -130,12 +126,6 @@ export function gvBinLabels(breaks, kind) {
     `${gvNumber(breaks[breaks.length - 1], kind)} or more`,
   ];
 }
-export function gvPopup(item, measure, geography, catalog) {
-  const level = geography === "state" ? "State" : "County";
-  return `${level} ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(gvValueText(item, measure))}`
-    + `<br>${escapeHtml(measure?.observation_period)} · ${escapeHtml(catalog?.population_label)}`
-    + (item.source_name ? `<br>CMS name: ${escapeHtml(item.source_name)}` : "");
-}
 
 export const FEA_DATASET_ID = "usda_ers_food_environment_atlas";
 export const BRFSS_DATASET_ID = "cdc_brfss_state_prevalence";
@@ -149,14 +139,8 @@ export function brfssColor(value, status, breaks = []) {
 export function brfssValueText(item) {
   return item.value == null ? (item.status_text || item.status) : `${item.value}%`;
 }
-export function brfssPopup(item, measure) {
-  return `State ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(brfssValueText(item))}`
-    + `<br>95% confidence interval: ${item.ci_low == null ? "unavailable" : `${escapeHtml(item.ci_low)}–${escapeHtml(item.ci_high)}%`}`
-    + `<br>Respondents giving this response: ${item.sample_size == null ? "unavailable" : escapeHtml(item.sample_size)}`
-    + `<br>CDC BRFSS · ${escapeHtml(measure?.observation_period)} · ${escapeHtml(measure?.population)}`;
-}
 // Fixed registry display classes shared by map, legend, and table; not statistical groupings.
-const feaColors = ["#edf8e9", "#bae4b3", "#74c476", "#31a354", "#006d2c"];
+const feaColors = BLUES;
 const FEA_ZERO_COLOR = "#fdd49e";
 export const FEA_STATUS_COLORS = {
   not_available: "#d8dee3", did_not_exist: "#a08c6a", boundary_not_comparable: "#ffffff", not_covered: "#ffffff",
@@ -192,12 +176,6 @@ export function feaBinLabels(breaks, kind) {
     ...breaks.slice(1).map((upper, i) => `${feaNumber(breaks[i], kind)} to under ${feaNumber(upper, kind)}`),
     `${feaNumber(breaks[breaks.length - 1], kind)} or more`,
   ];
-}
-export function feaPopup(item, measure) {
-  return `County ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(feaValueText(item, measure))}`
-    + `<br>Observation year ${escapeHtml(measure?.observation_period)} · ${escapeHtml(measure?.unit)}`
-    + (item.source_value != null ? `<br>USDA value: ${escapeHtml(item.source_value)} (${escapeHtml(measure?.variable_code)})` : "")
-    + (item.source_name ? `<br>USDA name: ${escapeHtml(item.source_name)}` : "");
 }
 
 export function safeViewportBbox(bounds) {
@@ -250,7 +228,7 @@ function Viewport({ onChange }) {
   return null;
 }
 
-const prevalenceColors = ["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#2171b5"];
+const prevalenceColors = BLUES;
 
 function color(value, status, breaks) {
   if (status === "open_ended") return "#6d3b9e";
@@ -260,6 +238,97 @@ function color(value, status, breaks) {
   if (!breaks) return prevalenceColors[2];
   const index = breaks.findIndex((upper) => value < upper);
   return prevalenceColors[index < 0 ? 4 : index];
+}
+// Quintile classes over the whole release, so an outlier cannot push most areas into one shade.
+export function quintileColor(value, status, cuts) {
+  if (!["available", "true_zero"].includes(status) || value == null) return color(value, status, null);
+  return cuts.length ? quantileColor(value, cuts) : prevalenceColors[2];
+}
+
+const LEVEL_TITLES = { state: "State", county: "County", tract: "Tract", cd: "District" };
+const EXPLANATIONS = {
+  places: "Modeled adult prevalence estimate from CDC PLACES.",
+  brfss: "Direct state survey estimate from CDC BRFSS.",
+  acs: "Census Bureau ACS 5-year estimate, 2024 dollars.",
+  acs_profile: "Census Bureau ACS 5-year estimate.",
+  ahrf: "County count from HRSA Area Health Resources Files.",
+  clh: "AHRQ Community-Level Health measure.",
+  aqi: "EPA annual AQI summary; historical, not current conditions.",
+  cmsgv: "Original Medicare beneficiaries only, not all residents.",
+  usdafea: "USDA Food Environment Atlas county measure.",
+};
+export function featureId(item) { return String(item?.geography_id ?? item?.tract_fips ?? item?.county_fips ?? ""); }
+export function areaTitle(name, level, geoid) { return `${name || "Unnamed area"} · ${LEVEL_TITLES[level] || "Area"} ${geoid}`; }
+
+// One description of a mapped area, used by the hover tooltip and the legend's selected-area block.
+// Plain text only: React escapes it in the legend and the tooltip builder escapes it for Leaflet.
+export function areaFeatureDetails(dataset, item, measure, context = {}) {
+  const { geography = "county", catalog = null, releaseId = null } = context;
+  const period = measure?.observation_period;
+  const base = { area: areaTitle(item.name, geography, featureId(item)), measure: measure?.label, period, explanation: EXPLANATIONS[dataset] || EXPLANATIONS.places };
+  let value; let lines;
+  if (dataset === "brfss") {
+    value = brfssValueText(item);
+    lines = [`95% confidence interval: ${item.ci_low == null ? "unavailable" : `${item.ci_low}–${item.ci_high}%`}`,
+      `Respondents giving this response: ${item.sample_size == null ? "unavailable" : item.sample_size}`,
+      `CDC BRFSS · ${period} · ${measure?.population}`];
+  } else if (dataset === "aqi") {
+    value = aqiValueText(item, measure);
+    lines = [aqiReportingText(item, period), item.source_name ? `EPA source name: ${item.source_name}` : null,
+      `${period} annual summary · historical, not current conditions`];
+  } else if (dataset === "cmsgv") {
+    value = gvValueText(item, measure);
+    lines = [`${period} · ${catalog?.population_label ?? "Original Medicare beneficiaries"}`, item.source_name ? `CMS name: ${item.source_name}` : null,
+      "No confidence interval or margin of error is published."];
+  } else if (dataset === "usdafea") {
+    value = feaValueText(item, measure);
+    lines = [`Observation year ${period} · ${measure?.unit}`,
+      item.source_value != null ? `USDA value: ${item.source_value} (${measure?.variable_code})` : null,
+      item.source_name ? `USDA name: ${item.source_name}` : null];
+  } else if (dataset === "acs_profile") {
+    value = profileValue(item, measure);
+    lines = [profileUncertainty(item), `Census Bureau · ${period} · ${measure?.population}`];
+  } else {
+    const isAcs = dataset === "acs"; const isAhrf = dataset === "ahrf"; const isClh = dataset === "clh";
+    value = `${displayValue(item, isAcs, isAhrf, isClh, measure?.unit)}${isAhrf && item.value != null ? ` ${measure?.unit}` : ""}`;
+    lines = [isAcs ? `90% margin of error: ${displayUncertainty(item, true)}` : isAhrf || isClh ? "Uncertainty: not supplied by the source" : `95% confidence interval: ${displayUncertainty(item, false)}`,
+      `${period}${isAcs ? " · ACS 5-year · 2024 dollars" : ""}${measure?.population ? ` · ${measure.population}` : ""}`];
+  }
+  if (item.value == null && item.status_text && !String(value).includes(item.status_text)) lines.unshift(item.status_text);
+  if (releaseId) lines.push(`Release ${releaseId}`);
+  return { ...base, value, lines: lines.filter(Boolean) };
+}
+export function areaTooltip(dataset, item, measure, context) {
+  const details = areaFeatureDetails(dataset, item, measure, context);
+  return areaTooltipHtml(details);
+}
+
+export function parseFocus(search = typeof window === "undefined" ? "" : window.location.search) {
+  const match = /^(state|county|tract|cd):(\d{2}|\d{4}|\d{5}|\d{11})$/.exec(new URLSearchParams(search).get("focus") || "");
+  if (!match) return null;
+  const digits = { state: 2, cd: 4, county: 5, tract: 11 }[match[1]];
+  return match[2].length === digits ? { level: match[1], geoid: match[2] } : null;
+}
+export function profileHrefFor(selection) {
+  if (!selection) return null;
+  if (selection.level === "county") return `/community/county/${selection.geoid}`;
+  if (selection.level === "state") return `/community/state/${selection.geoid}`;
+  if (selection.level === "cd") return `/district/cd/${selection.geoid}`;
+  return null;
+}
+// Zoom limits that keep a focused area drawn at its own level where the product publishes it.
+export function focusZoomRange(level, { stateBelow = null, countyFrom = null, tractFrom = null, min = 4 } = {}) {
+  if (level === "state") return { min, max: stateBelow != null ? stateBelow - 0.25 : 8 };
+  if (level === "tract") return { min: tractFrom ?? 10, max: 14 };
+  return { min: Math.max(min, countyFrom ?? min), max: tractFrom != null ? tractFrom - 0.25 : 11 };
+}
+
+function MapReady({ onReady }) {
+  const map = useMap();
+  // The map instance is fixed for the life of its container, so register it once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onReady(map); return () => onReady(null); }, []);
+  return null;
 }
 
 async function getJSON(endpoint, query, signal) {
@@ -306,6 +375,17 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [tableOpen, setTableOpen] = useState(true);
   const requestId = useRef(0);
   const viewportRef = useRef(null);
+  const datasetKey = isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "places";
+  // Selection is state, not a Leaflet layer: the area layer is rebuilt on every viewport change.
+  const [selection, setSelection] = useState(null);
+  const [focusRequest] = useState(parseFocus);
+  const [focusStatus, setFocusStatus] = useState("");
+  const [map, setMap] = useState(null);
+  const [baseMapId, setBaseMapId] = useState(BASE_MAP_OPTIONS[0].id);
+  const [legendOpen, setLegendOpen] = useState(true);
+  const [toolsOpen, setToolsOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 1100);
+  const focusedOnce = useRef(false);
+  const baseMap = BASE_MAP_OPTIONS.find((option) => option.id === baseMapId) || BASE_MAP_OPTIONS[0];
   // Optional point overlay: its own release, filters, and requests; it never changes the area selection.
   const sites = useHealthCenterSites({ bbox, zoom: mapZoom });
   // Second, independent point overlay (EPA TRI). Both overlays may be shown together.
@@ -336,12 +416,12 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const geography = isBrfss ? "state" : isProfile && ["state", "county", "tract", "cd"].includes(profileGeography) ? profileGeography
     : isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom) : areaGeography(mapZoom, isAcs || isProfile, tractSupported, tractCapExceeded);
   const simplify = geography === "tract" ? 0.002 : geography === "state" ? 0.06 : 0.04;
-  const selection = useMemo(() => releaseId && measure ? {
+  const dataSelection = useMemo(() => releaseId && measure ? {
     datasetId: catalog.dataset_id, releaseId, measure, valueType: catalog.value_type, geography,
   } : null, [releaseId, measure, catalog, geography]);
-  const requestKey = useMemo(() => selection && bbox
-    ? String(pilotQuery(selection, bbox, { simplify: String(simplify), limit: "100", offset: String(page * 100) }))
-    : null, [selection, bbox, page]);
+  const requestKey = useMemo(() => dataSelection && bbox
+    ? String(pilotQuery(dataSelection, bbox, { simplify: String(simplify), limit: "100", offset: String(page * 100) }))
+    : null, [dataSelection, bbox, page]);
   const onViewport = useCallback((next, zoomLevel, center) => {
     const key = `${next}|${zoomLevel}`;
     if (viewportRef.current === key) return;
@@ -360,8 +440,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
     url.searchParams.set("lat", viewCenter[0].toFixed(5));
     url.searchParams.set("lon", viewCenter[1].toFixed(5));
     url.searchParams.set("zoom", String(mapZoom));
+    if (selection) url.searchParams.set("focus", `${selection.level}:${selection.geoid}`);
+    else if (!focusRequest || focusedOnce.current) url.searchParams.delete("focus");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [bbox, releaseId, measureId, mapZoom, viewCenter, isProfile, profileGeography]);
+  }, [bbox, releaseId, measureId, mapZoom, viewCenter, isProfile, profileGeography, selection?.level, selection?.geoid, focusRequest]);
 
   async function copyMapLink() {
     try {
@@ -373,12 +455,12 @@ export default function Places2025Pilot({ dataset = "places" }) {
   }
 
   useEffect(() => {
-    if (!selection || !bbox) return;
+    if (!dataSelection || !bbox) return;
     const controller = new AbortController();
     const id = ++requestId.current;
-    const base = pilotQuery(selection, bbox);
-    const withMap = pilotQuery(selection, bbox, { simplify: String(simplify) });
-    const withTable = pilotQuery(selection, bbox, { limit: "100", offset: String(page * 100) });
+    const base = pilotQuery(dataSelection, bbox);
+    const withMap = pilotQuery(dataSelection, bbox, { simplify: String(simplify) });
+    const withTable = pilotQuery(dataSelection, bbox, { limit: "100", offset: String(page * 100) });
     setError("");
     setLoadedKey(null);
     setMapData(null);
@@ -402,26 +484,81 @@ export default function Places2025Pilot({ dataset = "places" }) {
       }
     });
     return () => controller.abort();
-  }, [selection, bbox, page, releaseId, requestKey, geography, capSelectionKey]);
+  }, [dataSelection, bbox, page, releaseId, requestKey, geography, capSelectionKey]);
 
   const ready = Boolean(requestKey && loadedKey === requestKey);
   const features = ready ? mapData?.features || [] : [];
-  const numericStatuses = ready ? legend?.statuses.filter((item) => ["available", "true_zero"].includes(item.status) && item.low != null) : [];
-  const availableRange = numericStatuses?.length ? {
-    low: Math.min(...numericStatuses.map((item) => item.low)), high: Math.max(...numericStatuses.map((item) => item.high)),
-  } : null;
-  const breaks = availableRange && availableRange.low != null && availableRange.high != null
-    ? Array.from({ length: 4 }, (_, i) => availableRange.low + (availableRange.high - availableRange.low) * (i + 1) / 5)
-    : null;
+  // Quintile cut points for the whole release at this level (PLACES, ACS income, AHRF, CLH).
+  const cuts = useMemo(() => quantileCuts(ready ? legend?.quantile_breaks : null), [ready, legend]);
+  const cutColors = rampColors(cuts.length + 1);
+  const formatCut = (value) => isAcs ? dollars.format(value)
+    : isAhrf ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)
+    : isClh ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)
+    : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}%`;
   const zoom = initialView.zoom;
+  const detailContext = useMemo(() => ({ geography, catalog, releaseId }), [geography, catalog, releaseId]);
+  const dataKey = `${releaseId}|${measureId}|${geography}`;
+
+  const zoomRange = useCallback((level) => focusZoomRange(level, {
+    min: initialMapZoom(),
+    stateBelow: isBrfss ? 12 : isGv ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") ? ACS_COUNTY_ZOOM : null,
+    countyFrom: isGv ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") ? ACS_COUNTY_ZOOM : null,
+    tractFrom: tractSupported && !(isProfile && profileGeography !== "auto") ? (isAcs || isProfile ? ACS_TRACT_ZOOM : PILOT_TRACT_ZOOM) : null,
+  }), [isBrfss, isGv, isAcs, isProfile, profileGeography, tractSupported, catalog]);
+
+  const fitArea = useCallback((bounds, level) => {
+    if (!map || !bounds) return;
+    const [west, south, east, north] = bounds;
+    const box = [[south, west], [north, east]];
+    const range = zoomRange(level);
+    const fitted = typeof map.getBoundsZoom === "function" ? map.getBoundsZoom(box, false, [48, 48]) : range.max;
+    const target = Math.min(range.max, Math.max(range.min, fitted));
+    map.setView([(south + north) / 2, (west + east) / 2], target);
+  }, [map, zoomRange]);
+
+  // Search results and links from profile pages land here: fetch the area's box and outline, zoom, select.
+  const focusArea = useCallback(async (level, geoid) => {
+    setFocusStatus("Finding that place…");
+    try {
+      const response = await fetch(`${API_BASE}/community/area/${level}/${geoid}`);
+      if (!response.ok) throw new Error(response.status === 404 ? "That place is not on the published boundary." : "That place could not be loaded right now.");
+      const area = await response.json();
+      setSelection({ level, geoid: area.geoid, name: area.name, bbox: area.bbox, geometry: area.geometry, properties: null, propsKey: null });
+      fitArea(area.bbox, level);
+      setFocusStatus("");
+    } catch (failure) {
+      setFocusStatus(failure.message);
+    }
+  }, [fitArea]);
+
+  useEffect(() => {
+    if (!map || !focusRequest || focusedOnce.current) return;
+    focusedOnce.current = true;
+    focusArea(focusRequest.level, focusRequest.geoid);
+  }, [map, focusRequest, focusArea]);
+
+  const clearSelection = useCallback(() => { setSelection(null); setFocusStatus(""); }, []);
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === "Escape") clearSelection(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clearSelection]);
+
+  // Values for the selected area: the live feature when it is in view, else what was read when it was clicked.
+  const liveSelected = selection && selection.level === geography
+    ? features.find((feature) => featureId(feature.properties) === selection.geoid)?.properties ?? null : null;
+  const selectedProps = liveSelected ?? (selection?.propsKey === dataKey ? selection.properties : null);
+  const selectedDetails = selection && selectedProps && measure ? areaFeatureDetails(datasetKey, selectedProps, measure, detailContext) : null;
+  const profileHref = profileHrefFor(selection);
   return <div className="app pilot-app">
     <Header />
     <main className="app-content pilot-content">
       <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
         {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+          <TileLayer key={baseMap.id} url={baseMap.url} attribution={baseMap.attribution} maxZoom={baseMap.maxZoom} />
           <ZoomControl position="bottomright" />
+          <MapReady onReady={setMap} />
           <Viewport onChange={onViewport} />
           {features.length > 0 && <GeoJSON key={`${releaseId}:${measureId}:${geography}:${bbox}`} data={mapData} style={(feature) => isBrfss ? {
             color: "#516677", weight: 0.5,
@@ -445,18 +582,34 @@ export default function Places2025Pilot({ dataset = "places" }) {
             fillColor: aqiColor(feature.properties.value, feature.properties.status, measure?.legend_breaks || []),
           } : ({
             color: "#516677", weight: 0.5, fillOpacity: 0.78,
-            fillColor: color(feature.properties.value, feature.properties.status, isProfile ? mapData?.legend_breaks : breaks),
+            fillColor: isProfile ? color(feature.properties.value, feature.properties.status, mapData?.legend_breaks)
+              : quintileColor(feature.properties.value, feature.properties.status, cuts),
           })} onEachFeature={(feature, layer) => {
             const item = feature.properties;
-            if (isBrfss) { layer.bindPopup(brfssPopup(item, measure)); return; }
-            if (isAqi) { layer.bindPopup(aqiPopup(item, measure)); return; }
-            if (isGv) { layer.bindPopup(gvPopup(item, measure, geography, catalog)); return; }
-            if (isFea) { layer.bindPopup(feaPopup(item, measure)); return; }
-            if (isProfile) { layer.bindPopup(`${geography === "cd" ? "District" : areaName(geography)} ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(profileValue(item, measure))}<br>${escapeHtml(profileUncertainty(item))}<br>Census Bureau · ${escapeHtml(measure?.observation_period)} · ${escapeHtml(measure?.population)} · release ${escapeHtml(releaseId)}`); return; }
-            const value = displayValue(item, isAcs, isAhrf, isClh, measure?.unit);
-            const uncertainty = displayUncertainty(item, isAcs, isAhrf, isClh);
-            layer.bindPopup(`${areaName(geography)} ${item.name} (${item.geography_id || item.county_fips})<br>${value} ${isAhrf && item.value != null ? measure?.unit : ""}<br>${uncertainty}<br>${measure?.observation_period}${isAcs ? " · ACS 5-year · 2024 dollars" : ""}`);
+            // Same hover tooltip as the legacy map; skipped on touch pointers.
+            if (!isCoarsePointer() && typeof layer.bindTooltip === "function") {
+              layer.bindTooltip(areaTooltip(datasetKey, item, measure, detailContext), MAP_HOVER_TOOLTIP_OPTIONS);
+            }
+            layer.on?.("mouseover", () => layer.setStyle?.({ weight: 2, color: HOVER_LINE }));
+            layer.on?.("mouseout", () => layer.setStyle?.({ weight: 0.5, color: "#516677" }));
+            layer.on?.("click", () => {
+              const box = typeof layer.getBounds === "function" ? layer.getBounds() : null;
+              setSelection({
+                level: geography, geoid: featureId(item), name: item.name, geometry: feature.geometry,
+                bbox: box?.isValid?.() ? [box.getWest(), box.getSouth(), box.getEast(), box.getNorth()] : null,
+                properties: item, propsKey: dataKey,
+              });
+              setFocusStatus("");
+            });
           }} />}
+          <Pane name="area-selection" style={{ zIndex: 450, pointerEvents: "none" }}>
+            {selection?.geometry && <>
+              <GeoJSON key={`casing:${selection.level}:${selection.geoid}`} data={selection.geometry} interactive={false} pane="area-selection"
+                style={{ color: SELECTION_CASING, weight: 6, opacity: 0.95, fill: false }} />
+              <GeoJSON key={`line:${selection.level}:${selection.geoid}`} data={selection.geometry} interactive={false} pane="area-selection"
+                style={{ color: SELECTION_LINE, weight: 3, opacity: 1, fill: false }} />
+            </>}
+          </Pane>
           {sites.enabled && <HealthCenterSiteLayer sites={sites} />}
           {tri.enabled && <TriFacilityLayer tri={tri} />}
           {homes.enabled && <NursingHomeLayer homes={homes} />}
@@ -485,8 +638,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
         </div> : <p className="pilot-scope">{isProfile ? "Census Bureau published community characteristics for states, counties, tracts, and 119th Congress districts. The percentages and 90% margins of error come from ACS 2020–2024 subject tables; population totals may have no sampling margin." : isAcs ? "Published median household income for states, counties, and census tracts. Values are 2024 inflation-adjusted dollars; margins of error use 90% confidence." : isAhrf ? "HRSA AHRF 2024–2025 release, with 2023 observations. County counts only; no state or tract values are inferred. Connecticut planning-region values are unavailable for four measures. Uncertainty was not supplied." : isClh ? "AHRQ CLH September 2025 release. ACS measures cover 2019–2023 at county and tract levels; business densities describe 2023 counties only. No state estimates or uncertainty fields are supplied." : "Official county and census tract estimates. No state estimates are provided by this pilot."}</p>}
-        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { main: "/", brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
-          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="brfss">BRFSS state survey estimates</option><option value="acs">ACS 2020–2024 5-year income</option><option value="acs_profile">ACS 2020–2024 community characteristics</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option><option value="main">Main CHIP map</option>
+        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { main: "/explore/map", brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
+          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="brfss">BRFSS state survey estimates</option><option value="acs">ACS 2020–2024 5-year income</option><option value="acs_profile">ACS 2020–2024 community characteristics</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option><option value="main">Legacy CHIP map</option>
         </select></label>
         {catalogError && <p role="alert">{catalogError}</p>}
         {!catalog && !catalogError && <p role="status">Loading catalog…</p>}
@@ -520,25 +673,27 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <p className="pilot-release">Release {releaseId}</p>
           <div className="pilot-share"><button type="button" onClick={copyMapLink}>Copy map link</button><span role="status">{copyStatus}</span></div>
         </>}
-        <a href="/">← Main map</a>
+        <a href="/explore/map">← Legacy map with older layers</a>
       </section>
       {catalog && releaseId && <>
-        <section className="pilot-panel pilot-legend" aria-label="Legend">
+        <section className={`pilot-panel pilot-legend ${legendOpen ? "" : "is-minimized"}`} aria-label="Legend">
+          <button type="button" className="pilot-panel-toggle" aria-label={legendOpen ? "Minimize legend" : "Expand legend"} aria-expanded={legendOpen} onClick={() => setLegendOpen((open) => !open)}>{legendOpen ? "\u2212" : "+"}</button>
           <h2>{isAcs ? "Median household income" : isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isFea ? measure?.label : "Crude prevalence"}{isFea ? `, ${measure?.observation_period ?? ""}` : ""} — {geography === "cd" ? "congressional district" : areaName(geography)} level</h2>
+          {legendOpen && <>
           {ready && legend && isBrfss ? <>
             <ul className="pilot-swatches">
               {prevalenceColors.map((shade, i) => <li key={shade}><i style={{ background: shade }} />{i === 0 ? `Under ${measure?.legend_breaks?.[0]}%` : i === 4 ? `${measure?.legend_breaks?.[3]}% or more` : `${measure?.legend_breaks?.[i - 1]}% to under ${measure?.legend_breaks?.[i]}%`}</li>)}
               <li><i style={{ background: "#a5a5a5" }} />Not published by CDC for this state and year</li>
               <li><i style={{ background: "#8f6b74" }} />Suppressed</li>
             </ul>
-            <p>Direct state survey crude prevalence. Fixed display classes; select a state for the 95% confidence interval and response count.</p>
+            <p>Direct state survey crude prevalence. Fixed display classes; select a state to see its 95% confidence interval and response count below.</p>
             <p>{legend.statuses.map((item) => `${item.status_text || item.status}: ${item.n}`).join(" · ")}</p>
           </> : ready && legend && isProfile ? <>
             <ul className="pilot-swatches">
               {prevalenceColors.map((shade, i) => <li key={shade}><i style={{ background: shade }} />{i === 0 ? `Under ${profileValue({ value: legend.legend_breaks?.[0] }, measure)}` : i === 4 ? `${profileValue({ value: legend.legend_breaks?.[3] }, measure)} or more` : `${profileValue({ value: legend.legend_breaks?.[i - 1] }, measure)} to under ${profileValue({ value: legend.legend_breaks?.[i] }, measure)}`}</li>)}
               <li><i style={{ background: "#d8dee3" }} />Missing</li><li><i style={{ background: "#8f6b74" }} />Suppressed</li>
             </ul>
-            <p>Source-published {geography === "cd" ? "119th Congress district" : areaName(geography)} estimates. Fixed display classes; see each feature for its 90% margin of error. No county or tract value is used to calculate a district estimate.</p>
+            <p>Source-published {geography === "cd" ? "119th Congress district" : areaName(geography)} estimates. Fixed display classes; select an area to see its 90% margin of error below. No county or tract value is used to calculate a district estimate.</p>
             <p>{legend.statuses.map(item => `${item.status_text || item.status}: ${item.n}`).join(" · ")}</p>
           </> : ready && legend && isFea ? <>
             <ul className="pilot-swatches">
@@ -567,14 +722,14 @@ export default function Places2025Pilot({ dataset = "places" }) {
               {aqiBinLabels(measure?.legend_breaks || [], measure?.unit).map((label, i) => <li key={label}><i style={{ background: aqiColors[i] }} />{label}</li>)}
               <li><i className="pilot-swatch-none" style={{ background: AQI_NO_VALUE_COLOR }} />No reported value (not monitored or not reported; does not mean clean air)</li>
             </ul>
-            <p>{measure?.kind === "aqi_index" ? "AQI index values with neutral shading. These annual statistics are not daily AQI health categories, so EPA's category colors are not used." : "Day counts. Read them against each county's Days with AQI; they are not percentages."}</p>
+            <p>{measure?.kind === "aqi_index" ? "AQI index values in the standard CHIP blue scale. These annual statistics are not daily AQI health categories, so EPA's category colors are not used." : "Day counts. Read them against each county's Days with AQI; they are not percentages."}</p>
             <p>{legend.statuses.map((item) => `${item.status === AQI_NO_VALUE ? "no reported value" : item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>
             {legend.statuses.some((item) => item.days_low != null) && <p>Days with AQI in view: {Math.min(...legend.statuses.filter((item) => item.days_low != null).map((item) => item.days_low))}–{Math.max(...legend.statuses.filter((item) => item.days_high != null).map((item) => item.days_high))}.</p>}
             <p>Select a county for its value, Days with AQI, and EPA source name.</p>
           </> : ready && legend ? <>
             <ul className="pilot-swatches">
-              {prevalenceColors.map((shade, i) => <li key={shade}><i style={{ background: shade }} />{breaks ?
-                isAcs ? `${dollars.format(i === 0 ? availableRange.low : breaks[i - 1])}–${dollars.format(i === 4 ? availableRange.high : breaks[i])}` : isAhrf ? `${Math.round(i === 0 ? availableRange.low : breaks[i - 1])}–${Math.round(i === 4 ? availableRange.high : breaks[i])} ${measure?.unit}` : isClh ? `${(i === 0 ? availableRange.low : breaks[i - 1]).toFixed(2)}–${(i === 4 ? availableRange.high : breaks[i]).toFixed(2)} ${measure?.unit}` : `${(i === 0 ? availableRange.low : breaks[i - 1]).toFixed(1)}–${(i === 4 ? availableRange.high : breaks[i]).toFixed(1)}%` : "Available"}</li>)}
+              {cuts.length ? quantileLabels(cuts, formatCut).map((label, i) => <li key={label}><i style={{ background: cutColors[i] }} />{label}{isAhrf || isClh ? ` ${measure?.unit}` : ""}</li>)
+                : <li><i style={{ background: prevalenceColors[2] }} />Published value</li>}
               {isAcs ? <>
                 <li><i style={{ background: "#6d3b9e" }} />Open-ended median</li>
                 <li><i style={{ background: "#d8dee3" }} />Missing estimate</li>
@@ -582,9 +737,39 @@ export default function Places2025Pilot({ dataset = "places" }) {
                 <li><i style={{ background: "#c4b4d4" }} />Not applicable</li>
               </> : isAhrf || isClh ? <><li><i style={{ background: "#d8dee3" }} />Missing source value</li><li><i style={{ background: "#8f6b74" }} />Suppressed</li></> : <><li><i style={{ background: "#a5a5a5" }} />Not published</li><li><i style={{ background: "#d8dee3" }} />Missing or suppressed</li></>}
             </ul>
-            <p>{legend.statuses.map((item) => `${item.status}: ${item.n}`).join(" · ")}</p>
+            {cuts.length > 0 && <p>Classes are quintiles of all published {areaName(geography)} values in this release, so each holds about a fifth of them and the colors do not change as the map moves.</p>}
+            <p>In view: {legend.statuses.map((item) => `${item.status}: ${item.n}`).join(" · ")}</p>
             <p>Click a {areaName(geography)} for its value and {isAcs ? "90% margin of error" : isAhrf || isClh ? "source status" : "95% confidence interval"}. {isAcs ? "Open-ended medians use the published annotation." : isAhrf || isClh ? "Uncertainty was not supplied." : ""}</p>
           </> : <p>{error ? "Data unavailable" : "Loading legend…"}</p>}
+          {selection && <div className="pilot-selected" data-testid="selected-area">
+            <h3>Selected area</h3>
+            <p className="pilot-selected-name">{areaTitle(selection.name, selection.level, selection.geoid)}</p>
+            {selectedDetails ? <>
+              <p className="pilot-selected-value">{selectedDetails.measure}: <strong>{selectedDetails.value}</strong></p>
+              {selectedDetails.lines.map((line) => <p key={line}>{line}</p>)}
+            </> : selection.level !== geography
+              ? <p>The map is showing {geography === "cd" ? "congressional district" : areaName(geography)} values here. No {selection.level === "cd" ? "district" : areaName(selection.level)} value is shown for this measure at this zoom, and none is calculated from the areas inside it.</p>
+              : <p>{ready ? "This area is outside the current view. Use Zoom to selected area." : "Loading the selected area…"}</p>}
+            {profileHref && <p><a href={profileHref}>Open {selection.level === "cd" ? "district briefing" : `${areaName(selection.level)} profile`} →</a></p>}
+          </div>}
+          </>}
+        </section>
+        <div className="pilot-dock">
+        <section className={`pilot-panel pilot-tools ${toolsOpen ? "is-open" : ""}`} aria-label="Map tools and search">
+          <button type="button" className="pilot-tools-toggle" aria-expanded={toolsOpen} onClick={() => setToolsOpen((open) => !open)}>
+            <span>Map Tools</span><span aria-hidden="true">{toolsOpen ? "\u2212" : "+"}</span>
+          </button>
+          {toolsOpen && <>
+            <MapTools map={map} home={initialView} hasSelection={Boolean(selection)}
+              zoomToSelectedLabel={selection ? `Zoom to selected ${selection.level === "cd" ? "district" : areaName(selection.level)}` : "Zoom to selected area"}
+              onZoomToSelected={() => selection?.bbox && fitArea(selection.bbox, selection.level)} onClearSelection={clearSelection}
+              profileHref={profileHref} profileLabel={selection?.level === "cd" ? "Open district briefing" : "Open profile"}
+              profileDisabledReason={selection?.level === "tract" ? "Tracts have no profile page" : "Select a county, state, or district first"}
+              baseMapId={baseMapId} onBaseMapChange={setBaseMapId} />
+            <PlaceSearch variant="map" label="Find a county or state on the map" submitLabel="Zoom to place"
+              onSelect={(place) => focusArea(place.type, place.geoid)} />
+            {focusStatus && <p className="pilot-focus-status" role="status">{focusStatus}</p>}
+          </>}
         </section>
         <section className={`pilot-panel pilot-table ${tableOpen ? "is-open" : ""}`} aria-label={`${areaName(geography)} table`}>
           <button className="pilot-table-toggle" type="button" aria-expanded={tableOpen} onClick={() => setTableOpen((open) => !open)}>
@@ -615,6 +800,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             </>}
           </div>}
         </section>
+        </div>
         <div className="pilot-overlays">
           <HealthCenterSitePanel sites={sites} />
           <TriFacilityPanel tri={tri} />

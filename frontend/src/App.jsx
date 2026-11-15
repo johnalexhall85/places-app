@@ -16,6 +16,8 @@ import Footer from "./components/Footer";
 import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
 import { useSiteHeaderHeight } from "./components/SiteHeader";
+import { BASE_MAP_OPTIONS } from "./branding/baseMaps";
+import { MAP_HOVER_TOOLTIP_OPTIONS, formatTooltipExplanationLine, formatTooltipMetaLine } from "./utils/mapTooltip";
 import { APP_NAME } from "./branding/pdoBrand";
 import {
   getSviBins,
@@ -284,34 +286,6 @@ const DEFAULT_SVI_YEAR = 2022;
 const SVI_FALLBACK_YEARS = [2022, 2020, 2018];
 const DEFAULT_CENTER = [39.5, -98.35];
 const DEFAULT_ZOOM = 4;
-const BASE_MAP_OPTIONS = [
-  {
-    id: "street",
-    label: "Street",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  },
-  {
-    id: "topographic",
-    label: "Topographic",
-    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      '<a href="https://viewfinderpanoramas.org/">SRTM</a> | ' +
-      'Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
-    maxZoom: 17,
-  },
-  {
-    id: "satellite",
-    label: "Satellite",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, " +
-      "Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-    maxZoom: 19,
-  },
-];
 const DEFAULT_BASE_MAP_ID = BASE_MAP_OPTIONS[0].id;
 const TRACT_ZOOM = 10;
 const USDA_TRACT_ZOOM = 10;
@@ -366,13 +340,7 @@ function getOptionLabel(options, value, fallback = "") {
     .find((option) => String(option?.value ?? "").trim() === token);
   return String(match?.label ?? fallback ?? token);
 }
-const COUNTY_HOVER_TOOLTIP_OPTIONS = {
-  sticky: true,
-  direction: "top",
-  opacity: 0.95,
-  interactive: false,
-  className: "pdo-map-tooltip",
-};
+const COUNTY_HOVER_TOOLTIP_OPTIONS = MAP_HOVER_TOOLTIP_OPTIONS;
 const CMS_AGE_OPTIONS = [
   { value: "all", label: "All", apiValue: "All" },
   { value: "65_plus", label: "65 and older", apiValue: "65+" },
@@ -884,18 +852,6 @@ function formatTooltipValue(value, unitType, { noDataLabel = "No data" } = {}) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   });
-}
-
-function formatTooltipMetaLine(valueText, periodText) {
-  const safeValue = String(valueText ?? "").trim() || "No data";
-  const safePeriod = String(periodText ?? "").trim();
-  if (!safePeriod) return safeValue;
-  return `${safeValue} • ${safePeriod}`;
-}
-
-function formatTooltipExplanationLine(value) {
-  const text = String(value ?? "").trim();
-  return text ? `<br/><span style="color:#627A90;">${text}</span>` : "";
 }
 
 function toHpsaStatus(designatedValue, coveragePctValue) {
