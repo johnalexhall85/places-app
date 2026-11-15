@@ -52,7 +52,7 @@ try {
   await screenshot('landing', true);
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.activeElement?.className), 'community-skip', 'keyboard skip link');
-  await page.getByLabel('Find a county').fill('Person');
+  await page.getByLabel('Find a county or state').fill('Person');
   await page.getByRole('link', { name: /Person County, NC/ }).first().click();
   await page.getByRole('heading', { name: 'Person County, North Carolina' }).waitFor();
   assert.equal(await page.locator('.community-indicator').count(), 46, 'Person profile indicators from eight products');
@@ -74,6 +74,30 @@ try {
   assert.equal((await pdf.body()).subarray(0, 4).toString(), '%PDF', 'PDF file signature');
   console.log('Landing, search, profile, seven ACS tracts, and PDF: passed');
 
+  await visit('/', 'Start with a place. Follow the evidence.');
+  await page.getByLabel('Find a county or state').fill('North Carolina');
+  await page.getByRole('link', { name: /North Carolina · State profile/ }).first().click();
+  await page.locator('[data-testid="profile-ready"]').waitFor();
+  assert.equal(await page.locator('.community-indicator').count(), 33, 'North Carolina state profile indicators');
+  assert.equal(await page.locator('#health .community-indicator, #prevention .community-indicator').count(), 20, 'BRFSS state indicators');
+  assert.ok(await page.getByRole('link', { name: /State funding profile/ }).count(), 'state funding link');
+  await screenshot('north-carolina-state-profile', true);
+  const statePdf = await context.request.get(`${base}/api/community/state/37/pdf`);
+  assert.equal(statePdf.status(), 200, 'state PDF briefing');
+  assert.equal((await statePdf.body()).subarray(0, 4).toString(), '%PDF', 'state PDF signature');
+  await visit('/community/state/21', 'Kentucky');
+  assert.equal(await page.locator('.community-indicator').count(), 33, 'Kentucky state indicators');
+  assert.ok(await page.getByText(/Not published/i).count(), 'Kentucky 2023 BRFSS statuses');
+  await screenshot('kentucky-state-profile', true);
+  await visit('/area/brfss?measure_id=diabetes', 'BRFSS state survey estimates');
+  await page.locator('.pilot-table tbody tr').first().waitFor();
+  assert.equal(await page.locator('.pilot-table tbody tr').count(), 52, 'BRFSS state table');
+  assert.equal(await page.locator('.leaflet-interactive').count(), 52, 'BRFSS state shapes');
+  assert.equal(await page.locator('.pilot-controls select').nth(1).inputValue(), 'diabetes', 'BRFSS measure preselection');
+  assert.ok((await page.locator('.pilot-table').innerText()).includes('Median of states and DC'), 'median reference label');
+  await screenshot('brfss-state-map');
+  console.log('State search, profiles, PDF, and BRFSS map: passed');
+
   await visit('/compare?counties=37145,54039,06019', 'Compare published indicators');
   await page.getByText('Fresno County', { exact: false }).first().waitFor();
   assert.equal(await page.locator('.community-compare-table tbody tr').count(), 46, 'comparison rows');
@@ -84,9 +108,9 @@ try {
   await page.locator('.community-topic').first().waitFor();
   assert.equal(await page.locator('.community-topic').count(), 7, 'topic list');
   await visit('/topics/health-conditions', 'Health conditions');
-  assert.equal(await page.locator('.community-topic-measures article').count(), 9, 'published PLACES condition measures');
+  assert.equal(await page.locator('.community-topic-measures article').count(), 22, 'published PLACES and BRFSS condition measures');
   await visit('/topics/prevention-and-access', 'Prevention and access');
-  assert.equal(await page.locator('.community-topic-measures article').count(), 5, 'published prevention and separate insurance measures');
+  assert.equal(await page.locator('.community-topic-measures article').count(), 12, 'published prevention and three separate insurance measures');
   await visit('/topics/food-environment', 'Food environment');
   await page.locator('.community-topic-measures article').first().waitFor();
   assert.ok(await page.locator('.community-topic-measures article').count() >= 6, 'food measures');
@@ -125,7 +149,7 @@ try {
   await page.locator('.community-release-list li').first().waitFor();
   console.log('Three showcase profiles, About, and methodology: passed');
 
-  for (const path of ['/explore/map', '/area/places-2025', '/area/acs-2024', '/area/acs-community', '/area/ahrf', '/area/clh', '/area/epa-aqi', '/area/cms-gv', '/area/usda-fea', '/cdc-funding']) {
+  for (const path of ['/explore/map', '/area/places-2025', '/area/brfss', '/area/acs-2024', '/area/acs-community', '/area/ahrf', '/area/clh', '/area/epa-aqi', '/area/cms-gv', '/area/usda-fea', '/cdc-funding']) {
     await visit(path);
     await page.locator('main, #root').first().waitFor();
   }
@@ -146,10 +170,11 @@ try {
   console.log('HRSA table Details pointer clicks: passed at desktop and mobile widths');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/compare?counties=37145,54039,06019', '/district/cd/5401', '/methodology']) {
+  for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/community/state/37', '/area/brfss', '/compare?counties=37145,54039,06019', '/district/cd/5401', '/methodology']) {
     await visit(path);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} mobile overflow`);
     if (path === '/community/county/37145') await screenshot('person-profile-mobile');
+    if (path === '/community/state/37') await screenshot('north-carolina-state-profile-mobile');
   }
   console.log('Mobile layout: no document overflow on six key routes');
   await visit(`/district/cd/${districtGeoid}`);

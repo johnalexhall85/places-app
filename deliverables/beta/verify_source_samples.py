@@ -1,4 +1,4 @@
-"""Check current staging county and district values against release-linked source archives.
+"""Check current staging county, district, and state values against release-linked source archives.
 
 Run from the repository root with backend/.venv/bin/python. Reads staging and archive
 metadata only; it does not publish or modify application data.
@@ -25,6 +25,8 @@ BASE = "http://127.0.0.1:8080"
 CODE_FILE = Path("/home/john/.local/share/chip/staging-beta-access-code")
 REPORT = Path(__file__).with_name("gate3_source_samples.json")
 COUNTIES = ("37145", "54039", "06019")
+STATES = ("37", "54", "21")  # North Carolina, West Virginia, Kentucky's documented 2023 gap
+BRFSS_SAMPLES = ("diabetes", "high_blood_pressure", "uninsured_18_64", "dental_visit")
 SAMPLES = {
     "places": ("dental_crudeprev", "access2_crudeprev", "diabetes_crudeprev", "obesity_crudeprev"),
     "acs": ("B19013_001E",),
@@ -56,9 +58,18 @@ def main():
         response = session.get(f"{BASE}/api/community/county/{geoid}", timeout=40)
         response.raise_for_status()
         profiles[geoid] = response.json()
+    state_profiles = {}
+    for geoid in STATES:
+        response = session.get(f"{BASE}/api/community/state/{geoid}", timeout=40)
+        response.raise_for_status()
+        state_profiles[geoid] = response.json()
     releases = {row["product"]: row["release_id"] for row in profiles[COUNTIES[0]]["values"]}
     if any({row["product"]: row["release_id"] for row in profiles[g]["values"]} != releases for g in COUNTIES):
         raise AssertionError("The showcase profiles use different active releases")
+    state_release = next(row["release_id"] for row in state_profiles[STATES[0]]["values"] if row["product"] == "brfss")
+    if any({row["release_id"] for row in state_profiles[g]["values"] if row["product"] == "brfss"} != {state_release}
+           for g in STATES):
+        raise AssertionError("The sampled states use different BRFSS releases")
 
     source_files = {}
     engine = create_engine(dotenv_values(ROOT / "backend/.env")["DATABASE_URL"])
@@ -73,7 +84,7 @@ def main():
             key = (product, role)
             if key in source_files:
                 return Path(source_files[key]["path"])
-            source_release = str(places_parent) if product == "places" and role.startswith("page_") else releases[product]
+            source_release = str(places_parent) if product == "places" and role.startswith("page_") else state_release if product == "brfss" else releases[product]
             rows = db.execute(text("SELECT path, sha256 FROM area_pilot.source_file "
                                    "WHERE release_id=:release AND role=:role ORDER BY path"),
                               {"release": source_release, "role": role}).mappings().all()
@@ -164,8 +175,21 @@ def main():
             if geoid in COUNTIES and row["Variable_Code"] in usda_codes:
                 measure = usda_codes[row["Variable_Code"]]
                 source[(geoid, "usda_fea", measure)] = number(row["Value"])
+        registry = json.loads((ROOT / "backend/app/area_pilot/registry/brfss_state_2023.json").read_text())
+        by_source_key = {(m["observation_period"], m["question_id"], m["response_id"]): m["measure_id"]
+                         for m in registry["measures"] if m["measure_id"] in BRFSS_SAMPLES}
+        brfss_source = {}
+        for record in json.loads(archive("brfss", "selection").read_text()):
+            measure = by_source_key.get((record.get("year"), record.get("questionid"), record.get("responseid")))
+            geoid = record.get("locationid")
+            if geoid in STATES and measure:
+                key = (geoid, measure)
+                if key in brfss_source:
+                    raise AssertionError(f"Duplicate BRFSS source row: {key}")
+                brfss_source[key] = record
 
     rendered = {}
+    state_rendered = {}
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context()
@@ -181,6 +205,15 @@ def main():
             pdf_response.raise_for_status()
             pdf_text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(pdf_response.content)).pages))
             rendered[geoid] = (values, pdf_text)
+        for geoid in STATES:
+            page.goto(f"{BASE}/community/state/{geoid}")
+            page.locator("article.community-indicator").first.wait_for()
+            values = {card.locator("h3").inner_text(): card.locator(".community-value").inner_text()
+                      for card in page.locator("article.community-indicator").all()}
+            pdf_response = session.get(f"{BASE}/api/community/state/{geoid}/pdf", timeout=90)
+            pdf_response.raise_for_status()
+            pdf_text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(pdf_response.content)).pages))
+            state_rendered[geoid] = (values, pdf_text)
         page.goto(f"{BASE}/district/cd/5401")
         page.locator("[data-testid=district-ready]").wait_for()
         district_display = {card.locator("h3").inner_text(): card.locator(".community-value").inner_text()
@@ -223,8 +256,37 @@ def main():
         checks.append({"geoid": "5401", "district": district["area"]["name"], "product": "acs_profile",
                        "measure_id": measure, "archive_value": str(raw), "api_value": str(api),
                        "profile_and_pdf_value": display, "release_id": row["release_id"], "surface": "district page"})
-    if len(checks) != 47:
-        raise AssertionError(f"Expected 47 checks, got {len(checks)}")
+    for geoid in STATES:
+        profile = state_profiles[geoid]
+        html_values, pdf_text = state_rendered[geoid]
+        by_key = {row["measure_id"]: row for row in profile["values"] if row["product"] == "brfss"}
+        for measure in BRFSS_SAMPLES:
+            row = by_key[measure]
+            raw = brfss_source.get((geoid, measure))
+            display = html_values[row["label"]]
+            if raw is None:
+                if row["status"] != "not_published" or row["value"] is not None or display != row["status_text"]:
+                    raise AssertionError(f"BRFSS missing-source status mismatch: {geoid} {measure}")
+            else:
+                if row["status"] not in ("available", "true_zero"):
+                    raise AssertionError(f"BRFSS source row has unexpected status: {geoid} {measure}")
+                for field, source_field in (("value", "data_value"), ("ci_low", "confidence_limit_low"),
+                                            ("ci_high", "confidence_limit_high")):
+                    if number(row[field] if field == "value" else row["uncertainty"]["low" if field == "ci_low" else "high"]) != number(raw[source_field]):
+                        raise AssertionError(f"BRFSS archive/API {field} mismatch: {geoid} {measure}")
+                if row["notes"]["sample_size"] != int(raw["sample_size"]):
+                    raise AssertionError(f"BRFSS response count mismatch: {geoid} {measure}")
+                if number(display.replace("%", "")) != number(raw["data_value"]):
+                    raise AssertionError(f"BRFSS state page mismatch: {geoid} {measure}")
+            locations = [match.start() for match in re.finditer(re.escape(row["label"]), pdf_text)]
+            if not any(display in pdf_text[location:location + len(row["label"]) + 90] for location in locations):
+                raise AssertionError(f"BRFSS state PDF mismatch: {geoid} {measure}: {display}")
+            checks.append({"geoid": geoid, "state": profile["area"]["name"], "product": "brfss",
+                           "measure_id": measure, "archive_value": raw.get("data_value") if raw else None,
+                           "api_value": row["value"], "profile_and_pdf_value": display,
+                           "status": row["status"], "release_id": row["release_id"]})
+    if len(checks) != 59:
+        raise AssertionError(f"Expected 59 checks, got {len(checks)}")
     # Catch publication while the report was being assembled.
     latest = session.get(f"{BASE}/api/community/county/{COUNTIES[0]}", timeout=40).json()
     if {row["product"]: row["release_id"] for row in latest["values"]} != releases:
@@ -233,7 +295,7 @@ def main():
                                   "staging_base": BASE, "count": len(checks),
                                   "source_archives": [dict(product=p, role=r, **data) for (p, r), data in sorted(source_files.items())],
                                   "checks": checks}, indent=2) + "\n")
-    print(f"{len(checks)} archived-source checks passed across {len(COUNTIES)} counties, one district, and {len(SAMPLES)} products; wrote {REPORT}")
+    print(f"{len(checks)} archived-source checks passed across {len(COUNTIES)} counties, {len(STATES)} states, one district, and {len(SAMPLES) + 1} products; wrote {REPORT}")
 
 
 if __name__ == "__main__":

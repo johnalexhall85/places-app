@@ -6,6 +6,7 @@ import TractPatternMap from "./TractPatternMap";
 import "./community.css";
 
 const SHOWCASE = [
+  { geoid: "37", name: "North Carolina", state: "State profile", note: "Direct BRFSS state survey estimates alongside Census and Medicare", type: "state" },
   { geoid: "37145", name: "Person County", state: "North Carolina", note: "A small county with seven tracts" },
   { geoid: "54039", name: "Kanawha County", state: "West Virginia", note: "A mid-size Appalachian county" },
   { geoid: "06019", name: "Fresno County", state: "California", note: "A large county with urban and agricultural areas" },
@@ -59,7 +60,7 @@ export function CommunityShell({ children }) {
   );
 }
 
-function CountySearch({ label = "Find a county" }) {
+function PlaceSearch({ label = "Find a county or state" }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState("");
@@ -77,7 +78,7 @@ function CountySearch({ label = "Find a county" }) {
         if (!response.ok) throw new Error("Search is unavailable right now.");
         const matches = await response.json();
         setResults(matches);
-        setStatus(matches.length ? `${matches.length} counties found` : "No counties found");
+        setStatus(matches.length ? `${matches.length} places found` : "No places found");
       } catch (error) {
         if (error.name !== "AbortError") setStatus(error.message);
       }
@@ -87,8 +88,11 @@ function CountySearch({ label = "Find a county" }) {
 
   function submit(event) {
     event.preventDefault();
-    const geoid = /^\d{5}$/.test(query.trim()) ? query.trim() : results[0]?.county_fips;
-    if (geoid) window.location.assign(`/community/county/${geoid}`);
+    const value = query.trim();
+    const state = /^\d{2}$/.test(value) ? { geoid: value, type: "state" } : null;
+    const county = /^\d{5}$/.test(value) ? { county_fips: value, type: "county" } : null;
+    const result = state || county || results[0];
+    if (result) window.location.assign(result.type === "state" ? `/community/state/${result.state_geoid || result.geoid}` : `/community/county/${result.county_fips}`);
   }
 
   return (
@@ -97,15 +101,16 @@ function CountySearch({ label = "Find a county" }) {
         <label htmlFor="community-county-query">{label}</label>
         <div className="community-search-row">
           <input id="community-county-query" value={query} onChange={(event) => setQuery(event.target.value)}
-            autoComplete="off" placeholder="County name, state, or five-digit FIPS" />
+            autoComplete="off" placeholder="State or county name, or FIPS code" />
           <button type="submit">View profile</button>
         </div>
       </form>
       <p className="community-search-status" aria-live="polite">{status}</p>
       {results.length > 0 && (
-        <ul className="community-search-results" aria-label="County matches">
-          {results.map((result) => <li key={result.county_fips}>
-            <a href={`/community/county/${result.county_fips}`}>{result.name} County, {result.state_abbr} <span>{result.county_fips}</span></a>
+        <ul className="community-search-results" aria-label="Place matches">
+          {results.map((result) => <li key={result.type === "state" ? `state:${result.geoid}` : `county:${result.county_fips}`}>
+            {result.type === "state" ? <a href={`/community/state/${result.geoid}`}>{result.name} · State profile <span>{result.geoid}</span></a>
+              : <a href={`/community/county/${result.county_fips}`}>{result.name} County, {result.state_abbr} <span>{result.county_fips}</span></a>}
           </li>)}
         </ul>
       )}
@@ -121,7 +126,7 @@ export function CommunityLanding() {
         <p className="community-eyebrow">CHIP · Public Data Observatory</p>
         <h1>Start with a place. Follow the evidence.</h1>
         <p className="community-lede">Explore published health, community, environment, and federal funding data with the source, period, and limits beside every indicator.</p>
-        <CountySearch />
+        <PlaceSearch />
       </div>
     </section>
     <section className="community-wrap community-section" aria-labelledby="topics-heading">
@@ -134,9 +139,9 @@ export function CommunityLanding() {
       </div>
     </section>
     <section className="community-wrap community-section" aria-labelledby="examples-heading">
-      <div className="community-section-heading"><p className="community-eyebrow">Places to start</p><h2 id="examples-heading">See a county profile</h2></div>
+      <div className="community-section-heading"><p className="community-eyebrow">Places to start</p><h2 id="examples-heading">See a place profile</h2></div>
       <div className="community-example-grid">
-        {SHOWCASE.map((place) => <a className="community-example" href={`/community/county/${place.geoid}`} key={place.geoid}>
+        {SHOWCASE.map((place) => <a className="community-example" href={place.type === "state" ? `/community/state/${place.geoid}` : `/community/county/${place.geoid}`} key={place.geoid}>
           <span>{place.state}</span><h3>{place.name}</h3><p>{place.note}</p><strong>View profile →</strong>
         </a>)}
       </div>

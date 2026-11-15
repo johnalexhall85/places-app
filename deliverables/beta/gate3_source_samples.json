@@ -1,7 +1,7 @@
 {
-  "checked_at_utc": "2026-11-15T14:58:13.784645+00:00",
+  "checked_at_utc": "2026-11-15T16:54:09.105626+00:00",
   "staging_base": "http://127.0.0.1:8080",
-  "count": 47,
+  "count": 59,
   "source_archives": [
     {
       "product": "acs",
@@ -58,6 +58,13 @@
       "path": "/home/john/places-app/data/ingest/ahrf_2024_2025/674998ed-ebaf-4d1f-8bdb-c0db971bb1f1/AHRF2025hp.csv",
       "sha256": "49c23d2c7cf17687dbd1a0fdaf3db1e04743ce6c2333c350355e330024a72f90",
       "release_id": "a034595f-45d3-46a0-90c9-c12c131d532a"
+    },
+    {
+      "product": "brfss",
+      "role": "selection",
+      "path": "/home/john/chip-beta/data/ingest/brfss_state_2023/0c9819f8-7c0c-47b0-9a42-96dde332ffef/002_selection_dfeb7d157c534f79.json",
+      "sha256": "dfeb7d157c534f7915287357291b24560b5f9142a8c1c574875d133ce89b3417",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
     },
     {
       "product": "clh",
@@ -588,6 +595,138 @@
       "profile_and_pdf_value": "18.8%",
       "release_id": "d90070e6-0358-499b-b992-4ca6b8b42eb3",
       "surface": "district page"
+    },
+    {
+      "geoid": "37",
+      "state": "North Carolina",
+      "product": "brfss",
+      "measure_id": "diabetes",
+      "archive_value": "12.4",
+      "api_value": 12.4,
+      "profile_and_pdf_value": "12.4%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "37",
+      "state": "North Carolina",
+      "product": "brfss",
+      "measure_id": "high_blood_pressure",
+      "archive_value": "37.5",
+      "api_value": 37.5,
+      "profile_and_pdf_value": "37.5%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "37",
+      "state": "North Carolina",
+      "product": "brfss",
+      "measure_id": "uninsured_18_64",
+      "archive_value": "12.0",
+      "api_value": 12,
+      "profile_and_pdf_value": "12%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "37",
+      "state": "North Carolina",
+      "product": "brfss",
+      "measure_id": "dental_visit",
+      "archive_value": "63.6",
+      "api_value": 63.6,
+      "profile_and_pdf_value": "63.6%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "54",
+      "state": "West Virginia",
+      "product": "brfss",
+      "measure_id": "diabetes",
+      "archive_value": "18.2",
+      "api_value": 18.2,
+      "profile_and_pdf_value": "18.2%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "54",
+      "state": "West Virginia",
+      "product": "brfss",
+      "measure_id": "high_blood_pressure",
+      "archive_value": "45.1",
+      "api_value": 45.1,
+      "profile_and_pdf_value": "45.1%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "54",
+      "state": "West Virginia",
+      "product": "brfss",
+      "measure_id": "uninsured_18_64",
+      "archive_value": "7.3",
+      "api_value": 7.3,
+      "profile_and_pdf_value": "7.3%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "54",
+      "state": "West Virginia",
+      "product": "brfss",
+      "measure_id": "dental_visit",
+      "archive_value": "56.6",
+      "api_value": 56.6,
+      "profile_and_pdf_value": "56.6%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "21",
+      "state": "Kentucky",
+      "product": "brfss",
+      "measure_id": "diabetes",
+      "archive_value": null,
+      "api_value": null,
+      "profile_and_pdf_value": "No result for this state and year in the CDC file",
+      "status": "not_published",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "21",
+      "state": "Kentucky",
+      "product": "brfss",
+      "measure_id": "high_blood_pressure",
+      "archive_value": null,
+      "api_value": null,
+      "profile_and_pdf_value": "No result for this state and year in the CDC file",
+      "status": "not_published",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "21",
+      "state": "Kentucky",
+      "product": "brfss",
+      "measure_id": "uninsured_18_64",
+      "archive_value": null,
+      "api_value": null,
+      "profile_and_pdf_value": "No result for this state and year in the CDC file",
+      "status": "not_published",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
+    },
+    {
+      "geoid": "21",
+      "state": "Kentucky",
+      "product": "brfss",
+      "measure_id": "dental_visit",
+      "archive_value": "60.3",
+      "api_value": 60.3,
+      "profile_and_pdf_value": "60.3%",
+      "status": "available",
+      "release_id": "8ca50183-0b61-4302-8e3b-6e06cc8a35dd"
     }
   ]
 }
