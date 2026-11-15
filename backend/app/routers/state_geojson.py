@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.db_fqtn import places_table
+from app.geometry_sql import fitted_geom
 
 router = APIRouter(tags=["state-boundaries"])
 
@@ -43,7 +44,7 @@ def states_boundary_geojson(
     geometry_expr = "ST_AsGeoJSON(state_rows.geom)::json"
     if simplify is not None:
         geometry_expr = (
-            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(state_rows.geom, :simplify))::json"
+            "ST_AsGeoJSON(" + fitted_geom("state_rows.geom") + ")::json"
         )
         params["simplify"] = simplify
 

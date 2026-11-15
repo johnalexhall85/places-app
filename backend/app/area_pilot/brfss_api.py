@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 
 from app.area_pilot.brfss import NOT_PUBLISHED, STATUS_TEXT, load_registry
+from app.geometry_sql import fitted_geom
 
 S = 'area_pilot'
 COMMON = f'''FROM {S}.acs_boundary_2024 b LEFT JOIN {S}.observation_brfss o
@@ -89,7 +90,7 @@ def count(db, p):
 
 def map_data(db, p, base, simplify):
     rows = db.execute(text(f'''SELECT {FIELDS},
-        ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom,:simplify))::json AS geometry
+        ST_AsGeoJSON({fitted_geom('b.geom')})::json AS geometry
         {COMMON} ORDER BY b.geoid'''), p | {'simplify': simplify}).mappings().all()
     return base | {'type': 'FeatureCollection', 'count': len(rows), 'complete': True, 'simplify': simplify, 'features': [
         {'type': 'Feature', 'geometry': r['geometry'], 'properties': {

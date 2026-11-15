@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.db_fqtn import acs_table
+from app.geometry_sql import fitted_geom
 
 router = APIRouter(tags=["acs-nmf"])
 
@@ -436,7 +437,7 @@ def acs_nmf_counties_geojson(
 
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
-        geometry_expr = "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+        geometry_expr = "ST_AsGeoJSON(" + fitted_geom("b.geom") + ")::json"
         params["simplify"] = simplify
 
     with_parts = []
@@ -584,7 +585,7 @@ def acs_nmf_tracts_geojson(
 
     geometry_expr = "ST_AsGeoJSON(s.geom)::json"
     if simplify is not None:
-        geometry_expr = "ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, :simplify))::json"
+        geometry_expr = "ST_AsGeoJSON(" + fitted_geom("s.geom") + ")::json"
         params["simplify"] = simplify
 
     with_parts = []

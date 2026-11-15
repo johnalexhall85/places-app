@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db_fqtn import places_table, usda_food_env_table
 from app.usda_food_env import models
+from app.geometry_sql import fitted_geom
 
 DATASET_KEY = "food_environment_atlas_2025"
 DATASET_NOTES = (
@@ -733,10 +734,7 @@ def fetch_map_geojson(
                     END AS name,
                     {_value_sql('cv')} AS value,
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(
-                            b.geom,
-                            :simplify_degrees
-                        ),
+                        {fitted_geom('b.geom', 'simplify_degrees')},
                         {MAP_GEOJSON_PRECISION}
                     )::json AS geometry
                 FROM {COUNTY_BOUNDARY_TABLE} AS b
@@ -826,10 +824,7 @@ def fetch_map_geojson(
                     s.state_name AS name,
                     {value_select_sql},
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(
-                            s.geom,
-                            :simplify_degrees
-                        ),
+                        {fitted_geom('s.geom', 'simplify_degrees')},
                         {MAP_GEOJSON_PRECISION}
                     )::json AS geometry
                 FROM states AS s

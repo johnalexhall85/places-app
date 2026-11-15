@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.db_fqtn import places_table
+from app.geometry_sql import fitted_geom
 
 router = APIRouter(tags=["tracts"])
 
@@ -145,7 +146,7 @@ def tracts_geojson(
     geometry_expr = "ST_AsGeoJSON(s.geom)::json"
     if simplify is not None:
         geometry_expr = (
-            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, :simplify))::json"
+            "ST_AsGeoJSON(" + fitted_geom("s.geom") + ")::json"
         )
         params["simplify"] = simplify
 

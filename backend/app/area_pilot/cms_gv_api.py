@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 
 from app.area_pilot.cms_gv import load_registry
+from app.geometry_sql import fitted_geom
 
 S = 'area_pilot'
 CAP = 5000
@@ -107,7 +108,7 @@ def value_fields(row, base):
 
 def map_data(db, p, count, base, simplify):
     rows = db.execute(text(f'''SELECT {FIELDS},
-        ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom,:simplify))::json AS geometry
+        ST_AsGeoJSON({fitted_geom('b.geom')})::json AS geometry
         {COMMON} ORDER BY b.geoid'''), p | {'simplify': simplify}).mappings().all()
     if len(rows) != count:
         raise HTTPException(409, 'Viewport changed during CMS map retrieval; retry')

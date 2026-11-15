@@ -9,6 +9,7 @@ from app.db import get_db
 from app.area_pilot.registry import load_registry
 from app.area_pilot import legend_breaks
 from app.area_pilot import acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, epa_aqi_api, usda_fea_api
+from app.geometry_sql import fitted_geom
 
 router = APIRouter(prefix='/area', tags=['area-pilot'])
 CAP = 5000
@@ -160,7 +161,7 @@ def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, po
     count = ensure_cap(db,query_params,geography)
     key = 'tract_fips' if geography == 'tract' else 'county_fips'
     rows = db.execute(text(f'''SELECT o.{key} AS geography_id,b.name,
-        ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom,:simplify))::json AS geometry,
+        ST_AsGeoJSON({fitted_geom('b.geom')})::json AS geometry,
         o.value,o.ci_low,o.ci_high,o.status ''' + common_sql(geography) + f' ORDER BY o.{key}'), query_params).mappings().all()
     features = [{'type':'Feature','geometry':r['geometry'],'properties':{
         key:r['geography_id'],'geography_id':r['geography_id'],'name':r['name'],'value':float(r['value']) if r['value'] is not None else None,

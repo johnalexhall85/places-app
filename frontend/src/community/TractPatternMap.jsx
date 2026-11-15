@@ -37,7 +37,7 @@ export default function TractPatternMap({ area, row }) {
         const params = new URLSearchParams({
           dataset_id: row.dataset_id, release_id: row.release_id, measure_id: row.measure_id,
           period: row.period, population: row.population, value_type: row.value_type,
-          geography: "tract", bbox: area.bbox.join(","), simplify: "0.002",
+          geography: "tract", bbox: area.bbox.join(","), simplify: "0.0005",
         });
         const response = await fetch(`${API_BASE}/area/map?${params}`, { signal: controller.signal });
         if (!response.ok) throw new Error(response.status === 413 ? "This county is too large for one map request. Open the full map." : "Tract map is unavailable right now.");

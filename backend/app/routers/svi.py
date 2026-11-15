@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.db import get_db
 from app.db_fqtn import svi_table as svi_fqtn
+from app.geometry_sql import fitted_geom
 
 router = APIRouter(tags=["svi"])
 
@@ -311,7 +312,7 @@ def svi_counties_geojson(
 
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
-        geometry_expr = "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+        geometry_expr = "ST_AsGeoJSON(" + fitted_geom("b.geom") + ")::json"
         params["simplify"] = simplify
 
     with_parts = []
@@ -614,7 +615,7 @@ def svi_tracts_geojson(
 
     geometry_expr = "ST_AsGeoJSON(s.geom)::json"
     if simplify is not None:
-        geometry_expr = "ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, :simplify))::json"
+        geometry_expr = "ST_AsGeoJSON(" + fitted_geom("s.geom") + ")::json"
         params["simplify"] = simplify
 
     with_parts = []

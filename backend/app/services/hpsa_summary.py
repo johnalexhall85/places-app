@@ -20,6 +20,7 @@ from app.schemas.hpsa import (
     HPSATypeSummary,
 )
 from app.schemas.methodology import MethodologyNote
+from app.geometry_sql import fitted_geom
 
 HPSA_FIELD_DEFINITIONS = {
     "pc_coverage_pct": "Percent of county population covered by a Primary Care HPSA designation (conservative; overlaps possible).",
@@ -360,7 +361,7 @@ def fetch_hpsa_county_geojson_rows(
     geometry_expr = "ST_AsGeoJSON(b.geom)::json"
     if simplify is not None:
         geometry_expr = (
-            "ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom, :simplify))::json"
+            "ST_AsGeoJSON(" + fitted_geom("b.geom") + ")::json"
         )
         params["simplify"] = simplify
 

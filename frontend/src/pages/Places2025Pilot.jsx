@@ -10,6 +10,7 @@ import PlaceSearch from "../components/PlaceSearch";
 import MapTools from "./areaMap/MapTools";
 import { BASE_MAP_OPTIONS } from "../branding/baseMaps";
 import { BLUES, HOVER_LINE, SELECTION_CASING, SELECTION_LINE, quantileColor, quantileCuts, quantileLabels, rampColors } from "../branding/mapColors";
+import { gridForZoom } from "../utils/mapGrid";
 import { MAP_HOVER_TOOLTIP_OPTIONS, areaTooltipHtml, isCoarsePointer } from "../utils/mapTooltip";
 import "./Places2025Pilot.css";
 
@@ -415,7 +416,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   // USDA FEA publishes no state value for its selected measures, so counties are shown at every zoom.
   const geography = isBrfss ? "state" : isProfile && ["state", "county", "tract", "cd"].includes(profileGeography) ? profileGeography
     : isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom) : areaGeography(mapZoom, isAcs || isProfile, tractSupported, tractCapExceeded);
-  const simplify = geography === "tract" ? 0.002 : geography === "state" ? 0.06 : 0.04;
+  // One pixel at the current zoom, so shapes sharpen as the map zooms in; the server keeps shared borders identical.
+  const simplify = gridForZoom(mapZoom);
   const dataSelection = useMemo(() => releaseId && measure ? {
     datasetId: catalog.dataset_id, releaseId, measure, valueType: catalog.value_type, geography,
   } : null, [releaseId, measure, catalog, geography]);
@@ -545,8 +547,11 @@ export default function Places2025Pilot({ dataset = "places" }) {
   }, [clearSelection]);
 
   // Values for the selected area: the live feature when it is in view, else what was read when it was clicked.
-  const liveSelected = selection && selection.level === geography
-    ? features.find((feature) => featureId(feature.properties) === selection.geoid)?.properties ?? null : null;
+  const liveFeature = selection && selection.level === geography
+    ? features.find((feature) => featureId(feature.properties) === selection.geoid) ?? null : null;
+  const liveSelected = liveFeature?.properties ?? null;
+  // Outline the shape exactly as drawn when it is in view; otherwise the outline read with the selection.
+  const outlineGeometry = liveFeature?.geometry ?? selection?.geometry ?? null;
   const selectedProps = liveSelected ?? (selection?.propsKey === dataKey ? selection.properties : null);
   const selectedDetails = selection && selectedProps && measure ? areaFeatureDetails(datasetKey, selectedProps, measure, detailContext) : null;
   const profileHref = profileHrefFor(selection);
@@ -603,10 +608,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
             });
           }} />}
           <Pane name="area-selection" style={{ zIndex: 450, pointerEvents: "none" }}>
-            {selection?.geometry && <>
-              <GeoJSON key={`casing:${selection.level}:${selection.geoid}`} data={selection.geometry} interactive={false} pane="area-selection"
+            {selection && outlineGeometry && <>
+              <GeoJSON key={`casing:${selection.level}:${selection.geoid}:${liveFeature ? requestKey : "read"}`} data={outlineGeometry} interactive={false} pane="area-selection"
                 style={{ color: SELECTION_CASING, weight: 6, opacity: 0.95, fill: false }} />
-              <GeoJSON key={`line:${selection.level}:${selection.geoid}`} data={selection.geometry} interactive={false} pane="area-selection"
+              <GeoJSON key={`line:${selection.level}:${selection.geoid}:${liveFeature ? requestKey : "read"}`} data={outlineGeometry} interactive={false} pane="area-selection"
                 style={{ color: SELECTION_LINE, weight: 3, opacity: 1, fill: false }} />
             </>}
           </Pane>

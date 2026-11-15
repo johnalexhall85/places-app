@@ -5,6 +5,7 @@ from sqlalchemy import text
 from app.area_pilot import legend_breaks
 
 from app.area_pilot.clh import load_registry
+from app.geometry_sql import fitted_geom
 
 S = 'area_pilot'
 CAP = 5000
@@ -75,7 +76,7 @@ def value_fields(row, base):
 
 def map_data(db, params, count, base, simplify):
     rows = db.execute(text(f'''SELECT o.geoid AS geography_id,b.name,
-        ST_AsGeoJSON(ST_SimplifyPreserveTopology(b.geom,:simplify))::json AS geometry,
+        ST_AsGeoJSON({fitted_geom('b.geom')})::json AS geometry,
         o.value,o.status,o.source_code {COMMON} ORDER BY o.geoid'''),
         params | {'simplify': simplify}).mappings().all()
     if len(rows) != count:

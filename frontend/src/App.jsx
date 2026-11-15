@@ -17,6 +17,7 @@ import FullProfilePanel from "./components/FullProfilePanel";
 import Header from "./components/Header";
 import { useSiteHeaderHeight } from "./components/SiteHeader";
 import { BASE_MAP_OPTIONS } from "./branding/baseMaps";
+import { gridForZoom } from "./utils/mapGrid";
 import { BLUES, SELECTION_LINE } from "./branding/mapColors";
 import { MAP_HOVER_TOOLTIP_OPTIONS, formatTooltipExplanationLine, formatTooltipMetaLine } from "./utils/mapTooltip";
 import { APP_NAME } from "./branding/pdoBrand";
@@ -5347,7 +5348,7 @@ export default function App() {
       if (isHpsaDataSource) {
         const hpsaUrl = new URL(`${API_BASE}/hpsa/counties`);
         hpsaUrl.searchParams.set("domain", selectedHpsaDomain);
-        hpsaUrl.searchParams.set("simplify", "0.02");
+        hpsaUrl.searchParams.set("simplify", String(gridForZoom(mapRef.current?.getZoom?.())));
         hpsaUrl.searchParams.set("limit", "5000");
         if (bboxValue) {
           hpsaUrl.searchParams.set("bbox", bboxValue);
@@ -5385,7 +5386,7 @@ export default function App() {
 
       if (isCmsDataSource) {
         const boundaryUrl = new URL(`${API_BASE}/counties/boundaries/geojson`);
-        boundaryUrl.searchParams.set("simplify", "0.02");
+        boundaryUrl.searchParams.set("simplify", String(gridForZoom(mapRef.current?.getZoom?.())));
         boundaryUrl.searchParams.set("limit", "5000");
         if (bboxValue) {
           boundaryUrl.searchParams.set("bbox", bboxValue);
@@ -5445,6 +5446,8 @@ export default function App() {
         : isSviDataSource
           ? new URL(`${API_BASE}/svi/counties`)
           : new URL(`${API_BASE}/counties/boundaries/geojson/estimates`);
+      // About one pixel at this zoom; the server keeps neighbouring borders identical.
+      url.searchParams.set("simplify", String(gridForZoom(mapRef.current?.getZoom?.())));
       url.searchParams.set("measure_id", selectedMeasureId);
       if (isAcsDataSource) {
         if (selectedYearWindow) {
@@ -5533,7 +5536,7 @@ export default function App() {
     const url = new URL(`${API_BASE}/counties/boundaries/geojson`);
     url.searchParams.set("bbox", bboxValue);
     url.searchParams.set("boundaries_only", "true");
-    url.searchParams.set("simplify", "0.01");
+    url.searchParams.set("simplify", String(gridForZoom(mapRef.current?.getZoom?.())));
 
     // Abort previous request if any
     if (outlineAbortRef.current) {
@@ -6077,6 +6080,7 @@ export default function App() {
         : isSviDataSource
           ? new URL(`${API_BASE}/svi/tracts`)
           : new URL(`${API_BASE}/geojson/tracts`);
+      url.searchParams.set("simplify", String(gridForZoom(mapRef.current?.getZoom?.())));
       if (isAcsDataSource) {
         if (selectedYearWindow) {
           url.searchParams.set("year_window", String(selectedYearWindow));

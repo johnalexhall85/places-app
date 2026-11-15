@@ -19,7 +19,8 @@ def test_taggs_backend_methodology_notes_describe_profile_assisted_mapping() -> 
 
 
 def test_header_methodology_modal_mentions_funding_scope_normalization() -> None:
-    header_path = PROJECT_ROOT / "frontend" / "src" / "components" / "Header.jsx"
+    # The text moved from the header pop-up to the methodology page content (2026-11-15).
+    header_path = PROJECT_ROOT / "frontend" / "src" / "content" / "fundingMethodology.js"
     content = header_path.read_text(encoding="utf-8")
 
     assert "CHIP uses CDC Funding Profiles FY2020-FY2023 as a reference dataset" in content

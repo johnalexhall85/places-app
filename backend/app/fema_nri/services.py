@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db_fqtn import fema_nri_table
 from app.fema_nri import catalog
+from app.geometry_sql import fitted_geom
 
 COUNTY_TABLE = fema_nri_table("nri_county")
 TRACT_TABLE = fema_nri_table("nri_tract")
@@ -396,7 +397,7 @@ def fetch_map_geojson(
                     t.state_name,
                     t.county_name,
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(t.geom, :simplify_degrees),
+                        {fitted_geom('t.geom', 'simplify_degrees')},
                         {MAP_GEOJSON_PRECISION}
                     )::json AS geometry
                 FROM {COUNTY_TABLE} AS t
@@ -436,7 +437,7 @@ def fetch_map_geojson(
                     t.county_name,
                     t.tract_name,
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(t.geom, :simplify_degrees),
+                        {fitted_geom('t.geom', 'simplify_degrees')},
                         {MAP_GEOJSON_PRECISION}
                     )::json AS geometry
                 FROM {TRACT_TABLE} AS t
