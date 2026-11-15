@@ -30,3 +30,14 @@ Rechecked by Claude on 2026-11-15T15:03Z at staging `beta` `4633cad`: every prod
 ## Promotion (2026-11-15)
 
 John approved Gate 3. Claude promoted `f48704e` to live between 15:05Z and 15:32Z following the runbook: fresh recovery set, fast-forward, migration, digest-matched PLACES county, PLACES tract, and ACS community releases, district boundaries, webroot, backend restart. Live has eleven pointers and serves the reviewed bundle. Outstanding: authenticated live walkthrough and PDF check (needs a live access code from John), and pushing `main`.
+
+## BRFSS and state profiles (plan approved 2026-11-15)
+
+Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). The beta packages above are complete and live.
+
+| Package | State | Branch | Notes |
+|---|---|---|---|
+| B1 Source specification | In progress | `claude/brfss-b1` | |
+| B2 BRFSS product | Not started | | |
+| B3 Read layer and contract | Not started | | Codex builds against the contract draft until this lands. |
+| B4 Promotion | Waits for John's staging review | | |

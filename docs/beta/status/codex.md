@@ -21,3 +21,15 @@ Read with [the execution plan](../EXECUTION_PLAN.md). Codex updates this file at
 
 - John reviews the specific staging `beta` commit at Gate 3 before any live promotion. The promotion runbook requires a fresh live recovery set, digest-matched ingest, live-appropriate PDF frontend URL, and separate approval. The existing Gate 1 source report remains historical; the Gate 3 report is tied to current staging pointers and must be rerun if they change.
 - The full backend suite has one known unrelated FY2026 funding source natural-key mismatch (676 passed, one failed in the X5 run). No product or data-track staging work remains open in this status.
+
+## BRFSS and state profiles (plan approved 2026-11-15; section added by Claude as the plan directs)
+
+Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). Codex updates this table.
+
+| Package | State | Branch | Notes |
+|---|---|---|---|
+| Y1 Community API: state profile, state search, exports, BRFSS companion | Not started | | |
+| Y2 State profile page | Not started | | |
+| Y3 County profile and comparison changes | Not started | | |
+| Y4 BRFSS state map and topics | Not started | | |
+| Y5 Landing, walkthrough, evidence | Not started | | |
