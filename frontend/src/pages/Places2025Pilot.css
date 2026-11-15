@@ -1,4 +1,5 @@
-.pilot-content {
+/* .pilot-app prefix: index.css loads later and sets .app-content heights with equal specificity. */
+.pilot-app .pilot-content {
   height: calc(100vh - var(--chip-header-height));
   min-height: 540px;
   overflow: hidden;
@@ -299,7 +300,7 @@
   /* Phone: the header wraps and is tall, so the map area keeps a fixed workable height and the page scrolls.
      Top to bottom: controls, point overlays, legend, then the dock (Map Tools and table, both closed at first).
      An opened dock panel grows upward over the legend. */
-  .pilot-content { height: 760px; min-height: 760px; }
+  .pilot-app .pilot-content { height: 780px; min-height: 780px; }
   .pilot-controls { max-height: 280px; overflow: auto; }
   .pilot-legend { top: auto; bottom: 116px; max-height: 180px; overflow: auto; }
   .pilot-legend > .pilot-selected { order: 0; }
