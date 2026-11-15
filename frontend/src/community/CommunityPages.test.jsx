@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatIndicatorValue } from "./CommunityPages";
+import { formatIndicatorValue, uncertaintyText } from "./CommunityPages";
 
 describe("community indicator display", () => {
   it("keeps missing, true zero, and published percentages distinct", () => {
@@ -17,5 +17,9 @@ describe("community indicator display", () => {
   it("formats published ACS dollars and CLH percentages from their source units", () => {
     expect(formatIndicatorValue({ value: 63300, unit: "2024 inflation-adjusted USD" })).toBe("$63,300");
     expect(formatIndicatorValue({ value: 87.52, unit: "%" })).toBe("87.52%");
+  });
+  it("shows the Census Bureau's controlled population margin label", () => {
+    expect(uncertaintyText({ uncertainty: { kind: "moe90", moe: null, label: "No sampling margin: the estimate is controlled to official population totals" } }))
+      .toContain("controlled to official population totals");
   });
 });

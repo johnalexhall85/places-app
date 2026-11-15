@@ -12,7 +12,7 @@ const SHOWCASE = [
 ];
 
 const TOPICS = [
-  { slug: "health-conditions", title: "Health conditions", copy: "Chronic disease and mental health estimates as releases become available.", map: "/area/places-2025" },
+  { slug: "health-conditions", title: "Health conditions", copy: "Published PLACES estimates for chronic disease and mental health.", map: "/area/places-2025" },
   { slug: "prevention-and-access", title: "Prevention and access", copy: "Dental visits and insurance coverage for the populations surveyed.", map: "/area/places-2025" },
   { slug: "health-care-resources", title: "Health care resources", copy: "Workforce, hospitals, health centers, and nursing homes.", map: "/area/ahrf" },
   { slug: "community-conditions", title: "Community conditions", copy: "Income, housing, broadband, and transportation context.", map: "/area/clh" },
@@ -24,6 +24,7 @@ const TOPICS = [
 export const MAP_ROUTES = {
   places: "/area/places-2025",
   acs: "/area/acs-2024",
+  acs_profile: "/area/acs-community",
   ahrf: "/area/ahrf",
   clh: "/area/clh",
   cms_gv: "/area/cms-gv",
@@ -44,6 +45,7 @@ export function CommunityShell({ children }) {
           <a href="/">Home</a>
           <a href="/topics">Topics</a>
           <a href="/compare">Compare</a>
+          <a href="/districts">Districts</a>
           <a href="/explore/map">Explore data</a>
           <a href="/cdc-funding">Funding</a>
           <a href="/about">About</a>
@@ -138,13 +140,14 @@ export function CommunityLanding() {
         </a>)}
       </div>
       <p className="community-caveat">CHIP shows source-published values. Missing, suppressed, and unavailable values remain visible; no overall health score is calculated.</p>
+      <p><a href="/district/cd/5401">Explore the West Virginia 1st Congressional District briefing →</a></p>
     </section>
   </CommunityShell>;
 }
 
 function sectionFor(row) {
   const id = row.measure_id.toLowerCase();
-  if (row.product === "acs") return "people";
+  if (row.product === "acs" || row.product === "acs_profile") return "people";
   if (row.product === "ahrf") return "care";
   if (row.product === "clh") return id.includes("sogs") ? "food" : "conditions";
   if (row.product === "usda_fea") return "food";
@@ -176,27 +179,27 @@ export function uncertaintyText(row) {
     : "95% confidence interval unavailable";
   if (uncertainty.kind === "moe90") return uncertainty.moe != null
     ? `90% margin of error: ±${/\bUSD\b|US dollars/i.test(row.unit || "") ? "$" : ""}${new Intl.NumberFormat("en-US").format(uncertainty.moe)}`
-    : "90% margin of error unavailable";
+    : uncertainty.label || "90% margin of error unavailable";
   return "No uncertainty published";
 }
 
-function Indicator({ row, stateRow }) {
+export function Indicator({ row, stateRow }) {
   const hasValue = row.value != null;
-  const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}` : null;
+  const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}${row.level === "cd" ? "&geography=cd" : ""}` : null;
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
     <h3>{row.label}</h3>
     <p className="community-value">{formatIndicatorValue(row)}</p>
     {hasValue && unitText(row) && <p className="community-unit">{unitText(row)}</p>}
     {row.status === "true_zero" && <p className="community-indicator-note">Published zero</p>}
     <p className="community-indicator-note">{uncertaintyText(row)}</p>
-    {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population})</span></p>}
+    {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population}; {stateRow.source?.publisher}; release {stateRow.source_release_id})</span></p>}
     <p className="community-source">Source: {row.source?.publisher} · {row.source?.product_name} · {row.period} · {row.source_release_id}<br />Population: {row.population}</p>
     {row.notes?.estimate_annotation && <p className="community-indicator-note">Source annotation: {row.notes.estimate_annotation}</p>}
     {mapUrl && <a className="community-map-link" href={mapUrl}>Open source map →</a>}
   </article>;
 }
 
-function FacilityBlock({ title, block }) {
+export function FacilityBlock({ title, block }) {
   if (!block) return null;
   return <div className="community-facility">
     <h3>{title}</h3>
@@ -210,7 +213,7 @@ function FacilityBlock({ title, block }) {
 }
 
 const SECTIONS = [
-  { key: "people", title: "Who lives here", intro: "Published population and household estimates." },
+  { key: "people", title: "Who lives here", intro: "Published Census Bureau population and community estimates. The ACS uninsured estimate covers all ages; the PLACES insurance estimate covers modeled adults aged 18–64." },
   { key: "health", title: "Health conditions and status", intro: "CDC PLACES estimates describe the named adult population." },
   { key: "prevention", title: "Prevention and access", intro: "Preventive care and insurance coverage for the named populations." },
   { key: "care", title: "Access to care and resources", intro: "Workforce and hospital counts from HRSA, with mapped facility locations below." },

@@ -34,6 +34,16 @@ def _county_info(db: Session, geoid: str) -> dict:
     return info[0]
 
 
+def _district_info(db: Session, geoid: str) -> dict:
+    try:
+        info = lookup.area_info(db, "cd", [geoid])
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    if not info:
+        raise HTTPException(status_code=404, detail="District not found on the 119th Congress boundary")
+    return info[0]
+
+
 def _measure_catalog(db: Session) -> tuple[dict, dict]:
     catalog = lookup.catalog(db)
     measures = {(m["product"], m["measure_id"]): m for m in catalog["measures"]}
@@ -62,6 +72,56 @@ def county_search(
 @router.get("/catalog")
 def community_catalog(db: Session = Depends(get_db)):
     return lookup.catalog(db)
+
+
+@router.get("/districts/states")
+def district_states(db: Session = Depends(get_db)):
+    """State names and codes for the district picker, through the published lookup contract."""
+    return lookup.area_info(db, "state", [f"{code:02d}" for code in range(80)])
+
+
+@router.get("/districts")
+def districts_in_state(state_geoid: str = Query(...), db: Session = Depends(get_db)):
+    try:
+        states = lookup.area_info(db, "state", [state_geoid])
+        if not states:
+            raise HTTPException(status_code=404, detail="State not found")
+        return {"state": states[0], "districts": lookup.state_districts(db, state_geoid)}
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/district/{geoid}")
+def district_briefing(geoid: str, db: Session = Depends(get_db)):
+    area = _district_info(db, geoid)
+    _, measures = _measure_catalog(db)
+    try:
+        values = lookup.area_values(db, "cd", [geoid])
+        facilities = lookup.area_facilities(db, "cd", geoid)
+        overlaps = lookup.district_counties(db, geoid)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+    return {
+        "area": area,
+        "values": _enrich(values["values"], measures),
+        "facilities": facilities,
+        "counties": overlaps,
+        "releases": values["releases"],
+        "limitations": [
+            "Only Census Bureau ACS community characteristics are district estimates.",
+            "Overlapping counties are geographic context; their values are not district estimates.",
+            "Mapped facilities do not measure capacity, access, exposure, quality, or cause.",
+        ],
+    }
+
+
+@router.get("/county/{geoid}/districts")
+def districts_for_county(geoid: str, db: Session = Depends(get_db)):
+    _county_info(db, geoid)
+    try:
+        return lookup.county_districts(db, geoid)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
 
 
 @router.get("/county/{geoid}")

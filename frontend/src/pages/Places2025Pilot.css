@@ -243,7 +243,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  pointer-events: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
 }
 .pilot-overlays > .pilot-panel, .pilot-overlays > .pilot-panel.pilot-sites, .pilot-overlays > .pilot-panel.pilot-sites.is-open { position: relative; right: auto; bottom: auto; top: auto; left: auto; width: auto; max-height: none; min-height: 0; flex: 0 0 auto; pointer-events: auto; }
 .pilot-overlays > .pilot-panel.pilot-sites.is-open { flex: 0 1 auto; }

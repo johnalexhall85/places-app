@@ -9,6 +9,13 @@ export function resolveRoute(pathname) {
   if (/^\/compare\/?$/i.test(normalizedPath)) {
     return { type: "community-compare" };
   }
+  if (/^\/districts\/?$/i.test(normalizedPath)) {
+    return { type: "community-districts" };
+  }
+  const districtMatch = normalizedPath.match(/^\/district\/cd\/(\d{4})\/?$/i);
+  if (districtMatch) {
+    return { type: "community-district", id: districtMatch[1] };
+  }
   if (/^\/topics\/?$/i.test(normalizedPath)) {
     return { type: "community-topics" };
   }
@@ -31,6 +38,9 @@ export function resolveRoute(pathname) {
   }
   if (/^\/area\/acs-2024\/?$/i.test(normalizedPath)) {
     return { type: "acs-2024-area" };
+  }
+  if (/^\/area\/acs-community\/?$/i.test(normalizedPath)) {
+    return { type: "acs-community-area" };
   }
   if (/^\/area\/ahrf\/?$/i.test(normalizedPath)) {
     return { type: "ahrf-area" };

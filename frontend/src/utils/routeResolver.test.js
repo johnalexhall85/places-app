@@ -7,6 +7,9 @@ describe("routeResolver", () => {
     expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
     expect(resolveRoute("/community/county/37145")).toEqual({ type: "community-county", id: "37145" });
     expect(resolveRoute("/compare")).toEqual({ type: "community-compare" });
+    expect(resolveRoute("/districts")).toEqual({ type: "community-districts" });
+    expect(resolveRoute("/district/cd/5401")).toEqual({ type: "community-district", id: "5401" });
+    expect(resolveRoute("/area/acs-community")).toEqual({ type: "acs-community-area" });
     expect(resolveRoute("/topics")).toEqual({ type: "community-topics" });
     expect(resolveRoute("/topics/food-environment")).toEqual({ type: "community-topic", slug: "food-environment" });
     expect(resolveRoute("/about")).toEqual({ type: "community-about" });

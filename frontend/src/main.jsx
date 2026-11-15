@@ -19,6 +19,7 @@ import { CommunityLanding, CommunityCounty } from "./community/CommunityPages";
 import CommunityCompare from "./community/CommunityCompare";
 import { CommunityTopics, CommunityTopic } from "./community/CommunityTopics";
 import { CommunityAbout, CommunityMethodology } from "./community/CommunityInfo";
+import { CommunityDistrict, CommunityDistricts } from "./community/CommunityDistrict";
 import { resolveRoute } from "./utils/routeResolver";
 
 installDemoAccessFetchCredentials(API_BASE);
@@ -68,6 +69,10 @@ function Root() {
     routedPage = <CommunityCounty geoid={route.id} />;
   } else if (route.type === "community-compare") {
     routedPage = <CommunityCompare />;
+  } else if (route.type === "community-districts") {
+    routedPage = <CommunityDistricts />;
+  } else if (route.type === "community-district") {
+    routedPage = <CommunityDistrict geoid={route.id} />;
   } else if (route.type === "community-topics") {
     routedPage = <CommunityTopics />;
   } else if (route.type === "community-topic") {
@@ -90,6 +95,8 @@ function Root() {
     routedPage = <Places2025Pilot />;
   } else if (route.type === "acs-2024-area") {
     routedPage = <Places2025Pilot dataset="acs" />;
+  } else if (route.type === "acs-community-area") {
+    routedPage = <Places2025Pilot dataset="acs_profile" />;
   } else if (route.type === "ahrf-area") {
     routedPage = <Places2025Pilot dataset="ahrf" />;
   } else if (route.type === "clh-area") {

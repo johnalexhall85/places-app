@@ -35,7 +35,17 @@ function displayUncertainty(item, isAcs, isAhrf = false, isClh = false) {
   if (item.moe != null) return `±${dollars.format(item.moe)} (90% MOE)`;
   return item.moe_annotation ? `${item.moe_annotation} (MOE unavailable)` : "—";
 }
-function areaName(level) { return level === "state" ? "state" : level === "tract" ? "tract" : "county"; }
+function areaName(level) { return level === "state" ? "state" : level === "tract" ? "tract" : level === "cd" ? "congressional district" : "county"; }
+function profileValue(item, measure) {
+  if (item.value == null) return item.status_text || item.status;
+  const n = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(item.value);
+  return measure?.kind === "percent" ? `${n}%` : `${n} ${measure?.unit || ""}`.trim();
+}
+function profileUncertainty(item) {
+  if (item.moe != null) return `±${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(item.moe)} (90% margin of error)`;
+  if (item.moe_annotation === "*****") return "No sampling margin: controlled to official population totals";
+  return "90% margin of error unavailable";
+}
 
 export const AQI_DATASET_ID = "epa_airdata_aqi_county_2025";
 export const AQI_NO_VALUE = "no_reported_value";
@@ -252,6 +262,7 @@ async function getJSON(endpoint, query, signal) {
 
 export default function Places2025Pilot({ dataset = "places" }) {
   const isAcs = dataset === "acs";
+  const isProfile = dataset === "acs_profile";
   const isAhrf = dataset === "ahrf";
   const isClh = dataset === "clh";
   const isAqi = dataset === "aqi";
@@ -261,7 +272,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [catalogError, setCatalogError] = useState("");
   const [initialView] = useState(initialMapView);
   const [measureId, setMeasureId] = useState(() => new URLSearchParams(window.location.search).get("measure_id") ||
-    (isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev"));
+    (isProfile ? "poverty_pct" : isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev"));
+  const [profileGeography, setProfileGeography] = useState(() => new URLSearchParams(window.location.search).get("geography") || "auto");
   const [bbox, setBBox] = useState(null);
   const [mapZoom, setMapZoom] = useState(initialView.zoom);
   const [viewCenter, setViewCenter] = useState(initialView.center);
@@ -284,11 +296,11 @@ export default function Places2025Pilot({ dataset = "places" }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE}/area/catalog${isAcs ? "?dataset_id=census_acs5_2024_b19013" : isAhrf ? "?dataset_id=hrsa_ahrf_county_2024_2025" : isClh ? "?dataset_id=ahrq_clh_2023_curated" : isAqi ? `?dataset_id=${AQI_DATASET_ID}` : isGv ? `?dataset_id=${GV_DATASET_ID}` : isFea ? `?dataset_id=${FEA_DATASET_ID}` : ""}`, { signal: controller.signal })
+    fetch(`${API_BASE}/area/catalog${isProfile ? "?dataset_id=census_acs5_2024_community_profile" : isAcs ? "?dataset_id=census_acs5_2024_b19013" : isAhrf ? "?dataset_id=hrsa_ahrf_county_2024_2025" : isClh ? "?dataset_id=ahrq_clh_2023_curated" : isAqi ? `?dataset_id=${AQI_DATASET_ID}` : isGv ? `?dataset_id=${GV_DATASET_ID}` : isFea ? `?dataset_id=${FEA_DATASET_ID}` : ""}`, { signal: controller.signal })
       .then((response) => { if (!response.ok) throw new Error(`Catalog unavailable (${response.status})`); return response.json(); })
       .then(setCatalog).catch((err) => { if (err.name !== "AbortError") setCatalogError(err.message); });
     return () => controller.abort();
-  }, [isAcs, isAhrf, isClh, isAqi, isGv, isFea]);
+  }, [isAcs, isProfile, isAhrf, isClh, isAqi, isGv, isFea]);
 
   useEffect(() => {
     if (catalog?.measures?.length && !catalog.measures.some((item) => item.measure_id === measureId)) {
@@ -303,7 +315,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const capSelectionKey = `${releaseId}|${measureId}|${bbox}`;
   const tractCapExceeded = tractCapKey === capSelectionKey;
   // USDA FEA publishes no state value for its selected measures, so counties are shown at every zoom.
-  const geography = isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom) : areaGeography(mapZoom, isAcs, tractSupported, tractCapExceeded);
+  const geography = isProfile && ["state", "county", "tract", "cd"].includes(profileGeography) ? profileGeography
+    : isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom) : areaGeography(mapZoom, isAcs || isProfile, tractSupported, tractCapExceeded);
   const simplify = geography === "tract" ? 0.002 : geography === "state" ? 0.06 : 0.04;
   const selection = useMemo(() => releaseId && measure ? {
     datasetId: catalog.dataset_id, releaseId, measure, valueType: catalog.value_type, geography,
@@ -325,11 +338,12 @@ export default function Places2025Pilot({ dataset = "places" }) {
     if (!bbox || !releaseId) return;
     const url = new URL(window.location.href);
     url.searchParams.set("measure_id", measureId);
+    if (isProfile) url.searchParams.set("geography", profileGeography);
     url.searchParams.set("lat", viewCenter[0].toFixed(5));
     url.searchParams.set("lon", viewCenter[1].toFixed(5));
     url.searchParams.set("zoom", String(mapZoom));
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [bbox, releaseId, measureId, mapZoom, viewCenter]);
+  }, [bbox, releaseId, measureId, mapZoom, viewCenter, isProfile, profileGeography]);
 
   async function copyMapLink() {
     try {
@@ -385,8 +399,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   return <div className="app pilot-app">
     <Header />
     <main className="app-content pilot-content">
-      <div className="chip-brand-line"><strong>CHIP by Public Data Observatory</strong><span>{isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA AirData 2025 annual county AQI" : isGv ? "CMS Original Medicare 2024, states and counties" : isFea ? "USDA Food Environment Atlas, county measures" : "PLACES 2025 county and tract pilot"}</span></div>
-      <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${areaName(geography)} ${isAcs ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
+      <div className="chip-brand-line"><strong>CHIP by Public Data Observatory</strong><span>{isProfile ? "ACS 2020–2024 community characteristics" : isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA AirData 2025 annual county AQI" : isGv ? "CMS Original Medicare 2024, states and counties" : isFea ? "USDA Food Environment Atlas, county measures" : "PLACES 2025 county and tract pilot"}</span></div>
+      <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
         {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
@@ -409,12 +423,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
             fillColor: aqiColor(feature.properties.value, feature.properties.status, measure?.legend_breaks || []),
           } : ({
             color: "#516677", weight: 0.5, fillOpacity: 0.78,
-            fillColor: color(feature.properties.value, feature.properties.status, breaks),
+            fillColor: color(feature.properties.value, feature.properties.status, isProfile ? mapData?.legend_breaks : breaks),
           })} onEachFeature={(feature, layer) => {
             const item = feature.properties;
             if (isAqi) { layer.bindPopup(aqiPopup(item, measure)); return; }
             if (isGv) { layer.bindPopup(gvPopup(item, measure, geography, catalog)); return; }
             if (isFea) { layer.bindPopup(feaPopup(item, measure)); return; }
+            if (isProfile) { layer.bindPopup(`${geography === "cd" ? "District" : areaName(geography)} ${escapeHtml(item.name)} (${escapeHtml(item.geography_id)})<br>${escapeHtml(measure?.label)}: ${escapeHtml(profileValue(item, measure))}<br>${escapeHtml(profileUncertainty(item))}<br>Census Bureau · ${escapeHtml(measure?.observation_period)} · ${escapeHtml(measure?.population)} · release ${escapeHtml(releaseId)}`); return; }
             const value = displayValue(item, isAcs, isAhrf, isClh, measure?.unit);
             const uncertainty = displayUncertainty(item, isAcs, isAhrf, isClh);
             layer.bindPopup(`${areaName(geography)} ${item.name} (${item.geography_id || item.county_fips})<br>${value} ${isAhrf && item.value != null ? measure?.unit : ""}<br>${uncertainty}<br>${measure?.observation_period}${isAcs ? " · ACS 5-year · 2024 dollars" : ""}`);
@@ -425,7 +440,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
         </MapContainer>}
       </div>
       <section className="pilot-panel pilot-controls" aria-label="Analytical controls">
-        <h1>{isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA annual AQI by county, 2025" : isGv ? "CMS Original Medicare Geographic Variation, 2024" : isFea ? "USDA Food Environment Atlas: county food access and retailers" : "PLACES 2025 pilot"}</h1>
+        <h1>{isProfile ? "ACS 2020–2024 community characteristics" : isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA annual AQI by county, 2025" : isGv ? "CMS Original Medicare Geographic Variation, 2024" : isFea ? "USDA Food Environment Atlas: county food access and retailers" : "PLACES 2025 pilot"}</h1>
         {isFea ? <div className="pilot-scope">
           <p>Five published county measures from USDA ERS's Food Environment Atlas, {catalog?.release_label ?? "July 2025"} release. <strong>Each measure has its own observation year (2018–2023)</strong>; none describes 2025 or current conditions. USDA publishes no state value for these measures, so counties are shown at every zoom and none is averaged or summed. No tract values exist.</p>
           <p className="pilot-metadata">This is a separate, release-pinned product. The main map's “USDA Food Environment (legacy import)” option reads the older tables and is unchanged.</p>
@@ -443,9 +458,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <ul className="pilot-limitations" aria-label="Interpretation limits">
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
-        </div> : <p className="pilot-scope">{isAcs ? "Published median household income for states, counties, and census tracts. Values are 2024 inflation-adjusted dollars; margins of error use 90% confidence." : isAhrf ? "HRSA AHRF 2024–2025 release, with 2023 observations. County counts only; no state or tract values are inferred. Connecticut planning-region values are unavailable for four measures. Uncertainty was not supplied." : isClh ? "AHRQ CLH September 2025 release. ACS measures cover 2019–2023 at county and tract levels; business densities describe 2023 counties only. No state estimates or uncertainty fields are supplied." : "Official county and census tract estimates. No state estimates are provided by this pilot."}</p>}
-        <label>Data source <select value={isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { main: "/", acs: "/area/acs-2024", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
-          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="acs">ACS 2020–2024 5-year income</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option><option value="main">Main CHIP map</option>
+        </div> : <p className="pilot-scope">{isProfile ? "Census Bureau published community characteristics for states, counties, tracts, and 119th Congress districts. The percentages and 90% margins of error come from ACS 2020–2024 subject tables; population totals may have no sampling margin." : isAcs ? "Published median household income for states, counties, and census tracts. Values are 2024 inflation-adjusted dollars; margins of error use 90% confidence." : isAhrf ? "HRSA AHRF 2024–2025 release, with 2023 observations. County counts only; no state or tract values are inferred. Connecticut planning-region values are unavailable for four measures. Uncertainty was not supplied." : isClh ? "AHRQ CLH September 2025 release. ACS measures cover 2019–2023 at county and tract levels; business densities describe 2023 counties only. No state estimates or uncertainty fields are supplied." : "Official county and census tract estimates. No state estimates are provided by this pilot."}</p>}
+        <label>Data source <select value={isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { main: "/", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
+          <option value="pilot">PLACES 2025 county and tract pilot</option><option value="acs">ACS 2020–2024 5-year income</option><option value="acs_profile">ACS 2020–2024 community characteristics</option><option value="ahrf">AHRF 2023 workforce and hospitals</option><option value="clh">AHRQ CLH community conditions</option><option value="aqi">EPA annual AQI by county (2025)</option><option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option><option value="usdafea">USDA Food Environment Atlas (county measures)</option><option value="main">Main CHIP map</option>
         </select></label>
         {catalogError && <p role="alert">{catalogError}</p>}
         {!catalog && !catalogError && <p role="status">Loading catalog…</p>}
@@ -454,6 +469,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <label>Measure <select value={measureId} onChange={(event) => { setMeasureId(event.target.value); setPage(0); }}>
             {catalog.measures.map((item) => <option key={item.measure_id} value={item.measure_id}>{item.label} ({item.observation_period})</option>)}
           </select></label>
+          {isProfile && <label>Geography <select value={profileGeography} onChange={(event) => { setProfileGeography(event.target.value); setPage(0); }}>
+            <option value="auto">Automatic by zoom</option><option value="state">State</option><option value="county">County</option><option value="tract">Census tract</option><option value="cd">119th Congress district</option>
+          </select></label>}
           {isFea && <div className="pilot-fea-measure">
             <p className="pilot-period"><strong>Observation year {measure?.observation_period}</strong> · {measure?.unit} · county values only</p>
             <p className="pilot-metadata">USDA definition ({measure?.variable_code}): {measure?.official_definition}</p>
@@ -461,7 +479,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
             <p className="pilot-metadata">Contributing sources: {measure?.contributing_sources} County boundary basis in the source: {measure?.source_boundary_basis}; joined by exact FIPS to {catalog.boundary_vintage}. Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">USDA ERS Food Environment Atlas</a> (<a href={catalog.documentation_url} target="_blank" rel="noreferrer">documentation</a>).</p>
             {mapZoom < ACS_COUNTY_ZOOM && <p role="status">State values are not published for this measure; counties are shown at the national view.</p>}
           </div>}
-          {!isFea && <p className="pilot-metadata">{areaName(geography)} estimates · {isClh ? "Observation period" : "Observation year"} {measure?.observation_period} · {measure?.population} · {isAhrf || isClh || isAqi || isGv ? measure?.unit : catalog.unit}{isAcs ? " · ACS 5-year Detailed Tables" : ""}</p>}
+          {!isFea && <p className="pilot-metadata">{geography === "cd" ? "Congressional district" : areaName(geography)} estimates · {isClh || isProfile ? "Observation period" : "Observation year"} {measure?.observation_period} · {measure?.population} · {isProfile || isAhrf || isClh || isAqi || isGv ? measure?.unit : catalog.unit}{isAcs ? " · ACS 5-year Detailed Tables" : isProfile ? " · Census Bureau ACS 5-year Subject Tables" : ""}</p>}
+          {isProfile && <p className="pilot-metadata">Source: <a href={catalog.landing_page} target="_blank" rel="noreferrer">Census Bureau ACS 2020–2024</a> · {measure?.official_definition}. {measure?.interpretation}</p>}
           {isAhrf && <p className="pilot-metadata">Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">HRSA Area Health Resources Files</a>, compiled from {measure?.source}. Counts have no published uncertainty estimate.</p>}
           {isGv && <p className="pilot-metadata">CMS definition ({measure?.source_field}): {measure?.official_definition} Denominator: {measure?.denominator} {measure?.interpretation} Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">CMS Medicare Geographic Variation</a>.</p>}
           {isAqi && <p className="pilot-metadata">EPA definition: {measure?.official_definition} {measure?.statistic_note} Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">EPA AirData pre-generated files</a>.</p>}
@@ -477,8 +496,15 @@ export default function Places2025Pilot({ dataset = "places" }) {
       </section>
       {catalog && releaseId && <>
         <section className="pilot-panel pilot-legend" aria-label="Legend">
-          <h2>{isAcs ? "Median household income" : isAhrf || isClh || isAqi || isGv || isFea ? measure?.label : "Crude prevalence"}{isFea ? `, ${measure?.observation_period ?? ""}` : ""} — {areaName(geography)} level</h2>
-          {ready && legend && isFea ? <>
+          <h2>{isAcs ? "Median household income" : isProfile || isAhrf || isClh || isAqi || isGv || isFea ? measure?.label : "Crude prevalence"}{isFea ? `, ${measure?.observation_period ?? ""}` : ""} — {geography === "cd" ? "congressional district" : areaName(geography)} level</h2>
+          {ready && legend && isProfile ? <>
+            <ul className="pilot-swatches">
+              {prevalenceColors.map((shade, i) => <li key={shade}><i style={{ background: shade }} />{i === 0 ? `Under ${profileValue({ value: legend.legend_breaks?.[0] }, measure)}` : i === 4 ? `${profileValue({ value: legend.legend_breaks?.[3] }, measure)} or more` : `${profileValue({ value: legend.legend_breaks?.[i - 1] }, measure)} to under ${profileValue({ value: legend.legend_breaks?.[i] }, measure)}`}</li>)}
+              <li><i style={{ background: "#d8dee3" }} />Missing</li><li><i style={{ background: "#8f6b74" }} />Suppressed</li>
+            </ul>
+            <p>Source-published {geography === "cd" ? "119th Congress district" : areaName(geography)} estimates. Fixed display classes; see each feature for its 90% margin of error. No county or tract value is used to calculate a district estimate.</p>
+            <p>{legend.statuses.map(item => `${item.status_text || item.status}: ${item.n}`).join(" · ")}</p>
+          </> : ready && legend && isFea ? <>
             <ul className="pilot-swatches">
               <li><i style={{ background: FEA_ZERO_COLOR }} />0 (published zero)</li>
               {feaBinLabels(legend.legend_breaks || [], measure?.kind).map((label, i) => <li key={label}><i style={{ background: feaColors[i] }} />{label}</li>)}
@@ -537,13 +563,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
                 {isFea ? <thead><tr><th scope="col">County FIPS</th><th scope="col">County</th><th scope="col">{measure?.label} ({measure?.observation_period})</th><th scope="col">USDA source value</th><th scope="col">Status</th></tr></thead>
                 : isGv ? <thead><tr><th scope="col">{geography === "state" ? "State FIPS" : "County FIPS"}</th><th scope="col">{areaName(geography)}</th><th scope="col">{measure?.label}</th><th scope="col">CMS source value</th><th scope="col">Status</th></tr></thead>
                 : isAqi ? <thead><tr><th scope="col">County FIPS</th><th scope="col">County</th><th scope="col">{measure?.label} ({measure?.unit})</th><th scope="col">Days with AQI</th><th scope="col">EPA source name</th><th scope="col">Status</th></tr></thead>
-                : <thead><tr><th scope="col">{geography === "tract" ? "Tract GEOID" : geography === "state" ? "State FIPS" : "County FIPS"}</th><th scope="col">{areaName(geography)}</th><th scope="col">{isAcs ? "Value (2024 USD)" : isAhrf || isClh ? `Value (${measure?.unit})` : "Value (%)"}</th><th scope="col">{isAcs ? "90% MOE" : isAhrf || isClh ? "Uncertainty" : "95% CI"}</th><th scope="col">Status</th></tr></thead>}
+                : <thead><tr><th scope="col">{geography === "cd" ? "District GEOID" : geography === "tract" ? "Tract GEOID" : geography === "state" ? "State FIPS" : "County FIPS"}</th><th scope="col">{geography === "cd" ? "District" : areaName(geography)}</th><th scope="col">{isProfile ? `Value (${measure?.unit})` : isAcs ? "Value (2024 USD)" : isAhrf || isClh ? `Value (${measure?.unit})` : "Value (%)"}</th><th scope="col">{isProfile || isAcs ? "90% MOE" : isAhrf || isClh ? "Uncertainty" : "95% CI"}</th><th scope="col">Status</th></tr></thead>}
                 <tbody>{table.rows.map((row) => {
                   const key = row.geography_id || row.tract_fips || row.county_fips;
                   if (isFea) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{feaValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published value" : row.status === "true_zero" ? "Published zero" : FEA_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
                   if (isGv) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{gvValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{GV_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
                   if (isAqi) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{aqiValueText(row, measure)}</td><td>{row.days_with_aqi ?? "—"}</td><td>{row.source_name ?? "—"}</td><td>{row.status === AQI_NO_VALUE ? "No reported value" : row.status}</td></tr>;
-                  return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{displayValue(row, isAcs, isAhrf, isClh, measure?.unit)}</td><td>{displayUncertainty(row, isAcs, isAhrf, isClh)}</td><td>{row.status}</td></tr>;
+                  return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{isProfile ? profileValue(row, measure) : displayValue(row, isAcs, isAhrf, isClh, measure?.unit)}</td><td>{isProfile ? profileUncertainty(row) : displayUncertainty(row, isAcs, isAhrf, isClh)}</td><td>{row.status_text || row.status}</td></tr>;
                 })}</tbody>
               </table></div>
               <nav aria-label={`${areaName(geography)} table pages`}><button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button> Page {page + 1} of {Math.max(1, Math.ceil(table.total / 100))} <button disabled={(page + 1) * 100 >= table.total} onClick={() => setPage(page + 1)}>Next</button></nav>

@@ -747,6 +747,16 @@
   font-weight: 700;
 }
 
+.community-districts { padding-block: 56px 80px; }
+.community-districts > p { max-width: 760px; }
+.community-districts label { display: block; margin: 24px 0 8px; font-weight: 700; }
+.community-districts select { min-height: 48px; width: min(100%, 420px); padding: 8px 12px; background: #fff; border: 1px solid #a8bac4; }
+.community-district-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 0; list-style: none; }
+.community-district-list li { padding: 12px 16px; background: #fff; border: 1px solid #cfd8dc; }
+.community-district-list a { display: block; font-weight: 700; }
+.community-district-list span { display: block; margin-top: 4px; color: #546e7a; font-size: 13px; }
+.community-district .community-profile-head { max-width: 960px; }
+
 .community-tract-controls select {
   min-height: 44px;
   max-width: 100%;
@@ -881,4 +891,5 @@
   .community-compare { padding-block: 32px 48px; }
   .community-compare-example { margin-top: 0; }
   .community-topic-measures { grid-template-columns: 1fr; }
+  .community-district-list { grid-template-columns: 1fr; }
 }

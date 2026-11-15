@@ -100,3 +100,29 @@ def test_pdf_uses_current_session_cookie_and_rejects_unknown_county(client, monk
     assert response.status_code == 200 and response.content.startswith(b"%PDF")
     assert calls == [{"route_path": "/community/county/01055", "session_cookie": (cookie_name, "session-value")}]
     assert client.get("/community/county/99999/pdf").status_code == 404
+
+
+def test_district_briefing_uses_only_published_district_rows(monkeypatch):
+    catalog = example("after-c3/catalog.json")
+    area = example("after-c3/area_info_cd_5401.json")[0]
+    values = example("after-c3/area_values_cd_5401.json")
+    facilities = example("after-c3/area_facilities_cd_5401.json")
+    counties = example("after-c3/district_counties_5401.json")
+    monkeypatch.setattr(community.lookup, "catalog", lambda db: catalog)
+    monkeypatch.setattr(community.lookup, "area_info", lambda db, level, geoids: [area] if level == "cd" and geoids == ["5401"] else [])
+    monkeypatch.setattr(community.lookup, "area_values", lambda db, level, geoids: values if level == "cd" and geoids == ["5401"] else None)
+    monkeypatch.setattr(community.lookup, "area_facilities", lambda db, level, geoid: facilities)
+    monkeypatch.setattr(community.lookup, "district_counties", lambda db, geoid: counties)
+    app = FastAPI()
+    app.include_router(community.router)
+    app.dependency_overrides[get_db] = lambda: object()
+    client = TestClient(app)
+    response = client.get("/community/district/5401")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["values"]) == 7
+    assert {row["product"] for row in body["values"]} == {"acs_profile"}
+    assert all(row["level"] == "cd" and row["source"]["publisher"] for row in body["values"])
+    assert len(body["counties"]["counties"]) == 28
+    assert body["facilities"]["health_centers"]["count"] == 347
+    assert client.get("/community/district/9999").status_code == 404
