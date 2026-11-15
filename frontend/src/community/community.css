@@ -397,6 +397,13 @@
   line-height: 1.2;
 }
 
+.community-unit {
+  margin: 0 0 8px;
+  color: #546e7a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .community-indicator.is-missing .community-value {
   font: 700 17px/1.4 Arial, sans-serif;
   color: #546e7a;

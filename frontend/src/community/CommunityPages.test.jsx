@@ -13,4 +13,9 @@ describe("community indicator display", () => {
     expect(formatIndicatorValue(row)).toBe("18.63%");
     expect(row.value).toBe(0.1863);
   });
+
+  it("formats published ACS dollars and CLH percentages from their source units", () => {
+    expect(formatIndicatorValue({ value: 63300, unit: "2024 inflation-adjusted USD" })).toBe("$63,300");
+    expect(formatIndicatorValue({ value: 87.52, unit: "%" })).toBe("87.52%");
+  });
 });

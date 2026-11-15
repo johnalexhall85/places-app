@@ -142,7 +142,7 @@ function sectionFor(row) {
   const id = row.measure_id.toLowerCase();
   if (row.product === "acs") return "people";
   if (row.product === "ahrf") return "care";
-  if (row.product === "clh") return id.includes("sogs") || id.includes("fcrsc") ? "food" : "conditions";
+  if (row.product === "clh") return id.includes("sogs") ? "food" : "conditions";
   if (row.product === "usda_fea") return "food";
   if (row.product === "epa_aqi") return "environment";
   if (row.product === "cms_gv") return "medicare";
@@ -153,11 +153,16 @@ function sectionFor(row) {
 export function formatIndicatorValue(row) {
   if (row.value == null) return row.status_text || "No published value";
   const value = row.storage_scale === "proportion_0_1" ? row.value * 100 : row.value;
-  if (row.kind === "currency" || row.unit === "USD") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+  if (row.kind === "currency" || /\bUSD\b|US dollars/i.test(row.unit || "")) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
   const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);
-  if (row.unit === "percent" || row.storage_scale === "proportion_0_1") return `${formatted}%`;
-  if (row.unit === "count") return formatted;
-  return `${formatted}${row.unit ? ` ${row.unit}` : ""}`;
+  if (row.kind === "percent" || row.unit === "percent" || row.unit === "%" || row.storage_scale === "proportion_0_1") return `${formatted}%`;
+  return formatted;
+}
+
+function unitText(row) {
+  if (row.storage_scale === "proportion_0_1") return "Percent of acute hospital stays";
+  if (row.unit === "percent" || row.unit === "%") return null;
+  return row.unit;
 }
 
 function uncertaintyText(row) {
@@ -166,7 +171,7 @@ function uncertaintyText(row) {
     ? `95% confidence interval: ${uncertainty.low}–${uncertainty.high}${row.unit === "percent" ? "%" : ""}`
     : "95% confidence interval unavailable";
   if (uncertainty.kind === "moe90") return uncertainty.moe != null
-    ? `90% margin of error: ±${new Intl.NumberFormat("en-US").format(uncertainty.moe)}`
+    ? `90% margin of error: ±${/\bUSD\b|US dollars/i.test(row.unit || "") ? "$" : ""}${new Intl.NumberFormat("en-US").format(uncertainty.moe)}`
     : "90% margin of error unavailable";
   return "No uncertainty published";
 }
@@ -177,6 +182,7 @@ function Indicator({ row, stateRow }) {
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
     <h3>{row.label}</h3>
     <p className="community-value">{formatIndicatorValue(row)}</p>
+    {hasValue && unitText(row) && <p className="community-unit">{unitText(row)}</p>}
     {row.status === "true_zero" && <p className="community-indicator-note">Published zero</p>}
     <p className="community-indicator-note">{uncertaintyText(row)}</p>
     {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population})</span></p>}
