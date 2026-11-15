@@ -344,6 +344,15 @@ function getOptionLabel(options, value, fallback = "") {
   return String(match?.label ?? fallback ?? token);
 }
 const COUNTY_HOVER_TOOLTIP_OPTIONS = MAP_HOVER_TOOLTIP_OPTIONS;
+// The map layer does not redraw when it is handed new shapes under the same key, so each
+// loaded payload gets its own id and the layer is rebuilt when sharper shapes arrive.
+const layerDataIds = new WeakMap();
+let layerDataSequence = 0;
+function layerDataId(data) {
+  if (!data || typeof data !== "object") return 0;
+  if (!layerDataIds.has(data)) layerDataIds.set(data, ++layerDataSequence);
+  return layerDataIds.get(data);
+}
 const CMS_AGE_OPTIONS = [
   { value: "all", label: "All", apiValue: "All" },
   { value: "65_plus", label: "65 and older", apiValue: "65+" },
@@ -10851,7 +10860,7 @@ export default function App() {
 
           {activeGeojson ? (
             <GeoJSON
-              key={`${selectedDataSource}-${tractsActive ? "tracts" : "counties"}-${selectedTemporalValue}-${selectedMeasureId}-${selectedType}-${bbox ?? "no-bbox"}-${tractsActive ? "tract" : `county-${countyReloadNonce}`}`}
+              key={`${selectedDataSource}-${tractsActive ? "tracts" : "counties"}-${selectedTemporalValue}-${selectedMeasureId}-${selectedType}-${bbox ?? "no-bbox"}-${tractsActive ? "tract" : `county-${countyReloadNonce}`}-${layerDataId(activeGeojson)}`}
               ref={geoJsonRef}
               data={activeGeojson}
               style={choroplethStyle}
