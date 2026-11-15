@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-16T00:10:00+00:00 — Legacy map retired and promoted to live (Claude)
+
+- **Request (John):** remove all the legacy maps from `/explore/map` and from the Data source menu; push live when done.
+- **Interpretation (Claude's, stated here so it can be corrected):** every layer on `/explore/map` was a legacy map, so the page now opens the published-release area map instead of an empty legacy page. "Legacy" was taken to include the CDC funding state map that lived only in that menu; funding remains on `/cdc-funding` and the state funding profiles. The SVI, FEMA NRI, HPSA, ACS non-medical-factor, and older PLACES, CMS, and USDA layers are no longer on any map.
+- **Changes on branch `claude/retire-legacy-map`:** deleted `App.jsx`, `SearchBar.jsx`, `mapContext.js`, `sviCatalog.js`, `components/FullProfilePanel.jsx`, `components/AskMapChat.jsx`, `content/hpsaLegendCopy.js`, `hooks/useSelectedAreaProfileTarget.js`; `main.jsx` renders the area map for `/explore/map` and unknown paths; removed the "Legacy CHIP map" option, the "Legacy map with older layers" link, two "legacy import" sentences, and the county profile's legacy-map link. Backend untouched. Bundle 872 KB to 628 KB.
+- **Verification:** frontend 157 tests and build; staging `56223cb` walkthrough passed every leg, including new checks that `/explore/map` shows nine published sources, no legacy entries, and no legacy panels, and that `/explore/map?focus=county:54039` selects Kanawha; screenshot checked.
+- **Live:** see the promotion lines below this entry's commit in the handbook note. Rollback: restore `webroot-before/` from `data/deploy-recovery/legacy-map-retirement-20261116/` and check out `commit-before.txt`.
+
 ## 2026-11-15T23:08:00+00:00 — Map consistency package promoted to live (Claude, M8)
 
 - **Approval:** John reviewed staging, asked for the county-shape fix, and said the package could go to live once it was fixed; after the fix he said to finish up.
