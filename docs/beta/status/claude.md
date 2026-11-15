@@ -88,6 +88,6 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| P1 Map loading animations and motion | Done on staging; not live | `claude/map-polish` | John confirmed Claude edits Codex-owned `frontend/**` for this change. New [MapLoading](../../../frontend/src/components/MapLoading.jsx) component (animated SVG observatory mark, first-load overlay, loading pill, legend skeleton) and motion CSS in `Places2025Pilot.css`. |
+| P1 Map loading animations and motion | Done; live 2026-11-15T23:51Z (`63cd261`) | `claude/map-polish` | John confirmed Claude edits Codex-owned `frontend/**` for this change. New [MapLoading](../../../frontend/src/components/MapLoading.jsx) component (animated SVG observatory mark, first-load overlay, loading pill, legend skeleton) and motion CSS in `Places2025Pilot.css`. |
 
 - **For Codex:** `ObservatoryMark` and `LegendSkeleton` in `frontend/src/components/MapLoading.jsx` are reusable for other loading states; the community pages still show plain "Loading …" text.

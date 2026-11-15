@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T23:58:00+00:00 — Instant map tooltips; map polish promoted to live (Claude)
+
+- **Request (John):** make hover tooltips on the county maps instant with no animation, because the fade looked janky, and then go live.
+- **Change:** `Places2025Pilot.css` now sets `animation: none; transition: none` on `.pilot-map .leaflet-tooltip`. Leaflet's CSS has no tooltip fade of its own. Commit `63cd261`, deployed to staging. On staging a hovered Cape Girardeau tooltip had `animationName: none` and a `0s` transition. Map page tests: 30 passed.
+- **Live promotion (application only):** rollback pair `data/deploy-recovery/map-polish-20261115/` (`webroot-before/` with `index-1wNr5RpJ.js`, `commit-before.txt` = `7c188c6`); `git merge --ff-only 63cd261` in `/home/john/places-app`; `npm run build`; `sudo rsync -a --delete dist/ /var/www/places/` at 23:51Z. No backend restart (no backend change), no migration, pointers untouched.
+- **Verification:** live and staging bundles are equal (`index-D7zfOmSk.js`). `/`, `/explore/map`, `/area/places-2025`, `/area/acs-community`, `/cdc-funding`, and `/api/health` returned 200; the anonymous community catalog returned 401. Signed-in pages on live were not checked by the agent (it has no live access code); the same build passed the signed-in walkthrough and the tooltip check on staging.
+- **Correction:** the 23:55Z entry below was stamped ahead of the clock; that work finished at about 23:45Z. **Open:** `origin` not pushed for this change.
+
 ## 2026-11-15T23:55:00+00:00 — Map loading animations and motion polish on staging (Claude)
 
 - **Request (John):** subtle animations and polish; an animated loading screen with the Public Data Observatory logo on a map's first load only (not on zoom or Home), and a loading animation under the search bar instead of "Loading legend…" while shapes load.
