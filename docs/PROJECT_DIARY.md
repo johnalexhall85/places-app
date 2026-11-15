@@ -29,6 +29,12 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Coordination:** Codex's API tests assert the original 28-measure example files, so those files were left unchanged and refreshed examples were added under `docs/beta/contract-examples/after-c1/`. Requests to Codex are in `docs/beta/status/claude.md`.
 - **Unresolved / next:** promotion to live needs the same county-then-tract sequence, during which tract values are briefly unavailable. Next: C2 (ACS subject-table measures), then C3 (congressional districts).
 
+## 2026-11-15T14:58:18+00:00 — X6 facility source citation and final staging recheck (Codex)
+
+- **Correction/follow-up:** After the initial Gate 3 evidence entry, added each mapped facility block's published source release label and ID beside its count in county and district briefings. Commit `c714d3c` was merged into `beta` and deployed to staging. No live changes, migrations, or data publication.
+- **Verification:** Frontend 149/149 and build passed. The complete authenticated X6 staging walkthrough passed again on `c714d3c`, including district, PDF, PLACES tracts, HRSA pointer clicks at both widths, mobile overflow, and contrast checks. The 47-check archived-source audit passed again and refreshed `deliverables/beta/gate3_source_samples.json`; active release IDs were unchanged. Deploy checks passed backend health 200, anonymous catalog 401, and page 200.
+- **Status/next:** Product track is complete on staging; this documentation and report refresh remains to be merged/deployed. Gate 3 review by John is the next action. The handbook remains Claude-owned and was not edited; no live promotion was attempted.
+
 ## 2026-11-15T14:56:00+00:00 — X6 Gate 3 product walkthrough and source evidence (Codex)
 
 - **Request/outcome:** Completed the remaining X6 work on `codex/beta-x6-gate3`: added district, expanded-measure, PLACES tract, insurance-definition, ACS source-map, ordinary HRSA pointer, keyboard, mobile, and contrast assertions to the repeatable staging walkthrough; refreshed seven review images; extended the source audit to 47 checks across eight products and WV-01. Merged/deployed code and images as `08ead46` to staging only; no live application, database, service, or deployment changes and no migrations or source publication.
