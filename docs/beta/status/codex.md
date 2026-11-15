@@ -28,7 +28,7 @@ Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). Codex updates this
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| Y1 Community API: state profile, state search, exports, BRFSS companion | Not started | | |
+| Y1 Community API: state profile, state search, exports, BRFSS companion | Done; merged and deployed to staging | `codex/brfss-y1-community-api` | Lookup-only state search/profile, 33-row state CSV, PDF route, and 13 paired BRFSS rows on Person County response. Authenticated staging API checks passed; area/community tests 232 passed. PDF content check awaits the Y2 page. Code deployed at `bd7e4db`; documentation follow-up pending. |
 | Y2 State profile page | Not started | | |
 | Y3 County profile and comparison changes | Not started | | |
 | Y4 BRFSS state map and topics | Not started | | |

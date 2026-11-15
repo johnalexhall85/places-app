@@ -27,6 +27,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
 - **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
 
+## 2026-11-15T16:39:03+00:00 — Y1 state community API deployed to staging (Codex)
+
+- **Request/outcome:** Merged `beta` into the clean product branch, then implemented Y1 in `backend/app/community/router.py`: state-name search through `lookup.states`, a state profile from `lookup.area_info`, `area_values`, `area_facilities`, `state_counties`, and `state_districts`, state CSV and PDF routes, and 13 BRFSS companion rows keyed to PLACES measures on county API responses. Commit `bd7e4db` merged into local `beta` and deployed to staging. No live changes, migrations, or direct published-data table reads.
+- **Verification:** Eight focused community tests and 232 area/community tests passed. Authenticated staging Nginx returned 200 for state search, North Carolina state profile (33 rows: 20 BRFSS), CSV (33 rows), and Person County profile (13 companion rows). Deploy passed Alembic head, Vite build, backend health 200, anonymous catalog 401, and page 200. State PDF route and session propagation have a passing contract test; rendered PDF content awaits the Y2 page.
+- **Files/state:** community router, `test_community_state.py`, existing community test fixture, product status, and this diary. Staging has the BRFSS release `8ca50183-0b61-4302-8e3b-6e06cc8a35dd`; no publication change. The handbook is Claude-owned under the beta plan and was not edited.
+- **Unresolved/next:** Build Y2 state profile page and verify state PDF, then continue Y3–Y5. B4 promotion remains Claude-owned and waits for John's staging review.
+
 ## 2026-11-15T16:20:00+00:00 — PDF pagination fix deployed to live (Claude)
 
 - **Approval/outcome:** John said to deploy the PDF fix. Fast-forwarded the live checkout from `5e95ee5` to `abc2e37` (print CSS plus documentation), ran `npm run build`, and synced `/var/www/places`. No backend restart, schema, or data change; eleven pointers untouched.
