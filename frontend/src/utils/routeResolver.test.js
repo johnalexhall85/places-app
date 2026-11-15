@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { resolveRoute } from "./routeResolver";
 
 describe("routeResolver", () => {
+  it("sends home to the community landing page and keeps the map reachable", () => {
+    expect(resolveRoute("/")).toEqual({ type: "community-landing" });
+    expect(resolveRoute("/explore/map")).toEqual({ type: "map" });
+    expect(resolveRoute("/community/county/37145")).toEqual({ type: "community-county", id: "37145" });
+    expect(resolveRoute("/compare")).toEqual({ type: "community-compare" });
+    expect(resolveRoute("/topics")).toEqual({ type: "community-topics" });
+    expect(resolveRoute("/topics/food-environment")).toEqual({ type: "community-topic", slug: "food-environment" });
+    expect(resolveRoute("/about")).toEqual({ type: "community-about" });
+    expect(resolveRoute("/methodology")).toEqual({ type: "community-methodology" });
+  });
   it("matches the funding model builder route", () => {
     expect(resolveRoute("/funding-model-builder")).toEqual({ type: "funding-model-builder" });
   });

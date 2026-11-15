@@ -96,7 +96,7 @@ def cleanup_stale_profile_pdfs(
             continue
 
 
-def render_route_pdf_via_playwright(*, route_path: str) -> bytes:
+def render_route_pdf_via_playwright(*, route_path: str, session_cookie: tuple[str, str] | None = None) -> bytes:
     frontend_base = profile_frontend_base_url()
     normalized_path = route_path if route_path.startswith("/") else f"/{route_path}"
     target_url = f"{frontend_base}{normalized_path}"
@@ -111,6 +111,9 @@ def render_route_pdf_via_playwright(*, route_path: str) -> bytes:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page()
+            if session_cookie is not None:
+                name, value = session_cookie
+                page.context.add_cookies([{"name": name, "value": value, "url": frontend_base, "httpOnly": True}])
             page.goto(target_url, wait_until="networkidle", timeout=90_000)
             page.wait_for_selector('[data-testid="profile-ready"]', timeout=90_000)
             page.wait_for_load_state("networkidle")

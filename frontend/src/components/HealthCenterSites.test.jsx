@@ -16,7 +16,8 @@ vi.mock("react-leaflet", () => ({
   useMapEvents: (handlers) => {
     harness.handlers = handlers;
     const [w, s, e, n] = harness.bounds;
-    return { getZoom: () => harness.zoom, getBounds: () => ({ getWest: () => w, getSouth: () => s, getEast: () => e, getNorth: () => n }) };
+    return { getZoom: () => harness.zoom, getCenter: () => ({ lat: (s + n) / 2, lng: (w + e) / 2 }),
+      getBounds: () => ({ getWest: () => w, getSouth: () => s, getEast: () => e, getNorth: () => n }) };
   },
 }));
 

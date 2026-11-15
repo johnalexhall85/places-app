@@ -35,6 +35,7 @@ from app.area_pilot.router import router as area_pilot_router
 from app.area_pilot.hrsa_sites_api import router as area_sites_router
 from app.area_pilot.tri_api import router as area_tri_router
 from app.area_pilot.cms_nursing_homes_api import router as area_nursing_homes_router
+from app.community.router import router as community_router
 
 app = FastAPI(title="PLACES (independent) API", version="0.1.0")
 
@@ -89,3 +90,4 @@ app.include_router(area_pilot_router)
 app.include_router(area_sites_router)
 app.include_router(area_tri_router)
 app.include_router(area_nursing_homes_router)
+app.include_router(community_router)

@@ -1,0 +1,393 @@
+{
+  "checked_at_utc": "2026-11-15T00:57:18.593858+00:00",
+  "staging_base": "http://127.0.0.1:8080",
+  "count": 30,
+  "source_archives": [
+    {
+      "product": "acs",
+      "role": "county_06",
+      "path": "/home/john/places-app/data/ingest/acs5_2024_b19013/48efc6dd-bce8-4d22-892c-126081582d64/011_county_06_8d96575a0746d64f.json",
+      "sha256": "8d96575a0746d64fd28f2697e7a58ed3f90cd94f4464cdb23f1c7a94304b7ad4",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "product": "acs",
+      "role": "county_37",
+      "path": "/home/john/places-app/data/ingest/acs5_2024_b19013/48efc6dd-bce8-4d22-892c-126081582d64/069_county_37_d0dc85d5ba3b867e.json",
+      "sha256": "d0dc85d5ba3b867e32f58c16d709b08471992244bb3ed41eb741880a2ad7c079",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "product": "acs",
+      "role": "county_54",
+      "path": "/home/john/places-app/data/ingest/acs5_2024_b19013/48efc6dd-bce8-4d22-892c-126081582d64/099_county_54_5631f9a1ae76c47c.json",
+      "sha256": "5631f9a1ae76c47c5e115330c69e568383c319f50731c9b9cabd5f5c392bbf94",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "product": "ahrf",
+      "role": "AHRF2025hp.csv",
+      "path": "/home/john/places-app/data/ingest/ahrf_2024_2025/674998ed-ebaf-4d1f-8bdb-c0db971bb1f1/AHRF2025hp.csv",
+      "sha256": "49c23d2c7cf17687dbd1a0fdaf3db1e04743ce6c2333c350355e330024a72f90",
+      "release_id": "a034595f-45d3-46a0-90c9-c12c131d532a"
+    },
+    {
+      "product": "clh",
+      "role": "county",
+      "path": "/home/john/places-app/data/ingest/clh_2023/7aef8589-eb30-4d0b-a244-e1a4939edaed/clh_2023_county_2_0.xlsx",
+      "sha256": "8807d69d57fec807e7bfe5f7f6f62bbae7354e78c6f3039d7f4e1717675241c7",
+      "release_id": "168ec07d-c7ef-4e46-b01a-ec72c00c3d88"
+    },
+    {
+      "product": "cms_gv",
+      "role": "gv_csv",
+      "path": "/home/john/places-app/data/ingest/cms_om_gv/1aaff306-72be-4237-a8a8-61031a9f04ef/om_gv_puf.csv",
+      "sha256": "10c8304012da34da3ecfe4caf4548927095f693383814d0e79ce6711b6806fad",
+      "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92"
+    },
+    {
+      "product": "epa_aqi",
+      "role": "county_csv",
+      "path": "/home/john/places-app/data/ingest/epa_aqi_county_2025/200a83bd-76a3-449f-a240-58b78d989f9f/annual_aqi_by_county_2025.csv",
+      "sha256": "473ad542aa3106ff56230ce587933a3263dbcb9b93c5f24d90e612d42923fc01",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "product": "places",
+      "role": "page_000",
+      "path": "/home/john/chip-claude/data/ingest/places_county_2025/1c4a2db4-a3a2-466c-bd0e-aa527be4bbfc/006_page_000_dde0da7dd989c98c.json",
+      "sha256": "dde0da7dd989c98c430cb6d31e4e8648c4672e8f013b539c32b37dcade39c9ba",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "product": "places",
+      "role": "page_001",
+      "path": "/home/john/chip-claude/data/ingest/places_county_2025/1c4a2db4-a3a2-466c-bd0e-aa527be4bbfc/007_page_001_08733a6682ee298a.json",
+      "sha256": "08733a6682ee298ad8342fdbc2ce74972c2b15d44b5625605fb9fb406c780ab5",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "product": "places",
+      "role": "page_002",
+      "path": "/home/john/chip-claude/data/ingest/places_county_2025/1c4a2db4-a3a2-466c-bd0e-aa527be4bbfc/008_page_002_ef99e931eef8b0d1.json",
+      "sha256": "ef99e931eef8b0d1fc5901a345d8d06a04043386a71ad63a366b3207cea09142",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "product": "places",
+      "role": "page_003",
+      "path": "/home/john/chip-claude/data/ingest/places_county_2025/1c4a2db4-a3a2-466c-bd0e-aa527be4bbfc/009_page_003_16cfa7549dcddcee.json",
+      "sha256": "16cfa7549dcddcee551a3f7ec9cd16c51cd02fcf86407b8f5071a44d38f048bd",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "product": "usda_fea",
+      "role": "values_csv",
+      "path": "/home/john/places-app/data/ingest/usda_food_environment_atlas/051e1926-88c6-4a87-a748-482b710e2748/StateAndCountyData.csv",
+      "sha256": "03aa52c9b2069dabab9e03467ad59df5811c5710d78bc2d589dc573fa1feefcd",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    }
+  ],
+  "checks": [
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "places",
+      "measure_id": "dental_crudeprev",
+      "archive_value": "57.8",
+      "api_value": "57.8",
+      "profile_and_pdf_value": "57.8%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "places",
+      "measure_id": "access2_crudeprev",
+      "archive_value": "10.8",
+      "api_value": "10.8",
+      "profile_and_pdf_value": "10.8%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "acs",
+      "measure_id": "B19013_001E",
+      "archive_value": "63300",
+      "api_value": "63300",
+      "profile_and_pdf_value": "$63,300",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "ahrf",
+      "measure_id": "phys_nf_prim_care_pc_exc_rsdt_23",
+      "archive_value": "11",
+      "api_value": "11",
+      "profile_and_pdf_value": "11",
+      "release_id": "a034595f-45d3-46a0-90c9-c12c131d532a"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "clh",
+      "measure_id": "ACS_PCT_HH_BROADBAND_ANY",
+      "archive_value": "87.52",
+      "api_value": "87.52",
+      "profile_and_pdf_value": "87.52%",
+      "release_id": "168ec07d-c7ef-4e46-b01a-ec72c00c3d88"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "cms_gv",
+      "measure_id": "om_beneficiaries",
+      "archive_value": "3609",
+      "api_value": "3609",
+      "profile_and_pdf_value": "3,609",
+      "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "epa_aqi",
+      "measure_id": "median_aqi",
+      "archive_value": "36",
+      "api_value": "36",
+      "profile_and_pdf_value": "36",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "epa_aqi",
+      "measure_id": "days_with_aqi",
+      "archive_value": "237",
+      "api_value": "237",
+      "profile_and_pdf_value": "237",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "usda_fea",
+      "measure_id": "low_income_low_access_pct",
+      "archive_value": "5.086305141",
+      "api_value": "5.086305141",
+      "profile_and_pdf_value": "5.09%",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    },
+    {
+      "geoid": "37145",
+      "county": "Person",
+      "product": "usda_fea",
+      "measure_id": "snap_stores_per_1000",
+      "archive_value": "1.124428153",
+      "api_value": "1.124428153",
+      "profile_and_pdf_value": "1.12",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "places",
+      "measure_id": "dental_crudeprev",
+      "archive_value": "59.6",
+      "api_value": "59.6",
+      "profile_and_pdf_value": "59.6%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "places",
+      "measure_id": "access2_crudeprev",
+      "archive_value": "7.8",
+      "api_value": "7.8",
+      "profile_and_pdf_value": "7.8%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "acs",
+      "measure_id": "B19013_001E",
+      "archive_value": "60943",
+      "api_value": "60943",
+      "profile_and_pdf_value": "$60,943",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "ahrf",
+      "measure_id": "phys_nf_prim_care_pc_exc_rsdt_23",
+      "archive_value": "230",
+      "api_value": "230",
+      "profile_and_pdf_value": "230",
+      "release_id": "a034595f-45d3-46a0-90c9-c12c131d532a"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "clh",
+      "measure_id": "ACS_PCT_HH_BROADBAND_ANY",
+      "archive_value": "86.19",
+      "api_value": "86.19",
+      "profile_and_pdf_value": "86.19%",
+      "release_id": "168ec07d-c7ef-4e46-b01a-ec72c00c3d88"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "cms_gv",
+      "measure_id": "om_beneficiaries",
+      "archive_value": "16504",
+      "api_value": "16504",
+      "profile_and_pdf_value": "16,504",
+      "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "epa_aqi",
+      "measure_id": "median_aqi",
+      "archive_value": "39",
+      "api_value": "39",
+      "profile_and_pdf_value": "39",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "epa_aqi",
+      "measure_id": "days_with_aqi",
+      "archive_value": "365",
+      "api_value": "365",
+      "profile_and_pdf_value": "365",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "usda_fea",
+      "measure_id": "low_income_low_access_pct",
+      "archive_value": "9.196772575",
+      "api_value": "9.196772575",
+      "profile_and_pdf_value": "9.2%",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    },
+    {
+      "geoid": "54039",
+      "county": "Kanawha",
+      "product": "usda_fea",
+      "measure_id": "snap_stores_per_1000",
+      "archive_value": "1.156229973",
+      "api_value": "1.156229973",
+      "profile_and_pdf_value": "1.16",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "places",
+      "measure_id": "dental_crudeprev",
+      "archive_value": "53.9",
+      "api_value": "53.9",
+      "profile_and_pdf_value": "53.9%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "places",
+      "measure_id": "access2_crudeprev",
+      "archive_value": "14.6",
+      "api_value": "14.6",
+      "profile_and_pdf_value": "14.6%",
+      "release_id": "6f265cd8-809b-402d-a7c2-415301f93ba9"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "acs",
+      "measure_id": "B19013_001E",
+      "archive_value": "74201",
+      "api_value": "74201",
+      "profile_and_pdf_value": "$74,201",
+      "release_id": "c1baba8e-ad3d-409f-b390-d312dbf19686"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "ahrf",
+      "measure_id": "phys_nf_prim_care_pc_exc_rsdt_23",
+      "archive_value": "725",
+      "api_value": "725",
+      "profile_and_pdf_value": "725",
+      "release_id": "a034595f-45d3-46a0-90c9-c12c131d532a"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "clh",
+      "measure_id": "ACS_PCT_HH_BROADBAND_ANY",
+      "archive_value": "87.15",
+      "api_value": "87.15",
+      "profile_and_pdf_value": "87.15%",
+      "release_id": "168ec07d-c7ef-4e46-b01a-ec72c00c3d88"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "cms_gv",
+      "measure_id": "om_beneficiaries",
+      "archive_value": "63950",
+      "api_value": "63950",
+      "profile_and_pdf_value": "63,950",
+      "release_id": "73d93c74-7d59-4723-a862-25ecf7a6bc92"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "epa_aqi",
+      "measure_id": "median_aqi",
+      "archive_value": "61",
+      "api_value": "61",
+      "profile_and_pdf_value": "61",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "epa_aqi",
+      "measure_id": "days_with_aqi",
+      "archive_value": "365",
+      "api_value": "365",
+      "profile_and_pdf_value": "365",
+      "release_id": "70e78172-da21-4782-91e2-d3b97896863f"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "usda_fea",
+      "measure_id": "low_income_low_access_pct",
+      "archive_value": "5.349310875",
+      "api_value": "5.349310875",
+      "profile_and_pdf_value": "5.35%",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    },
+    {
+      "geoid": "06019",
+      "county": "Fresno",
+      "product": "usda_fea",
+      "measure_id": "snap_stores_per_1000",
+      "archive_value": "0.916412115",
+      "api_value": "0.916412115",
+      "profile_and_pdf_value": "0.92",
+      "release_id": "28a4824f-d403-454b-bc85-998fdd64bf92"
+    }
+  ]
+}

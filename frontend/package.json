@@ -10,7 +10,8 @@
     "figma:export": "node scripts/export-figma-assets.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:smoke:usda": "playwright test tests/usda-food-access.smoke.spec.js"
+    "test:smoke:usda": "playwright test tests/usda-food-access.smoke.spec.js",
+    "test:beta": "node scripts/beta-walkthrough.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

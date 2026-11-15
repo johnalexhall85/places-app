@@ -1,5 +1,31 @@
 export function resolveRoute(pathname) {
   const normalizedPath = String(pathname ?? "").trim();
+  if (/^\/?$/.test(normalizedPath)) {
+    return { type: "community-landing" };
+  }
+  if (/^\/explore\/map\/?$/i.test(normalizedPath)) {
+    return { type: "map" };
+  }
+  if (/^\/compare\/?$/i.test(normalizedPath)) {
+    return { type: "community-compare" };
+  }
+  if (/^\/topics\/?$/i.test(normalizedPath)) {
+    return { type: "community-topics" };
+  }
+  if (/^\/about\/?$/i.test(normalizedPath)) {
+    return { type: "community-about" };
+  }
+  if (/^\/methodology\/?$/i.test(normalizedPath)) {
+    return { type: "community-methodology" };
+  }
+  const topicMatch = normalizedPath.match(/^\/topics\/([a-z0-9-]+)\/?$/i);
+  if (topicMatch) {
+    return { type: "community-topic", slug: topicMatch[1] };
+  }
+  const communityCountyMatch = normalizedPath.match(/^\/community\/county\/(\d{5})\/?$/i);
+  if (communityCountyMatch) {
+    return { type: "community-county", id: communityCountyMatch[1] };
+  }
   if (/^\/area\/places-2025\/?$/i.test(normalizedPath)) {
     return { type: "places-2025-pilot" };
   }

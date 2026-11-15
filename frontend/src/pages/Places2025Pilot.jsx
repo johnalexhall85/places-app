@@ -187,6 +187,18 @@ function initialMapZoom() {
   return Math.max(4, Math.ceil(4 * Math.log2(width / (256 * 150 / 360))) / 4);
 }
 
+export function initialMapView(search = typeof window === "undefined" ? "" : window.location.search) {
+  const fallback = { center: [38, -104], zoom: initialMapZoom() };
+  const params = new URLSearchParams(search);
+  const lat = Number(params.get("lat"));
+  const lon = Number(params.get("lon"));
+  const zoom = Number(params.get("zoom"));
+  if (!params.has("lat") || !params.has("lon") || !params.has("zoom") ||
+      !Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(zoom) ||
+      Math.abs(lat) > 85 || Math.abs(lon) > 180) return fallback;
+  return { center: [lat, lon], zoom: Math.min(18, Math.max(initialMapZoom(), zoom)) };
+}
+
 export function pilotQuery(selection, bbox, extra = {}) {
   return new URLSearchParams({
     dataset_id: selection.datasetId,
@@ -202,9 +214,12 @@ export function pilotQuery(selection, bbox, extra = {}) {
 }
 
 function Viewport({ onChange }) {
-  const report = () => onChange(safeViewportBbox(map.getBounds()), map.getZoom());
+  const report = () => {
+    const center = map.getCenter();
+    onChange(safeViewportBbox(map.getBounds()), map.getZoom(), [center.lat, center.lng]);
+  };
   const map = useMapEvents({ moveend: report, zoomend: report });
-  useEffect(() => onChange(safeViewportBbox(map.getBounds()), map.getZoom()), [map, onChange]);
+  useEffect(() => report(), [map, onChange]);
   return null;
 }
 
@@ -244,9 +259,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const isFea = dataset === "usdafea";
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
-  const [measureId, setMeasureId] = useState(isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev");
+  const [initialView] = useState(initialMapView);
+  const [measureId, setMeasureId] = useState(() => new URLSearchParams(window.location.search).get("measure_id") ||
+    (isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isFea ? "low_income_low_access_pct" : "dental_crudeprev"));
   const [bbox, setBBox] = useState(null);
-  const [mapZoom, setMapZoom] = useState(initialMapZoom);
+  const [mapZoom, setMapZoom] = useState(initialView.zoom);
+  const [viewCenter, setViewCenter] = useState(initialView.center);
+  const [copyStatus, setCopyStatus] = useState("");
   const [tractCapKey, setTractCapKey] = useState(null);
   const [page, setPage] = useState(0);
   const [mapData, setMapData] = useState(null);
@@ -292,14 +311,34 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const requestKey = useMemo(() => selection && bbox
     ? String(pilotQuery(selection, bbox, { simplify: String(simplify), limit: "100", offset: String(page * 100) }))
     : null, [selection, bbox, page]);
-  const onViewport = useCallback((next, zoomLevel) => {
+  const onViewport = useCallback((next, zoomLevel, center) => {
     const key = `${next}|${zoomLevel}`;
     if (viewportRef.current === key) return;
     viewportRef.current = key;
     setBBox(next);
     setMapZoom(zoomLevel);
+    setViewCenter(center);
     setPage(0);
   }, []);
+
+  useEffect(() => {
+    if (!bbox || !releaseId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("measure_id", measureId);
+    url.searchParams.set("lat", viewCenter[0].toFixed(5));
+    url.searchParams.set("lon", viewCenter[1].toFixed(5));
+    url.searchParams.set("zoom", String(mapZoom));
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [bbox, releaseId, measureId, mapZoom, viewCenter]);
+
+  async function copyMapLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopyStatus("Map link copied.");
+    } catch {
+      setCopyStatus("Copy this page's URL from the address bar.");
+    }
+  }
 
   useEffect(() => {
     if (!selection || !bbox) return;
@@ -342,13 +381,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const breaks = availableRange && availableRange.low != null && availableRange.high != null
     ? Array.from({ length: 4 }, (_, i) => availableRange.low + (availableRange.high - availableRange.low) * (i + 1) / 5)
     : null;
-  const zoom = initialMapZoom();
+  const zoom = initialView.zoom;
   return <div className="app pilot-app">
     <Header />
     <main className="app-content pilot-content">
       <div className="chip-brand-line"><strong>CHIP by Public Data Observatory</strong><span>{isAcs ? "ACS 2020–2024 5-year income" : isAhrf ? "AHRF 2023 county resources" : isClh ? "AHRQ CLH community conditions" : isAqi ? "EPA AirData 2025 annual county AQI" : isGv ? "CMS Original Medicare 2024, states and counties" : isFea ? "USDA Food Environment Atlas, county measures" : "PLACES 2025 county and tract pilot"}</span></div>
       <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${areaName(geography)} ${isAcs ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
-        {catalog && releaseId && <MapContainer center={[38, -104]} zoom={zoom} minZoom={zoom} zoomSnap={0.25} zoomControl={false}
+        {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
           <ZoomControl position="bottomright" />
@@ -432,6 +471,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           {!isGv && !isFea && wantsTracts && !tractSupported && <p role="status">County estimates remain displayed; no tract estimate is published for this release.</p>}
           {wantsTracts && tractCapExceeded && <p role="status">This viewport contains more than 5,000 tracts. County estimates remain displayed; zoom in for tracts.</p>}
           <p className="pilot-release">Release {releaseId}</p>
+          <div className="pilot-share"><button type="button" onClick={copyMapLink}>Copy map link</button><span role="status">{copyStatus}</span></div>
         </>}
         <a href="/">← Main map</a>
       </section>
