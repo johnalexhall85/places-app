@@ -2,6 +2,13 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T23:20:00+00:00 — Correction and live result for the legacy map retirement (Claude)
+
+- **Correction:** the entry below and the handbook note were stamped 2026-11-16T00:10Z by mistake; the VM clock read 2026-11-15T23:17Z at promotion. The rollback directory keeps the mistyped name `legacy-map-retirement-20261116`.
+- **Live promotion:** rollback pair saved (`webroot-before/` with `index-SHd_oIOA.js`, `commit-before.txt` = `28ff6ef`); `git merge --ff-only 740507e` in `/home/john/places-app`; `npm run build`; `sudo rsync -a --delete dist/ /var/www/places/` at 23:17Z. No backend restart (no backend change); Alembic still `e6b3a8d0f2c5`; pointers untouched.
+- **Verification:** live and staging bundles equal (`index-1wNr5RpJ.js`); `/`, `/explore/map`, `/area/places-2025`, `/cdc-funding`, `/api/health` 200; anonymous community catalog 401. Signed-in pages on live not checked by the agent (no live access code); the same build passed the signed-in walkthrough on staging.
+- **Next:** John's look at live; `git push origin main beta` still outstanding.
+
 ## 2026-11-16T00:10:00+00:00 — Legacy map retired and promoted to live (Claude)
 
 - **Request (John):** remove all the legacy maps from `/explore/map` and from the Data source menu; push live when done.

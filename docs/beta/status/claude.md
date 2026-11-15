@@ -76,7 +76,7 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 - The source audit under `deliverables/` was **not** rerun: no pointer or value changed. Screenshots there predate the new header and ramps and need refreshing by Codex if John wants them current.
 - Shape queries must use `fitted_geom()` from `app/geometry_sql.py`; pages pass `gridForZoom(zoom)` as `simplify`.
 
-## Legacy map retirement (2026-11-16, John's request)
+## Legacy map retirement (2026-11-15, John's request)
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
