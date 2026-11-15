@@ -1,0 +1,734 @@
+{
+ "dataset_id": "cdc_brfss_state_prevalence",
+ "name": "CDC BRFSS state prevalence, 2023 (2022 for dental visits)",
+ "short_name": "BRFSS state survey estimates",
+ "publisher": "Centers for Disease Control and Prevention",
+ "landing_page": "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+ "source_dataset_page": "https://data.cdc.gov/Behavioral-Risk-Factors/Behavioral-Risk-Factor-Surveillance-System-BRFSS-P/dttw-5yxu",
+ "source_api": "https://data.cdc.gov/resource/dttw-5yxu.json",
+ "source_metadata_api": "https://data.cdc.gov/api/views/dttw-5yxu.json",
+ "source_dataset_name": "Behavioral Risk Factor Surveillance System (BRFSS) Prevalence Data (2011 to present)",
+ "source_release_id": "BRFSS Prevalence Data (2011 to present): 2023 and 2022 crude prevalence, Overall",
+ "refresh_policy": {
+  "schedule": "manual",
+  "auto_publish": false,
+  "same_label_revision": "hold_for_review"
+ },
+ "geographies": [
+  "state"
+ ],
+ "aggregation_method": "none",
+ "value_type": "crude_prevalence",
+ "unit": "percent",
+ "boundary_vintage": {
+  "state": "January 1, 2024"
+ },
+ "uncertainty": "95% confidence interval as published by CDC. Sample size is the number of respondents giving the published response.",
+ "source_filters": {
+  "break_out": "Overall",
+  "data_value_type": "Crude Prevalence",
+  "data_value_unit": "%",
+  "datasource": "BRFSS"
+ },
+ "expected_schema_sha256": "9904968919efd340425d72e7d28d61ecec94a4af038d7fc19e147e6f9a45905e",
+ "expected_locations": {
+  "2022": {
+   "01": "AL",
+   "02": "AK",
+   "04": "AZ",
+   "05": "AR",
+   "06": "CA",
+   "08": "CO",
+   "09": "CT",
+   "10": "DE",
+   "11": "DC",
+   "12": "FL",
+   "13": "GA",
+   "15": "HI",
+   "16": "ID",
+   "17": "IL",
+   "18": "IN",
+   "19": "IA",
+   "20": "KS",
+   "21": "KY",
+   "22": "LA",
+   "23": "ME",
+   "24": "MD",
+   "25": "MA",
+   "26": "MI",
+   "27": "MN",
+   "28": "MS",
+   "29": "MO",
+   "30": "MT",
+   "31": "NE",
+   "32": "NV",
+   "33": "NH",
+   "34": "NJ",
+   "35": "NM",
+   "36": "NY",
+   "37": "NC",
+   "38": "ND",
+   "39": "OH",
+   "40": "OK",
+   "41": "OR",
+   "42": "PA",
+   "44": "RI",
+   "45": "SC",
+   "46": "SD",
+   "47": "TN",
+   "48": "TX",
+   "49": "UT",
+   "50": "VT",
+   "51": "VA",
+   "53": "WA",
+   "54": "WV",
+   "55": "WI",
+   "56": "WY",
+   "66": "GU",
+   "72": "PR",
+   "78": "VI",
+   "98": "UW",
+   "99": "US"
+  },
+  "2023": {
+   "01": "AL",
+   "02": "AK",
+   "04": "AZ",
+   "05": "AR",
+   "06": "CA",
+   "08": "CO",
+   "09": "CT",
+   "10": "DE",
+   "11": "DC",
+   "12": "FL",
+   "13": "GA",
+   "15": "HI",
+   "16": "ID",
+   "17": "IL",
+   "18": "IN",
+   "19": "IA",
+   "20": "KS",
+   "22": "LA",
+   "23": "ME",
+   "24": "MD",
+   "25": "MA",
+   "26": "MI",
+   "27": "MN",
+   "28": "MS",
+   "29": "MO",
+   "30": "MT",
+   "31": "NE",
+   "32": "NV",
+   "33": "NH",
+   "34": "NJ",
+   "35": "NM",
+   "36": "NY",
+   "37": "NC",
+   "38": "ND",
+   "39": "OH",
+   "40": "OK",
+   "41": "OR",
+   "44": "RI",
+   "45": "SC",
+   "46": "SD",
+   "47": "TN",
+   "48": "TX",
+   "49": "UT",
+   "50": "VT",
+   "51": "VA",
+   "53": "WA",
+   "54": "WV",
+   "55": "WI",
+   "56": "WY",
+   "66": "GU",
+   "72": "PR",
+   "78": "VI",
+   "98": "UW",
+   "99": "US"
+  }
+ },
+ "median_locations": {
+  "98": "All States and DC (median)",
+  "99": "All States, DC and Territories (median)"
+ },
+ "source_only_locations": {
+  "66": "Guam",
+  "78": "Virgin Islands"
+ },
+ "footnotes": {
+  "median": "**",
+  "unavailable": "*"
+ },
+ "limitations": [
+  "State survey estimates from telephone interviews with adults; they are self-reported and weighted by CDC.",
+  "A BRFSS state estimate is a direct survey result. A PLACES county or tract estimate is modeled from the same survey. A state figure shown beside a county figure is context, not a ranking benchmark.",
+  "Crude prevalence, not age-adjusted: states with older populations tend to show higher rates of chronic conditions.",
+  "Kentucky and Pennsylvania have no 2023 result in this CDC file and are shown as not published for 2023 measures.",
+  "The \"All States and DC (median)\" figure is the middle state value, not a national estimate, and has no confidence interval.",
+  "The insurance measure covers adults aged 18 to 64 and is not comparable with the Census all-ages uninsured share.",
+  "Values are as published by CDC. CHIP does not derive a state value from counties or combine responses."
+ ],
+ "documentation_urls": [
+  "https://www.cdc.gov/brfss/brfssprevalence/index.html",
+  "https://www.cdc.gov/brfss/annual_data/annual_2023.html",
+  "https://www.cdc.gov/places/measure-definitions/index.html"
+ ],
+ "measures": [
+  {
+   "measure_id": "diabetes",
+   "label": "Diagnosed diabetes",
+   "question_id": "DIABETE4",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Have you ever been told by a doctor that you have diabetes?",
+   "source_topic": "Diabetes",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "diabetes_crudeprev",
+   "official_definition": "Have you ever been told by a doctor that you have diabetes? Response published: Yes.",
+   "interpretation": "Adults who report that a doctor told them they have diabetes. Diabetes only during pregnancy and pre-diabetes are separate responses and are not counted.",
+   "legend_breaks": [
+    9,
+    11,
+    12,
+    14
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "high_blood_pressure",
+   "label": "High blood pressure",
+   "question_id": "_RFHYPE6",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Adults who have been told they have high blood pressure (variable calculated from one or more BRFSS questions)",
+   "source_topic": "High Blood Pressure",
+   "source_class": "Hypertension Awareness",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "bphigh_crudeprev",
+   "official_definition": "Adults who have been told they have high blood pressure (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who report being told by a health professional that they have high blood pressure.",
+   "legend_breaks": [
+    31,
+    33,
+    35,
+    38
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "obesity",
+   "label": "Obesity",
+   "question_id": "_BMI5CAT",
+   "response_id": "RESP039",
+   "response": "Obese (BMI 30.0 - 99.8)",
+   "source_question": "Weight classification by Body Mass Index (BMI) (variable calculated from one or more BRFSS questions)",
+   "source_topic": "BMI Categories",
+   "source_class": "Overweight and Obesity (BMI)",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "obesity_crudeprev",
+   "official_definition": "Weight classification by Body Mass Index (BMI) (variable calculated from one or more BRFSS questions) Response published: Obese (BMI 30.0 - 99.8).",
+   "interpretation": "Adults whose body mass index, calculated from self-reported height and weight, is 30 or higher.",
+   "legend_breaks": [
+    30,
+    33,
+    35,
+    37
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "coronary_heart_disease",
+   "label": "Coronary heart disease",
+   "question_id": "CVDCRHD4",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Ever told you had angina or coronary heart disease?",
+   "source_topic": "Cardiovascular Disease",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "chd_crudeprev",
+   "official_definition": "Ever told you had angina or coronary heart disease? Response published: Yes.",
+   "interpretation": "Adults who report being told they had angina or coronary heart disease.",
+   "legend_breaks": [
+    3,
+    3.5,
+    4,
+    5
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "stroke",
+   "label": "Stroke",
+   "question_id": "CVDSTRK3",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Ever told you had a stroke?",
+   "source_topic": "Cardiovascular Disease",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "stroke_crudeprev",
+   "official_definition": "Ever told you had a stroke? Response published: Yes.",
+   "interpretation": "Adults who report being told they had a stroke.",
+   "legend_breaks": [
+    2.8,
+    3.1,
+    3.6,
+    4
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "copd",
+   "label": "Chronic obstructive pulmonary disease (COPD)",
+   "question_id": "CHCCOPD3",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Ever told you have COPD?",
+   "source_topic": "COPD",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "copd_crudeprev",
+   "official_definition": "Ever told you have COPD? Response published: Yes.",
+   "interpretation": "Adults who report being told they have COPD, emphysema, or chronic bronchitis.",
+   "legend_breaks": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "current_asthma",
+   "label": "Current asthma",
+   "question_id": "_CASTHM1",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Adults who have been told they currently have asthma (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Asthma",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "casthma_crudeprev",
+   "official_definition": "Adults who have been told they currently have asthma (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who report being told they have asthma and that they still have it.",
+   "legend_breaks": [
+    9,
+    10,
+    11,
+    12
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "depression",
+   "label": "Depression",
+   "question_id": "ADDEPEV3",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Ever told you that you have a form of depression?",
+   "source_topic": "Depression",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": "depression_crudeprev",
+   "official_definition": "Ever told you that you have a form of depression? Response published: Yes.",
+   "interpretation": "Adults who report being told they have a form of depression.",
+   "legend_breaks": [
+    18,
+    21,
+    23,
+    25
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "frequent_mental_distress",
+   "label": "Frequent mental distress",
+   "question_id": "_MENT14D",
+   "response_id": "RESP224",
+   "response": "14+ days when mental health not good",
+   "source_question": "Days when mental health status not good (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Healthy Days",
+   "source_class": "Days of Poor Health",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_status",
+   "places_measure_id": "mhlth_crudeprev",
+   "official_definition": "Days when mental health status not good (variable calculated from one or more BRFSS questions) Response published: 14+ days when mental health not good.",
+   "interpretation": "Adults who report 14 or more days in the past 30 when their mental health was not good.",
+   "legend_breaks": [
+    14,
+    15,
+    16,
+    17
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "current_smoking",
+   "label": "Current cigarette smoking",
+   "question_id": "_RFSMOK3",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Adults who are current smokers (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Current Smoker Status",
+   "source_class": "Tobacco Use",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "risk_behaviors",
+   "places_measure_id": "csmoking_crudeprev",
+   "official_definition": "Adults who are current smokers (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who have smoked at least 100 cigarettes and now smoke every day or some days.",
+   "legend_breaks": [
+    9,
+    11,
+    13,
+    15
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "routine_checkup",
+   "label": "Routine checkup within the past year",
+   "question_id": "CHECKUP1",
+   "response_id": "RESP063",
+   "response": "Within the past year",
+   "source_question": "About how long has it been since you last visited a doctor for a routine checkup?",
+   "source_topic": "Last Checkup",
+   "source_class": "Health Care Access/Coverage",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "prevention",
+   "places_measure_id": "checkup_crudeprev",
+   "official_definition": "About how long has it been since you last visited a doctor for a routine checkup? Response published: Within the past year.",
+   "interpretation": "Adults who report visiting a doctor for a routine checkup within the past year.",
+   "legend_breaks": [
+    74,
+    77,
+    79,
+    81
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "uninsured_18_64",
+   "label": "Current lack of health insurance",
+   "question_id": "_HCVU653",
+   "response_id": "RESP234",
+   "response": "Do not have some form of health insurance",
+   "source_question": "Adults aged 18-64 who have any kind of health care coverage (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Under 65 Coverage",
+   "source_class": "Health Care Access/Coverage",
+   "observation_period": "2023",
+   "population": "adults aged 18-64",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "prevention",
+   "places_measure_id": "access2_crudeprev",
+   "official_definition": "Adults aged 18-64 who have any kind of health care coverage (variable calculated from one or more BRFSS questions) Response published: Do not have some form of health insurance.",
+   "interpretation": "Adults aged 18 to 64 who report having no form of health care coverage.",
+   "legend_breaks": [
+    7,
+    9,
+    11,
+    14
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "dental_visit",
+   "label": "Visited dentist or dental clinic in the past year",
+   "question_id": "_DENVST3",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Visited the dentist or dental clinic within the past year for any reason (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Dental Visit",
+   "source_class": "Oral Health",
+   "observation_period": "2022",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "prevention",
+   "places_measure_id": "dental_crudeprev",
+   "official_definition": "Visited the dentist or dental clinic within the past year for any reason (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who report visiting a dentist or dental clinic for any reason within the past year.",
+   "legend_breaks": [
+    60,
+    63,
+    66,
+    69
+   ]
+  },
+  {
+   "measure_id": "binge_drinking",
+   "label": "Binge drinking",
+   "question_id": "_RFBING6",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Binge drinkers (males having five or more drinks on one occasion, females having four or more drinks on one occasion) (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Binge Drinking",
+   "source_class": "Alcohol Consumption",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "risk_behaviors",
+   "places_measure_id": null,
+   "official_definition": "Binge drinkers (males having five or more drinks on one occasion, females having four or more drinks on one occasion) (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who report five or more drinks (men) or four or more drinks (women) on one occasion in the past 30 days.",
+   "legend_breaks": [
+    13,
+    15,
+    16,
+    18
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "no_leisure_physical_activity",
+   "label": "No leisure-time physical activity",
+   "question_id": "_TOTINDA",
+   "response_id": "RESP054",
+   "response": "No",
+   "source_question": "During the past month, did you participate in any physical activities? (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Exercise",
+   "source_class": "Physical Activity",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "risk_behaviors",
+   "places_measure_id": null,
+   "official_definition": "During the past month, did you participate in any physical activities? (variable calculated from one or more BRFSS questions) Response published: No.",
+   "interpretation": "Adults who report no physical activity or exercise outside their regular job in the past month.",
+   "legend_breaks": [
+    21,
+    23,
+    26,
+    28
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "fair_or_poor_health",
+   "label": "Fair or poor self-rated health",
+   "question_id": "_RFHLTH",
+   "response_id": "RESP062",
+   "response": "Fair or Poor Health",
+   "source_question": "Health Status (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Fair or Poor Health",
+   "source_class": "Health Status",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_status",
+   "places_measure_id": null,
+   "official_definition": "Health Status (variable calculated from one or more BRFSS questions) Response published: Fair or Poor Health.",
+   "interpretation": "Adults who rate their general health as fair or poor.",
+   "legend_breaks": [
+    16,
+    18,
+    19,
+    21
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "frequent_physical_distress",
+   "label": "Frequent physical distress",
+   "question_id": "_PHYS14D",
+   "response_id": "RESP221",
+   "response": "14+ days when physical health not good",
+   "source_question": "Days when physical health status not good (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Healthy Days",
+   "source_class": "Days of Poor Health",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_status",
+   "places_measure_id": null,
+   "official_definition": "Days when physical health status not good (variable calculated from one or more BRFSS questions) Response published: 14+ days when physical health not good.",
+   "interpretation": "Adults who report 14 or more days in the past 30 when their physical health was not good.",
+   "legend_breaks": [
+    11.5,
+    12.5,
+    13.5,
+    14.5
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "arthritis",
+   "label": "Arthritis",
+   "question_id": "_DRDXAR2",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Adults who have been told they have arthritis (variable calculated from one or more BRFSS questions)",
+   "source_topic": "Arthritis",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": null,
+   "official_definition": "Adults who have been told they have arthritis (variable calculated from one or more BRFSS questions) Response published: Yes.",
+   "interpretation": "Adults who report being told they have some form of arthritis.",
+   "legend_breaks": [
+    23,
+    26,
+    27,
+    29
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "kidney_disease",
+   "label": "Kidney disease",
+   "question_id": "CHCKDNY2",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Ever told you have kidney disease?",
+   "source_topic": "Kidney",
+   "source_class": "Chronic Health Indicators",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "health_outcomes",
+   "places_measure_id": null,
+   "official_definition": "Ever told you have kidney disease? Response published: Yes.",
+   "interpretation": "Adults who report being told they have kidney disease, not including kidney stones, bladder infection, or incontinence.",
+   "legend_breaks": [
+    3.2,
+    3.5,
+    3.8,
+    4.4
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  },
+  {
+   "measure_id": "cost_barrier_to_care",
+   "label": "Could not see a doctor because of cost",
+   "question_id": "MEDCOST1",
+   "response_id": "RESP046",
+   "response": "Yes",
+   "source_question": "Was there a time in the past 12 months when you needed to see a doctor but could not because you could not afford it?",
+   "source_topic": "Health Care Cost",
+   "source_class": "Health Care Access/Coverage",
+   "observation_period": "2023",
+   "population": "adults",
+   "kind": "percent",
+   "unit": "percent",
+   "category": "prevention",
+   "places_measure_id": null,
+   "official_definition": "Was there a time in the past 12 months when you needed to see a doctor but could not because you could not afford it? Response published: Yes.",
+   "interpretation": "Adults who report a time in the past 12 months when they needed to see a doctor but could not because they could not afford it.",
+   "legend_breaks": [
+    8.5,
+    10,
+    11,
+    13
+   ],
+   "documented_unavailable_states": [
+    "KY",
+    "PA"
+   ]
+  }
+ ]
+}

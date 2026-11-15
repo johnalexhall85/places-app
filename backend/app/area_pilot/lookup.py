@@ -22,7 +22,7 @@ from typing import Any, Callable
 
 from sqlalchemy import text
 
-from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
+from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
                             hrsa_sites_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
@@ -86,6 +86,8 @@ SPECS: tuple[Spec, ...] = (
     Spec('acs_profile', acs_profile_api.load_registry,
          {lvl: ('observation_acs_profile', 'geoid', 'level') for lvl in ('state', 'county', 'tract', 'cd')},
          ('moe', 'estimate_annotation', 'moe_annotation', 'moe_confidence'), 'moe90', acs_profile_api),
+    Spec('brfss', brfss_api.load_registry, {'state': ('observation_brfss', 'geoid', None)},
+         ('ci_low', 'ci_high', 'sample_size'), 'ci95', brfss_api),
     Spec('ahrf', ahrf_api.load_registry, {'county': ('observation_ahrf', 'geoid', None)},
          ('source_code',), 'none', ahrf_api),
     Spec('clh', clh_api.load_registry,
@@ -100,6 +102,8 @@ SPECS: tuple[Spec, ...] = (
          ('source_value', 'value_note'), 'none', usda_fea_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
+    # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
+    'brfss': lambda geoid, level: brfss_api.NOT_PUBLISHED,
     'cms_gv': lambda geoid, level: cms_gv_api.NOT_PUBLISHED,
     'epa_aqi': lambda geoid, level: epa_aqi_api.NO_VALUE,
     'usda_fea': _fea_missing,
@@ -155,6 +159,21 @@ SOURCE_CREDITS = {
 }
 
 
+def _pairs() -> dict[tuple[str, str], dict]:
+    """PLACES county/tract measures and the BRFSS state measure that asks the same question, both ways.
+
+    The pairing is declared per measure in the BRFSS registry (`places_measure_id`). A BRFSS state
+    figure is a direct survey estimate and a PLACES figure is modeled from that survey: a pair is
+    context for the reader, never an input to a calculation.
+    """
+    pairs = {}
+    for measure in brfss_api.load_registry()['measures']:
+        if measure.get('places_measure_id'):
+            pairs[('brfss', measure['measure_id'])] = {'product': 'places', 'measure_id': measure['places_measure_id']}
+            pairs[('places', measure['places_measure_id'])] = {'product': 'brfss', 'measure_id': measure['measure_id']}
+    return pairs
+
+
 def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
     source = measure.get('source')
     return {
@@ -172,6 +191,7 @@ def _measure_meta(spec: Spec, config: dict, measure: dict) -> dict:
         'denominator': measure.get('denominator'), 'interpretation': measure.get('interpretation'),
         'underlying_source': source if isinstance(source, str) else None,
         'source_credit': SOURCE_CREDITS.get((spec.key, measure['measure_id'])),
+        'paired_measure': _pairs().get((spec.key, measure['measure_id'])),
     }
 
 
@@ -483,3 +503,63 @@ def state_districts(db, state_geoid: str) -> list[dict]:
     (state_geoid,) = _check('state', [state_geoid])
     return [dict(r) for r in db.execute(text(f'''SELECT geoid,name,district_code FROM {S}.cd_boundary_119
         WHERE state_fips=:state ORDER BY geoid'''), {'state': state_geoid}).mappings()]
+
+
+def state_counties(db, state_geoid: str) -> list[dict]:
+    """All counties of one state on the 2024 TIGER boundaries (for navigation). No values."""
+    (state_geoid,) = _check('state', [state_geoid])
+    return [dict(r) for r in db.execute(text(f"""SELECT geoid,name FROM {S}.acs_boundary_2024
+        WHERE level='county' AND left(geoid,2)=:state ORDER BY name,geoid"""), {'state': state_geoid}).mappings()]
+
+
+def states(db) -> list[dict]:
+    """Every state-level area CHIP can name (50 states, DC, Puerto Rico), for search."""
+    return [dict(r) for r in db.execute(text(f"""SELECT geoid,name FROM {S}.acs_boundary_2024
+        WHERE level='state' ORDER BY name""")).mappings()]
+
+
+def state_survey_companions(db, state_geoid: str) -> dict:
+    """BRFSS state survey rows keyed by the PLACES measure each one pairs with.
+
+    For a county or tract profile: `companions[places_measure_id]` is the state's own BRFSS row
+    (value, 95% confidence interval, status, period, release), or a `not_published` row when CDC
+    has no result for that state and year. PLACES measures without a pair are absent.
+    """
+    (state_geoid,) = _check('state', [state_geoid])
+    result = area_values(db, 'state', [state_geoid], products=['brfss'])
+    pairs = _pairs()
+    companions = {}
+    for row in result['values']:
+        pair = pairs.get(('brfss', row['measure_id']))
+        if pair:
+            companions[pair['measure_id']] = row
+    return {'state_geoid': state_geoid, 'companions': companions, 'releases': result['releases'],
+            'note': ('State survey estimate (BRFSS). The county or tract figure is modeled from the same survey; '
+                     'the state figure is context, not a benchmark for ranking.')}
+
+
+def brfss_medians(db) -> list[dict]:
+    """CDC's published "All States and DC (median)" row per BRFSS measure.
+
+    A median of state values, not a national estimate, and published without a confidence interval.
+    """
+    spec = next(s for s in SPECS if s.key == 'brfss')
+    config = spec.load()
+    release = active_releases(db).get(config['dataset_id'])
+    if release is None:
+        return []
+    rows = {r['measure_id']: r for r in db.execute(text(f"""SELECT measure_id,value,sample_size,status
+        FROM {S}.observation_brfss WHERE release_id=:release AND geoid='98' AND location_kind='median'"""),
+        {'release': release['release_id']}).mappings()}
+    out = []
+    for measure in config['measures']:
+        row = rows.get(measure['measure_id'])
+        if row is not None:
+            meta = _measure_meta(spec, config, measure)
+            out.append({k: meta[k] for k in ('product', 'dataset_id', 'measure_id', 'label', 'unit', 'kind', 'period',
+                                             'population', 'value_type', 'paired_measure')} | {
+                'reference_kind': 'median_of_states_and_dc', 'reference_label': config['median_locations']['98'],
+                'value': _num(row['value']), 'status': row['status'], 'jurisdictions': row['sample_size'],
+                'uncertainty': {'kind': 'none', 'label': 'CDC publishes this median without a confidence interval'},
+                'release_id': release['release_id'], 'source_release_id': release['source_release_id']})
+    return out
