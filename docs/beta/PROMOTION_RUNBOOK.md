@@ -14,7 +14,7 @@ Live is `/home/john/places-app` (`main`), database `places`, service `places-bac
 | ACS community product | not present | new release created on live; 437 district shapes loaded |
 | Other nine pointers | unchanged | unchanged (verified before and after) |
 | Webroot | pre-beta bundle | build of the approved commit |
-| Backend environment | no `PROFILE_FRONTEND_BASE_URL` (check current value) | `PROFILE_FRONTEND_BASE_URL=http://127.0.0.1` so PDFs render from the live site |
+| Backend environment | no `PROFILE_FRONTEND_BASE_URL` (verified in the live `.env` on 2026-11-15) | `PROFILE_FRONTEND_BASE_URL=http://127.0.0.1` so PDFs render from the live site |
 
 Data is **re-ingested on live**, not copied from staging. Each live candidate must produce the same content digests that were reviewed on staging. If CDC or the Census Bureau has changed a file since staging, the digest differs: stop, and review that candidate as a new release.
 
@@ -29,14 +29,17 @@ Reviewed staging digests:
 ## 0. Preconditions
 
 - John's Gate 3 approval names the `beta` commit to promote.
-- On staging at that commit: the full walkthrough passes, backend area and community tests pass, frontend tests and build pass.
+- On staging at that commit: the full walkthrough passes, backend area and community tests pass, frontend tests and build pass, and the archived-source sample audit has been rerun against the C1–C3 active pointers.
 - `git status` is clean in `/home/john/places-app`, and `main` is an ancestor of the approved commit.
 - At least 100 GB free on `/`.
 - No agent is running a staging deploy or an ingest.
+- A Census API key is available through the private default key file or `CENSUS_API_KEY_FILE`; the default file was present with mode 600 when checked on 2026-11-15. Check access without printing its contents.
 
 ## 1. Recovery set (before any change)
 
 Create a fresh, dated recovery set of live following [chip_current_recovery_set.md](../../backend/docs/chip_current_recovery_set.md), into a new directory under `/home/john/chip-recovery/`. It must cover all ten current releases (the handbook's outstanding priority 1). Verify `SHA256SUMS`. Record the directory, dump size, and duration in the diary. The isolated restore test is recommended; if it is skipped, say so.
+
+The [C4 rehearsal set](../../backend/docs/chip_beta_c4_recovery_set.md) is a point-in-time copy of the pre-beta live state. It does not replace this new Gate 3 backup, because live may change between the rehearsal and approval.
 
 Also keep the application rollback pair:
 
@@ -90,7 +93,7 @@ cd /home/john/places-app/frontend
 npm ci                      # if package-lock.json changed
 npm run build               # frontend/.env.production supplies VITE_API_BASE_URL=/api on live; confirm the file exists
 sudo rsync -a --delete dist/ /var/www/places/
-# add PROFILE_FRONTEND_BASE_URL=http://127.0.0.1 to backend/.env if not present
+# set PROFILE_FRONTEND_BASE_URL=http://127.0.0.1 in the private backend/.env
 sudo systemctl restart places-backend
 curl -fsS http://127.0.0.1:8000/health
 ```
@@ -101,6 +104,7 @@ No Nginx change is needed: the community API is reached through the existing `/a
 
 - Anonymous `GET /api/area/catalog` and `GET /api/community/catalog` through Nginx return 401; `/` returns 200.
 - With an authorized session: the walkthrough (landing, search, the three showcase profiles, comparison, PDF, a topic, the district briefing) passes against the live address.
+- From the approved checkout's `frontend/`, run `CHIP_BETA_URL=http://127.0.0.1 CHIP_BETA_CODE_FILE=<private-live-code-file> CHIP_BETA_DISTRICT_GEOID=5401 node scripts/beta-walkthrough.mjs`. The script currently checks that the district route loads; inspect its values, facility list, and county relations separately until Codex expands that leg.
 - `/explore/map`, every `/area/*` page, the three overlays, and the funding pages load.
 - Ten values per showcase county match staging.
 - Record commit, pointers, digests, and results in the diary; update the handbook's live state.
@@ -119,7 +123,7 @@ Data rollback and application rollback are independent. Never delete archives un
 
 ## Open items before this runbook is final
 
-- Confirm the live value needed for `PROFILE_FRONTEND_BASE_URL` and whether `frontend/.env.production` exists in the live checkout (it is git-ignored).
-- Add the final walkthrough command once Codex's X6 script includes the district leg.
-- Decide whether to run the isolated restore test for the recovery set.
+- Confirm the live PDF frontend base through the authorized live PDF check after setting it. The live `.env.production` exists and sets `VITE_API_BASE_URL=/api` (verified 2026-11-15).
+- Expand the district walkthrough leg beyond route loading before Gate 3.
+- Fix and recheck the HRSA site-table “Details” pointer target at desktop and 390 px widths; the current staging overlay places other content over the button, although keyboard Enter works.
 - AHRF redistribution terms remain unsettled; the product stays behind the access code.

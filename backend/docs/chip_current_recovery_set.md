@@ -1,5 +1,7 @@
 # CHIP current local recovery set — 2026-11-14
 
+**Current-state correction, 2026-11-15:** This document records the older `20261114T004848Z` set and retains its exact commands as an operator example. The newer pre-beta live set and its verification record are in [the beta C4 recovery guide](chip_beta_c4_recovery_set.md). Substitute a new dated directory before repeating any command; neither local set is an independent off-VM backup.
+
 ## Storage and scope
 
 `/dev/vda` is the existing 500 GB system disk. Its ext4 partition `/dev/vda2` is mounted at `/`; there is no separate attached or unmounted data volume. PostgreSQL's `infra_places_db_data` Docker volume, `/home/john/places-app/data/ingest`, the deployed webroot, and this recovery set all reside on that root filesystem. The set is `/home/john/chip-recovery/20261114T004848Z/`, with a private directory and files. It is a **local recovery copy on the production VM**, not an independent copy of that VM or disk.
