@@ -18,6 +18,7 @@ import "./community/tokens.css";
 import { CommunityLanding, CommunityCounty } from "./community/CommunityPages";
 import CommunityCompare from "./community/CommunityCompare";
 import { CommunityTopics, CommunityTopic } from "./community/CommunityTopics";
+import { CommunityAbout, CommunityMethodology } from "./community/CommunityInfo";
 import { resolveRoute } from "./utils/routeResolver";
 
 installDemoAccessFetchCredentials(API_BASE);
@@ -71,6 +72,10 @@ function Root() {
     routedPage = <CommunityTopics />;
   } else if (route.type === "community-topic") {
     routedPage = <CommunityTopic slug={route.slug} />;
+  } else if (route.type === "community-about") {
+    routedPage = <CommunityAbout />;
+  } else if (route.type === "community-methodology") {
+    routedPage = <CommunityMethodology />;
   } else if (route.type === "cdc-state-funding-profile") {
     routedPage = <CdcStateFundingProfile stateCode={route.id} />;
   } else if (route.type === "cdc-funding-overview") {

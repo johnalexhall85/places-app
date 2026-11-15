@@ -12,6 +12,12 @@ export function resolveRoute(pathname) {
   if (/^\/topics\/?$/i.test(normalizedPath)) {
     return { type: "community-topics" };
   }
+  if (/^\/about\/?$/i.test(normalizedPath)) {
+    return { type: "community-about" };
+  }
+  if (/^\/methodology\/?$/i.test(normalizedPath)) {
+    return { type: "community-methodology" };
+  }
   const topicMatch = normalizedPath.match(/^\/topics\/([a-z0-9-]+)\/?$/i);
   if (topicMatch) {
     return { type: "community-topic", slug: topicMatch[1] };

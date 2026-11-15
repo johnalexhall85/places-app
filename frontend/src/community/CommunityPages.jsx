@@ -46,9 +46,11 @@ export function CommunityShell({ children }) {
           <a href="/compare">Compare</a>
           <a href="/explore/map">Explore data</a>
           <a href="/cdc-funding">Funding</a>
+          <a href="/about">About</a>
         </nav>
       </header>
       <main id="main">{children}</main>
+      <div className="community-meta-links"><a href="/about">About CHIP</a><a href="/methodology">Data methodology</a></div>
       <Footer />
     </div>
   );
