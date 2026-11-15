@@ -62,9 +62,11 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 | M3 Area read endpoint | Done on staging | `claude/map-consistency` | `lookup.area_info(..., geometry=True)`; `GET /community/area/{level}/{geoid}`. |
 | M4 Tooltip, legend, selection, tools, search on `/area/*` | Done on staging | `claude/map-consistency` | Popups removed. |
 | M5 Maps open zoomed to the place | Done on staging | `claude/map-consistency` | `focus=<level>:<geoid>` from county, state, and district profiles; legacy map accepts county and state. |
-| M6 Verify, staging, documents | Done; waiting for John's review | `claude/map-consistency` | Frontend 155 tests, area/community backend 241, `npm run test:beta` all legs on staging `5fb2720`. Not on live. |
+| M6 Verify, staging, documents | Done | `claude/map-consistency` | Frontend 155 tests, area/community backend 241, `npm run test:beta` all legs on staging `5fb2720`. Not on live. |
 
-| M7 County shapes fit together | Done on staging | `claude/map-consistency` | Added after John's staging review: grid snapping in `backend/app/geometry_sql.py`, zoom-based grid from both map generations, legacy layer redraw fix. |
+| M7 County shapes fit together | Done | `claude/map-consistency` | Added after John's staging review: grid snapping in `backend/app/geometry_sql.py`, zoom-based grid from both map generations, legacy layer redraw fix. |
+
+| M8 Promotion | Done 2026-11-15T23:02Z | `claude/map-consistency` | `e7e8e68` live, application only; same bundle as staging; twelve pointers unchanged. Signed-in check on live is John's. |
 
 ### What Codex can rely on now (map consistency)
 

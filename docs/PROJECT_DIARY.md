@@ -2,7 +2,17 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
-## 2026-11-15T23:05:00+00:00 — County shapes made to fit together on every map; staging verified (Claude, M7)
+## 2026-11-15T23:08:00+00:00 — Map consistency package promoted to live (Claude, M8)
+
+- **Approval:** John reviewed staging, asked for the county-shape fix, and said the package could go to live once it was fixed; after the fix he said to finish up.
+- **Promoted:** `beta` `e7e8e68`. Application only. No step failed; no rollback used.
+- **Before any change:** rollback pair `data/deploy-recovery/map-consistency-20261115/` (`webroot-before/` with bundle `index-D7hePjXM.js`, `commit-before.txt` = `33925a0`). **No new database dump was taken**, because this promotion writes nothing to the database: no migration in the diff, live Alembic already at head `e6b3a8d0f2c5`. The 17:13Z recovery set predates the BRFSS release, so a current full recovery set is still outstanding work.
+- **State-changing commands on live:** `git merge --ff-only e7e8e68` in `/home/john/places-app`; `npm run build`; `sudo rsync -a --delete dist/ /var/www/places/`; `sudo systemctl restart places-backend` (active 23:02:39Z).
+- **Verification:** live and staging bundle names equal (`index-SHd_oIOA.js`); `/`, `/api/health`, `/explore/map`, `/area/acs-community`, `/cdc-funding`, `/methodology` 200; anonymous community and area catalogs and the new area endpoint 401; twelve active pointers, BRFSS still `5c61bade-…`; on the live database the fitted shape query returns 295 points for Pike County, Alabama at the zoom-9 grid and zero gap area across Alabama counties; no errors in the backend journal after restart.
+- **Not verified:** signed-in pages on live (no live access code for the agent). The same commit passed the signed-in walkthrough on staging.
+- **Open:** John's signed-in look at live; `git push origin main beta`; the lopsided fixed breaks (proposal in the handbook); refreshed `deliverables/` screenshots; a current recovery set and the off-VM backup.
+
+## 2026-11-15T22:58:00+00:00 — County shapes made to fit together on every map; staging verified (Claude, M7)
 
 - **Request (John, after reviewing staging):** county shapes did not line up when zoomed in (example: ACS community map around Pike County, Alabama). Fix it on every county map; then the package can go to live.
 - **Cause:** every map query simplified each polygon separately (`ST_SimplifyPreserveTopology`), and the `/area/*` pages sent one tolerance sized for the national view (0.04°, about 15 pixels at zoom 9).
