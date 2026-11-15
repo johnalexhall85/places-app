@@ -26,6 +26,12 @@ Then open `http://localhost:8080/`. Staging has its own demo-access secrets and 
 
 Every worktree's `backend/.env` must set `DATABASE_URL` to the `places_staging` database. The application, the area CLIs, and (since the beta) Alembic all follow it. The live service environment sets no `DATABASE_URL` and keeps using `places`. Legacy importers outside `app/area_pilot` are not part of the beta and must not be run from a worktree.
 
+## Settings that differ from live
+
+- The deploy script builds the frontend with `VITE_API_BASE_URL=/api` (the file `frontend/.env.production` that does this on live is git-ignored).
+- `backend/.env` in `/home/john/chip-beta` sets `PROFILE_FRONTEND_BASE_URL=http://127.0.0.1:8080` so the PDF renderer loads profile pages from the staging site. At promotion, live needs its own value (`http://127.0.0.1`).
+- A staging-only access code for browser checks is stored outside the repository at `/home/john/.local/share/chip/staging-beta-access-code` (mode 600, created by Codex).
+
 ## Deploying
 
 ```bash

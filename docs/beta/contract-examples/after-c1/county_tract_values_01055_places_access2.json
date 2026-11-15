@@ -1,0 +1,120 @@
+{
+ "county_geoid": "01055",
+ "measure": {
+  "product": "places",
+  "dataset_id": "cdc_places_county_2025_pilot",
+  "product_name": "PLACES 2025 county and tract pilot",
+  "publisher": "Centers for Disease Control and Prevention",
+  "landing_page": "https://data.cdc.gov/d/yjkw-uj5s",
+  "measure_id": "access2_crudeprev",
+  "label": "Current lack of health insurance",
+  "unit": "percent",
+  "kind": null,
+  "storage_scale": null,
+  "category": "prevention",
+  "period": "2023",
+  "population": "adults aged 18-64",
+  "value_type": "crude_prevalence",
+  "levels": [
+   "county",
+   "tract"
+  ],
+  "uncertainty_kind": "ci95",
+  "definition": null,
+  "denominator": null,
+  "interpretation": null,
+  "underlying_source": null
+ },
+ "release": {
+  "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+  "source_release_id": "2025-12-12",
+  "published_at": "2026-11-15T01:01:07.000510+00:00"
+ },
+ "values": [
+  {
+   "product": "places",
+   "dataset_id": "cdc_places_county_2025_pilot",
+   "measure_id": "access2_crudeprev",
+   "label": "Current lack of health insurance",
+   "unit": "percent",
+   "kind": null,
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "level": "tract",
+   "geoid": "01055000200",
+   "value": 14.7,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 12.0,
+    "high": 17.7,
+    "label": "95% confidence interval"
+   },
+   "notes": {},
+   "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+   "source_release_id": "2025-12-12",
+   "boundary_vintage": "TIGER/Line 2020 tract except Connecticut TIGER/Line 2023 planning-region tract"
+  },
+  {
+   "product": "places",
+   "dataset_id": "cdc_places_county_2025_pilot",
+   "measure_id": "access2_crudeprev",
+   "label": "Current lack of health insurance",
+   "unit": "percent",
+   "kind": null,
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "level": "tract",
+   "geoid": "01055000300",
+   "value": 18.0,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 14.2,
+    "high": 21.8,
+    "label": "95% confidence interval"
+   },
+   "notes": {},
+   "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+   "source_release_id": "2025-12-12",
+   "boundary_vintage": "TIGER/Line 2020 tract except Connecticut TIGER/Line 2023 planning-region tract"
+  },
+  {
+   "product": "places",
+   "dataset_id": "cdc_places_county_2025_pilot",
+   "measure_id": "access2_crudeprev",
+   "label": "Current lack of health insurance",
+   "unit": "percent",
+   "kind": null,
+   "storage_scale": null,
+   "period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "level": "tract",
+   "geoid": "01055000400",
+   "value": 9.6,
+   "status": "available",
+   "status_text": "Published value",
+   "stored": true,
+   "uncertainty": {
+    "kind": "ci95",
+    "low": 7.5,
+    "high": 12.1,
+    "label": "95% confidence interval"
+   },
+   "notes": {},
+   "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+   "source_release_id": "2025-12-12",
+   "boundary_vintage": "TIGER/Line 2020 tract except Connecticut TIGER/Line 2023 planning-region tract"
+  }
+ ],
+ "_note": "values truncated to 3 of 33 tracts for this example"
+}
