@@ -153,7 +153,7 @@ try {
     await visit(path);
     await page.locator('main, #root').first().waitFor();
   }
-  console.log('Legacy map, eight area pages, and funding page: loaded without browser errors');
+  console.log('Legacy map, nine area pages, and funding page: loaded without browser errors');
 
   for (const [width, height] of [[1365, 900], [390, 844]]) {
     await page.setViewportSize({ width, height });
@@ -172,11 +172,14 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of ['/', '/topics/food-environment', '/community/county/37145', '/community/state/37', '/area/brfss', '/compare?counties=37145,54039,06019', '/district/cd/5401', '/methodology']) {
     await visit(path);
+    if (path.startsWith('/community/')) await page.locator('[data-testid="profile-ready"]').waitFor();
+    if (path === '/area/brfss') await page.locator('.pilot-table tbody tr').first().waitFor();
+    if (path.startsWith('/district/')) await page.locator('[data-testid="district-ready"]').waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} mobile overflow`);
     if (path === '/community/county/37145') await screenshot('person-profile-mobile');
     if (path === '/community/state/37') await screenshot('north-carolina-state-profile-mobile');
   }
-  console.log('Mobile layout: no document overflow on six key routes');
+  console.log('Mobile layout: no document overflow on eight key routes');
   await visit(`/district/cd/${districtGeoid}`);
   await page.locator('[data-testid="district-ready"]').waitFor();
   assert.equal(await page.locator('.community-indicator').count(), 7, `${districtGeoid} mobile district estimates`);

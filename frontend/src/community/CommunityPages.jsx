@@ -13,8 +13,8 @@ const SHOWCASE = [
 ];
 
 const TOPICS = [
-  { slug: "health-conditions", title: "Health conditions", copy: "Published PLACES estimates for chronic disease and mental health.", map: "/area/places-2025" },
-  { slug: "prevention-and-access", title: "Prevention and access", copy: "Dental visits and insurance coverage for the populations surveyed.", map: "/area/places-2025" },
+  { slug: "health-conditions", title: "Health conditions", copy: "Modeled PLACES county estimates and direct BRFSS state survey results.", map: "/area/places-2025" },
+  { slug: "prevention-and-access", title: "Prevention and access", copy: "Published prevention measures and distinct Census, PLACES, and BRFSS insurance estimates.", map: "/area/places-2025" },
   { slug: "health-care-resources", title: "Health care resources", copy: "Workforce, hospitals, health centers, and nursing homes.", map: "/area/ahrf" },
   { slug: "community-conditions", title: "Community conditions", copy: "Income, housing, broadband, and transportation context.", map: "/area/clh" },
   { slug: "food-environment", title: "Food environment", copy: "Published food access and outlet measures, each with its own year.", map: "/area/usda-fea" },
