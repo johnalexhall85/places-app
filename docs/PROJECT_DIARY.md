@@ -27,6 +27,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
 - **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
 
+## 2026-11-15T16:45:58+00:00 — Y3 county BRFSS companions deployed to staging (Codex)
+
+- **Request/outcome:** Completed Y3 on `codex/brfss-y3-county-companion`; commit `21e11f7` merged into local `beta` and deployed to staging. County PLACES cards and the comparison table show paired direct state BRFSS values with the exact survey label, year, confidence interval, and source; the county CSV has companion columns and the profile links to its state. Comparison API obtains each state companion through `lookup.state_survey_companions`. No live changes, migrations, or direct published-data table reads.
+- **Verification:** Area/community tests 233 passed; focused frontend community/route tests 11 passed; Vite build and staging deploy checks passed. Authenticated staging Person County showed 13 paired cards and CSV companion rows, a two-county comparison showed 26 paired cells, and its 13-page PDF contained the BRFSS label, interval, source, and state link. Kentucky county `21001` returned 12 `not_published` 2023 companions and one published 2022 dental companion.
+- **Files/state:** Community router and tests, county and comparison components, CSS, Codex status, and this diary. The handbook is Claude-owned and was not edited; staging releases and pointers were unchanged.
+- **Unresolved/next:** Implement and deploy Y4 state BRFSS map and topic links, then Y5 evidence. B4 promotion remains Claude-owned and waits for John's staging review.
+
 ## 2026-11-15T16:42:58+00:00 — Y2 state profile page deployed to staging (Codex)
 
 - **Request/outcome:** Completed the next product package Y2 on `codex/brfss-y2-state-profile`, merged commit `c1569a1` into local `beta`, and deployed to staging. The state page reuses community indicator, facility, brand, and print components; it shows ACS, BRFSS, CMS, facility counts, county and district links, and the existing state funding profile. No live changes, migrations, or direct published-data table reads.
