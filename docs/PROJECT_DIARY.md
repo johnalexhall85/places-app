@@ -2,6 +2,13 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T16:20:00+00:00 — PDF pagination fix deployed to live (Claude)
+
+- **Approval/outcome:** John said to deploy the PDF fix. Fast-forwarded the live checkout from `5e95ee5` to `abc2e37` (print CSS plus documentation), ran `npm run build`, and synced `/var/www/places`. No backend restart, schema, or data change; eleven pointers untouched.
+- **Verification:** live asset names equal the staging bundle that passed the walkthrough (`index-Dz3pCAA8.js`, `index-_Q27BhdI.css`); the deployed stylesheet contains the new print rule; `/` and `/api/health` 200, anonymous community catalog 401. A PDF was **not** downloaded from live by the agent (no live access code); the same bundle produced the checked 11-page PDFs on staging.
+- **Rollback pair:** `data/deploy-recovery/pdf-fix-20261115/` (`webroot-before/`, `commit-before.txt`).
+- **Next:** John pushes `main`; AHRF redistribution terms remain open.
+
 ## 2026-11-15T16:10:00+00:00 — Live check passed by John; profile PDF pagination fix on staging (Claude)
 
 - **Live verification:** John opened the live site with his own access code after promotion and reported that everything works as intended, and supplied the Person County PDF downloaded from live (13 pages, all 46 indicators, facility counts 4/2/6). This closes the authenticated live walkthrough left open in the promotion entry; the automated `beta-walkthrough.mjs` script was not run against live.
