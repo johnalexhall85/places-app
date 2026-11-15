@@ -2,6 +2,13 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T16:50:00+00:00 — AHRF redistribution decision and owner credits on staging (Claude)
+
+- **Decision (John):** keep the five AHRF measures, behind the access code, credit the copyright owners beside HRSA, and ask HRSA's NCHWA in writing. Basis read from the archived source: HRSA's download page says “Usage limitations: None”; the bundled 2024–2025 County User Guide says reproduction for reuse needs the Bureau's permission and that ADA, AHA, and AMA data may not be reproduced without the owner's consent. All five CHIP fields come from those owners (AMA: primary care physicians, psychiatrists; ADA: dentists; AHA: hospitals, hospital beds). This is a reading of the documents, not legal advice.
+- **Change:** `lookup` adds `source_credit` to catalog measures and value rows (five AHRF measures; `null` elsewhere); community API passes it as `source.credit`; county CSV gains an `underlying_source_credit` column; profile cards, the PDF, the comparison table, and the AHRF source map show the credit. Frontend files are Codex-owned and were edited by Claude at John's request. [AHRF guide](../backend/docs/chip_ahrf_2024_2025.md) records the decision and corrects the hospital-beds note (the user guide defines beds as set up and staffed). [Data contract](beta/DATA_CONTRACT.md) documents the field. No registry, schema, or release change.
+- **Verification on staging (`383b4e9`):** backend area/community tests 209 passed, frontend 149, full `npm run test:beta` passed; Person County CSV has five credited rows and the PDF (11 pages) prints five credits.
+- **Status:** staging only; live deploy (webroot and backend restart) waits for John. The email to HRSA is John's to send; no reply is recorded. Do not remove the access code or add bulk AHRF export until HRSA's answer is recorded in the AHRF guide.
+
 ## 2026-11-15T16:20:00+00:00 — PDF pagination fix deployed to live (Claude)
 
 - **Approval/outcome:** John said to deploy the PDF fix. Fast-forwarded the live checkout from `5e95ee5` to `abc2e37` (print CSS plus documentation), ran `npm run build`, and synced `/var/www/places`. No backend restart, schema, or data change; eleven pointers untouched.
