@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-15T23:55:00+00:00 — Map loading animations and motion polish on staging (Claude)
+
+- **Request (John):** subtle animations and polish; an animated loading screen with the Public Data Observatory logo on a map's first load only (not on zoom or Home), and a loading animation under the search bar instead of "Loading legend…" while shapes load.
+- **Ownership:** `frontend/**` is Codex-owned; John confirmed in this session that Claude makes this change. Codex's worktree had no uncommitted changes.
+- **Built on `claude/map-polish` (`dcbc867`):** `frontend/src/components/MapLoading.{jsx,css}` with the observatory mark redrawn as SVG (geometry and colours `#3576BA`/`#FFD5B0` read from `pdo-observatory-mark.png`). Its constellation lines draw in, the stars twinkle, the data blocks stack up, and the telescope sweeps. The first-load overlay, the loading pill, and the legend skeleton are wired into `Places2025Pilot.jsx`; panel, shape, tooltip, legend, and button motion is in `Places2025Pilot.css`. All motion is off under `prefers-reduced-motion`. Backend untouched.
+- **Verification:** frontend 158 tests (one new: overlay on first load only, pill and legend skeleton on a later load); Vite build. `infra/staging/deploy-staging.sh claude/map-polish` deployed `beta` `dcbc867`. A Playwright check on staging `/area/places-2025` at 1365×900 and 390×844 (signed in with the staging code, map requests slowed by 1.5 s) found the overlay on load, no overlay after Zoom In, the pill shown and then cleared, no page errors, and no horizontal overflow. Screenshots checked. `npm run test:beta` was not rerun.
+- **Live:** nothing changed. **Next:** John reviews staging; promotion would be application-only (webroot rebuild; no backend restart needed).
+
 ## 2026-11-15T23:25:00+00:00 — main and beta pushed to GitHub (Claude)
 
 - At John's request: `git push origin main beta` from `/home/john/places-app`, fast-forward `33925a0..80abfab` for both, no force. `origin/main` and `origin/beta` now equal the live checkout. This closes the "push origin" item in earlier entries and the handbook. No application or data change.

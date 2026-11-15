@@ -83,3 +83,11 @@ Read with [the map consistency plan](../MAP_CONSISTENCY_PLAN.md). **Note for Cod
 | L1 Retire legacy map | Done; live | `claude/retire-legacy-map` | `App.jsx` and its private modules deleted; `/explore/map` opens the area map; Data source menu has nine published maps. Done by Claude in Codex-owned `frontend/**` at John's direction. |
 
 - **For Codex:** do not link to the legacy map or import from `App.jsx`; it no longer exists. Link maps to `/area/*` (or `/explore/map`, which opens PLACES).
+
+## Map polish (requested by John 2026-11-15)
+
+| Package | State | Branch | Notes |
+|---|---|---|---|
+| P1 Map loading animations and motion | Done on staging; not live | `claude/map-polish` | John confirmed Claude edits Codex-owned `frontend/**` for this change. New [MapLoading](../../../frontend/src/components/MapLoading.jsx) component (animated SVG observatory mark, first-load overlay, loading pill, legend skeleton) and motion CSS in `Places2025Pilot.css`. |
+
+- **For Codex:** `ObservatoryMark` and `LegendSkeleton` in `frontend/src/components/MapLoading.jsx` are reusable for other loading states; the community pages still show plain "Loading …" text.
