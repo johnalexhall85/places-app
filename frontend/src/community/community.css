@@ -713,10 +713,31 @@
 }
 
 .community-tract-block {
+  position: relative;
   max-width: 880px;
   padding: 16px;
   border: 1px solid #cfd8dc;
   background: #fff;
+}
+
+@media (max-width: 768px) {
+  .community-tract-block { padding: 0; overflow: hidden; }
+  .community-tract-map { height: min(70dvh, 480px); }
+  .community-tract-panels .mobile-map-panels-drawer .community-tract-legend {
+    display: grid;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .community-tract-panels .mobile-map-panels-drawer .community-source {
+    margin: 0;
+    padding: 16px;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    background: #fff;
+  }
 }
 
 .community-tract-map {

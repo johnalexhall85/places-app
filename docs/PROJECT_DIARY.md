@@ -17,6 +17,13 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
   - Signed-in pages on live were not checked by the agent (it has no live access code); John reviewed the same build on staging.
 - **Open:** ChatGPT Developer mode not yet tested against production.
 
+## 2026-11-17T16:51:46+00:00 — MOBILE-1 responsive menu and map panels implemented (Codex)
+
+- **Request and outcome:** Implemented a mobile-only full header menu and one reusable left drawer for all shared `/area/*` maps, including facility overlay panels, and the county tract inset. The drawer starts closed, supports button and edge-swipe opening, button/close/left-swipe closing, a guarded persistent first-use hint, and Leaflet resize. The CDC funding pages in this branch have charts and profiles but no geographic map. Desktop layout remains in its existing mode.
+- **Files:** `frontend/src/components/SiteHeader.*`, `MobileMapPanels.*`, `Header.test.jsx`, `frontend/src/pages/Places2025Pilot.jsx`, `frontend/src/community/TractPatternMap.jsx`, `community.css`, and `docs/mcp/status/codex.md`. No dataset, release, migration, setting, or backend change.
+- **Verification:** 164 frontend tests passed; Vite production build passed with the existing large-chunk warning; `git diff --check` passed. Authenticated 375×812 local-build browser checks of home, PLACES, ACS community, and Person County tract map found rendered shapes, hidden initial drawers, working controls, zero page errors, and zero horizontal overflow. A 360 px mobile and 1365 px desktop check also found zero horizontal overflow and the intended navigation/panel modes. An initial test/build run failed from a JSX wrapper boundary; corrected before the passing runs.
+- **Status and next:** Uncommitted and undeployed on `codex/mobile-1`; no database, service, or publication change. Claude reviews, commits and deploys if approved. The handbook was not edited because Claude owns it; this branch-only behavior and the needed post-deployment handbook update are recorded in the status file.
+
 ## 2026-11-17T16:32:00+00:00 — MCP server live at mcp.publicdataobservatory.org (Claude, Gate B)
 
 - **Approval:** John tested the staging connector in Claude ("works perfectly"), added the DNS record for `mcp.publicdataobservatory.org`, and approved Gate B.

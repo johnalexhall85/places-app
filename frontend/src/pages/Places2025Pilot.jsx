@@ -8,6 +8,7 @@ import { TriFacilityLayer, TriFacilityPanel, useTriFacilities } from "../compone
 import { NursingHomeLayer, NursingHomePanel, useNursingHomes } from "../components/NursingHomes";
 import PlaceSearch from "../components/PlaceSearch";
 import MapTools from "./areaMap/MapTools";
+import MobileMapPanels from "../components/MobileMapPanels";
 import { LegendSkeleton, MapLoadingOverlay, MapLoadingStrip } from "../components/MapLoading";
 import { BASE_MAP_OPTIONS } from "../branding/baseMaps";
 import { BLUES, HOVER_LINE, SELECTION_CASING, SELECTION_LINE, quantileColor, quantileCuts, quantileLabels, rampColors } from "../branding/mapColors";
@@ -383,6 +384,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [focusRequest] = useState(parseFocus);
   const [focusStatus, setFocusStatus] = useState("");
   const [map, setMap] = useState(null);
+  const mapSurfaceRef = useRef(null);
+  const resizeMap = useCallback(() => map?.invalidateSize?.(), [map]);
   const [baseMapId, setBaseMapId] = useState(BASE_MAP_OPTIONS[0].id);
   const [legendOpen, setLegendOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 1100);
@@ -566,7 +569,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   return <div className="app pilot-app">
     <Header />
     <main className="app-content pilot-content" ref={setContentEl}>
-      <div className="map-wrapper pilot-map" aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
+      <div className="map-wrapper pilot-map" ref={mapSurfaceRef} aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
         {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
           <TileLayer key={baseMap.id} url={baseMap.url} attribution={baseMap.attribution} maxZoom={baseMap.maxZoom} />
@@ -628,6 +631,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           {homes.enabled && <NursingHomeLayer homes={homes} />}
         </MapContainer>}
       </div>
+      <MobileMapPanels mapSurfaceRef={mapSurfaceRef} onVisibilityChange={resizeMap} className="pilot-mobile-panels">
       <section className="pilot-panel pilot-controls" aria-label="Analytical controls">
         <h1>{sourceTitle}</h1>
         {isBrfss ? <div className="pilot-scope">
@@ -819,6 +823,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
         <MapLoadingStrip active={firstLoadDone && Boolean(requestKey) && !ready && !error} anchor={toolsEl} container={contentEl}
           watch={[toolsOpen, tableOpen]} label={`Loading ${geography === "cd" ? "district" : areaName(geography)} shapes…`} />
       </>}
+      </MobileMapPanels>
       <MapLoadingOverlay active={!firstLoadDone} detail={sourceTitle} />
     </main>
     <Footer />

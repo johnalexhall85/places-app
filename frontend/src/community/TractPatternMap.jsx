@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer } from "react-leaflet";
 import { API_BASE } from "../config/apiBase";
 import { formatIndicatorValue } from "./CommunityPages";
 import { BLUES } from "../branding/mapColors";
+import MobileMapPanels from "../components/MobileMapPanels";
 
 const STATUS_COLORS = {
   suppressed: "#b9a7b1",
@@ -21,6 +22,9 @@ export function tractColor(value, status, low, high) {
 }
 
 export default function TractPatternMap({ area, row }) {
+  const mapSurfaceRef = useRef(null);
+  const leafletMapRef = useRef(null);
+  const resizeMap = useCallback(() => leafletMapRef.current?.invalidateSize?.(), []);
   const [mapData, setMapData] = useState(null);
   const [status, setStatus] = useState("loading");
 
@@ -65,8 +69,8 @@ export default function TractPatternMap({ area, row }) {
   if (status === "empty") return <p className="community-message">No tract values are published in the active release for this measure and county.</p>;
   if (status !== "ready") return <p className="community-message" role="alert">{status}</p>;
   return <div className="community-tract-block">
-    <div className="community-tract-map" role="img" aria-label={`${row.label} by published census tract in ${area.name} County`}>
-      <MapContainer key={`${area.geoid}:${row.release_id}:${row.measure_id}`} bounds={[[south, west], [north, east]]} zoomControl={true} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+    <div className="community-tract-map" ref={mapSurfaceRef} role="img" aria-label={`${row.label} by published census tract in ${area.name} County`}>
+      <MapContainer ref={leafletMapRef} key={`${area.geoid}:${row.release_id}:${row.measure_id}`} bounds={[[south, west], [north, east]]} zoomControl={true} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
         <GeoJSON data={mapData} style={(feature) => ({
           color: "#657a86", weight: 0.8, fillOpacity: 0.88,
           fillColor: tractColor(feature.properties.value, feature.properties.status, low, high),
@@ -77,11 +81,13 @@ export default function TractPatternMap({ area, row }) {
         }} />
       </MapContainer>
     </div>
+    <MobileMapPanels mapSurfaceRef={mapSurfaceRef} onVisibilityChange={resizeMap} className="community-tract-panels">
     <div className="community-tract-legend">
       <span><i className="community-legend-gradient" /> Lower to higher published values within this county</span>
       <span><i className="community-legend-status" /> Missing or not published</span>
       <span><i className="community-legend-suppressed" /> Suppressed or open-ended (see tooltip)</span>
     </div>
     <p className="community-source">Source: {row.source.publisher} · {row.source.product_name} · {row.period} · {row.source_release_id}. Population: {row.population}. Boundary: {mapData.boundary_vintage}. Tracts are shown individually; no county value is calculated from them.</p>
+    </MobileMapPanels>
   </div>;
 }

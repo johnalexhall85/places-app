@@ -4,9 +4,17 @@ Updated by Codex at the end of each task. Claude reads this file before reviewin
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| MOBILE-1 responsive navigation and maps | Implemented; review pending | `codex/mobile-1` | Shared mobile menu and `MobileMapPanels` drawer on `/area/*` (including facility overlays) and the county tract inset. 164 frontend tests, build, and authenticated 375×812 browser checks passed. Uncommitted and undeployed; Claude owns review and handbook update. |
 | M6 public AI page | Implemented; review pending | `codex/mcp-m6` | Public `/ai` guide, catalog-backed coverage with eight-product fallback, navigation/About links, README section, and tests. Uncommitted and undeployed. |
 | M2b evaluation fixes | Implemented; review pending | `codex/mcp-m2b` | Client JSON cap is 50,000 bytes; Texas county calls fit all 254 rows. 18 MCP tests passed against staging, including HTTP client; 26 website tests passed. Uncommitted and undeployed. |
 | M2 MCP server | Implemented; review pending | `codex/mcp-m2` | Seven typed, read-only tools and Streamable HTTP app; 13 MCP tests passed with staging integration run, plus 26 website lookup/community tests. Uncommitted and undeployed. |
+
+## MOBILE-1 handoff — 2026-11-17T16:51:46+00:00
+
+- **Request and result:** Mobile-only shared header menu in `SiteHeader` (also used through `Header`), with the complete desktop link set, accessible expanded state, and close on toggle, link, Escape, or outside tap. A reusable `MobileMapPanels` drawer holds all `/area/*` controls, legend, table, and facility overlay panels, plus the county profile's tract-map legend and source note. It opens with a 44 px button or a swipe from the first 24 px of the map; it closes by button, close control, or left swipe. The first-use hint persists dismissal in guarded local storage. Leaflet maps invalidate size after drawer changes.
+- **Scope finding:** The current CDC funding overview and state profile contain charts and text, not a geographic map; there is no CDC map surface to wrap on this branch. The shared `/area/*` page covers all nine published map products and point overlays. Desktop layout is unchanged.
+- **Verification:** `npm test` 164/164; `VITE_API_BASE_URL=/api npm run build` passed (existing large-chunk warning); `git diff --check` passed. Authenticated local Vite browser against staging read APIs at 375×812 showed the home page, PLACES map (1,778 shapes), ACS community map (31 shapes), and Person County tract inset (7 shapes), with hidden initial drawers, working open/close, no page errors, and no horizontal overflow. A 360 px mobile and 1365 px desktop check confirmed the expected menu/panel modes and no horizontal overflow. Screenshots are temporary under `/tmp/mobile-1-*.png`.
+- **State and next action:** Only frontend code/tests and this handoff plus the required diary entry changed. No commit, push, merge, deployment, database, service, or release change. Claude should review and incorporate the branch, then update the Claude-owned handbook when the feature is deployed.
 
 ## M6 URL follow-up — 2026-11-17T16:30:20+00:00
 

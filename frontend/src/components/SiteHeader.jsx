@@ -21,7 +21,21 @@ export const SITE_HEADER_FALLBACK_HEIGHT = 88;
 // from --chip-header-height, because the navigation wraps on narrow screens.
 export default function SiteHeader() {
   const ref = useRef(null);
+  const menuRef = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { hasAccess, logout } = useDemoAccess();
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const closeOnEscape = (event) => { if (event.key === "Escape") setMenuOpen(false); };
+    const closeOutside = (event) => { if (!menuRef.current?.contains(event.target)) setMenuOpen(false); };
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOutside);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOutside);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const node = ref.current;
@@ -44,11 +58,18 @@ export default function SiteHeader() {
           <img src={pdoMark} alt="" width="44" height="44" />
           <span><strong>PUBLIC DATA OBSERVATORY</strong><small>CHIP · Community Health Intelligence Platform</small></span>
         </a>
-        <nav aria-label="Main navigation">
-          {SITE_NAV.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}
-          {isFundingModelBuilderEnabled() && <a href="/funding-model-builder">Funding Model Builder</a>}
-          {hasAccess && <button type="button" className="community-header-logout" onClick={() => logout()}>Log out</button>}
-        </nav>
+        <div className="community-header-menu" ref={menuRef}>
+          <button type="button" className="community-menu-button" aria-label="Menu" aria-expanded={menuOpen}
+            aria-controls="community-main-navigation" onClick={() => setMenuOpen((open) => !open)}>
+            <span aria-hidden="true">☰</span>
+          </button>
+          <nav id="community-main-navigation" aria-label="Main navigation" className={menuOpen ? "is-open" : ""}
+            onClick={(event) => { if (event.target.closest("a")) setMenuOpen(false); }}>
+            {SITE_NAV.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}
+            {isFundingModelBuilderEnabled() && <a href="/funding-model-builder">Funding Model Builder</a>}
+            {hasAccess && <button type="button" className="community-header-logout" onClick={() => { setMenuOpen(false); logout(); }}>Log out</button>}
+          </nav>
+        </div>
       </header>
     </>
   );
