@@ -35,3 +35,13 @@ Read with [the BRFSS and state plan](../BRFSS_STATE_PLAN.md). Codex updates this
 | Y5 Landing, walkthrough, evidence | Done; merged and deployed to staging | `codex/brfss-y5-evidence` | Landing search and example include states. Authenticated walkthrough covers state profile, PDF, Kentucky missing status, BRFSS map, and mobile. Refreshed 11 screenshots and 59 release-linked source checks, including four BRFSS measures in each of three states. Frontend 150 tests, backend area/community 233 tests, Vite build, staging walkthrough and source audit passed. Code at `8643f8f`, polish at `9d9069f`. |
 
 All Y packages are on staging. Product track waits at Gate 3 for John's review of the final local `beta` commit reported in the handoff. B4 live promotion belongs to Claude after that approval; Codex made no live changes.
+
+## Public beta TLS handoff (2026-11-16)
+
+At John's request, system Nginx now serves `https://chip-beta.publicdataobservatory.org/` from the staging webroot and backend. The port-80 beta host redirects to HTTPS except for ACME challenges. Let's Encrypt certificate expires 2027-02-14T13:13:19+00:00; `certbot.timer` is enabled, the renewal dry run passed, and a successful renewal reloads Nginx. UFW allows 443/tcp. No repository application or live service changed.
+
+**Claude-owned follow-up:** update `docs/PROJECT_HANDBOOK.md`, `infra/staging/README.md`, and the maintained staging Nginx configuration to reflect the public beta host and avoid route drift. The active system configuration is `/etc/nginx/sites-available/chip-beta`; preserve its ACME challenge path, redirect, certificate paths, and staging-only API routes. This Codex branch contains only the diary/status handoff and has not been merged, committed, or pushed.
+
+## Beta access code renewal (2026-11-16)
+
+At John's direction, existing staging access code ID 22 (`Beta staging verification`) was extended by 30 days to 2026-12-22T00:13:50.676282+00:00. The code itself is unchanged and remains active; its restricted local file still matches the staging database hash. Only staging access-code metadata changed. Live access codes were not changed.
