@@ -1,0 +1,341 @@
+{
+ "dataset_id": "census_acs5_2024_b19013:history",
+ "current_dataset_id": "census_acs5_2024_b19013",
+ "product": "acs",
+ "parser": "acs",
+ "auto_publish": false,
+ "name": "Census ACS 5-year median household income, earlier periods",
+ "publisher": "U.S. Census Bureau",
+ "source_release_id": "ACS 5-year B19013 vintages 2019-2023 (Census Data API)",
+ "levels": [
+  "state",
+  "county",
+  "tract"
+ ],
+ "state_fips": [
+  "01",
+  "02",
+  "04",
+  "05",
+  "06",
+  "08",
+  "09",
+  "10",
+  "11",
+  "12",
+  "13",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "21",
+  "22",
+  "23",
+  "24",
+  "25",
+  "26",
+  "27",
+  "28",
+  "29",
+  "30",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "40",
+  "41",
+  "42",
+  "44",
+  "45",
+  "46",
+  "47",
+  "48",
+  "49",
+  "50",
+  "51",
+  "53",
+  "54",
+  "55",
+  "56",
+  "72"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "open_ended",
+  "missing",
+  "suppressed",
+  "not_applicable"
+ ],
+ "null_statuses": [
+  "missing",
+  "suppressed",
+  "not_applicable"
+ ],
+ "uncertainty_kind": "moe90",
+ "unmatched_tolerance": {
+  "state": 0,
+  "county": 2,
+  "tract": 40
+ },
+ "selection": {
+  "fields": [
+   "B19013_001E",
+   "B19013_001M",
+   "B19013_001EA",
+   "B19013_001MA"
+  ],
+  "measure_label_contains": "Median household income in the past 12 months",
+  "excluded_note": "Every geography the API returns for the supported states is stored with its own status."
+ },
+ "sources": [
+  {
+   "role": "acs2019_state",
+   "url": "https://api.census.gov/data/2019/acs/acs5",
+   "census_key": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "state:*"
+   },
+   "filename": "acs2019_state.json"
+  },
+  {
+   "role": "acs2019_county",
+   "url": "https://api.census.gov/data/2019/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2019_county_{state}.json"
+  },
+  {
+   "role": "acs2019_tract",
+   "url": "https://api.census.gov/data/2019/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2019_tract_{state}.json"
+  },
+  {
+   "role": "acs2020_state",
+   "url": "https://api.census.gov/data/2020/acs/acs5",
+   "census_key": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "state:*"
+   },
+   "filename": "acs2020_state.json"
+  },
+  {
+   "role": "acs2020_county",
+   "url": "https://api.census.gov/data/2020/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2020_county_{state}.json"
+  },
+  {
+   "role": "acs2020_tract",
+   "url": "https://api.census.gov/data/2020/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2020_tract_{state}.json"
+  },
+  {
+   "role": "acs2021_state",
+   "url": "https://api.census.gov/data/2021/acs/acs5",
+   "census_key": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "state:*"
+   },
+   "filename": "acs2021_state.json"
+  },
+  {
+   "role": "acs2021_county",
+   "url": "https://api.census.gov/data/2021/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2021_county_{state}.json"
+  },
+  {
+   "role": "acs2021_tract",
+   "url": "https://api.census.gov/data/2021/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2021_tract_{state}.json"
+  },
+  {
+   "role": "acs2022_state",
+   "url": "https://api.census.gov/data/2022/acs/acs5",
+   "census_key": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "state:*"
+   },
+   "filename": "acs2022_state.json"
+  },
+  {
+   "role": "acs2022_county",
+   "url": "https://api.census.gov/data/2022/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2022_county_{state}.json"
+  },
+  {
+   "role": "acs2022_tract",
+   "url": "https://api.census.gov/data/2022/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2022_tract_{state}.json"
+  },
+  {
+   "role": "acs2023_state",
+   "url": "https://api.census.gov/data/2023/acs/acs5",
+   "census_key": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "state:*"
+   },
+   "filename": "acs2023_state.json"
+  },
+  {
+   "role": "acs2023_county",
+   "url": "https://api.census.gov/data/2023/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2023_county_{state}.json"
+  },
+  {
+   "role": "acs2023_tract",
+   "url": "https://api.census.gov/data/2023/acs/acs5",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "B19013_001E,B19013_001M,B19013_001EA,B19013_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acs2023_tract_{state}.json"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "B19013_001E",
+   "label": "Median household income in the past 12 months",
+   "current_period": "2020–2024",
+   "population": "households",
+   "value_type": "median_household_income",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate in 2023 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years.",
+     "locator": {
+      "vintage": "2023"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate in 2022 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years.",
+     "locator": {
+      "vintage": "2022"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate in 2021 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties.",
+     "locator": {
+      "vintage": "2021"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate in 2020 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "vintage": "2020"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate in 2019 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "vintage": "2019"
+     }
+    }
+   ]
+  }
+ ]
+}

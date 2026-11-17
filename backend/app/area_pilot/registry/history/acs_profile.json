@@ -1,0 +1,821 @@
+{
+ "dataset_id": "census_acs5_2024_community_profile:history",
+ "current_dataset_id": "census_acs5_2024_community_profile",
+ "product": "acs_profile",
+ "parser": "acs_profile",
+ "auto_publish": false,
+ "name": "Census ACS community characteristics, earlier periods",
+ "publisher": "U.S. Census Bureau",
+ "source_release_id": "ACS 5-year subject tables vintages 2019-2023 (Census Data API)",
+ "levels": [
+  "state",
+  "county",
+  "tract"
+ ],
+ "state_fips": [
+  "01",
+  "02",
+  "04",
+  "05",
+  "06",
+  "08",
+  "09",
+  "10",
+  "11",
+  "12",
+  "13",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "21",
+  "22",
+  "23",
+  "24",
+  "25",
+  "26",
+  "27",
+  "28",
+  "29",
+  "30",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "40",
+  "41",
+  "42",
+  "44",
+  "45",
+  "46",
+  "47",
+  "48",
+  "49",
+  "50",
+  "51",
+  "53",
+  "54",
+  "55",
+  "56",
+  "72"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "missing",
+  "suppressed",
+  "not_applicable",
+  "open_ended"
+ ],
+ "null_statuses": [
+  "missing",
+  "suppressed",
+  "not_applicable"
+ ],
+ "uncertainty_kind": "moe90",
+ "unmatched_tolerance": {
+  "state": 0,
+  "county": 2,
+  "tract": 40
+ },
+ "selection": {
+  "fields": [
+   "NAME",
+   "S0101_C01_001E",
+   "S0101_C01_001M",
+   "S0101_C01_001EA",
+   "S0101_C01_001MA",
+   "S1701_C03_001E",
+   "S1701_C03_001M",
+   "S1701_C03_001EA",
+   "S1701_C03_001MA",
+   "S0101_C02_030E",
+   "S0101_C02_030M",
+   "S0101_C02_030EA",
+   "S0101_C02_030MA",
+   "S0101_C02_022E",
+   "S0101_C02_022M",
+   "S0101_C02_022EA",
+   "S0101_C02_022MA",
+   "S1810_C03_001E",
+   "S1810_C03_001M",
+   "S1810_C03_001EA",
+   "S1810_C03_001MA",
+   "S2701_C05_001E",
+   "S2701_C05_001M",
+   "S2701_C05_001EA",
+   "S2701_C05_001MA",
+   "S1601_C06_001E",
+   "S1601_C06_001M",
+   "S1601_C06_001EA",
+   "S1601_C06_001MA"
+  ],
+  "note": "Variables and labels verified identical to the current registry for vintages 2019-2023 on 2026-11-17."
+ },
+ "sources": [
+  {
+   "role": "acsp2019_state",
+   "url": "https://api.census.gov/data/2019/acs/acs5/subject",
+   "census_key": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "state:*"
+   },
+   "filename": "acsp2019_state.json"
+  },
+  {
+   "role": "acsp2019_county",
+   "url": "https://api.census.gov/data/2019/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2019_county_{state}.json"
+  },
+  {
+   "role": "acsp2019_tract",
+   "url": "https://api.census.gov/data/2019/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2019_tract_{state}.json"
+  },
+  {
+   "role": "acsp2020_state",
+   "url": "https://api.census.gov/data/2020/acs/acs5/subject",
+   "census_key": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "state:*"
+   },
+   "filename": "acsp2020_state.json"
+  },
+  {
+   "role": "acsp2020_county",
+   "url": "https://api.census.gov/data/2020/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2020_county_{state}.json"
+  },
+  {
+   "role": "acsp2020_tract",
+   "url": "https://api.census.gov/data/2020/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2020_tract_{state}.json"
+  },
+  {
+   "role": "acsp2021_state",
+   "url": "https://api.census.gov/data/2021/acs/acs5/subject",
+   "census_key": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "state:*"
+   },
+   "filename": "acsp2021_state.json"
+  },
+  {
+   "role": "acsp2021_county",
+   "url": "https://api.census.gov/data/2021/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2021_county_{state}.json"
+  },
+  {
+   "role": "acsp2021_tract",
+   "url": "https://api.census.gov/data/2021/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2021_tract_{state}.json"
+  },
+  {
+   "role": "acsp2022_state",
+   "url": "https://api.census.gov/data/2022/acs/acs5/subject",
+   "census_key": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "state:*"
+   },
+   "filename": "acsp2022_state.json"
+  },
+  {
+   "role": "acsp2022_county",
+   "url": "https://api.census.gov/data/2022/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2022_county_{state}.json"
+  },
+  {
+   "role": "acsp2022_tract",
+   "url": "https://api.census.gov/data/2022/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2022_tract_{state}.json"
+  },
+  {
+   "role": "acsp2023_state",
+   "url": "https://api.census.gov/data/2023/acs/acs5/subject",
+   "census_key": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "state:*"
+   },
+   "filename": "acsp2023_state.json"
+  },
+  {
+   "role": "acsp2023_county",
+   "url": "https://api.census.gov/data/2023/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "county:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2023_county_{state}.json"
+  },
+  {
+   "role": "acsp2023_tract",
+   "url": "https://api.census.gov/data/2023/acs/acs5/subject",
+   "census_key": true,
+   "per_state": true,
+   "params": {
+    "get": "NAME,S0101_C01_001E,S0101_C01_001M,S0101_C01_001EA,S0101_C01_001MA,S1701_C03_001E,S1701_C03_001M,S1701_C03_001EA,S1701_C03_001MA,S0101_C02_030E,S0101_C02_030M,S0101_C02_030EA,S0101_C02_030MA,S0101_C02_022E,S0101_C02_022M,S0101_C02_022EA,S0101_C02_022MA,S1810_C03_001E,S1810_C03_001M,S1810_C03_001EA,S1810_C03_001MA,S2701_C05_001E,S2701_C05_001M,S2701_C05_001EA,S2701_C05_001MA,S1601_C06_001E,S1601_C06_001M,S1601_C06_001EA,S1601_C06_001MA",
+    "for": "tract:*",
+    "in": "state:{state}"
+   },
+   "filename": "acsp2023_tract_{state}.json"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "total_population",
+   "label": "Total population",
+   "current_period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "variable": "S0101_C01_001",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S0101_C01_001"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S0101_C01_001"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S0101_C01_001"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S0101_C01_001"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S0101_C01_001"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "poverty_pct",
+   "label": "People below the poverty level",
+   "current_period": "2020–2024",
+   "population": "population for whom poverty status is determined",
+   "value_type": "acs5_published_estimate",
+   "variable": "S1701_C03_001",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S1701_C03_001"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S1701_C03_001"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S1701_C03_001"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S1701_C03_001"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S1701_C03_001"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "age_65_plus_pct",
+   "label": "Population aged 65 and over",
+   "current_period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "variable": "S0101_C02_030",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S0101_C02_030"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S0101_C02_030"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S0101_C02_030"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S0101_C02_030"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S0101_C02_030"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "age_under_18_pct",
+   "label": "Population under 18",
+   "current_period": "2020–2024",
+   "population": "total population",
+   "value_type": "acs5_published_estimate",
+   "variable": "S0101_C02_022",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S0101_C02_022"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S0101_C02_022"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S0101_C02_022"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S0101_C02_022"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S0101_C02_022"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "disability_pct",
+   "label": "People with a disability",
+   "current_period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "variable": "S1810_C03_001",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S1810_C03_001"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S1810_C03_001"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S1810_C03_001"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S1810_C03_001"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S1810_C03_001"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "uninsured_pct",
+   "label": "People without health insurance",
+   "current_period": "2020–2024",
+   "population": "civilian noninstitutionalized population",
+   "value_type": "acs5_published_estimate",
+   "variable": "S2701_C05_001",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S2701_C05_001"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S2701_C05_001"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S2701_C05_001"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S2701_C05_001"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S2701_C05_001"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "limited_english_pct",
+   "label": "People who speak English less than \"very well\"",
+   "current_period": "2020–2024",
+   "population": "population 5 years and over",
+   "value_type": "acs5_published_estimate",
+   "variable": "S1601_C06_001",
+   "periods": [
+    {
+     "period": "2019–2023",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2019–2023 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2023",
+      "variable": "S1601_C06_001"
+     }
+    },
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "ACS 2018–2022 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2022",
+      "variable": "S1601_C06_001"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "ACS 2017–2021 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2021",
+      "variable": "S1601_C06_001"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2020",
+      "variable": "S1601_C06_001"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "state": "2024",
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "ACS 2015–2019 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "locator": {
+      "vintage": "2019",
+      "variable": "S1601_C06_001"
+     }
+    }
+   ]
+  }
+ ]
+}
