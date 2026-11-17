@@ -53,15 +53,18 @@ def periods_for(config: dict | None, measure: dict, current_release_id, history_
     """Current period first, then each declared earlier period, newest first."""
     result = [{'period': measure.get('observation_period'), 'current': True, 'available': True,
                'release_id': current_release_id, 'note': None, 'boundary_vintage': None}]
-    if not config or not history_release:
+    if not config:
         return result
     entry = next((m for m in config['measures'] if m['measure_id'] == measure.get('measure_id')), None)
     if entry is None:
         return result
     for spec in sorted(entry['periods'], key=lambda p: p['period'], reverse=True):
-        result.append({'period': spec['period'], 'current': False, 'available': spec.get('available', True),
-                       'release_id': str(history_release['id']) if spec.get('available', True) else None,
-                       'note': spec['note'], 'levels': entry.get('levels', config['levels']),
+        # Declared periods are listed, disabled, until the history release is published.
+        available = bool(history_release) and spec.get('available', True)
+        result.append({'period': spec['period'], 'current': False, 'available': available,
+                       'release_id': str(history_release['id']) if available else None,
+                       'note': spec['note'] if history_release else 'Not yet published in CHIP.',
+                       'levels': entry.get('levels', config['levels']),
                        'boundary_vintage': {lvl: VINTAGE_LABEL[v] for lvl, v in spec['boundary_vintage'].items()}})
     return result
 

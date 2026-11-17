@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
@@ -734,5 +734,114 @@ describe("area map selection, focus, and class breaks", () => {
     const block = await screen.findByTestId("selected-area");
     expect(block).toHaveTextContent(/showing county values/i);
     expect(block).toHaveTextContent(/none is calculated/i);
+  });
+});
+
+describe("historical area map years", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.geojson = null; });
+
+  function historyStub({ district = false, missingShape = false } = {}) {
+    const measures = [{ measure_id: "diabetes_crudeprev", label: "Diagnosed diabetes", observation_period: "2023", population: "adults",
+      periods: [
+        { period: "2023", current: true, available: true, release_id: "h4-current" },
+        { period: "2022", current: false, available: true, release_id: "h4-history", levels: district ? ["state", "county", "tract"] : ["county", "tract"],
+          note: "A separate model run.", boundary_vintage: { county: "TIGER/Line 2020", tract: "TIGER/Line 2019" } },
+        { period: "2021", current: false, available: false, release_id: null, levels: ["county"], note: "Unavailable" },
+        { period: "2020", current: false, available: true, release_id: "h4-history", levels: ["county"],
+          note: "An older model run.", boundary_vintage: { county: "TIGER/Line 2020" } },
+      ] }, { measure_id: "access2_crudeprev", label: "Insurance", observation_period: "2023", population: "adults",
+        periods: [{ period: "2023", current: true, available: true, release_id: "h4-current" },
+          { period: "2022", current: false, available: true, release_id: "h4-history", levels: ["county"], note: "An older estimate." }] },
+      { measure_id: "dental_crudeprev", label: "Dental visits", observation_period: "2023", population: "adults",
+        periods: [{ period: "2023", current: true, available: true, release_id: "h4-current" }] }];
+    return vi.fn(async (url) => {
+      const path = String(url);
+      if (path.includes("/community/area/")) return { ok: true, json: async () => ({ geoid: "37145", name: "Person", bbox: [-95.2, 36.2, -94.8, 36.5], geometry: { type: "Polygon", coordinates: [] } }) };
+      if (path.endsWith("/catalog") || path.includes("/catalog?")) return { ok: true, json: async () => ({
+        dataset_id: district ? "census_acs5_2024_community_profile" : "cdc_places_county_2025_pilot",
+        active_release_id: "h4-current", value_type: "crude_prevalence", unit: "percent",
+        geographies: district ? ["state", "county", "tract", "cd"] : ["county", "tract"], measures,
+      }) };
+      const query = new URLSearchParams(path.split("?")[1]);
+      const selectedPeriod = query.get("period");
+      const older = selectedPeriod !== "2023";
+      const feature = { type: "Feature", geometry: { type: "Polygon", coordinates: [] },
+        properties: { geography_id: "37145", county_fips: "37145", name: "Person", value: selectedPeriod === "2020" ? 11 : older ? 12 : 13, status: "available", ci_low: 10, ci_high: 14 } };
+      const common = { release_id: older ? "h4-history" : "h4-current", period: selectedPeriod,
+        geography: query.get("geography") };
+      const payload = path.includes("/map?") ? { features: missingShape && older ? [] : [feature], quantile_breaks: [10, 11, 12, 13] }
+        : path.includes("/legend?") ? { quantile_breaks: [10, 11, 12, 13], statuses: [{ status: "available", n: 1 }],
+          published_without_boundary: older ? 2 : 0 }
+        : { rows: [{ geography_id: "37145", name: "Person", value: selectedPeriod === "2020" ? 11 : older ? 12 : 13, status: "available" }], total: 1 };
+      return { ok: true, json: async () => ({ ...payload, ...common }) };
+    });
+  }
+
+  it("lists years, requests the chosen release for map, legend, and table, and keeps the selected GEOID", async () => {
+    const fetchMock = historyStub();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/area/places-2025?measure_id=diabetes_crudeprev");
+    render(<Places2025Pilot />);
+    const year = await screen.findByLabelText("Year");
+    expect([...year.options].map((option) => option.textContent.trim())).toEqual(["2023 (latest)", "2022", "2021 (not published)", "2020"]);
+    expect(year.options[2]).toBeDisabled();
+    await screen.findByText("37145");
+    const handlers = {};
+    mapHarness.geojson.onEachFeature(mapHarness.geojson.data.features[0], { on: (name, handler) => { handlers[name] = handler; }, bindTooltip: vi.fn() });
+    act(() => handlers.click());
+    expect(screen.getByTestId("selected-area")).toHaveTextContent("13%");
+    expect(screen.queryByText("A separate model run.")).not.toBeInTheDocument();
+    fireEvent.change(year, { target: { value: "2022" } });
+    await screen.findByText("A separate model run.");
+    await waitFor(() => expect(screen.getByTestId("selected-area")).toHaveTextContent("12%"));
+    expect(screen.getByTestId("selected-area")).toHaveTextContent("Person · County 37145");
+    const historicalTooltip = vi.fn();
+    mapHarness.geojson.onEachFeature(mapHarness.geojson.data.features[0], { on: vi.fn(), bindTooltip: historicalTooltip });
+    expect(historicalTooltip.mock.calls[0][0]).toContain("12% • 2022");
+    expect(screen.getByText("Boundary: TIGER/Line 2020.")).toBeInTheDocument();
+    expect(screen.getByText("Colour classes are for this year only; compare values, not colours.")).toBeInTheDocument();
+    expect(screen.getByText("2 areas published for this year have no matching boundary and are not drawn.")).toBeInTheDocument();
+    expect(screen.getByText("Diagnosed diabetes, 2022; release h4-history")).toBeInTheDocument();
+    const historyRequests = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/area/") && url.includes("period=2022"));
+    expect(historyRequests).toHaveLength(3);
+    expect(historyRequests.every((url) => url.includes("release_id=h4-history"))).toBe(true);
+    expect(historyRequests.map((url) => /\/area\/(map|legend|table)\?/.exec(url)?.[1]).sort()).toEqual(["legend", "map", "table"]);
+    expect(window.location.search).toContain("period=2022");
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "access2_crudeprev" } });
+    expect(screen.getByLabelText("Year")).toHaveValue("2022");
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "diabetes_crudeprev" } });
+    fireEvent.change(year, { target: { value: "2020" } });
+    await waitFor(() => expect(screen.getByTestId("selected-area")).toHaveTextContent("11%"));
+    const sameReleaseRequests = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/area/") && url.includes("period=2020"));
+    expect(sameReleaseRequests).toHaveLength(3);
+    expect(sameReleaseRequests.every((url) => url.includes("release_id=h4-history"))).toBe(true);
+    fireEvent.change(year, { target: { value: "2023" } });
+    await waitFor(() => expect(screen.queryByText("A separate model run.")).not.toBeInTheDocument());
+    expect(screen.queryByText(/Colour classes are for this year only/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "dental_crudeprev" } });
+    expect(screen.getByLabelText("Year")).toHaveValue("2023");
+  });
+
+  it("reads a valid URL year and ignores an unavailable or unknown one", async () => {
+    vi.stubGlobal("fetch", historyStub());
+    window.history.replaceState(null, "", "/area/places-2025?measure_id=diabetes_crudeprev&period=2022");
+    const view = render(<Places2025Pilot />);
+    expect(await screen.findByLabelText("Year")).toHaveValue("2022");
+    expect(await screen.findByText("Diagnosed diabetes, 2022; release h4-history")).toBeInTheDocument();
+    view.unmount();
+    window.history.replaceState(null, "", "/area/places-2025?measure_id=diabetes_crudeprev&period=2099");
+    render(<Places2025Pilot />);
+    expect(await screen.findByLabelText("Year")).toHaveValue("2023");
+    await waitFor(() => expect(window.location.search).toContain("period=2023"));
+  });
+
+  it("falls back from older districts and explains when a selected area has no older shape", async () => {
+    vi.stubGlobal("fetch", historyStub({ district: true, missingShape: true }));
+    window.history.replaceState(null, "", "/area/acs-community?measure_id=diabetes_crudeprev&geography=cd&period=2022&focus=county:37145");
+    render(<Places2025Pilot dataset="acs_profile" />);
+    expect(await screen.findByText("Districts have no earlier years in CHIP: older Congresses had different districts.")).toBeInTheDocument();
+    expect(screen.getByTestId("selected-area")).toHaveTextContent("Person · County 37145");
+    expect(await screen.findByText("This area has no shape on this year's boundary, so no value is shown or inferred.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Geography")).toHaveValue("cd");
   });
 });
