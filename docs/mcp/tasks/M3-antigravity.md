@@ -48,7 +48,11 @@ Only in these paths: `backend/tests/mcp_eval/**`, `deliverables/mcp/**`, and `do
 ## Environment
 
 - Python venv: `backend/.venv-mcp` already exists with `mcp==2.3.0`, `pyyaml`, `pytest`, and the database libraries. Run with `cd backend && PYTHONPATH=. .venv-mcp/bin/python tests/mcp_eval/run_eval.py ...`.
-- **The server may not exist yet.** If `backend/app/mcp_server/` is absent, finish everything and validate with `--expected-only`. Claude runs the full eval against the server in M4. Do not write a server yourself.
+- **Your sandbox has no network, so the database is unreachable from your commands.** That is expected; do not try to work around it. Write the runner so that it works when run by Claude outside the sandbox. You can still check it by:
+  - running `python -m py_compile` on it;
+  - loading and validating `questions.yaml`, with a `--validate` flag that checks the structure (every tool, product, and level covered; required fields present; at least 8 traps) without touching the database;
+  - unit-testing the pure check functions (position numbering with ties, forbidden-word scan, AHRF scan, size check) against small hand-written sample responses in `backend/tests/mcp_eval/test_checks.py`.
+- Claude runs `--expected-only` and the full eval against the server in M4, then sends you any fixes needed. Do not write a server yourself.
 
 ## Rules
 
@@ -58,6 +62,6 @@ Only in these paths: `backend/tests/mcp_eval/**`, `deliverables/mcp/**`, and `do
 
 ## Done when
 
-1. `--expected-only` runs cleanly and prints expected values for every question.
-2. If the server exists: the full run completes and the report is written, even when checks fail (failures are useful findings).
+1. `--validate` passes, `test_checks.py` passes, and the runner compiles. (`--expected-only` and the full run are executed by Claude.)
+2. The status file lists exactly how Claude should run `--expected-only` and the full eval.
 3. The status file is updated. Finish with a short report: files created, question count by tool and product, trap questions, contract ambiguities, and how to run it.
