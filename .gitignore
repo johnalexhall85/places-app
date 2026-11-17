@@ -45,3 +45,6 @@ backend/data/reports/
 backend/cache/
 backend/tmp/
 frontend/public/reports/
+
+# Separate venv for the MCP server (docs/mcp/PLAN.md)
+.venv-mcp/
