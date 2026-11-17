@@ -12,8 +12,8 @@ class Envelope(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-def source(product, release):
-    return {k: product.get(k) for k in ('dataset_id',)} | {
+def source(product, release, dataset_id=None):
+    return {'dataset_id': dataset_id or product.get('dataset_id')} | {
         'product': product['product'], 'product_name': product['name'], 'publisher': product['publisher'],
         'release_id': release.get('release_id'), 'source_release_id': release.get('source_release_id'),
         'published_at': release.get('published_at'), 'landing_page': product.get('landing_page')}
@@ -32,7 +32,7 @@ def value_row(row, product, release, name=None):
         'status': row['status'], 'status_text': row['status_text'], 'uncertainty': row['uncertainty'],
         'period': row['period'], 'population': row['population'], 'value_type': row['value_type'],
         'boundary_vintage': row.get('boundary_vintage'), 'release_id': row['release_id'],
-        'notes': row.get('notes') or {}, 'source_credit': row.get('source_credit'),
+        'notes': row.get('notes') or {}, 'note': row.get('note'), 'source_credit': row.get('source_credit'),
         'citation': citation(product, row['period'], release),
     }
 

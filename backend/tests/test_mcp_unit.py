@@ -17,6 +17,9 @@ def stub(monkeypatch):
     session = Session()
     monkeypatch.setattr(tools.db_module, 'SessionLocal', lambda: session)
     monkeypatch.setattr(tools.lookup, 'active_releases', lambda db: {})
+    monkeypatch.setattr(tools.lookup, 'measure_periods', lambda db, product, measure_id: [
+        {'period': '2023', 'current': True, 'available': True, 'note': None,
+         'boundary_vintage': None, 'release_id': 'rid'}])
     return monkeypatch, session
 
 
@@ -49,7 +52,7 @@ def test_envelope_citation_and_value_projection():
     value = value_row(row(), p, p['release'], 'Person')
     assert set(value) == {'measure_key', 'label', 'area', 'value', 'unit', 'storage_scale', 'status',
                           'status_text', 'uncertainty', 'period', 'population', 'value_type',
-                          'boundary_vintage', 'release_id', 'notes', 'source_credit', 'citation'}
+                          'boundary_vintage', 'release_id', 'notes', 'note', 'source_credit', 'citation'}
     assert value['citation'] == 'Source: CDC · PLACES pilot · 2023 · release 2025'
     envelope = build({'values': [value]}, [p])
     assert envelope.sources[0]['release_id'] == 'rid'
@@ -225,3 +228,68 @@ def test_lookup_error_preserved_and_unexpected_error_sanitized(stub):
     with pytest.raises(ToolError, match='^Internal error; please retry or narrow the request$') as exc:
         tools.find_places('AL')
     assert 'SQL secret detail' not in str(exc.value)
+
+
+def test_period_selection_and_unpublished_period(stub):
+    monkeypatch, _ = stub
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: catalog())
+    monkeypatch.setattr(tools.lookup, 'area_info', lambda *args: [{'geoid': '37145', 'name': 'Person'}])
+    monkeypatch.setattr(tools.lookup, 'states', lambda db: [{'geoid': '37', 'name': 'North Carolina'}])
+    periods = [{'period': '2023', 'available': True, 'current': True},
+               {'period': '2022', 'available': True, 'current': False},
+               {'period': '2021', 'available': False, 'current': False}]
+    monkeypatch.setattr(tools.lookup, 'measure_periods', lambda *args: periods)
+    history_release = {'release_id': 'old', 'source_release_id': 'older', 'published_at': '2026-01-01'}
+    monkeypatch.setattr(tools.lookup, 'active_releases', lambda db: {'ds:history': history_release})
+    calls = []
+    monkeypatch.setattr(tools.lookup, 'area_values', lambda *a, **kw: calls.append('current') or {'values': [row()]})
+    older = dict(row(), period='2022', release_id='old', note='Earlier method', boundary_vintage='TIGER 2020')
+    monkeypatch.setattr(tools.lookup, 'area_values_for_period', lambda *a: calls.append('history') or {'values': [older], 'unavailable': []})
+    monkeypatch.setattr(tools.lookup, 'measure_values_within', lambda *a, **kw: calls.append(kw.get('period')) or {'values': [dict(older, name='Person')]})
+    assert tools.get_area_values('county', ['37145'], ['places:diabetes_crudeprev']).data['values'][0]['note'] is None
+    historical = tools.get_area_values('county', ['37145'], ['places:diabetes_crudeprev'], period='2022')
+    assert historical.data['values'][0]['citation'].endswith('release older')
+    assert historical.sources[0]['dataset_id'] == 'ds:history'
+    assert calls[:2] == ['current', 'history']
+    absent = tools.get_area_values('county', ['37145'], ['places:diabetes_crudeprev'], period='2021')
+    assert absent.data['values'] == [] and '2023, 2022' in absent.warnings[0]
+    across = tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', '37', period='2022')
+    assert across.data['measure']['note'] == 'Earlier method'
+    assert across.data['measure']['citation'].endswith('release older')
+    assert 'note' not in across.data['with_value'][0]
+    assert calls[-1] == '2022'
+    with pytest.raises(ToolError, match='2023, 2022'):
+        tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', '37', period='2021')
+    with pytest.raises(ToolError, match='Congressional districts have no earlier periods'):
+        tools.get_measure_across_areas('places:diabetes_crudeprev', 'cd', '37', period='2022')
+
+
+def test_series_order_sources_and_boundary_warning(stub):
+    monkeypatch, _ = stub
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: catalog())
+    monkeypatch.setattr(tools.lookup, 'area_info', lambda *args: [{'geoid': '37145', 'name': 'Person'}])
+    monkeypatch.setattr(tools.lookup, 'active_releases', lambda db: {'ds:history': {
+        'release_id': 'old', 'source_release_id': 'older', 'published_at': '2026-01-01'}})
+    old = dict(row(), period='2022', release_id='old', note='Old boundary', boundary_vintage='TIGER 2020')
+    monkeypatch.setattr(tools.lookup, 'area_measure_series', lambda *args: {
+        'series': [old, row()], 'unavailable_periods': [{'period': '2021', 'reason': 'not published'}]})
+    result = tools.get_measure_over_time('county', '37145', 'places:diabetes_crudeprev')
+    assert [r['period'] for r in result.data['series']] == ['2022', '2023']
+    assert result.data['series'][0]['note'] == 'Old boundary'
+    assert {s['dataset_id'] for s in result.sources} == {'ds', 'ds:history'}
+    assert any('boundary vintage differs' in w for w in result.warnings)
+    assert result.data['unavailable_periods'][0]['period'] == '2021'
+    with pytest.raises(ToolError, match='not available through the public server'):
+        tools.get_measure_over_time('county', '37145', 'ahrf:private')
+
+
+def test_long_series_stays_within_size_cap(stub):
+    monkeypatch, _ = stub
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: catalog())
+    monkeypatch.setattr(tools.lookup, 'area_info', lambda *args: [{'geoid': '37145', 'name': 'Person'}])
+    rows = [dict(row(), period=str(i), notes={'large': 'x' * 1000}) for i in range(100)]
+    monkeypatch.setattr(tools.lookup, 'area_measure_series', lambda *args: {'series': rows, 'unavailable_periods': []})
+    result = tools.get_measure_over_time('county', '37145', 'places:diabetes_crudeprev')
+    assert result.data['truncated'] is True
+    assert len(result.data['series']) < len(rows)
+    assert size_bytes(result) <= MAX_BYTES

@@ -1,4 +1,4 @@
-"""Seven read-only MCP operations; all database reads use the approved lookup layer."""
+"""Eight read-only MCP operations; all database reads use the approved lookup layer."""
 import json
 import logging
 import re
@@ -9,7 +9,7 @@ from app import db as db_module
 from app.area_pilot import lookup
 from . import cache, measures, places
 from .config import FACILITY_PRODUCTS, LEVELS, MAX_BYTES, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING
-from .envelope import Envelope, build, compact_value_row, fit_rows, size_bytes, value_row, citation
+from .envelope import Envelope, build, compact_value_row, fit_rows, size_bytes, value_row, citation, source
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +88,40 @@ def _topics_for(key):
     return measures.topic_map().get(key, [])
 
 
+def _periods(db, measure):
+    return lookup.measure_periods(db, measure['product'], measure['measure_id'])
+
+
+def _published_periods(db, measure):
+    return [p['period'] for p in _periods(db, measure) if p['available']]
+
+
+def _row_release(row, product, releases):
+    current = product['release']
+    if row['release_id'] == current['release_id']:
+        return current, product['dataset_id']
+    history_id = f"{product['dataset_id']}:history"
+    history = releases.get(history_id)
+    if history and row['release_id'] == history['release_id']:
+        return history, history_id
+    raise ToolError('Published release metadata is unavailable; please retry')
+
+
+def _row_sources(rows, products, releases):
+    found = {}
+    for row in rows:
+        product = products[row['product']]
+        release, dataset_id = _row_release(row, product, releases)
+        found[(dataset_id, release['release_id'])] = source(product, release, dataset_id)
+    return list(found.values())
+
+
+def _sources_for_visible_rows(response, collection):
+    release_ids = {row['release_id'] for row in response.data[collection]}
+    response.sources = [item for item in response.sources if item['release_id'] in release_ids]
+    return response
+
+
 def _run(name, args, work):
     start = time.monotonic()
     cached = False
@@ -104,7 +138,7 @@ def _run(name, args, work):
         else:
             cached = True
         data = result.data
-        rows = sum(len(data[k]) for k in ('values', 'with_value', 'without_value', 'matches', 'measures') if isinstance(data.get(k), list))
+        rows = sum(len(data[k]) for k in ('values', 'with_value', 'without_value', 'series', 'matches', 'measures') if isinstance(data.get(k), list))
         return result
     except (ToolError, lookup.LookupError_) as exc:
         error = type(exc).__name__
@@ -144,6 +178,9 @@ def search_measures(query: str | None = None, topic: str | None = None, level: s
             raise ToolError('Use a limit between 1 and 50')
         catalog = _catalog(db)
         data = measures.search(catalog, query, topic, level, limit)
+        for item in data['measures']:
+            measure = _measure(catalog, item['measure_key'])
+            item['periods'] = [p['period'] for p in _periods(db, measure) if p['available']]
         used = [key.split(':')[0] for key in (m['measure_key'] for m in data['measures'])]
         warnings = []
         if query is None and topic is None and level is None:
@@ -170,12 +207,14 @@ def get_measure_details(measure_keys: list[str]) -> Envelope:
             paired = m.get('paired_measure')
             paired_key = f"{paired['product']}:{paired['measure_id']}" if paired and paired['product'] in PUBLIC_PRODUCTS else None
             found.append({**m, 'measure_key': key, 'paired_measure': paired_key, 'topics': _topics_for(key),
-                          'limitations': product['limitations'], 'active_release': product['release']})
+                          'limitations': product['limitations'], 'active_release': product['release'],
+                          'periods': _periods(db, m)})
         return build({'measures': found}, _used(catalog, [m['measure_key'].split(':')[0] for m in found]), warnings)
     return _run('get_measure_details', locals_args(measure_keys=measure_keys), work)
 
 
-def get_area_values(level: str, geoids: list[str], measure_keys: list[str] | None = None, topic: str | None = None) -> Envelope:
+def get_area_values(level: str, geoids: list[str], measure_keys: list[str] | None = None,
+                    topic: str | None = None, period: str | None = None) -> Envelope:
     def work(db):
         _validate_level(level)
         if not geoids or len(geoids) > 25:
@@ -206,6 +245,8 @@ def get_area_values(level: str, geoids: list[str], measure_keys: list[str] | Non
                 warnings.append(f'Unknown measure key {key}; use search_measures')
             elif level not in m['levels']:
                 warnings.append(f"{key} is not published for {level}; published for {', '.join(m['levels'])}")
+            elif period is not None and period not in (published := _published_periods(db, m)):
+                warnings.append(f"{key} is not published for {period}; published periods: {', '.join(published)}")
             else:
                 valid.append(m)
         if len(set(geoids)) * len(valid) > MAX_ROWS:
@@ -213,20 +254,32 @@ def get_area_values(level: str, geoids: list[str], measure_keys: list[str] | Non
         requested = {f"{m['product']}:{m['measure_id']}" for m in valid}
         products = sorted({m['product'] for m in valid})
         ids = sorted({m['measure_id'] for m in valid})
-        result = lookup.area_values(db, level, geoids, products=products, measure_ids=ids) if valid else {'values': []}
+        if not valid:
+            result = {'values': [], 'unavailable': []}
+        elif period is not None:
+            result = lookup.area_values_for_period(db, level, geoids, period,
+                                                   [(m['product'], m['measure_id']) for m in valid])
+        else:
+            result = lookup.area_values(db, level, geoids, products=products, measure_ids=ids)
+        for item in result.get('unavailable', []):
+            m = _measure(catalog, f"{item['product']}:{item['measure_id']}")
+            warnings.append(f"{item['product']}:{item['measure_id']} is unavailable for {period}: {item['reason']}; published periods: {', '.join(_published_periods(db, m))}")
         result_rows = [r for r in result['values'] if f"{r['product']}:{r['measure_id']}" in requested and r['product'] in PUBLIC_PRODUCTS]
         names = {r['geoid']: r['name'] for r in lookup.area_info(db, level, geoids)}
         pdata = _products(catalog)
-        values = [value_row(r, pdata[r['product']], pdata[r['product']]['release'], names.get(r['geoid'])) for r in result_rows]
+        releases = lookup.active_releases(db) if result_rows else {}
+        values = [value_row(r, pdata[r['product']], _row_release(r, pdata[r['product']], releases)[0],
+                            names.get(r['geoid'])) for r in result_rows]
         used = _used(catalog, [r['product'] for r in result_rows])
         response = build({'level': level, 'areas': [{'geoid': g, 'name': names.get(g)} for g in dict.fromkeys(geoids)],
                           'values': values}, used, warnings)
-        return fit_rows(response, 'values')
-    return _run('get_area_values', locals_args(level=level, geoids=geoids, measure_keys=measure_keys, topic=topic), work)
+        response.sources = _row_sources(result_rows, pdata, releases)
+        return _sources_for_visible_rows(fit_rows(response, 'values'), 'values')
+    return _run('get_area_values', locals_args(level=level, geoids=geoids, measure_keys=measure_keys, topic=topic, period=period), work)
 
 
 def get_measure_across_areas(measure_key: str, level: str, within: str | None = None,
-                             sort: str = 'geoid', limit: int = 25) -> Envelope:
+                             sort: str = 'geoid', limit: int = 25, period: str | None = None) -> Envelope:
     def work(db):
         _validate_level(level)
         product, measure_id = _measure_key(measure_key)
@@ -254,12 +307,18 @@ def get_measure_across_areas(measure_key: str, level: str, within: str | None = 
         m = _measure(catalog, measure_key)
         if m is None:
             raise ToolError('Unknown measure key; use search_measures')
+        if period is not None and period != m['period'] and level == 'cd':
+            raise ToolError('Congressional districts have no earlier periods in CHIP: older Congresses had different districts.')
         if level not in m['levels']:
             raise ToolError(f"This measure is published for {', '.join(m['levels'])}; use one of those levels")
-        result = lookup.measure_values_within(db, product, measure_id, level, parent_geoid)
+        if period is not None and period not in (published := _published_periods(db, m)):
+            raise ToolError(f"{measure_key} is not published for {period}; published periods: {', '.join(published)}")
+        result = (lookup.measure_values_within(db, product, measure_id, level, parent_geoid, period=period)
+                  if period is not None else lookup.measure_values_within(db, product, measure_id, level, parent_geoid))
         pdata = _products(catalog)[product]
-        release = pdata['release']
         rows = result['values']
+        releases = lookup.active_releases(db) if rows else {}
+        release = _row_release(rows[0], pdata, releases)[0] if rows else pdata['release']
         with_value = [r for r in rows if r['value'] is not None]
         without_value = [r for r in rows if r['value'] is None]
         if sort == 'value_desc':
@@ -296,6 +355,7 @@ def get_measure_across_areas(measure_key: str, level: str, within: str | None = 
         compact['release_id'] = compact['release_id'] or release.get('release_id')
         compact['measure_key'] = measure_key
         compact['citation'] = citation(pdata, representative.get('period'), release)
+        compact['note'] = representative.get('note')
         if shared_uncertainty_label is not None:
             compact['uncertainty_label'] = shared_uncertainty_label
         if shared_uncertainty_kind is not None:
@@ -305,6 +365,8 @@ def get_measure_across_areas(measure_key: str, level: str, within: str | None = 
         response = build({'measure': compact, 'parent': parent, 'total_areas': len(rows),
                           'with_value': numbered[:limit], 'without_value': missing, 'truncated': clipped},
                          [pdata], warnings)
+        if rows:
+            response.sources = _row_sources(rows, {product: pdata}, releases)
         while True:
             before = len(response.data['with_value'])
             response.warnings = [w for w in response.warnings if not w.startswith('Showing ')]
@@ -314,7 +376,46 @@ def get_measure_across_areas(measure_key: str, level: str, within: str | None = 
             if len(response.data['with_value']) == before:
                 break
         return response
-    return _run('get_measure_across_areas', locals_args(measure_key=measure_key, level=level, within=within, sort=sort, limit=limit), work)
+    return _run('get_measure_across_areas', locals_args(measure_key=measure_key, level=level, within=within, sort=sort, limit=limit, period=period), work)
+
+
+def get_measure_over_time(level: str, geoid: str, measure_key: str) -> Envelope:
+    def work(db):
+        _validate_level(level)
+        _validate_geoid(level, geoid)
+        product, measure_id = _measure_key(measure_key)
+        catalog = _catalog(db)
+        measure = _measure(catalog, measure_key)
+        if measure is None:
+            raise ToolError('Unknown measure key; use search_measures')
+        if level not in measure['levels']:
+            raise ToolError(f"This measure is published for {', '.join(measure['levels'])}; use one of those levels")
+        result = lookup.area_measure_series(db, level, geoid, product, measure_id)
+        rows = result['series']
+        if level == 'cd':
+            rows = [r for r in rows if r['period'] == measure['period']]
+        releases = lookup.active_releases(db) if rows else {}
+        pdata = _products(catalog)[product]
+        info = lookup.area_info(db, level, [geoid])
+        name = info[0]['name'] if info else None
+        values = [value_row(r, pdata, _row_release(r, pdata, releases)[0], name) for r in rows]
+        shared = {k: measure.get(k) for k in ('label', 'unit', 'storage_scale')}
+        for field in ('population', 'value_type'):
+            if not rows or all(r.get(field) == rows[0].get(field) for r in rows):
+                shared[field] = rows[0].get(field) if rows else measure.get(field)
+        shared['measure_key'] = measure_key
+        warnings = ['Values are shown as published for each period; earlier periods can differ in method or boundaries, and CHIP computes no change.']
+        if len({r.get('boundary_vintage') for r in rows}) > 1:
+            warnings.append('The boundary vintage differs between periods; compare the published areas with care.')
+        if level == 'cd':
+            warnings.append('Congressional districts have no earlier periods in CHIP: older Congresses had different districts.')
+        response = build({'area': {'level': level, 'geoid': geoid, 'name': name},
+                          'measure': shared, 'series': values,
+                          'unavailable_periods': result['unavailable_periods'] if level != 'cd' else []},
+                         [pdata] if rows else [], warnings)
+        response.sources = _row_sources(rows, {product: pdata}, releases)
+        return _sources_for_visible_rows(fit_rows(response, 'series'), 'series')
+    return _run('get_measure_over_time', locals_args(level=level, geoid=geoid, measure_key=measure_key), work)
 
 
 def get_area_context(level: str, geoid: str) -> Envelope:
@@ -361,10 +462,18 @@ def list_data_sources() -> Envelope:
                   {'product': p['product'], 'measure_count': counts[p['product']]} for p in products]
         blocks = lookup.area_facilities(db, 'state', '01')
         facility = [{field: blocks[key].get(field) for field in ('name', 'release', 'published')} | {'product': key} for key in FACILITY_PRODUCTS]
+        period_notes = []
+        for p in products:
+            periods = {period['period'] for m in ms if m['product'] == p['product']
+                       for period in _periods(db, m) if period['available']}
+            if periods:
+                first, last = min(periods), max(periods)
+                span = ', '.join(sorted(periods)) if any('–' in p for p in periods) else first if first == last else f'{first}–{last}'
+                period_notes.append(f"{p['name']}: {span}")
         response = build({'products': public, 'facility_products': facility,
                       'excluded': [{'product': 'ahrf', 'reason': "Pending the source agency's answer on redistribution; available on the CHIP website."}],
                       'status_glossary': lookup.STATUS_TEXT, 'levels': list(LEVELS),
-                      'notes': ['One published period per measure; no time series.',
+                      'notes': period_notes + [
                                 'Area context uses TIGER/Line 2024 boundaries and 119th Congress districts; '
                                 'each value row gives its source boundary_vintage, which may differ.']}, products)
         response.sources.extend(_facility_sources(blocks))

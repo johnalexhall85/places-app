@@ -4,7 +4,14 @@ Updated at the end of each task. Claude reads this file before reviewing.
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| H5 MCP Amendment 2 | Implemented, uncommitted; awaiting Claude review | `codex/history` | Eight tools, optional period selection, period notes and citations, history sources, one-area series, catalog periods, and source period lists. MCP tests 23/23; staging CMS and unavailable BRFSS checks passed. The old M3 evaluator needs H6 contract updates. |
 | H4 year dropdown on `/area/*` | Implemented, uncommitted; awaiting Claude review and staging history publication | `codex/history` | `frontend/src/pages/Places2025Pilot.jsx` and `Places2025Pilot.test.jsx`: period and release selection, URL state, request/cache/shape keys, period-aware labels and notes, geography fallback, selected GEOID across years. 167/167 frontend tests, Vite build, and `git diff --check` passed. |
+
+## H5 diary facts — 2026-11-17T17:47:47+00:00
+
+- **Objective and outcome:** Implemented MCP contract Amendment 2 in the owned MCP server paths. The server now exposes eight tools, keeps default reads on current published releases, accepts optional periods for area and across-area values, returns period notes, boundary vintages, per-release citations and source entries, and offers one-area series oldest first. Search and details expose published periods; source notes list periods per public product. AHRF remains withheld.
+- **Files and verification:** Changed `backend/app/mcp_server/{app,config,envelope,tools}.py`, `backend/tests/test_mcp_{unit,integration}.py`, and this status file. `PYTHONPATH=. .venv-mcp/bin/python -m pytest -q tests/test_mcp_*.py` passed 23/23. Direct staging reads returned six CMS GV Person County periods (2019–2024), eight former Connecticut counties for 2020 readmissions, and a published-period warning with no values for BRFSS diabetes 2021. Local MCP HTTP evaluation made 65 tool calls; its old assertions passed 2/44 questions because they require the superseded rule 6 and reject Amendment 2's `note` field (118 full value rows and 13 compact measure objects); no other failure category appeared. Q34 additionally encodes the old one-period premise and needs H6 revision. `git diff --check` passed.
+- **Status and next action:** No dataset, release, migration, database, service, deployment, commit, or push changed. Claude should review, update the MCP evaluator in H6 (old general rule assertion, exact full-row and compact-measure schemas, and Q34's one-period expectations), then merge and deploy through the managed workflow. The project diary and handbook were not edited because H5 restricts Codex writes to owned MCP paths and this status file; fold these branch-only facts into Claude-owned documents after review.
 
 ## H4 diary facts — 2026-11-17T17:39:13+00:00
 

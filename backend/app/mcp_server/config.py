@@ -1,4 +1,4 @@
-"""Public MCP policy, shared by all seven tools."""
+"""Public MCP policy, shared by all eight tools."""
 import os
 
 PUBLIC_PRODUCTS = frozenset({'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea'})
@@ -10,7 +10,7 @@ RULES = (
     'Each value has its own period, population, and source; do not treat different periods or populations as directly comparable without saying so.',
     'Medicare (cms_gv) measures describe Original Medicare beneficiaries, not all residents.',
     "TRI facilities are facilities that report to EPA's Toxics Release Inventory; reporting does not mean a release, a violation, or a health risk.",
-    'Each measure has one published period in CHIP; there is no time series.',
+    'Many measures also have earlier published periods. Each value carries its own period, release, and boundary vintage, and an earlier period can differ in method or boundaries (read its `note`). Present values from different periods side by side as published; CHIP does not compute changes or trends.',
 )
 ORDER_WARNING = ('Order is by point estimate. Where uncertainty ranges overlap, the difference may not be meaningful. '
                  'This is a list of one published measure, not a ranking of overall health.')

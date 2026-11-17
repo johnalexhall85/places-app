@@ -99,6 +99,39 @@ def test_all_texas_counties_fit_client_size(staging):
         assert all(('position' in r) == (sort != 'geoid') for r in data['with_value'])
 
 
+def test_cms_history_series_and_former_connecticut_counties(staging):
+    series = tools.get_measure_over_time('county', '37145', 'cms_gv:std_payment_per_capita')
+    assert [r['period'] for r in series.data['series']] == ['2019', '2020', '2021', '2022', '2023', '2024']
+    assert series.data['series'][0]['note']
+    assert series.data['series'][-1]['note'] is None
+    assert any('boundary vintage differs' in w for w in series.warnings)
+    assert {s['dataset_id'] for s in series.sources} == {
+        'cms_om_geographic_variation', 'cms_om_geographic_variation:history'}
+    assert size_bytes(series) <= MAX_BYTES
+    ct = tools.get_measure_across_areas('cms_gv:readmission_rate', 'county', '09', period='2020')
+    assert ct.data['total_areas'] == 8
+    assert [r['area']['geoid'] for r in ct.data['with_value']] == [
+        '09001', '09003', '09005', '09007', '09009', '09011', '09013', '09015']
+    assert ct.data['measure']['note'] and ct.data['measure']['period'] == '2020'
+    assert ct.sources[0]['dataset_id'].endswith(':history')
+
+
+def test_unpublished_brfss_history_is_explained(staging):
+    result = tools.get_area_values('state', ['54'], ['brfss:diabetes'], period='2021')
+    assert result.data['values'] == [] and result.sources == []
+    assert 'published periods: 2023' in result.warnings[0]
+    details = tools.get_measure_details(['cms_gv:std_payment_per_capita'])
+    periods = details.data['measures'][0]['periods']
+    assert periods[0]['period'] == '2024' and periods[0]['current']
+    assert [p['period'] for p in periods if p['available']] == ['2024', '2023', '2022', '2021', '2020', '2019']
+    search = tools.search_measures(query='std_payment_per_capita')
+    assert search.data['measures'][0]['periods'] == ['2024', '2023', '2022', '2021', '2020', '2019']
+    district = tools.get_measure_over_time('cd', '5401', 'acs_profile:total_population')
+    assert len(district.data['series']) == 1
+    assert district.data['unavailable_periods'] == []
+    assert any('districts have no earlier periods' in w for w in district.warnings)
+
+
 def test_http_client(staging):
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
@@ -121,7 +154,7 @@ def test_http_client(staging):
         async def call():
             async with Client(f'http://127.0.0.1:{port}/mcp') as client:
                 listed = await client.list_tools()
-                assert len(listed.tools) == 7
+                assert len(listed.tools) == 8
                 assert all(tool.output_schema and tool.annotations.read_only_hint is True
                            and tool.annotations.destructive_hint is False
                            and tool.annotations.idempotent_hint is True
