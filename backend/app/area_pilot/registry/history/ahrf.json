@@ -1,0 +1,367 @@
+{
+ "dataset_id": "hrsa_ahrf_county_2024_2025:history",
+ "current_dataset_id": "hrsa_ahrf_county_2024_2025",
+ "product": "ahrf",
+ "parser": "ahrf",
+ "auto_publish": false,
+ "name": "HRSA Area Health Resources Files, earlier years",
+ "publisher": "HRSA, Bureau of Health Workforce",
+ "source_release_id": "AHRF 2024-2025 CSV (2022 columns) and AHRF 2021-2022 ASCII (2015-2020)",
+ "levels": [
+  "county"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "missing"
+ ],
+ "null_statuses": [
+  "missing"
+ ],
+ "uncertainty_kind": "none",
+ "unmatched_tolerance": {
+  "county": 25
+ },
+ "selection": {
+  "ascii_member": "DATA/ahrf2022.asc",
+  "layout_member": "DOC/AHRF2021-2022.sas",
+  "fips_field": {
+   "name": "f00002",
+   "start": 2,
+   "width": 5
+  },
+  "excluded_note": "Rows whose FIPS ends in 000 (state or US totals) are counted and not stored. Not exposed through the MCP server."
+ },
+ "sources": [
+  {
+   "role": "current_hp",
+   "archived_path": "ahrf_2024_2025/7581ac27-9b97-413c-b1c0-14fdb3b013c2/AHRF2025hp.csv",
+   "sha256": "49c23d2c7cf17687dbd1a0fdaf3db1e04743ce6c2333c350355e330024a72f90",
+   "url": "https://data.hrsa.gov/DataDownload/AHRF/AHRF_2024-2025_CSV.zip"
+  },
+  {
+   "role": "current_hf",
+   "archived_path": "ahrf_2024_2025/7581ac27-9b97-413c-b1c0-14fdb3b013c2/AHRF2025hf.csv",
+   "sha256": "60017de1c636ce524d9b3848c2b6bf27f170ae106ab57bab14a8e37196ecffbb",
+   "url": "https://data.hrsa.gov/DataDownload/AHRF/AHRF_2024-2025_CSV.zip"
+  },
+  {
+   "role": "ahrf2122_zip",
+   "archived_path": "history/ahrf/source/AHRF_2021-2022.ZIP",
+   "sha256": "85d240ae64e53ac3a1f17f5af3252d672217981d4c8ddd0f2b90678651aeeed1",
+   "url": "https://data.hrsa.gov/DataDownload/AHRF/AHRF_2021-2022.ZIP"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "phys_nf_prim_care_pc_exc_rsdt_23",
+   "label": "Primary care physicians in patient care",
+   "current_period": "2023",
+   "population": "nonfederal primary care physicians in patient care, excluding hospital residents and age 75+",
+   "value_type": "administrative_count",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "Same AHRF 2024–2025 file and definition as the current year.",
+     "locator": {
+      "file": "current_hp",
+      "column": "phys_nf_prim_care_pc_exc_rsdt_22"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1467520), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1467520",
+      "start": 567,
+      "width": 4,
+      "label": "Phys,Primary Care, Patient Care",
+      "sublabel": "Non-Fed;Excl Hsp Res & 75+ Yrs"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1467519), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1467519",
+      "start": 571,
+      "width": 4,
+      "label": "Phys,Primary Care, Patient Care",
+      "sublabel": "Non-Fed;Excl Hsp Res & 75+ Yrs"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1467518), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1467518",
+      "start": 575,
+      "width": 4,
+      "label": "Phys,Primary Care, Patient Care",
+      "sublabel": "Non-Fed;Excl Hsp Res & 75+ Yrs"
+     }
+    },
+    {
+     "period": "2017",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1467517), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1467517",
+      "start": 579,
+      "width": 4,
+      "label": "Phys,Primary Care, Patient Care",
+      "sublabel": "Non-Fed;Excl Hsp Res & 75+ Yrs"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "dent_nf_fed_proflly_activ_23",
+   "label": "Professionally active dentists",
+   "current_period": "2023",
+   "population": "federal and nonfederal professionally active dentists",
+   "value_type": "administrative_count",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "Same AHRF 2024–2025 file and definition as the current year.",
+     "locator": {
+      "file": "current_hp",
+      "column": "dent_nf_fed_proflly_activ_22"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1318320), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1318320",
+      "start": 10368,
+      "width": 5,
+      "label": "Dentists, Total Prof Active",
+      "sublabel": "Non-Fed & Fed"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1318319), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1318319",
+      "start": 10373,
+      "width": 5,
+      "label": "Dentists, Total Prof Active",
+      "sublabel": "Non-Fed & Fed"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1318318), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1318318",
+      "start": 10378,
+      "width": 5,
+      "label": "Dentists, Total Prof Active",
+      "sublabel": "Non-Fed & Fed"
+     }
+    },
+    {
+     "period": "2017",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1318317), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1318317",
+      "start": 10383,
+      "width": 5,
+      "label": "Dentists, Total Prof Active",
+      "sublabel": "Non-Fed & Fed"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "md_nf_psych_all_pc_23",
+   "label": "Psychiatrists in patient care",
+   "current_period": "2023",
+   "population": "nonfederal MD psychiatrists in patient care",
+   "value_type": "administrative_count",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "Same AHRF 2024–2025 file and definition as the current year.",
+     "locator": {
+      "file": "current_hp",
+      "column": "md_nf_psych_all_pc_22"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1118120), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1118120",
+      "start": 4844,
+      "width": 4,
+      "label": "Psychiatry, Total Patient Care",
+      "sublabel": "Non-Fed;Patient Care"
+     }
+    },
+    {
+     "period": "2015",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f1118115), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA. AHRF carries this measure only every five years before 2020.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f1118115",
+      "start": 4848,
+      "width": 4,
+      "label": "Psychiatry, Total Patient Care",
+      "sublabel": "Non-Fed;Patient Care"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "hosp_23",
+   "label": "Hospitals",
+   "current_period": "2023",
+   "population": "hospitals in the AHA survey database",
+   "value_type": "administrative_count",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "Same AHRF 2024–2025 file and definition as the current year.",
+     "locator": {
+      "file": "current_hf",
+      "column": "hosp_22"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f0886820), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f0886820",
+      "start": 12344,
+      "width": 3,
+      "label": "Total Number Hospitals",
+      "sublabel": ""
+     }
+    },
+    {
+     "period": "2015",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f0886815), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA. AHRF carries this measure only every five years before 2020.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f0886815",
+      "start": 12347,
+      "width": 3,
+      "label": "Total Number Hospitals",
+      "sublabel": ""
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "hosp_beds_23",
+   "label": "Hospital beds",
+   "current_period": "2023",
+   "population": "beds in total hospitals in the AHA survey database",
+   "value_type": "administrative_count",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "Same AHRF 2024–2025 file and definition as the current year.",
+     "locator": {
+      "file": "current_hf",
+      "column": "hosp_beds_22"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f0892120), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f0892120",
+      "start": 12713,
+      "width": 6,
+      "label": "Hospital Beds",
+      "sublabel": "Total Hospitals"
+     }
+    },
+    {
+     "period": "2015",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "From the AHRF 2021–2022 release (field f0892115), same published label as the current year. Connecticut is shown as its eight former counties. Data year 2021 is not available: the AHRF releases that carry it are no longer offered by HRSA. AHRF carries this measure only every five years before 2020.",
+     "locator": {
+      "file": "ahrf2122_zip",
+      "field": "f0892115",
+      "start": 12719,
+      "width": 6,
+      "label": "Hospital Beds",
+      "sublabel": "Total Hospitals"
+     }
+    }
+   ]
+  }
+ ]
+}
