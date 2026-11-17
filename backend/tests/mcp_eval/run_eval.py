@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic evaluation runner for the CHIP MCP server (Task M3 / M3b).
+"""Deterministic evaluation runner for the CHIP MCP server (Task M3 / M3b / H6).
 
 Modes:
   --validate        Validate questions.yaml structure and coverage offline (no DB or server).
@@ -42,6 +42,7 @@ ALL_TOOLS: tuple[str, ...] = (
     "get_measure_details",
     "get_area_values",
     "get_measure_across_areas",
+    "get_measure_over_time",
     "get_area_context",
     "list_data_sources",
 )
@@ -71,7 +72,11 @@ REQUIRED_TRAP_KINDS: tuple[str, ...] = (
     "ahrf_excluded",
     "ahrf_withheld_topic",
     "ahrf_withheld_queries",
-    "time_trend_one_period",
+    "ahrf_over_time_withheld",
+    "cd_no_earlier_periods",
+    "unpublished_period_skipped",
+    "no_computed_change",
+    "across_areas_sort_single_period",
     "no_composite_score",
     "epa_aqi_no_monitor",
     "kentucky_brfss_not_published",
@@ -80,13 +85,28 @@ REQUIRED_TRAP_KINDS: tuple[str, ...] = (
     "medicare_original_beneficiaries",
 )
 
+RULE_6_TEXT = (
+    "Many measures also have earlier published periods. Each value carries its own period, release, "
+    "and boundary vintage, and an earlier period can differ in method or boundaries (read its `note`). "
+    "Present values from different periods side by side as published; CHIP does not compute changes or trends."
+)
+
 GENERAL_INTERPRETATION_RULES: tuple[str, ...] = (
     "Values are published by the named source for exactly the area shown; CHIP never adds, averages, or derives values across areas.",
     "A missing, suppressed, or not-published value is not zero; read `status_text`.",
     "Each value has its own period, population, and source; do not treat different periods or populations as directly comparable without saying so.",
     "Medicare (cms_gv) measures describe Original Medicare beneficiaries, not all residents.",
     "TRI facilities are facilities that report to EPA's Toxics Release Inventory; reporting does not mean a release, a violation, or a health risk.",
-    "Each measure has one published period in CHIP; there is no time series.",
+    RULE_6_TEXT,
+)
+
+OVER_TIME_WARNING = (
+    "Values are shown as published for each period; earlier periods can differ in method or boundaries, "
+    "and CHIP computes no change."
+)
+
+BOUNDARY_VINTAGE_WARNING = (
+    "The boundary vintage differs between periods; compare the published areas with care."
 )
 
 ORDERING_WARNING = (
@@ -97,6 +117,10 @@ ORDERING_WARNING = (
 WITHHELD_TOPIC_EXPLANATION = (
     "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) "
     "is on the CHIP website but not available through this public server."
+)
+
+DISTRICT_NO_EARLIER_PERIODS_ERROR = (
+    "Congressional districts have no earlier periods in CHIP: older Congresses had different districts."
 )
 
 MAX_RESPONSE_BYTES = 50_000
@@ -117,6 +141,7 @@ VALUE_ROW_REQUIRED_KEYS: frozenset[str] = frozenset({
     "boundary_vintage",
     "release_id",
     "notes",
+    "note",
     "source_credit",
     "citation",
 })
@@ -131,6 +156,7 @@ ACROSS_AREAS_MEASURE_REQUIRED_KEYS: frozenset[str] = frozenset({
     "value_type",
     "release_id",
     "citation",
+    "note",
     "uncertainty_kind",
     "uncertainty_label",
 })
@@ -150,6 +176,15 @@ COMPACT_ROW_REQUIRED_KEYS: frozenset[str] = frozenset({
     "uncertainty",
 })
 
+MEASURE_PERIOD_ENTRY_REQUIRED_KEYS: frozenset[str] = frozenset({
+    "period",
+    "current",
+    "available",
+    "note",
+    "boundary_vintage",
+    "release_id",
+})
+
 SPEC_UNCERTAINTY: dict[str, str] = {spec.key: spec.uncertainty for spec in lookup.SPECS}
 
 STATE_ABBR_TO_FIPS: dict[str, str] = {
@@ -165,6 +200,12 @@ STATE_ABBR_TO_FIPS: dict[str, str] = {
 
 FORBIDDEN_WORDS_RE = re.compile(r"\b(best|worst|score|top\s+performer)\b", re.IGNORECASE)
 FORBIDDEN_KEY_TOKENS = {"best", "worst", "score"}
+
+FORBIDDEN_CHANGE_KEY_RE = re.compile(
+    r"(?:^|_)(change|trend|difference|diff|pct_change|percent_change|delta)(?:_|$)",
+    re.IGNORECASE,
+)
+FORBIDDEN_CHANGE_TOKENS = {"change", "trend", "difference", "diff", "pct_change", "delta"}
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +322,22 @@ def check_forbidden_words(payload: Any) -> list[str]:
     return failures
 
 
+def check_no_change_keys(data: Any) -> list[str]:
+    """Check that no key named like change, trend, difference, or pct_change appears anywhere in data."""
+    failures: list[str] = []
+    for key_path, key_name in _collect_dict_keys(data):
+        normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key_name).replace("-", "_").lower()
+        tokens = [t for t in normalized.split("_") if t]
+        if (
+            set(tokens) & FORBIDDEN_CHANGE_TOKENS
+            or "pct_change" in normalized
+            or "percent_change" in normalized
+            or FORBIDDEN_CHANGE_KEY_RE.search(normalized)
+        ):
+            failures.append(f"Forbidden change/trend key in data at '{key_path}'")
+    return failures
+
+
 def check_competition_positions(
     with_value_rows: list[dict[str, Any]],
     sort_mode: str = "value_desc",
@@ -385,13 +442,13 @@ def check_without_value_rows(without_value_rows: list[dict[str, Any]]) -> list[s
 
 
 def check_value_row_shape(row: dict[str, Any]) -> list[str]:
-    """Verify a full value row in `get_area_values` conforms to TOOL_CONTRACT.md & Amendment 1 §2–3."""
+    """Verify a full value row in `get_area_values` or `get_measure_over_time` conforms to Amendment 1 & 2."""
     failures: list[str] = []
     if not isinstance(row, dict):
         return [f"Value row is not a dict: {type(row).__name__}"]
 
     if "position" in row:
-        failures.append(f"Full value row in get_area_values must not contain 'position' (got {row.get('position')!r})")
+        failures.append(f"Full value row must not contain 'position' (got {row.get('position')!r})")
 
     missing = VALUE_ROW_REQUIRED_KEYS - set(row.keys())
     if missing:
@@ -421,9 +478,15 @@ def check_value_row_shape(row: dict[str, Any]) -> list[str]:
     if not isinstance(status_text, str) or not status_text.strip():
         failures.append(f"Row {measure_key!r} missing status_text")
 
+    note_val = row.get("note")
+    if note_val is not None and not isinstance(note_val, str):
+        failures.append(f"Row {measure_key!r} note must be str or None, got {note_val!r}")
+
     citation = row.get("citation")
     if not isinstance(citation, str) or not citation.startswith("Source: ") or "release " not in citation:
         failures.append(f"Row {measure_key!r} has invalid citation format: {citation!r}")
+    elif isinstance(row.get("period"), str) and row["period"] not in citation:
+        failures.append(f"Row {measure_key!r} citation {citation!r} does not contain period {row['period']!r}")
 
     uncertainty = row.get("uncertainty")
     if not isinstance(uncertainty, dict) or "kind" not in uncertainty:
@@ -440,7 +503,7 @@ def check_value_row_shape(row: dict[str, Any]) -> list[str]:
 
 
 def check_across_areas_measure_meta(measure_meta: Any) -> list[str]:
-    """Verify `data.measure` in `get_measure_across_areas` carries shared fields (Amendment 1 §2 & §2a)."""
+    """Verify `data.measure` in `get_measure_across_areas` carries shared fields (Amendment 1 §2, §2a & Amendment 2 §3)."""
     failures: list[str] = []
     if not isinstance(measure_meta, dict):
         return [f"data.measure must be a dict, got {type(measure_meta).__name__}"]
@@ -462,6 +525,10 @@ def check_across_areas_measure_meta(measure_meta: Any) -> list[str]:
         product = measure_key.split(":", 1)[0]
         if product == "ahrf":
             failures.append(f"Excluded product 'ahrf' in data.measure.measure_key: {measure_key!r}")
+
+    note_val = measure_meta.get("note")
+    if note_val is not None and not isinstance(note_val, str):
+        failures.append(f"data.measure.note must be str or None, got {note_val!r}")
 
     citation = measure_meta.get("citation")
     if not isinstance(citation, str) or not citation.startswith("Source: ") or "release " not in citation:
@@ -566,6 +633,196 @@ def check_compact_value_row_shape(
     return failures
 
 
+def check_over_time_response(payload: Any) -> list[str]:
+    """Verify `get_measure_over_time` structure, ascending periods, warnings, and no-change keys (Amendment 2 §5)."""
+    failures: list[str] = []
+    if not isinstance(payload, dict):
+        return [f"Payload must be a dict, got {type(payload).__name__}"]
+
+    data = payload.get("data")
+    warnings = payload.get("warnings")
+    if not isinstance(data, dict):
+        return ["data must be a dict"]
+    if not isinstance(warnings, list):
+        return ["warnings must be a list"]
+
+    failures.extend(check_no_change_keys(data))
+
+    area = data.get("area")
+    if not isinstance(area, dict) or not area.get("level") or not area.get("geoid"):
+        failures.append(f"get_measure_over_time data.area invalid: {area!r}")
+
+    measure = data.get("measure")
+    if not isinstance(measure, dict):
+        failures.append("get_measure_over_time data.measure must be a dict")
+    else:
+        if "period" in measure:
+            failures.append("get_measure_over_time data.measure must not carry 'period'")
+        for req_k in ("measure_key", "label"):
+            if not isinstance(measure.get(req_k), str) or not measure[req_k].strip():
+                failures.append(f"get_measure_over_time data.measure.{req_k} missing")
+
+    unavailable = data.get("unavailable_periods")
+    if not isinstance(unavailable, list):
+        failures.append("get_measure_over_time data.unavailable_periods must be a list")
+    else:
+        for idx, item in enumerate(unavailable):
+            if not isinstance(item, dict) or not item.get("period") or not item.get("reason"):
+                failures.append(
+                    f"get_measure_over_time unavailable_periods[{idx}] must have period and reason: {item!r}"
+                )
+
+    series = data.get("series")
+    if not isinstance(series, list) or not series:
+        failures.append("get_measure_over_time data.series must be a non-empty list")
+    else:
+        periods: list[str] = []
+        vintages: set[str] = set()
+        for idx, row in enumerate(series):
+            row_errs = check_value_row_shape(row)
+            if row_errs:
+                failures.extend([f"series[{idx}]: {e}" for e in row_errs])
+            if isinstance(row, dict):
+                p = row.get("period")
+                if not isinstance(p, str) or not p.strip():
+                    failures.append(f"series[{idx}] missing period")
+                else:
+                    periods.append(p)
+                for req_f in ("period", "note", "release_id", "boundary_vintage", "citation"):
+                    if req_f not in row:
+                        failures.append(f"series[{idx}] missing required key {req_f!r}")
+                for non_empty_f in ("release_id", "boundary_vintage", "citation"):
+                    val = row.get(non_empty_f)
+                    if not isinstance(val, str) or not val.strip():
+                        failures.append(f"series[{idx}].{non_empty_f} must be a non-empty string")
+                bv = row.get("boundary_vintage")
+                if isinstance(bv, str) and bv:
+                    vintages.add(bv)
+
+        if periods != sorted(periods):
+            failures.append(f"series periods are not in ascending order: {periods!r}")
+        if len(periods) != len(set(periods)):
+            failures.append(f"series periods are not unique: {periods!r}")
+
+        if len(vintages) > 1:
+            if not any("boundary vintage" in str(w).lower() for w in warnings):
+                failures.append(
+                    f"series has multiple boundary vintages {sorted(vintages)}, "
+                    f"but warnings has no boundary-vintage caution: {warnings!r}"
+                )
+
+    if not any(OVER_TIME_WARNING in str(w) for w in warnings):
+        failures.append(f"get_measure_over_time missing fixed warning {OVER_TIME_WARNING!r}")
+
+    return failures
+
+
+def check_search_measures_periods(measures_list: Any) -> list[str]:
+    """Verify every item in `search_measures` `data.measures` carries `periods` with current period first (Amendment 2 §6)."""
+    failures: list[str] = []
+    if not isinstance(measures_list, list):
+        return ["search_measures data.measures must be a list"]
+    for idx, item in enumerate(measures_list):
+        if not isinstance(item, dict):
+            failures.append(f"search_measures measures[{idx}] is not a dict")
+            continue
+        mk = item.get("measure_key", f"index {idx}")
+        cur_period = item.get("period")
+        periods = item.get("periods")
+        if not isinstance(periods, list) or not periods:
+            failures.append(f"search_measures[{mk}] missing non-empty 'periods' list: {periods!r}")
+            continue
+        if not all(isinstance(p, str) and p.strip() for p in periods):
+            failures.append(f"search_measures[{mk}] 'periods' must contain non-empty strings: {periods!r}")
+            continue
+        if len(periods) != len(set(periods)):
+            failures.append(f"search_measures[{mk}] 'periods' contains duplicates: {periods!r}")
+        if cur_period and periods[0] != cur_period:
+            failures.append(
+                f"search_measures[{mk}] periods[0]={periods[0]!r} does not equal current period {cur_period!r}"
+            )
+    return failures
+
+
+def check_measure_details_periods(measures_list: Any) -> list[str]:
+    """Verify every item in `get_measure_details` `data.measures` carries full `periods` metadata (Amendment 2 §6)."""
+    failures: list[str] = []
+    if not isinstance(measures_list, list):
+        return ["get_measure_details data.measures must be a list"]
+    for idx, item in enumerate(measures_list):
+        if not isinstance(item, dict):
+            failures.append(f"get_measure_details measures[{idx}] is not a dict")
+            continue
+        mk = item.get("measure_key", f"index {idx}")
+        cur_period = item.get("period")
+        periods = item.get("periods")
+        if not isinstance(periods, list) or not periods:
+            failures.append(f"get_measure_details[{mk}] missing non-empty 'periods' list: {periods!r}")
+            continue
+        seen_periods: set[str] = set()
+        for p_idx, p_entry in enumerate(periods):
+            if not isinstance(p_entry, dict):
+                failures.append(f"get_measure_details[{mk}] periods[{p_idx}] is not a dict")
+                continue
+            missing = MEASURE_PERIOD_ENTRY_REQUIRED_KEYS - set(p_entry.keys())
+            if missing:
+                failures.append(
+                    f"get_measure_details[{mk}] periods[{p_idx}] missing required keys: {sorted(missing)}"
+                )
+            p_str = p_entry.get("period")
+            if not isinstance(p_str, str) or not p_str.strip():
+                failures.append(f"get_measure_details[{mk}] periods[{p_idx}].period must be non-empty string")
+            elif p_str in seen_periods:
+                failures.append(f"get_measure_details[{mk}] repeats period {p_str!r}")
+            else:
+                seen_periods.add(p_str)
+            if not isinstance(p_entry.get("available"), bool):
+                failures.append(f"get_measure_details[{mk}] periods[{p_idx}].available must be bool")
+            if not isinstance(p_entry.get("current"), bool):
+                failures.append(f"get_measure_details[{mk}] periods[{p_idx}].current must be bool")
+            if p_idx > 0 and p_entry.get("note") is not None and not isinstance(p_entry.get("note"), str):
+                failures.append(f"get_measure_details[{mk}] periods[{p_idx}].note must be str or None")
+        if isinstance(periods[0], dict):
+            if periods[0].get("current") is not True:
+                failures.append(f"get_measure_details[{mk}] periods[0].current must be True")
+            if cur_period and periods[0].get("period") != cur_period:
+                failures.append(
+                    f"get_measure_details[{mk}] periods[0].period={periods[0].get('period')!r} != {cur_period!r}"
+                )
+    return failures
+
+
+def check_list_data_sources_notes(
+    notes: Any,
+    expected_product_lines: list[str] | None = None,
+) -> list[str]:
+    """Verify `list_data_sources` `data.notes` lists per-product period ranges and removes the old one-period claim (Amendment 2 §7)."""
+    failures: list[str] = []
+    if not isinstance(notes, list) or not notes or not all(isinstance(n, str) for n in notes):
+        return [f"list_data_sources data.notes must be a non-empty list of strings, got {notes!r}"]
+
+    joined_low = " ".join(notes).lower()
+    if "no time series" in joined_low or "one period per measure" in joined_low or "one published period" in joined_low:
+        failures.append(f"list_data_sources data.notes still contains superseded one-period text: {notes!r}")
+
+    colon_lines = [n for n in notes if ":" in n and not n.startswith("Area context")]
+    if len(colon_lines) < len(PUBLIC_PRODUCTS):
+        failures.append(
+            f"list_data_sources data.notes expected at least {len(PUBLIC_PRODUCTS)} per-product period lines, "
+            f"found {len(colon_lines)}: {notes!r}"
+        )
+
+    if expected_product_lines:
+        notes_set = set(notes)
+        for exp_line in expected_product_lines:
+            if exp_line not in notes_set:
+                failures.append(
+                    f"list_data_sources data.notes missing expected product period line {exp_line!r} (got {notes!r})"
+                )
+
+    return failures
+
+
 def check_envelope(
     payload: Any,
     tool_name: str,
@@ -595,7 +852,7 @@ def check_envelope(
     if failures:
         return failures
 
-    # Global checks required by M3 / M3b
+    # Global checks required by M3 / M3b / H6
     failures.extend(
         check_no_ahrf(
             payload,
@@ -606,7 +863,7 @@ def check_envelope(
     failures.extend(check_response_size(payload))
     failures.extend(check_forbidden_words(payload))
 
-    # General interpretation rules check
+    # General interpretation rules check (including Amendment 2 §1 Rule 6)
     norm_actual_rules = {_norm_rule(r) for r in payload["interpretation_rules"] if isinstance(r, str)}
     for expected_rule in GENERAL_INTERPRETATION_RULES:
         if _norm_rule(expected_rule) not in norm_actual_rules:
@@ -625,6 +882,7 @@ def check_envelope(
     elif tool_name == "search_measures":
         measures_list = data.get("measures") or []
         if measures_list:
+            failures.extend(check_search_measures_periods(measures_list))
             expected_prods = {
                 m["measure_key"].split(":", 1)[0]
                 for m in measures_list
@@ -645,7 +903,8 @@ def check_envelope(
         if not isinstance(measures_list, list):
             failures.append("get_measure_details data.measures must be a list")
         else:
-            expected_prods: set[str] = set()
+            failures.extend(check_measure_details_periods(measures_list))
+            expected_prods = set()
             for idx, m in enumerate(measures_list):
                 if not isinstance(m, dict):
                     failures.append(f"get_measure_details measures[{idx}] is not a dict")
@@ -671,6 +930,7 @@ def check_envelope(
                 )
 
     elif tool_name == "get_area_values":
+        failures.extend(check_no_change_keys(data))
         values = data.get("values")
         if not isinstance(values, list):
             failures.append("get_area_values data.values must be a list")
@@ -693,6 +953,7 @@ def check_envelope(
                 )
 
     elif tool_name == "get_measure_across_areas":
+        failures.extend(check_no_change_keys(data))
         measure_meta = data.get("measure")
         failures.extend(check_across_areas_measure_meta(measure_meta))
         mk = measure_meta.get("measure_key", "") if isinstance(measure_meta, dict) else ""
@@ -770,6 +1031,24 @@ def check_envelope(
                     f"data.measure product {sorted(expected_prods)}"
                 )
 
+    elif tool_name == "get_measure_over_time":
+        failures.extend(check_over_time_response(payload))
+        series = data.get("series") if isinstance(data.get("series"), list) else []
+        row_products = {
+            row["measure_key"].split(":", 1)[0]
+            for row in series
+            if isinstance(row, dict) and isinstance(row.get("measure_key"), str) and ":" in row["measure_key"]
+        }
+        if row_products != source_products:
+            failures.append(
+                f"get_measure_over_time sources products {sorted(source_products)} do not match "
+                f"series products {sorted(row_products)}"
+            )
+
+    elif tool_name == "list_data_sources":
+        if "notes" in data:
+            failures.extend(check_list_data_sources_notes(data.get("notes")))
+
     return failures
 
 
@@ -799,8 +1078,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
         return False, {}, ["Top-level YAML must be a mapping with a 'questions' list"]
 
     questions = raw["questions"]
-    if len(questions) < 35:
-        errors.append(f"Expected around 40 questions (>=35), found {len(questions)}")
+    if len(questions) < 45:
+        errors.append(f"Expected around 54 questions (>=45), found {len(questions)}")
 
     reg_measures = load_registry_measures_offline()
     topics_data = json.loads(TOPICS_PATH.read_text(encoding="utf-8"))
@@ -915,8 +1194,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
     if "48" not in within_seen and "48" not in geoids_seen:
         errors.append("Texas ('48', 254 counties) is not covered in questions.yaml")
 
-    if len(trap_questions) < 10:
-        errors.append(f"At least 10 trap questions required (including Amendment 1 §7), found {len(trap_questions)}")
+    if len(trap_questions) < 14:
+        errors.append(f"At least 14 trap questions required (including H6 traps), found {len(trap_questions)}")
 
     missing_traps = set(REQUIRED_TRAP_KINDS) - trap_kinds_seen
     if missing_traps:
@@ -974,6 +1253,7 @@ def compute_expected_for_call(
         geoids = list(arguments["geoids"])
         measure_keys = arguments.get("measure_keys")
         topic_slug = arguments.get("topic")
+        period = arguments.get("period")
 
         if topic_slug == "health-care-resources":
             return {
@@ -993,31 +1273,49 @@ def compute_expected_for_call(
             if m["product"] in PUBLIC_PRODUCTS
         }
 
-        selected_keys: list[str] = []
+        candidate_keys: list[str] = []
         skipped_unpublished: list[tuple[str, list[str]]] = []
         if measure_keys:
-            for mk in measure_keys:
+            for mk in dict.fromkeys(measure_keys):
                 meta = by_key.get(mk)
                 if meta:
                     if level in meta["levels"]:
-                        selected_keys.append(mk)
+                        candidate_keys.append(mk)
                     else:
                         skipped_unpublished.append((mk, meta["levels"]))
         elif topic_slug:
             topic_obj = next((t for t in topics_list if t["slug"] == topic_slug), None)
             if topic_obj:
-                for prod, mid in topic_obj["measure_keys"]:
+                for item in topic_obj["measure_keys"]:
+                    mk = f"{item[0]}:{item[1]}" if isinstance(item, list) else str(item)
+                    prod = mk.split(":", 1)[0]
                     if prod in PUBLIC_PRODUCTS:
-                        mk = f"{prod}:{mid}"
                         meta = by_key.get(mk)
                         if meta and level in meta["levels"]:
-                            selected_keys.append(mk)
+                            candidate_keys.append(mk)
         else:
             for mk, meta in by_key.items():
                 if level in meta["levels"]:
-                    selected_keys.append(mk)
+                    candidate_keys.append(mk)
 
-        estimated_rows = len(geoids) * len(selected_keys)
+        selected_keys: list[str] = []
+        skipped_unpublished_periods: list[tuple[str, list[str]]] = []
+        if period is not None:
+            for mk in candidate_keys:
+                meta = by_key[mk]
+                pub_periods = [
+                    p["period"]
+                    for p in lookup.measure_periods(db, meta["product"], meta["measure_id"])
+                    if p["available"]
+                ]
+                if period not in pub_periods:
+                    skipped_unpublished_periods.append((mk, pub_periods))
+                else:
+                    selected_keys.append(mk)
+        else:
+            selected_keys = candidate_keys
+
+        estimated_rows = len(set(geoids)) * len(selected_keys)
         if estimated_rows > 400:
             return {
                 "expect_error": True,
@@ -1029,6 +1327,7 @@ def compute_expected_for_call(
             return {
                 "expect_error": False,
                 "skipped_unpublished": skipped_unpublished,
+                "skipped_unpublished_periods": skipped_unpublished_periods,
                 "rows_by_key_geoid": {},
                 "expected_row_count": 0,
                 "expected_sources": [],
@@ -1037,7 +1336,16 @@ def compute_expected_for_call(
 
         prods = list(dict.fromkeys(mk.split(":", 1)[0] for mk in selected_keys))
         mids = list(dict.fromkeys(mk.split(":", 1)[1] for mk in selected_keys))
-        raw = lookup.area_values(db, level, geoids, products=prods, measure_ids=mids)
+        if period is not None:
+            raw = lookup.area_values_for_period(
+                db,
+                level,
+                geoids,
+                period,
+                [(mk.split(":", 1)[0], mk.split(":", 1)[1]) for mk in selected_keys],
+            )
+        else:
+            raw = lookup.area_values(db, level, geoids, products=prods, measure_ids=mids)
         infos = {r["geoid"]: r["name"] for r in lookup.area_info(db, level, geoids)}
 
         selected_set = set(selected_keys)
@@ -1047,12 +1355,15 @@ def compute_expected_for_call(
             mk = f"{r['product']}:{r['measure_id']}"
             if mk not in selected_set:
                 continue
-            rows_by_key_geoid[(mk, r["geoid"])] = r
+            row_copy = dict(r)
+            row_copy.setdefault("note", None)
+            rows_by_key_geoid[(mk, r["geoid"])] = row_copy
             products_in_data.add(r["product"])
 
         return {
             "expect_error": False,
             "skipped_unpublished": skipped_unpublished,
+            "skipped_unpublished_periods": skipped_unpublished_periods,
             "rows_by_key_geoid": rows_by_key_geoid,
             "expected_row_count": len(rows_by_key_geoid),
             "expected_sources": sorted(products_in_data),
@@ -1065,6 +1376,7 @@ def compute_expected_for_call(
         within = arguments.get("within")
         sort_mode = arguments.get("sort", "geoid")
         limit = int(arguments.get("limit", 25))
+        period = arguments.get("period")
 
         if ":" not in mk:
             return {"expect_error": True, "reason": f"Invalid measure_key {mk!r}"}
@@ -1074,7 +1386,10 @@ def compute_expected_for_call(
 
         parent_geoid = resolve_within_geoid(db, level, within)
         try:
-            raw = lookup.measure_values_within(db, product, measure_id, level, parent_geoid)
+            if period is not None:
+                raw = lookup.measure_values_within(db, product, measure_id, level, parent_geoid, period=period)
+            else:
+                raw = lookup.measure_values_within(db, product, measure_id, level, parent_geoid)
         except lookup.LookupError_ as exc:
             return {"expect_error": True, "reason": str(exc)}
 
@@ -1109,6 +1424,7 @@ def compute_expected_for_call(
             "value_type": raw["measure"]["value_type"],
             "release_id": (raw["release"] or {}).get("release_id"),
             "boundary_vintage": first_row.get("boundary_vintage"),
+            "note": raw["measure"].get("note", first_row.get("note")),
             "uncertainty_kind": raw["measure"].get("uncertainty_kind") or first_unc.get("kind"),
             "uncertainty_label": first_unc.get("label"),
         }
@@ -1123,6 +1439,42 @@ def compute_expected_for_call(
             "without_value": without_val,
             "truncated_by_limit": truncated_by_limit,
             "expected_sources": [product] if all_rows else [],
+        }
+
+    elif tool == "get_measure_over_time":
+        level = arguments["level"]
+        geoid = arguments["geoid"]
+        mk = arguments["measure_key"]
+        if ":" not in mk:
+            return {"expect_error": True, "reason": f"Invalid measure_key {mk!r}"}
+        product, measure_id = mk.split(":", 1)
+        if product == "ahrf":
+            return {"expect_error": True, "reason": "Excluded product ahrf"}
+
+        try:
+            raw = lookup.area_measure_series(db, level, geoid, product, measure_id)
+        except lookup.LookupError_ as exc:
+            return {"expect_error": True, "reason": str(exc)}
+
+        series = list(raw["series"])
+        if level == "cd":
+            cat = lookup.catalog(db)
+            m = next(
+                (item for item in cat["measures"] if item["product"] == product and item["measure_id"] == measure_id),
+                None,
+            )
+            if m:
+                series = [r for r in series if r["period"] == m["period"]]
+
+        infos = lookup.area_info(db, level, [geoid])
+        area_name = infos[0]["name"] if infos else None
+        return {
+            "expect_error": False,
+            "area_name": area_name,
+            "series": series,
+            "series_by_period": {r["period"]: r for r in series},
+            "unavailable_periods": raw["unavailable_periods"] if level != "cd" else [],
+            "expected_sources": [product] if series else [],
         }
 
     elif tool == "get_area_context":
@@ -1166,7 +1518,9 @@ def compute_expected_for_call(
         expected_measures = {}
         for mk in arguments.get("measure_keys", []):
             if mk in by_key:
-                expected_measures[mk] = by_key[mk]
+                m = dict(by_key[mk])
+                m["periods"] = lookup.measure_periods(db, m["product"], m["measure_id"])
+                expected_measures[mk] = m
         return {"expect_error": False, "measures": expected_measures}
 
     elif tool == "list_data_sources":
@@ -1174,10 +1528,31 @@ def compute_expected_for_call(
         pub_prods = {
             p["product"]: p for p in cat["products"] if p["product"] in PUBLIC_PRODUCTS
         }
+        ms = [m for m in cat["measures"] if m["product"] in PUBLIC_PRODUCTS]
+        expected_period_notes: list[str] = []
+        for p in cat["products"]:
+            if p["product"] not in PUBLIC_PRODUCTS:
+                continue
+            periods = {
+                per["period"]
+                for m in ms
+                if m["product"] == p["product"]
+                for per in lookup.measure_periods(db, m["product"], m["measure_id"])
+                if per["available"]
+            }
+            if periods:
+                first, last = min(periods), max(periods)
+                span = (
+                    ", ".join(sorted(periods))
+                    if any("–" in per for per in periods)
+                    else first if first == last else f"{first}–{last}"
+                )
+                expected_period_notes.append(f"{p['name']}: {span}")
         return {
             "expect_error": False,
             "products": pub_prods,
             "status_text": lookup.STATUS_TEXT,
+            "expected_period_notes": expected_period_notes,
         }
 
     elif tool == "find_places":
@@ -1189,7 +1564,21 @@ def compute_expected_for_call(
                 "expect_error": True,
                 "reason": WITHHELD_TOPIC_EXPLANATION,
             }
-        return {"expect_error": False, "arguments": arguments}
+        cat = lookup.catalog(db)
+        periods_by_key = {
+            f"{m['product']}:{m['measure_id']}": [
+                p["period"]
+                for p in lookup.measure_periods(db, m["product"], m["measure_id"])
+                if p["available"]
+            ]
+            for m in cat["measures"]
+            if m["product"] in PUBLIC_PRODUCTS
+        }
+        return {
+            "expect_error": False,
+            "arguments": arguments,
+            "periods_by_key": periods_by_key,
+        }
 
     return {"expect_error": False}
 
@@ -1286,6 +1675,44 @@ def verify_call_against_lookup_and_checks(
                 )
         return failures
 
+    # 2b. Handle unpublished period in get_area_values (Amendment 2 §2: must skip with warning listing published periods)
+    if "expect_unpublished_period_handled" in call_check_spec:
+        spec_info = call_check_spec["expect_unpublished_period_handled"]
+        skipped_key = spec_info["skipped_measure_key"]
+        req_period = str(spec_info["requested_period"])
+        if is_error:
+            return [
+                f"Amendment 2 §2 requires get_area_values to skip measure {skipped_key!r} for unpublished period "
+                f"{req_period!r} with a warning, not raise ToolError: {error_text!r}"
+            ]
+        if not isinstance(structured, dict):
+            return ["Response missing structured_content"]
+        failures.extend(check_envelope(structured, tool, arguments))
+        values = structured.get("data", {}).get("values", [])
+        if any(r.get("measure_key") == skipped_key for r in values if isinstance(r, dict)):
+            failures.append(
+                f"Measure {skipped_key!r} should have been skipped for unpublished period {req_period!r}"
+            )
+        warnings_joined = " ".join(str(w) for w in structured.get("warnings", []))
+        if skipped_key.lower() not in warnings_joined.lower() or req_period not in warnings_joined:
+            failures.append(
+                f"Warnings {structured.get('warnings')!r} did not mention {skipped_key!r} and {req_period!r}"
+            )
+        expected_pub_periods: list[str] = []
+        for mk, pub_list in expected_lookup.get("skipped_unpublished_periods", []):
+            if mk == skipped_key:
+                expected_pub_periods = pub_list
+                break
+        if not expected_pub_periods:
+            expected_pub_periods = list(spec_info.get("min_published_periods", []))
+        for pub_p in expected_pub_periods:
+            if str(pub_p) not in warnings_joined:
+                failures.append(
+                    f"Warnings {structured.get('warnings')!r} did not list published period {pub_p!r} "
+                    f"for {skipped_key!r}"
+                )
+        return failures
+
     # 3. Normal non-error call
     if is_error:
         return [f"Unexpected ToolError on {tool}({arguments}): {error_text}"]
@@ -1321,7 +1748,7 @@ def verify_call_against_lookup_and_checks(
                 exp = exp_rows[key]
                 for field in (
                     "value", "status", "status_text", "period", "population", "unit",
-                    "storage_scale", "value_type", "boundary_vintage", "release_id", "source_credit",
+                    "storage_scale", "value_type", "boundary_vintage", "release_id", "note", "source_credit",
                 ):
                     if row.get(field) != exp.get(field):
                         failures.append(
@@ -1350,10 +1777,11 @@ def verify_call_against_lookup_and_checks(
                 "population",
                 "value_type",
                 "release_id",
+                "note",
                 "uncertainty_kind",
                 "uncertainty_label",
             ):
-                if exp_meta.get(meta_field) is not None and act_meta.get(meta_field) != exp_meta.get(meta_field):
+                if meta_field in exp_meta and act_meta.get(meta_field) != exp_meta.get(meta_field):
                     failures.append(
                         f"data.measure.{meta_field} mismatch: got {act_meta.get(meta_field)!r}, "
                         f"lookup has {exp_meta.get(meta_field)!r}"
@@ -1434,6 +1862,45 @@ def verify_call_against_lookup_and_checks(
                     )
                     break
 
+        elif tool == "get_measure_over_time":
+            exp_series = expected_lookup.get("series") or []
+            act_series = data.get("series") or []
+            if not data.get("truncated") and len(act_series) != len(exp_series):
+                failures.append(
+                    f"get_measure_over_time series count mismatch: got {len(act_series)}, lookup has {len(exp_series)}"
+                )
+            for idx, (act_r, exp_r) in enumerate(zip(act_series, exp_series)):
+                for fld in (
+                    "period",
+                    "value",
+                    "status",
+                    "status_text",
+                    "population",
+                    "unit",
+                    "storage_scale",
+                    "value_type",
+                    "boundary_vintage",
+                    "release_id",
+                    "note",
+                ):
+                    if act_r.get(fld) != exp_r.get(fld):
+                        failures.append(
+                            f"series[{idx}] ({act_r.get('period')}) {fld!r} mismatch: "
+                            f"got {act_r.get(fld)!r}, lookup has {exp_r.get(fld)!r}"
+                        )
+                        break
+                if act_r.get("uncertainty") != exp_r.get("uncertainty"):
+                    failures.append(
+                        f"series[{idx}] ({act_r.get('period')}) uncertainty mismatch: "
+                        f"got {act_r.get('uncertainty')!r}, lookup has {exp_r.get('uncertainty')!r}"
+                    )
+                    break
+            if data.get("unavailable_periods") != expected_lookup.get("unavailable_periods"):
+                failures.append(
+                    f"get_measure_over_time unavailable_periods mismatch: "
+                    f"got {data.get('unavailable_periods')!r}, lookup has {expected_lookup.get('unavailable_periods')!r}"
+                )
+
         elif tool == "get_area_context":
             exp_area = expected_lookup.get("area")
             act_area = data.get("area") or {}
@@ -1472,11 +1939,33 @@ def verify_call_against_lookup_and_checks(
                     failures.append(f"Unexpected measure in get_measure_details: {mk!r}")
                     continue
                 exp_m = exp_measures[mk]
-                for fld in ("product", "measure_id", "unit", "storage_scale", "period", "population", "value_type", "levels", "uncertainty_kind"):
-                    if m.get(fld) != exp_m.get(fld):
+                for fld in (
+                    "product",
+                    "measure_id",
+                    "unit",
+                    "storage_scale",
+                    "period",
+                    "population",
+                    "value_type",
+                    "levels",
+                    "uncertainty_kind",
+                    "periods",
+                ):
+                    if fld in exp_m and m.get(fld) != exp_m.get(fld):
                         failures.append(
                             f"get_measure_details[{mk}] field {fld!r} mismatch: got {m.get(fld)!r}, lookup has {exp_m.get(fld)!r}"
                         )
+
+        elif tool == "search_measures":
+            periods_by_key = expected_lookup.get("periods_by_key") or {}
+            for m in data.get("measures", []):
+                if not isinstance(m, dict):
+                    continue
+                mk = m.get("measure_key")
+                if mk in periods_by_key and m.get("periods") != periods_by_key[mk]:
+                    failures.append(
+                        f"search_measures[{mk}] periods={m.get('periods')!r} != lookup {periods_by_key[mk]!r}"
+                    )
 
         elif tool == "list_data_sources":
             act_prods = data.get("products", [])
@@ -1489,6 +1978,12 @@ def verify_call_against_lookup_and_checks(
                 )
             if data.get("status_glossary") != expected_lookup["status_text"]:
                 failures.append("list_data_sources status_glossary does not match lookup.STATUS_TEXT")
+            failures.extend(
+                check_list_data_sources_notes(
+                    data.get("notes"),
+                    expected_lookup.get("expected_period_notes"),
+                )
+            )
 
     # 5. Evaluate explicit call_checks from questions.yaml
     if "expect_match_geoid" in call_check_spec:
@@ -1565,6 +2060,13 @@ def verify_call_against_lookup_and_checks(
                 failures.append(f"Spot {k} period={r.get('period')!r}, expected {spot['period']!r}")
             if "population" in spot and r.get("population") != spot["population"]:
                 failures.append(f"Spot {k} population={r.get('population')!r}, expected {spot['population']!r}")
+            if "citation_contains" in spot and str(spot["citation_contains"]) not in str(r.get("citation", "")):
+                failures.append(
+                    f"Spot {k} citation={r.get('citation')!r} did not contain {spot['citation_contains']!r}"
+                )
+            if spot.get("expect_note_non_empty") is True:
+                if not isinstance(r.get("note"), str) or not r["note"].strip():
+                    failures.append(f"Spot {k} expected non-empty note, got {r.get('note')!r}")
 
     if "expected_facility_counts" in call_check_spec:
         facs = data.get("facilities") or {}
@@ -1608,6 +2110,13 @@ def verify_call_against_lookup_and_checks(
                 f"len(with_value)={act_w}, expected {call_check_spec['expected_with_value_count']}"
             )
 
+    if "expect_with_value_geoids" in call_check_spec:
+        act_geoids = [(r.get("area") or {}).get("geoid") for r in data.get("with_value", [])]
+        if act_geoids != call_check_spec["expect_with_value_geoids"]:
+            failures.append(
+                f"with_value geoids={act_geoids!r}, expected {call_check_spec['expect_with_value_geoids']!r}"
+            )
+
     if "expected_without_value_count" in call_check_spec:
         act_wo = len(data.get("without_value", []))
         if act_wo != call_check_spec["expected_without_value_count"]:
@@ -1649,6 +2158,24 @@ def verify_call_against_lookup_and_checks(
                     f"expected ({spot_first['geoid']}, {spot_first['value']})"
                 )
 
+    if "expect_measure_period" in call_check_spec:
+        act_p = (data.get("measure") or {}).get("period")
+        if act_p != call_check_spec["expect_measure_period"]:
+            failures.append(
+                f"data.measure.period={act_p!r}, expected {call_check_spec['expect_measure_period']!r}"
+            )
+
+    if "expect_measure_boundary_vintage_contains" in call_check_spec:
+        sub = str(call_check_spec["expect_measure_boundary_vintage_contains"])
+        bv = str((data.get("measure") or {}).get("boundary_vintage", ""))
+        if sub not in bv:
+            failures.append(f"data.measure.boundary_vintage={bv!r} did not contain {sub!r}")
+
+    if call_check_spec.get("expect_measure_note_non_empty") is True:
+        note_v = (data.get("measure") or {}).get("note")
+        if not isinstance(note_v, str) or not note_v.strip():
+            failures.append(f"Expected non-empty data.measure.note, got {note_v!r}")
+
     if call_check_spec.get("expect_topics_present") is True:
         topics = data.get("topics")
         if not isinstance(topics, list) or len(topics) != 6:
@@ -1672,6 +2199,20 @@ def verify_call_against_lookup_and_checks(
             if isinstance(m, dict) and req_lvl not in (m.get("levels") or []):
                 failures.append(f"Measure {m.get('measure_key')!r} does not publish at level {req_lvl!r}")
 
+    if call_check_spec.get("expect_search_measures_periods") is True:
+        measures_list = data.get("measures", [])
+        if not measures_list:
+            failures.append("Expected non-empty measures list in search_measures")
+        else:
+            failures.extend(check_search_measures_periods(measures_list))
+
+    if call_check_spec.get("expect_measure_details_periods") is True:
+        measures_list = data.get("measures", [])
+        if not measures_list:
+            failures.append("Expected non-empty measures list in get_measure_details")
+        else:
+            failures.extend(check_measure_details_periods(measures_list))
+
     if "expected_measure_count" in call_check_spec:
         act_m = len(data.get("measures", []))
         if act_m != call_check_spec["expected_measure_count"]:
@@ -1690,29 +2231,50 @@ def verify_call_against_lookup_and_checks(
         if not any(isinstance(e, dict) and e.get("product") == "ahrf" and e.get("reason") for e in excl):
             failures.append(f"list_data_sources.excluded missing 'ahrf' entry with reason: {excl!r}")
 
+    if call_check_spec.get("expect_product_period_lines") is True:
+        failures.extend(
+            check_list_data_sources_notes(
+                data.get("notes"),
+                expected_lookup.get("expected_period_notes"),
+            )
+        )
+
     if call_check_spec.get("expect_no_ahrf_measures") is True:
         for m in data.get("measures", []):
             mk = str((m or {}).get("measure_key", ""))
             if mk.startswith("ahrf:"):
                 failures.append(f"Found excluded AHRF measure in search_measures: {mk!r}")
 
-    if call_check_spec.get("expect_single_period_per_measure") is True:
-        values = data.get("values", [])
-        periods = {r.get("period") for r in values if isinstance(r, dict)}
-        if len(periods) != 1:
-            failures.append(f"Expected single published period for measure, got {periods!r}")
+    if call_check_spec.get("expect_over_time_series") is True:
+        failures.extend(check_over_time_response(structured))
+
+    if call_check_spec.get("expect_boundary_vintage_warning") is True:
+        if not any("boundary vintage" in str(w).lower() for w in warnings):
+            failures.append(f"Expected boundary-vintage warning in {warnings!r}")
+
+    if call_check_spec.get("expect_series_has_available_and_unpublished_current") is True:
+        series = data.get("series", [])
+        if not isinstance(series, list) or len(series) < 2:
+            failures.append(f"Expected multi-period series, got {series!r}")
+        else:
+            latest = series[-1]
+            earlier_with_val = [r for r in series[:-1] if isinstance(r, dict) and r.get("value") is not None]
+            if not isinstance(latest, dict) or latest.get("value") is not None:
+                failures.append(
+                    f"Expected current/latest period row in series to have value=None (unpublished), got {latest!r}"
+                )
+            if not earlier_with_val:
+                failures.append("Expected earlier periods in series to have published non-null values")
+
+    if call_check_spec.get("expect_no_change_computed") is True:
+        failures.extend(check_no_change_keys(data))
+        if not any("CHIP does not compute changes or trends" in str(r) for r in interp_rules):
+            failures.append("interpretation_rules missing Rule 6 ('CHIP does not compute changes or trends')")
 
     if "expect_interpretation_rule_substring" in call_check_spec:
         sub = call_check_spec["expect_interpretation_rule_substring"]
         if not any(sub in str(r) for r in interp_rules):
             failures.append(f"interpretation_rules did not contain {sub!r}")
-
-    if call_check_spec.get("expect_notes_mention_no_time_series") is True:
-        notes_blob = json.dumps(data.get("notes", ""), ensure_ascii=False).lower()
-        if "time series" not in notes_blob and "one period" not in notes_blob and "single period" not in notes_blob:
-            failures.append(
-                f"list_data_sources data.notes did not mention one period / no time series: {data.get('notes')!r}"
-            )
 
     if call_check_spec.get("expect_no_composite_measure") is True:
         for m in data.get("measures", []):
@@ -1870,7 +2432,10 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                 exp = compute_expected_for_call(db, tool, args, topics_list)
 
                 if c_check.get("expect_error") is True:
-                    if tool in ("get_area_values", "get_measure_across_areas", "search_measures") and not exp.get("expect_error"):
+                    if (
+                        tool in ("get_area_values", "get_measure_across_areas", "get_measure_over_time", "search_measures")
+                        and not exp.get("expect_error")
+                    ):
                         q_failures.append(
                             f"Call {idx} ({tool}) expected error in YAML, but lookup succeeded"
                         )
@@ -1894,6 +2459,12 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                             q_failures.append(
                                 f"Call {idx} expected_without_value_count={c_check['expected_without_value_count']} != lookup {len(exp['without_value'])}"
                             )
+                    if "expect_with_value_geoids" in c_check and "with_value" in exp:
+                        exp_geoids = [r["geoid"] for r in exp["with_value"]]
+                        if c_check["expect_with_value_geoids"] != exp_geoids:
+                            q_failures.append(
+                                f"Call {idx} expect_with_value_geoids={c_check['expect_with_value_geoids']} != lookup {exp_geoids}"
+                            )
                     if "spot_values" in c_check and "rows_by_key_geoid" in exp:
                         for spot in c_check["spot_values"]:
                             lk = (spot["measure_key"], spot["geoid"])
@@ -1908,6 +2479,10 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                                 if "status" in spot and row["status"] != spot["status"]:
                                     q_failures.append(
                                         f"Call {idx} spot {lk} status={spot['status']!r} != lookup {row['status']!r}"
+                                    )
+                                if "period" in spot and row["period"] != spot["period"]:
+                                    q_failures.append(
+                                        f"Call {idx} spot {lk} period={spot['period']!r} != lookup {row['period']!r}"
                                     )
 
             passed = len(q_failures) == 0
@@ -2115,7 +2690,7 @@ def main(argv: list[str] | None = None) -> int:
             ]
             write_eval_report(
                 args.report,
-                mode="validate-offline (awaiting M4 live server run)",
+                mode="validate-offline (awaiting H6 live server run)",
                 server_url=None,
                 question_results=q_results,
                 latencies_ms=[],

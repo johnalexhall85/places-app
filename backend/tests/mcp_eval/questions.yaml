@@ -629,6 +629,7 @@ questions:
             - "epa_aqi"
             - "usda_fea"
           expect_excluded_ahrf: true
+          expect_product_period_lines: true
 
   - id: Q29
     question: "Resolve the GEOIDs for 'fips:37145', 'Fresno', 'West Virginia 1st', and 'Alabama'."
@@ -751,28 +752,25 @@ questions:
             - "public"
 
   - id: Q34
-    question: "How has adult diabetes prevalence (places:diabetes_crudeprev) in Kanawha County, WV (54039) trended year-over-year from 2018 to 2023?"
-    trap: true
-    trap_kind: "time_trend_one_period"
-    products: ["places"]
+    question: "How has standardized Medicare spending per beneficiary in Person County, NC changed over the years?"
+    trap: false
+    products: ["cms_gv"]
     levels: ["county"]
     expected_calls:
-      - tool: get_area_values
+      - tool: get_measure_over_time
         arguments:
           level: "county"
-          geoids: ["54039"]
-          measure_keys: ["places:diabetes_crudeprev"]
-      - tool: list_data_sources
-        arguments: {}
+          geoid: "37145"
+          measure_key: "cms_gv:std_payment_per_capita"
     checks:
       match_lookup: true
       call_checks:
         - call_index: 0
-          expected_row_count: 1
-          expect_single_period_per_measure: true
-          expect_interpretation_rule_substring: "Each measure has one published period in CHIP; there is no time series."
-        - call_index: 1
-          expect_notes_mention_no_time_series: true
+          expected_sources: ["cms_gv"]
+          expect_over_time_series: true
+          expect_no_change_computed: true
+          expect_warning_substring: "Values are shown as published for each period; earlier periods can differ in method or boundaries, and CHIP computes no change."
+          expect_interpretation_rule_substring: "Many measures also have earlier published periods. Each value carries its own period, release, and boundary vintage, and an earlier period can differ in method or boundaries (read its `note`). Present values from different periods side by side as published; CHIP does not compute changes or trends."
 
   - id: Q35
     question: "Which county in Alabama is the healthiest overall based on a composite health score?"
@@ -1107,3 +1105,230 @@ questions:
           expect_topics_present: true
           expect_no_withheld_topic: true
           expect_warning_substring: "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) is on the CHIP website but not available through this public server."
+
+  # --- EARLIER PERIODS: REGULAR QUESTIONS (Q45 - Q49) ---
+
+  - id: Q45
+    question: "What was the 2020 Original Medicare 30-day hospital readmission rate (cms_gv:readmission_rate) across the counties of Connecticut (09), and what boundary vintage is used?"
+    trap: false
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "cms_gv:readmission_rate"
+          level: "county"
+          within: "09"
+          period: "2020"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expected_total_areas: 8
+          expected_with_value_count: 8
+          expected_without_value_count: 0
+          expect_with_value_geoids: ["09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015"]
+          expect_measure_period: "2020"
+          expect_measure_boundary_vintage_contains: "2020"
+          expect_measure_note_non_empty: true
+
+  - id: Q46
+    question: "What was the 2021 Original Medicare emergency room visit rate per 1,000 beneficiaries (cms_gv:er_visits_per_1000) in Kanawha County, West Virginia (54039), and how is that earlier period cited?"
+    trap: false
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["54039"]
+          measure_keys: ["cms_gv:er_visits_per_1000"]
+          period: "2021"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expected_row_count: 1
+          spot_values:
+            - geoid: "54039"
+              measure_key: "cms_gv:er_visits_per_1000"
+              period: "2021"
+              citation_contains: "2021"
+              expect_note_non_empty: true
+
+  - id: Q47
+    question: "Search CHIP measures for 'diabetes' and show the published periods available for each matching measure."
+    trap: false
+    products: ["places", "brfss"]
+    levels: ["state", "county", "tract"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "diabetes"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_measure_keys_include:
+            - "places:diabetes_crudeprev"
+            - "brfss:diabetes"
+          expect_search_measures_periods: true
+
+  - id: Q48
+    question: "What are the published and declared periods, comparability notes, and boundary vintages for cms_gv:std_payment_per_capita in get_measure_details?"
+    trap: false
+    products: ["cms_gv"]
+    levels: ["state", "county"]
+    expected_calls:
+      - tool: get_measure_details
+        arguments:
+          measure_keys: ["cms_gv:std_payment_per_capita"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_measure_count: 1
+          expect_measure_details_periods: true
+
+  - id: Q49
+    question: "Show the Original Medicare 30-day hospital readmission rate (cms_gv:readmission_rate) over time for former Fairfield County, Connecticut (09001), including how the 2022 shift to planning regions is handled."
+    trap: false
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_over_time
+        arguments:
+          level: "county"
+          geoid: "09001"
+          measure_key: "cms_gv:readmission_rate"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expect_over_time_series: true
+          expect_series_has_available_and_unpublished_current: true
+          expect_boundary_vintage_warning: true
+
+  # --- EARLIER PERIODS: TRAP QUESTIONS (Q50 - Q54) ---
+
+  - id: Q50
+    question: "What was the 2015–2019 ACS poverty rate (acs_profile:poverty_pct) across West Virginia's congressional districts?"
+    trap: true
+    trap_kind: "cd_no_earlier_periods"
+    products: ["acs_profile"]
+    levels: ["cd"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "acs_profile:poverty_pct"
+          level: "cd"
+          within: "54"
+          period: "2015–2019"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_substrings_all:
+            - "Congressional districts have no earlier periods in CHIP"
+            - "older Congresses had different districts"
+
+  - id: Q51
+    question: "How has the number of primary care physicians in patient care (ahrf:phys_nf_prim_care_pc_exc_rsdt_23) in Person County, NC (37145) changed over time?"
+    trap: true
+    trap_kind: "ahrf_over_time_withheld"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_over_time
+        arguments:
+          level: "county"
+          geoid: "37145"
+          measure_key: "ahrf:phys_nf_prim_care_pc_exc_rsdt_23"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_Substrings_any:
+            - "AHRF"
+            - "not available"
+            - "public server"
+
+  - id: Q52
+    question: "What was West Virginia's (54) state BRFSS adult diabetes prevalence (brfss:diabetes) in 1999?"
+    trap: true
+    trap_kind: "unpublished_period_skipped"
+    products: ["brfss"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "state"
+          geoids: ["54"]
+          measure_keys: ["brfss:diabetes"]
+          period: "1999"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_unpublished_period_handled:
+            skipped_measure_key: "brfss:diabetes"
+            requested_period: "1999"
+            min_published_periods: ["2023"]
+
+  - id: Q53
+    question: "What is the percentage change in standardized Medicare spending per beneficiary (cms_gv:std_payment_per_capita) in Kanawha County, WV (54039) from 2019 to 2023?"
+    trap: true
+    trap_kind: "no_computed_change"
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["54039"]
+          measure_keys: ["cms_gv:std_payment_per_capita"]
+          period: "2019"
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["54039"]
+          measure_keys: ["cms_gv:std_payment_per_capita"]
+          period: "2023"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expected_row_count: 1
+          expect_no_change_computed: true
+        - call_index: 1
+          expected_sources: ["cms_gv"]
+          expected_row_count: 1
+          expect_no_change_computed: true
+
+  - id: Q54
+    question: "Order Connecticut counties by 2020 standardized Medicare spending per beneficiary (cms_gv:std_payment_per_capita) from highest to lowest, and verify sorting applies within the 2020 period only."
+    trap: true
+    trap_kind: "across_areas_sort_single_period"
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "cms_gv:std_payment_per_capita"
+          level: "county"
+          within: "09"
+          sort: "value_desc"
+          period: "2020"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expected_total_areas: 8
+          expected_with_value_count: 8
+          expected_without_value_count: 0
+          expect_measure_period: "2020"
+          expect_no_change_computed: true

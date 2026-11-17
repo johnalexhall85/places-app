@@ -117,9 +117,11 @@ def test_cms_history_series_and_former_connecticut_counties(staging):
 
 
 def test_unpublished_brfss_history_is_explained(staging):
-    result = tools.get_area_values('state', ['54'], ['brfss:diabetes'], period='2021')
+    result = tools.get_area_values('state', ['54'], ['brfss:diabetes'], period='1999')
     assert result.data['values'] == [] and result.sources == []
     assert 'published periods: 2023' in result.warnings[0]
+    published = tools.get_area_values('state', ['54'], ['brfss:diabetes'], period='2021')
+    assert [v['period'] for v in published.data['values']] == ['2021']
     details = tools.get_measure_details(['cms_gv:std_payment_per_capita'])
     periods = details.data['measures'][0]['periods']
     assert periods[0]['period'] == '2024' and periods[0]['current']

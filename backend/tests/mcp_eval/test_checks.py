@@ -1,12 +1,13 @@
 """Unit tests for the pure evaluation check functions in backend/tests/mcp_eval/run_eval.py.
 
 These tests run offline in the sandbox without touching PostgreSQL or a live MCP server.
-Covers TOOL_CONTRACT.md and Amendment 1 (M3b).
+Covers TOOL_CONTRACT.md, Amendment 1 (M3b), and Amendment 2 (H6).
 """
 from __future__ import annotations
 
 import copy
 import json
+from types import SimpleNamespace
 from typing import Any
 
 from tests.mcp_eval import run_eval
@@ -21,6 +22,11 @@ def _sample_value_row(
     status: str = "available",
     status_text: str = "Published value",
     uncertainty_kind: str = "ci95",
+    period: str = "2023",
+    boundary_vintage: str = "TIGER/Line 2023 county",
+    release_id: str = "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+    note: str | None = None,
+    citation: str | None = None,
 ) -> dict[str, Any]:
     uncertainty: dict[str, Any] = {"kind": uncertainty_kind, "label": "95% confidence interval"}
     if uncertainty_kind == "ci95":
@@ -40,20 +46,24 @@ def _sample_value_row(
         "status": status,
         "status_text": status_text,
         "uncertainty": uncertainty,
-        "period": "2023",
+        "period": period,
         "population": "adults",
         "value_type": "crude_prevalence",
-        "boundary_vintage": "TIGER/Line 2023 county",
-        "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+        "boundary_vintage": boundary_vintage,
+        "release_id": release_id,
         "notes": {},
+        "note": note,
         "source_credit": None,
-        "citation": "Source: Centers for Disease Control and Prevention · PLACES 2025 county and tract pilot · 2023 · release 2025-12-12",
+        "citation": citation
+        or f"Source: Centers for Disease Control and Prevention · PLACES 2025 county and tract pilot · {period} · release 2025-12-12",
     }
 
 
 def _sample_measure_meta(
     *,
     measure_key: str = "places:diabetes_crudeprev",
+    period: str = "2023",
+    note: str | None = None,
     uncertainty_kind: str = "ci95",
     uncertainty_label: str = "95% confidence interval",
     boundary_vintage: str | None = "TIGER/Line 2023 county",
@@ -63,11 +73,12 @@ def _sample_measure_meta(
         "label": "Diagnosed diabetes",
         "unit": "percent",
         "storage_scale": None,
-        "period": "2023",
+        "period": period,
         "population": "adults",
         "value_type": "crude_prevalence",
         "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
-        "citation": "Source: Centers for Disease Control and Prevention · PLACES 2025 county and tract pilot · 2023 · release 2025-12-12",
+        "citation": f"Source: Centers for Disease Control and Prevention · PLACES 2025 county and tract pilot · {period} · release 2025-12-12",
+        "note": note,
         "uncertainty_kind": uncertainty_kind,
         "uncertainty_label": uncertainty_label,
     }
@@ -214,16 +225,16 @@ def test_without_value_rows_check():
 
 
 def test_compact_row_and_measure_meta_shapes():
-    # Valid measure meta and compact rows for ci95, moe90, and none (Amendment 1 §2 & §2a)
-    meta = _sample_measure_meta()
+    # Valid measure meta and compact rows for ci95, moe90, and none (Amendment 1 §2, §2a & Amendment 2 §3)
+    meta = _sample_measure_meta(note="Earlier period comparability note.")
     assert run_eval.check_across_areas_measure_meta(meta) == []
 
-    # Missing uncertainty_kind or uncertainty_label in data.measure must fail
-    for req_unc_key in ("uncertainty_kind", "uncertainty_label"):
-        missing_unc = copy.deepcopy(meta)
-        del missing_unc[req_unc_key]
-        errs = run_eval.check_across_areas_measure_meta(missing_unc)
-        assert any(req_unc_key in e for e in errs)
+    # Missing uncertainty_kind, uncertainty_label, or note in data.measure must fail
+    for req_key in ("uncertainty_kind", "uncertainty_label", "note"):
+        missing_k = copy.deepcopy(meta)
+        del missing_k[req_key]
+        errs = run_eval.check_across_areas_measure_meta(missing_k)
+        assert any(req_key in e for e in errs)
 
     # ci95 compact row -> {"low", "high"} only
     row_ci95 = _sample_compact_row(uncertainty_kind="ci95", position=1, notes={"days_with_aqi": 274})
@@ -278,7 +289,7 @@ def test_compact_row_and_measure_meta_shapes():
     )
     assert any("omit 'notes' when empty" in e for e in errs)
 
-    # Repeating shared fields (e.g. citation or measure_key) on compact row must fail
+    # Repeating shared fields (e.g. citation, note, or measure_key) on compact row must fail
     bloated_row = _sample_compact_row(position=1)
     bloated_row["citation"] = meta["citation"]
     errs = run_eval.check_compact_value_row_shape(
@@ -286,19 +297,25 @@ def test_compact_row_and_measure_meta_shapes():
     )
     assert any("unexpected extra keys" in e for e in errs)
 
-    # Full row in get_area_values must NOT have position (even null)
+    # Full row in get_area_values must NOT have position (even null), and MUST have 'note'
     full_row_with_null_pos = _sample_value_row()
     full_row_with_null_pos["position"] = None
     errs = run_eval.check_value_row_shape(full_row_with_null_pos)
     assert any("must not contain 'position'" in e for e in errs)
 
+    full_row_missing_note = _sample_value_row()
+    del full_row_missing_note["note"]
+    errs = run_eval.check_value_row_shape(full_row_missing_note)
+    assert any("note" in e for e in errs)
 
-def test_forbidden_words_scan_in_keys_and_warnings():
+
+def test_forbidden_words_and_no_change_keys():
     clean = _sample_envelope(
         data={"values": [_sample_value_row()]},
         warnings=[run_eval.ORDERING_WARNING],
     )
     assert run_eval.check_forbidden_words(clean) == []
+    assert run_eval.check_no_change_keys(clean["data"]) == []
 
     bad_key_1 = _sample_envelope(data={"best_counties": []})
     assert any("best_counties" in e for e in run_eval.check_forbidden_words(bad_key_1))
@@ -314,6 +331,295 @@ def test_forbidden_words_scan_in_keys_and_warnings():
 
     bad_warn_2 = _sample_envelope(data={}, warnings=["Health score is not available."])
     assert any("warnings[0]" in e for e in run_eval.check_forbidden_words(bad_warn_2))
+
+    for bad_change_key in ("change", "pct_change", "percent_change", "trend", "difference", "annual_change", "valueDiff"):
+        errs = run_eval.check_no_change_keys({"series": [{bad_change_key: 1.5}]})
+        assert errs and bad_change_key in errs[0]
+
+
+def test_over_time_response_checks():
+    r2019 = _sample_value_row(
+        measure_key="cms_gv:std_payment_per_capita",
+        geoid="37145",
+        value=9800.0,
+        uncertainty_kind="none",
+        period="2019",
+        boundary_vintage="2020 Census county boundaries (former Connecticut counties)",
+        release_id="89e8cb19-e78e-4bb9-9ae7-3a4f65cff629",
+        note="Same CMS file and column as the current year.",
+        citation="Source: Centers for Medicare & Medicaid Services · CMS Original Medicare GV · 2019 · release CMS OM GV 2019-2023",
+    )
+    r2024 = _sample_value_row(
+        measure_key="cms_gv:std_payment_per_capita",
+        geoid="37145",
+        value=11200.0,
+        uncertainty_kind="none",
+        period="2024",
+        boundary_vintage="TIGER/Line 2024 county",
+        release_id="11111111-2222-3333-4444-555555555555",
+        note=None,
+        citation="Source: Centers for Medicare & Medicaid Services · CMS Original Medicare GV · 2024 · release 2024",
+    )
+    valid_over_time = _sample_envelope(
+        data={
+            "area": {"level": "county", "geoid": "37145", "name": "Person County"},
+            "measure": {
+                "measure_key": "cms_gv:std_payment_per_capita",
+                "label": "Standardized per-capita Medicare spending",
+                "unit": "USD",
+                "storage_scale": None,
+                "population": "Original Medicare beneficiaries",
+                "value_type": "standardized_per_capita",
+            },
+            "series": [r2019, r2024],
+            "unavailable_periods": [],
+        },
+        sources=[
+            {
+                "dataset_id": "cms_mmd_gv:history",
+                "product": "cms_gv",
+                "product_name": "CMS Original Medicare GV",
+                "publisher": "Centers for Medicare & Medicaid Services",
+                "release_id": "89e8cb19-e78e-4bb9-9ae7-3a4f65cff629",
+                "source_release_id": "CMS OM GV 2019-2023",
+                "published_at": "2026-11-17T00:00:00+00:00",
+                "landing_page": None,
+            },
+            {
+                "dataset_id": "cms_mmd_gv",
+                "product": "cms_gv",
+                "product_name": "CMS Original Medicare GV",
+                "publisher": "Centers for Medicare & Medicaid Services",
+                "release_id": "11111111-2222-3333-4444-555555555555",
+                "source_release_id": "2024",
+                "published_at": "2026-11-17T00:00:00+00:00",
+                "landing_page": None,
+            },
+        ],
+        warnings=[run_eval.OVER_TIME_WARNING, run_eval.BOUNDARY_VINTAGE_WARNING],
+    )
+    assert run_eval.check_over_time_response(valid_over_time) == []
+    assert run_eval.check_envelope(
+        valid_over_time,
+        "get_measure_over_time",
+        {"level": "county", "geoid": "37145", "measure_key": "cms_gv:std_payment_per_capita"},
+    ) == []
+
+    # Descending periods must fail
+    desc_series = copy.deepcopy(valid_over_time)
+    desc_series["data"]["series"] = [r2024, r2019]
+    errs = run_eval.check_over_time_response(desc_series)
+    assert any("not in ascending order" in e for e in errs)
+
+    # Duplicate period in series must fail
+    dup_series = copy.deepcopy(valid_over_time)
+    dup_series["data"]["series"] = [r2019, copy.deepcopy(r2019)]
+    errs = run_eval.check_over_time_response(dup_series)
+    assert any("not unique" in e for e in errs)
+
+    # Missing fixed OVER_TIME_WARNING must fail
+    no_fixed_warn = copy.deepcopy(valid_over_time)
+    no_fixed_warn["warnings"] = [run_eval.BOUNDARY_VINTAGE_WARNING]
+    errs = run_eval.check_over_time_response(no_fixed_warn)
+    assert any("missing fixed warning" in e for e in errs)
+
+    # Different boundary vintages without boundary-vintage warning must fail
+    no_bv_warn = copy.deepcopy(valid_over_time)
+    no_bv_warn["warnings"] = [run_eval.OVER_TIME_WARNING]
+    errs = run_eval.check_over_time_response(no_bv_warn)
+    assert any("no boundary-vintage caution" in e for e in errs)
+
+    # Any change/trend key in data must fail
+    with_pct_change = copy.deepcopy(valid_over_time)
+    with_pct_change["data"]["pct_change"] = 14.3
+    errs = run_eval.check_over_time_response(with_pct_change)
+    assert any("pct_change" in e for e in errs)
+
+
+def test_search_measures_and_details_periods_and_list_sources_notes():
+    # 1. check_search_measures_periods
+    valid_search_items = [
+        {
+            "measure_key": "places:diabetes_crudeprev",
+            "label": "Diagnosed diabetes",
+            "period": "2023",
+            "periods": ["2023", "2022", "2021", "2020", "2019", "2018"],
+        }
+    ]
+    assert run_eval.check_search_measures_periods(valid_search_items) == []
+
+    bad_first = copy.deepcopy(valid_search_items)
+    bad_first[0]["periods"] = ["2018", "2023"]
+    errs = run_eval.check_search_measures_periods(bad_first)
+    assert any("does not equal current period" in e for e in errs)
+
+    missing_periods = [{"measure_key": "places:diabetes_crudeprev", "period": "2023"}]
+    assert run_eval.check_search_measures_periods(missing_periods) != []
+
+    # 2. check_measure_details_periods
+    valid_details_items = [
+        {
+            "measure_key": "cms_gv:std_payment_per_capita",
+            "product": "cms_gv",
+            "measure_id": "std_payment_per_capita",
+            "period": "2024",
+            "periods": [
+                {
+                    "period": "2024",
+                    "current": True,
+                    "available": True,
+                    "note": None,
+                    "boundary_vintage": {"state": "TIGER/Line 2024 state", "county": "TIGER/Line 2024 county"},
+                    "release_id": "11111111-2222-3333-4444-555555555555",
+                },
+                {
+                    "period": "2023",
+                    "current": False,
+                    "available": True,
+                    "note": "Same CMS file and column as the current year.",
+                    "boundary_vintage": {"state": "TIGER/Line 2024 state", "county": "TIGER/Line 2024 county"},
+                    "release_id": "89e8cb19-e78e-4bb9-9ae7-3a4f65cff629",
+                },
+            ],
+        }
+    ]
+    assert run_eval.check_measure_details_periods(valid_details_items) == []
+
+    bad_details = copy.deepcopy(valid_details_items)
+    del bad_details[0]["periods"][1]["note"]
+    errs = run_eval.check_measure_details_periods(bad_details)
+    assert any("note" in e for e in errs)
+
+    # 3. check_list_data_sources_notes
+    valid_notes = [
+        "PLACES 2025 county and tract pilot: 2023",
+        "ACS 2020–2024 5-year median household income: 2020–2024",
+        "ACS 2020–2024 community profile: 2020–2024",
+        "CDC BRFSS state prevalence: 2023",
+        "County Level Health (CLH): 2020–2024",
+        "CMS Original Medicare GV: 2019–2024",
+        "EPA AirData annual county AQI: 2025",
+        "USDA Food Environment Atlas: 2020",
+        "Area context uses TIGER/Line 2024 boundaries and 119th Congress districts; each value row gives its source boundary_vintage, which may differ.",
+    ]
+    assert run_eval.check_list_data_sources_notes(valid_notes, ["CMS Original Medicare GV: 2019–2024"]) == []
+
+    old_notes = [*valid_notes, "Each measure has one period per measure; there is no time series."]
+    errs = run_eval.check_list_data_sources_notes(old_notes)
+    assert any("superseded one-period text" in e for e in errs)
+
+    missing_line = run_eval.check_list_data_sources_notes(valid_notes, ["CMS Original Medicare GV: 1900–2024"])
+    assert any("missing expected product period line" in e for e in missing_line)
+
+
+def test_unpublished_period_handled_and_ct_09001_series_checks():
+    # 1. expect_unpublished_period_handled (Q52)
+    env = _sample_envelope(
+        data={"level": "state", "areas": [{"geoid": "54", "name": "West Virginia"}], "values": []},
+        sources=[],
+        warnings=["brfss:diabetes is not published for 1999; published periods: 2023"],
+    )
+    call_res = SimpleNamespace(is_error=False, structured_content=env, content=[])
+    exp_lookup = {
+        "expect_error": False,
+        "skipped_unpublished_periods": [("brfss:diabetes", ["2023"])],
+        "rows_by_key_geoid": {},
+    }
+    spec = {
+        "expect_unpublished_period_handled": {
+            "skipped_measure_key": "brfss:diabetes",
+            "requested_period": "1999",
+            "min_published_periods": ["2023"],
+        }
+    }
+    assert run_eval.verify_call_against_lookup_and_checks(
+        "get_area_values",
+        {"level": "state", "geoids": ["54"], "measure_keys": ["brfss:diabetes"], "period": "1999"},
+        call_res,
+        exp_lookup,
+        spec,
+        False,
+    ) == []
+
+    # Raising ToolError instead of skipping with warning must fail
+    err_res = SimpleNamespace(
+        is_error=True,
+        structured_content=None,
+        content=[SimpleNamespace(text="brfss:diabetes not published for 1999")],
+    )
+    errs = run_eval.verify_call_against_lookup_and_checks(
+        "get_area_values",
+        {"level": "state", "geoids": ["54"], "measure_keys": ["brfss:diabetes"], "period": "1999"},
+        err_res,
+        exp_lookup,
+        spec,
+        False,
+    )
+    assert errs and "skip measure" in errs[0]
+
+    # 2. expect_series_has_available_and_unpublished_current (Q49: 09001)
+    r2020 = _sample_value_row(
+        measure_key="cms_gv:readmission_rate",
+        geoid="09001",
+        value=0.1813,
+        uncertainty_kind="none",
+        period="2020",
+        boundary_vintage="2020 Census county boundaries (former Connecticut counties)",
+        note="Connecticut uses its eight former counties.",
+    )
+    r2024_unpub = _sample_value_row(
+        measure_key="cms_gv:readmission_rate",
+        geoid="09001",
+        value=None,
+        status="not_published",
+        status_text="Not published in this release",
+        uncertainty_kind="none",
+        period="2024",
+        boundary_vintage="TIGER/Line 2024 county",
+        note=None,
+    )
+    ct_env = _sample_envelope(
+        data={
+            "area": {"level": "county", "geoid": "09001", "name": None},
+            "measure": {
+                "measure_key": "cms_gv:readmission_rate",
+                "label": "30-day hospital readmission rate",
+                "unit": "proportion",
+                "storage_scale": "proportion_0_to_1",
+                "population": "Original Medicare beneficiaries",
+                "value_type": "risk_standardized_rate",
+            },
+            "series": [r2020, r2024_unpub],
+            "unavailable_periods": [],
+        },
+        sources=[
+            {
+                "dataset_id": "cms_mmd_gv:history",
+                "product": "cms_gv",
+                "product_name": "CMS Original Medicare GV",
+                "publisher": "Centers for Medicare & Medicaid Services",
+                "release_id": r2020["release_id"],
+                "source_release_id": "2019-2023",
+                "published_at": None,
+                "landing_page": None,
+            }
+        ],
+        warnings=[run_eval.OVER_TIME_WARNING, run_eval.BOUNDARY_VINTAGE_WARNING],
+    )
+    ct_res = SimpleNamespace(is_error=False, structured_content=ct_env, content=[])
+    ct_spec = {
+        "expect_over_time_series": True,
+        "expect_series_has_available_and_unpublished_current": True,
+        "expect_boundary_vintage_warning": True,
+    }
+    assert run_eval.verify_call_against_lookup_and_checks(
+        "get_measure_over_time",
+        {"level": "county", "geoid": "09001", "measure_key": "cms_gv:readmission_rate"},
+        ct_res,
+        {"expect_error": False, "series": [r2020, r2024_unpub], "unavailable_periods": []},
+        ct_spec,
+        False,
+    ) == []
 
 
 def test_no_ahrf_and_withheld_warnings():
@@ -446,7 +752,7 @@ def test_envelope_checks_across_tools():
     bad_find["sources"] = [{"product": "places"}]
     assert any("find_places sources must be []" in e for e in run_eval.check_envelope(bad_find, "find_places", {"query": "Person"}))
 
-    # 4. get_measure_details items must carry measure_key, product, and measure_id (Amendment 1 §6)
+    # 4. get_measure_details items must carry measure_key, product, measure_id, and periods (Amendment 1 §6 & Amendment 2 §6)
     details_resp = _sample_envelope(
         data={
             "measures": [
@@ -455,6 +761,17 @@ def test_envelope_checks_across_tools():
                     "product": "places",
                     "measure_id": "diabetes_crudeprev",
                     "label": "Diagnosed diabetes",
+                    "period": "2023",
+                    "periods": [
+                        {
+                            "period": "2023",
+                            "current": True,
+                            "available": True,
+                            "note": None,
+                            "boundary_vintage": {"county": "TIGER/Line 2023 county"},
+                            "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
+                        }
+                    ],
                 }
             ]
         }
@@ -470,8 +787,9 @@ def test_envelope_checks_across_tools():
 def test_questions_yaml_validates_offline():
     ok, summary, errors = run_eval.validate_questions_yaml()
     assert ok, f"questions.yaml validation failed: {errors}"
-    assert summary["total_questions"] == 44
-    assert summary["trap_questions"] == 12
+    assert summary["total_questions"] == 54
+    assert summary["regular_questions"] == 38
+    assert summary["trap_questions"] == 16
     for tool in run_eval.ALL_TOOLS:
         assert summary["tool_call_counts"][tool] >= 1
     for prod in run_eval.PUBLIC_PRODUCTS + run_eval.FACILITY_BLOCKS:
