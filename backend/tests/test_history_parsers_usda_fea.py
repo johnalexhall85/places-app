@@ -188,9 +188,16 @@ def test_ignored_variables_fips_padding_exclusions_and_duplicates(config, files,
         '2017': {'state_or_national_fips_000': 1},
     }
 
+    # USDA's 'N/A' FIPS placeholder rows are skipped and counted, as in the current adapter
+    na_csv = tmp_path / 'na_fips.csv'
+    na_csv.write_text('\n'.join(lines + ['N/A,AK,Aleutian Islands Area,FMRKTPTH13,-8888']) + '\n', encoding='utf-8-sig')
+    na_evidence = {}
+    list(usda_fea_parser.parse(config, {'values_csv': na_csv, 'variables_csv': VARIABLES_CSV}, na_evidence))
+    assert 'non_fips_placeholder' in str(na_evidence)
+
     # Any other non-5-digit FIPS raises ValueError
     bad_fips_csv = tmp_path / 'bad_fips.csv'
-    bad_fips_csv.write_text('\n'.join(lines + ['N/A,AK,Aleutian Islands Area,FMRKTPTH13,-8888']) + '\n', encoding='utf-8-sig')
+    bad_fips_csv.write_text('\n'.join(lines + ['99X,AK,Bad Area,FMRKTPTH13,-8888']) + '\n', encoding='utf-8-sig')
     with pytest.raises(ValueError, match='non-5-digit FIPS'):
         list(usda_fea_parser.parse(config, {'values_csv': bad_fips_csv, 'variables_csv': VARIABLES_CSV}, {}))
 

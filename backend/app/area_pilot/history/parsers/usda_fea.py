@@ -139,6 +139,12 @@ def parse(config: dict, files: dict[str, Path], evidence: dict) -> Iterator[tupl
             measure, spec, classify_measure = target
             period = str(spec['period'])
 
+            if raw_fips == 'N/A':
+                # USDA placeholder rows for areas without a FIPS code (e.g. AK Aleutian Islands Area);
+                # the current adapter counts and skips them the same way.
+                excluded_rows[period]['non_fips_placeholder'] += 1
+                continue
+
             if len(raw_fips) == 4 and raw_fips.isdigit():
                 fips = raw_fips.zfill(5)
                 padded_fips_by_period[period] += 1
