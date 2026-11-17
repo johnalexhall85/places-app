@@ -641,6 +641,39 @@ describe("USDA Food Environment Atlas county measures", () => {
     expect(fm.every((url) => url.includes("period=2018") && url.includes("population=county+residents"))).toBe(true);
     expect(data.filter((url) => url.includes("measure_id=low_income_low_access_pct")).every((url) => url.includes("period=2019"))).toBe(true);
   });
+
+  it("describes the selected USDA year and its Connecticut county boundary", async () => {
+    const current = { period: "2019", current: true, available: true, release_id: "fea-copy-current" };
+    const earlier = { period: "2015", current: false, available: true, release_id: "fea-copy-history",
+      levels: ["county"], boundary_vintage: { county: "TIGER/Line 2020 (Connecticut former counties)" }, note: "Earlier USDA measure." };
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url);
+      if (path.includes("/catalog")) return { ok: true, json: async () => ({ ...catalog,
+        active_release_id: current.release_id,
+        measures: [{ ...measures[0], periods: [current, earlier] }],
+        limitations: [...catalog.limitations,
+          "Connecticut values exist only for its eight former counties and cannot be shown on the 2024 planning-region boundaries. Puerto Rico is outside the Atlas."],
+      }) };
+      const old = new URLSearchParams(path.split("?")[1]).get("period") === "2015";
+      const payload = path.includes("/map?") ? { features: [] }
+        : path.includes("/legend?") ? { legend_breaks: [3, 6, 9, 13], statuses: [] }
+        : { total: 0, rows: [] };
+      return { ok: true, json: async () => ({ ...payload, release_id: old ? earlier.release_id : current.release_id, geography: "county" }) };
+    }));
+    render(<Places2025Pilot dataset="usdafea" />);
+    await screen.findByLabelText("Year");
+    expect(screen.getByText(/cannot be shown on the 2024 planning-region boundaries/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Year"), { target: { value: "2015" } });
+    expect(await screen.findByText(/this map shows 2015/)).toBeInTheDocument();
+    expect(screen.getByText(/Connecticut's eight former counties are drawn on the TIGER\/Line 2020/)).toBeInTheDocument();
+    expect(screen.queryByText(/cannot be shown on the 2024 planning-region boundaries/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Not published on this boundary \(Connecticut planning region\) or/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/PCT_LACCESS_LOWI19/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/County boundary basis in the source:/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Outside Atlas coverage (Puerto Rico)").length).toBeGreaterThan(0);
+    expect(areaFeatureDetails("usdafea", { source_value: "4.5", value: 4.5, status: "available" },
+      measures[0], { period: "2015" }).lines).toContain("USDA value: 4.5");
+  });
 });
 
 describe("area map selection, focus, and class breaks", () => {
@@ -740,26 +773,26 @@ describe("area map selection, focus, and class breaks", () => {
 describe("historical area map years", () => {
   afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.geojson = null; });
 
-  function historyStub({ district = false, missingShape = false } = {}) {
+  function historyStub({ district = false, missingShape = false, publishedWithoutBoundary = 2, releaseTag = "h4" } = {}) {
     const measures = [{ measure_id: "diabetes_crudeprev", label: "Diagnosed diabetes", observation_period: "2023", population: "adults",
       periods: [
-        { period: "2023", current: true, available: true, release_id: "h4-current" },
-        { period: "2022", current: false, available: true, release_id: "h4-history", levels: district ? ["state", "county", "tract"] : ["county", "tract"],
+        { period: "2023", current: true, available: true, release_id: `${releaseTag}-current` },
+        { period: "2022", current: false, available: true, release_id: `${releaseTag}-history`, levels: district ? ["state", "county", "tract"] : ["county", "tract"],
           note: "A separate model run.", boundary_vintage: { county: "TIGER/Line 2020", tract: "TIGER/Line 2019" } },
         { period: "2021", current: false, available: false, release_id: null, levels: ["county"], note: "Unavailable" },
-        { period: "2020", current: false, available: true, release_id: "h4-history", levels: ["county"],
+        { period: "2020", current: false, available: true, release_id: `${releaseTag}-history`, levels: ["county"],
           note: "An older model run.", boundary_vintage: { county: "TIGER/Line 2020" } },
       ] }, { measure_id: "access2_crudeprev", label: "Insurance", observation_period: "2023", population: "adults",
-        periods: [{ period: "2023", current: true, available: true, release_id: "h4-current" },
-          { period: "2022", current: false, available: true, release_id: "h4-history", levels: ["county"], note: "An older estimate." }] },
+        periods: [{ period: "2023", current: true, available: true, release_id: `${releaseTag}-current` },
+          { period: "2022", current: false, available: true, release_id: `${releaseTag}-history`, levels: ["county"], note: "An older estimate." }] },
       { measure_id: "dental_crudeprev", label: "Dental visits", observation_period: "2023", population: "adults",
-        periods: [{ period: "2023", current: true, available: true, release_id: "h4-current" }] }];
+        periods: [{ period: "2023", current: true, available: true, release_id: `${releaseTag}-current` }] }];
     return vi.fn(async (url) => {
       const path = String(url);
       if (path.includes("/community/area/")) return { ok: true, json: async () => ({ geoid: "37145", name: "Person", bbox: [-95.2, 36.2, -94.8, 36.5], geometry: { type: "Polygon", coordinates: [] } }) };
       if (path.endsWith("/catalog") || path.includes("/catalog?")) return { ok: true, json: async () => ({
         dataset_id: district ? "census_acs5_2024_community_profile" : "cdc_places_county_2025_pilot",
-        active_release_id: "h4-current", value_type: "crude_prevalence", unit: "percent",
+        active_release_id: `${releaseTag}-current`, value_type: "crude_prevalence", unit: "percent",
         geographies: district ? ["state", "county", "tract", "cd"] : ["county", "tract"], measures,
       }) };
       const query = new URLSearchParams(path.split("?")[1]);
@@ -767,11 +800,11 @@ describe("historical area map years", () => {
       const older = selectedPeriod !== "2023";
       const feature = { type: "Feature", geometry: { type: "Polygon", coordinates: [] },
         properties: { geography_id: "37145", county_fips: "37145", name: "Person", value: selectedPeriod === "2020" ? 11 : older ? 12 : 13, status: "available", ci_low: 10, ci_high: 14 } };
-      const common = { release_id: older ? "h4-history" : "h4-current", period: selectedPeriod,
+      const common = { release_id: older ? `${releaseTag}-history` : `${releaseTag}-current`, period: selectedPeriod,
         geography: query.get("geography") };
       const payload = path.includes("/map?") ? { features: missingShape && older ? [] : [feature], quantile_breaks: [10, 11, 12, 13] }
         : path.includes("/legend?") ? { quantile_breaks: [10, 11, 12, 13], statuses: [{ status: "available", n: 1 }],
-          published_without_boundary: older ? 2 : 0 }
+          published_without_boundary: older ? publishedWithoutBoundary : 0 }
         : { rows: [{ geography_id: "37145", name: "Person", value: selectedPeriod === "2020" ? 11 : older ? 12 : 13, status: "available" }], total: 1 };
       return { ok: true, json: async () => ({ ...payload, ...common }) };
     });
@@ -793,6 +826,7 @@ describe("historical area map years", () => {
     expect(screen.queryByText("A separate model run.")).not.toBeInTheDocument();
     fireEvent.change(year, { target: { value: "2022" } });
     await screen.findByText("A separate model run.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("PLACES county and tract estimates, 2022");
     await waitFor(() => expect(screen.getByTestId("selected-area")).toHaveTextContent("12%"));
     expect(screen.getByTestId("selected-area")).toHaveTextContent("Person · County 37145");
     const historicalTooltip = vi.fn();
@@ -833,6 +867,13 @@ describe("historical area map years", () => {
     render(<Places2025Pilot />);
     expect(await screen.findByLabelText("Year")).toHaveValue("2023");
     await waitFor(() => expect(window.location.search).toContain("period=2023"));
+  });
+
+  it("uses singular copy when one published area has no boundary", async () => {
+    vi.stubGlobal("fetch", historyStub({ publishedWithoutBoundary: 1, releaseTag: "h4-singular" }));
+    window.history.replaceState(null, "", "/area/places-2025?measure_id=diabetes_crudeprev&period=2022");
+    render(<Places2025Pilot />);
+    expect(await screen.findByText("1 area published for this year has no matching boundary and is not drawn.")).toBeInTheDocument();
   });
 
   it("falls back from older districts and explains when a selected area has no older shape", async () => {

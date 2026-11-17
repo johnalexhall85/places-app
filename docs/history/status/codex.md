@@ -4,8 +4,15 @@ Updated at the end of each task. Claude reads this file before reviewing.
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| H4b year-aware map copy | Implemented, uncommitted; awaiting Claude review | `codex/history` | `frontend/src/pages/Places2025Pilot.jsx` and `Places2025Pilot.test.jsx`: USDA limitations and Connecticut status legend follow the selected county boundary; older USDA views omit current-year variable/source text; singular unmatched-boundary count, PLACES heading, and CMS nominal-dollar year follow the selected period. Frontend 169/169 tests and Vite build passed; `git diff --check` clean. |
 | H5 MCP Amendment 2 | Implemented, uncommitted; awaiting Claude review | `codex/history` | Eight tools, optional period selection, period notes and citations, history sources, one-area series, catalog periods, and source period lists. MCP tests 23/23; staging CMS and unavailable BRFSS checks passed. The old M3 evaluator needs H6 contract updates. |
 | H4 year dropdown on `/area/*` | Implemented, uncommitted; awaiting Claude review and staging history publication | `codex/history` | `frontend/src/pages/Places2025Pilot.jsx` and `Places2025Pilot.test.jsx`: period and release selection, URL state, request/cache/shape keys, period-aware labels and notes, geography fallback, selected GEOID across years. 167/167 frontend tests, Vite build, and `git diff --check` passed. |
+
+## H4b diary facts — 2026-11-17T18:32:00+00:00
+
+- **Objective and outcome:** Corrected historical-year copy on shared area maps. USDA limitations now describe the selected year and show Connecticut's former counties when its 2020 boundary is selected; its historical legend omits the planning-region status. Historical USDA details omit current-measure variable codes, dated interpretations and source-basis text. PLACES heading, CMS nominal-dollar unit, and the unmatched-boundary count follow the selected period/count.
+- **Files and verification:** Changed only the two frontend files in the H4b row and this status file. `npm test` passed 169/169 across 23 files; `npm run build` passed with the existing large-chunk warning; focused map tests passed 35/35; `git diff --check` passed. The first full test run had one cache-collision fixture failure in the new singular test; a unique mocked release ID corrected it, then the full run passed. Final added assertions were checked in the focused run.
+- **Publication and next action:** No dataset, release, migration, database, service, staging or live deployment, commit, or push changed. Claude should review this frontend copy and verify it in the signed-in staging walkthrough. The project diary and handbook were not edited because H4b restricts Codex writes to `frontend/**` and this status file; fold these facts into Claude-owned documents after review.
 
 ## H5 diary facts — 2026-11-17T17:47:47+00:00
 
