@@ -207,3 +207,28 @@ Where this differs from the sections above, this wins.
 8. **Null value.** An area belongs in `without_value` exactly when `value` is null. Statuses such as `open_ended` can carry a value and then belong in `with_value`. For Los Angeles County tracts and `acs:B19013_001E` that is 42 rows, not 58.
 
 2a. **Accepted from Codex (M2b):** `uncertainty.kind` and `uncertainty.label` also move into `data.measure` for `get_measure_across_areas`. Each row keeps its own interval values (`low`/`high` or `moe`).
+
+## Amendment 2 (2026-11-17, Claude): earlier periods
+
+Where this differs from the sections above, this wins. Data: the history releases described in [docs/history/PLAN.md](../history/PLAN.md). Read layer: `lookup.measure_periods`, `lookup.area_values_for_period`, `lookup.measure_values_within(..., period=)`, and `lookup.area_measure_series`. AHRF stays withheld for every period.
+
+1. **Rule 6 is replaced** (verbatim, in `config.py`): "Many measures also have earlier published periods. Each value carries its own period, release, and boundary vintage, and an earlier period can differ in method or boundaries (read its `note`). Present values from different periods side by side as published; CHIP does not compute changes or trends."
+2. **`period` (optional string) on `get_area_values` and `get_measure_across_areas`.** When omitted, or equal to a measure's current period, the behaviour is exactly as before.
+   - `get_area_values` with `period`: use `lookup.area_values_for_period` for the requested measures. Measures with nothing for that period are skipped with one warning each, naming the published periods (`lookup.measure_periods`). `topic` with `period` works the same way, over the topic's measures.
+   - `get_measure_across_areas` with `period`: use `lookup.measure_values_within(..., period=period)`. If that period is not published, raise `ToolError` naming the published periods. `level="cd"` with an earlier period raises `ToolError`: "Congressional districts have no earlier periods in CHIP: older Congresses had different districts."
+3. **Value rows gain `note`**, the comparability note for that period, or `null` for the current period. In compact across-areas rows, `note` moves into `data.measure`, as `period` already does. `release_id` and `boundary_vintage` are the history release's for an earlier period.
+4. **Citation per period:** `"Source: {publisher} · {product_name} · {period} · release {source_release_id}"`, using the row's own `source_release_id`, which for an earlier period is the history release's label. `sources` lists every release whose rows appear: the current product release and/or its history release (`dataset_id` ending in `:history`).
+5. **New tool `get_measure_over_time(level, geoid, measure_key)`.**
+   - **Reads:** one area and one measure, through `lookup.area_measure_series`.
+   - **`data`:**
+     - `area` (`level`, `geoid`, `name`)
+     - `measure`: the shared fields, without `period`
+     - `series`: full value rows, oldest period first, each with `period`, `note`, `release_id`, `boundary_vintage`, and `citation`
+     - `unavailable_periods`: a list of `{period, reason}`
+   - **Warnings:** always include "Values are shown as published for each period; earlier periods can differ in method or boundaries, and CHIP computes no change." If any two rows have different `boundary_vintage`, add a warning saying so.
+   - **Districts:** for `level="cd"` the series has the current period only, plus a warning that districts have no earlier periods.
+   - **Errors:** an AHRF measure raises the withheld-AHRF `ToolError`. An unknown key raises as `get_measure_details` does.
+   - **Limits:** a single area only; there is no multi-area trend tool. The 50,000-byte cap applies.
+6. **`search_measures` items gain `periods`:** published period strings, current first. **`get_measure_details` items gain `periods`:** the full `lookup.measure_periods` entries (`period`, `current`, `available`, `note`, `boundary_vintage`), with `release_id` kept.
+7. **`list_data_sources` notes:** replace the one-period sentence with one line per product giving its published period range (e.g. "CMS Original Medicare GV: 2019–2024").
+8. **Unchanged:** no composite scores, no ranking across periods, no derived differences or percentage changes, and the same rate limits and size cap. Sorting (`value_desc`/`value_asc`) applies within one period only.
