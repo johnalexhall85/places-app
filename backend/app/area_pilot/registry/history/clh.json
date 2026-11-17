@@ -56,8 +56,8 @@
   {
    "role": "clh2019_tract",
    "archived_path": "history/clh/source/clh_2019_tract_2_0.xlsx",
-   "sha256": "PENDING",
-   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2019_tract_2_0.xlsx",
+   "sha256": "c582da3d4f6822378d18fea7dcfd916ca058e39117043b7084a4daa2dfb6eecf",
+   "url": "https://www.ahrq.gov/downloads/sdoh/clh_2019_tract_2_0.xlsx",
    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
   },
   {
@@ -70,8 +70,8 @@
   {
    "role": "clh2020_tract",
    "archived_path": "history/clh/source/clh_2020_tract_2_0.xlsx",
-   "sha256": "PENDING",
-   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2020_tract_2_0.xlsx",
+   "sha256": "309578851b94b47dc1e0182f4f30a0e0f3516e9a01a9ce2bba84787459fc5016",
+   "url": "https://www.ahrq.gov/downloads/sdoh/clh_2020_tract_2_0.xlsx",
    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
   },
   {
@@ -84,8 +84,8 @@
   {
    "role": "clh2021_tract",
    "archived_path": "history/clh/source/clh_2021_tract_2_0.xlsx",
-   "sha256": "PENDING",
-   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2021_tract_2_0.xlsx",
+   "sha256": "4345928709cdb8b1b719dc496add77d40d21b268c420a97fce9ef0afc4cdee59",
+   "url": "https://www.ahrq.gov/downloads/sdoh/clh_2021_tract_2_0.xlsx",
    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
   },
   {
@@ -98,8 +98,8 @@
   {
    "role": "clh2022_tract",
    "archived_path": "history/clh/source/clh_2022_tract_2_0.xlsx",
-   "sha256": "PENDING",
-   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2022_tract_2_0.xlsx",
+   "sha256": "6148f855be76b1f38e734b09b0fcea63946a86a331d550816db045951835fc2b",
+   "url": "https://www.ahrq.gov/downloads/sdoh/clh_2022_tract_2_0.xlsx",
    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
   }
  ],
@@ -145,9 +145,9 @@
      "period": "2016–2020",
      "boundary_vintage": {
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties.",
      "locator": {
       "file_year": "2020",
       "column": "ACS_PCT_HH_BROADBAND_ANY",
@@ -223,9 +223,9 @@
      "period": "2016–2020",
      "boundary_vintage": {
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties.",
      "locator": {
       "file_year": "2020",
       "column": "ACS_PCT_HU_NO_VEH",
@@ -301,9 +301,9 @@
      "period": "2016–2020",
      "boundary_vintage": {
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties.",
      "locator": {
       "file_year": "2020",
       "column": "ACS_PCT_RENTER_HU_COST_30PCT",

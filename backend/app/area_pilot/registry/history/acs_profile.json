@@ -344,9 +344,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S0101_C01_001"
@@ -419,9 +419,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S1701_C03_001"
@@ -494,9 +494,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S0101_C02_030"
@@ -569,9 +569,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S0101_C02_022"
@@ -644,9 +644,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S1810_C03_001"
@@ -719,9 +719,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S2701_C05_001"
@@ -794,9 +794,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts. No congressional district values for earlier periods.",
+     "note": "ACS 2016–2020 5-year estimate, same Census subject-table variable as the current period. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. No congressional district values for earlier periods.",
      "locator": {
       "vintage": "2020",
       "variable": "S1601_C06_001"

@@ -316,9 +316,9 @@
      "boundary_vintage": {
       "state": "2024",
       "county": "2020",
-      "tract": "2019"
+      "tract": "2020"
      },
-     "note": "ACS 2016–2020 5-year estimate in 2020 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties. Tracts are 2010 Census tracts.",
+     "note": "ACS 2016–2020 5-year estimate in 2020 inflation-adjusted dollars; CHIP does not convert between years. 5-year windows overlap, so neighbouring periods share survey years. Connecticut counties are its eight former counties.",
      "locator": {
       "vintage": "2020"
      }
