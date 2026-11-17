@@ -47,7 +47,7 @@ backend/tmp/
 frontend/public/reports/
 
 # Separate venv for the MCP server (docs/mcp/PLAN.md)
-.venv-mcp/
+.venv-mcp
 
 # History parser fixtures (small, real source excerpts)
 !backend/tests/fixtures/history/**/*.csv

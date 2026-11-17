@@ -24,12 +24,13 @@
   "county": 12,
   "tract": 400
  },
+ "drop_unbounded_blank_areas": true,
  "selection": {
   "sheets": [
    "Layout",
    "Data"
   ],
-  "excluded_note": "Rows for territories without a CHIP boundary (60, 66, 69, 78 prefixes) are counted and not stored. Blank cells are stored as missing."
+  "excluded_note": "Rows for territories without a CHIP boundary (60, 66, 69, 78 prefixes) are counted and not stored. Blank cells are stored as missing. Blank placeholder rows for GEOIDs with no boundary in that year (retired tract numbers, the other Connecticut geography) are counted and not stored."
  },
  "sources": [
   {

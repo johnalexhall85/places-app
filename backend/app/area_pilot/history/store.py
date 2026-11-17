@@ -53,6 +53,34 @@ def boundary_keys(conn, level: str, vintage: str) -> set[str]:
     return {r[0] for r in rows}
 
 
+def drop_unbounded_placeholders(conn, config, part, rows, boundaries, evidence_out) -> list[HistoryRow]:
+    """Opt-in (registry ``drop_unbounded_blank_areas``): drop an area-period whose rows carry no value and
+    whose GEOID has no boundary in its own vintage. Some publisher files keep blank placeholder rows for
+    retired GEOIDs (old tract numbers, the other Connecticut geography). Areas with any value are kept."""
+    if not config.get('drop_unbounded_blank_areas'):
+        return rows
+    has_value, keys = set(), {}
+    for row in rows:
+        area = (row.level, row.geoid, row.period)
+        keys[area] = row.boundary_vintage
+        if row.value is not None:
+            has_value.add(area)
+    drop = set()
+    for (level, geoid, period), vintage in keys.items():
+        if (level, geoid, period) in has_value:
+            continue
+        if (level, vintage) not in boundaries:
+            boundaries[(level, vintage)] = boundary_keys(conn, level, vintage)
+        if geoid not in boundaries[(level, vintage)]:
+            drop.add((level, geoid, period))
+    if drop:
+        tally = evidence_out.setdefault('dropped_unbounded_blank_areas', {})
+        for level, _, period in drop:
+            name = f'{part}|{level}|{period}'
+            tally[name] = tally.get(name, 0) + 1
+    return [r for r in rows if (r.level, r.geoid, r.period) not in drop]
+
+
 def summarize_part(rows: list[HistoryRow]) -> dict:
     """Digest and counts for one part. Rows are sorted once by key (C collation order)."""
     ordered = sorted(rows, key=lambda r: r.key)
@@ -144,6 +172,7 @@ def fetch_stage(engine, config, *, directory: Path | None = None, retrieved=None
             for part, rows in parser.parse(config, paths, evidence_out):
                 if part in parts:
                     raise ValueError(f'Parser yielded part {part} twice')
+                rows = drop_unbounded_placeholders(conn, config, part, rows, boundaries, evidence_out)
                 for row in rows:
                     for issue in row_problems(row, config):
                         problems[issue] += 1
@@ -256,8 +285,9 @@ def review(engine, candidate_id, config, connection=None, verify_files=True):
                 raise ValueError(f'History archived source checksum mismatch: {item["role"]}')
             paths[item['role']] = Path(item['path'])
         parser = load_parser(config['parser'])
-        evidence_out, seen = {}, set()
+        evidence_out, seen, boundaries = {}, set(), {}
         for part, rows in parser.parse(config, paths, evidence_out):
+            rows = drop_unbounded_placeholders(conn, config, part, rows, boundaries, evidence_out)
             expected = report['parts'].get(part)
             summary = summarize_part(rows)
             if expected is None or summary['sha256'] != expected['sha256'] or summary['rows'] != expected['rows']:
