@@ -2,6 +2,30 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-16T14:31:03+00:00 — Beta access-code retrieval question (Codex)
+
+- **Request/finding:** John asked where to find the renewed CHIP access code. Verified that `/home/john/.local/share/chip/staging-beta-access-code` exists on the VM, is owned by `john`, and has mode 600; `cat` can display the beta plaintext code to John locally. The admin database stores hashes and code metadata, so other plaintext codes cannot be listed from it.
+- **State/verification:** Read-only file metadata and documentation/code inspection; no code value was displayed, no application or database changes were made. The beta code extension remains recorded in the preceding entry. Handbook unchanged because this did not change documented current state; no further action or commit.
+
+## 2026-11-16T14:29:17+00:00 — Beta access code expiry extended (Codex)
+
+- **Request/outcome:** John chose to extend the existing CHIP beta verification code by 30 days, keeping the same code. Staging code ID 22 (`Beta staging verification`) now expires 2026-12-22T00:13:50.676282+00:00 (December 21, 6:13 p.m. CST), 30 days after its previous expiry.
+- **State/verification:** Patched only `expires_at` through the staging demo-access admin API. The code remains active with unlimited uses; the restricted local code file still matches its staging database hash, and the use count stayed 137. Public beta HTTPS health returned 200 and an anonymous protected request returned 401. The live database, application code, services, and deployment were unchanged. No test suite was needed for this metadata update.
+- **Documentation/next:** Recorded the new expiry in Codex status. The Claude-owned handbook was not edited; it does not track individual code expiries. No unresolved issue for this renewal; revisit the expiry before December 21 if beta access is still needed. No commit or push.
+
+## 2026-11-16T14:24:02+00:00 — Beta HTTPS and redirect rechecked (Codex)
+
+- **Request/finding:** John asked to serve HTTPS and redirect HTTP for `chip-beta.publicdataobservatory.org`. The active Nginx beta vhost already does both: port 80 returns 301 to the same HTTPS host (while retaining the ACME challenge route), and port 443 serves the staging webroot and API through the Let's Encrypt certificate.
+- **Verification:** `nginx -t` passed; public HTTP returned 301 with the expected `Location`; HTTPS returned 200 for `/` and GET `/api/health`; the certificate subject matches the hostname and expires 2027-02-14T13:13:19+00:00. UFW allows 443/tcp. No application or server changes were needed or made in this follow-up.
+- **Documentation/next:** The handbook remains Claude-owned and was not edited; the prior TLS handoff below and Codex status request that Claude add the active vhost to maintained infrastructure documentation. No commit or push.
+
+## 2026-11-16T14:13:33+00:00 — Beta hostname TLS certificate issued (Codex)
+
+- **Request/outcome:** John asked for a Let's Encrypt certificate for `chip-beta.publicdataobservatory.org`. DNS resolves to this VM. Before the change, the hostname reached the live port-80 default site and port 443 was closed. It now redirects HTTP to HTTPS and serves the staging application on HTTPS.
+- **System changes:** Installed Ubuntu's `certbot` package; obtained an ECDSA certificate using an HTTP-01 webroot at `/var/lib/letsencrypt` without stopping Nginx. Added `/etc/nginx/sites-available/chip-beta` (enabled as `zz-chip-beta`): port 80 serves ACME challenges and redirects other requests; port 443 serves `/var/www/places-staging` and proxies APIs directly to staging backend `127.0.0.1:8001`, following the existing port-8080 routing. Opened UFW 443/tcp. Added `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx`; the package enabled `certbot.timer`. The certificate expires 2027-02-14T13:13:19+00:00. Registration used no contact email, so expiry email is unavailable.
+- **Verification:** Nginx syntax and reload passed; public ACME probe passed; HTTP redirects 301; trusted HTTPS returns 200 for `/` and `/api/health`, and anonymous `/api/community/catalog` returns 401. The live port-80 default site still serves its original webroot. `certbot renew --dry-run` succeeded; the reload hook also passed when run directly. No application code, database, live webroot, or backend service changed. No commit or push.
+- **Documentation/next:** The handbook and `infra/staging` guide/config are Claude-owned under the beta plan and were not edited. Claude should record the new public beta URL in the handbook and maintain the beta TLS vhost in `infra/`; the active port-443 route block currently copies the port-8080 staging config and could drift when that source changes. Codex recorded the handoff in its status file.
+
 ## 2026-11-15T23:58:00+00:00 — Instant map tooltips; map polish promoted to live (Claude)
 
 - **Request (John):** make hover tooltips on the county maps instant with no animation, because the fade looked janky, and then go live.
