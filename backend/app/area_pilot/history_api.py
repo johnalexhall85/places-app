@@ -6,6 +6,7 @@ requests never reach this module, so the current maps and every profile read are
 """
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 
 from fastapi import HTTPException
@@ -26,7 +27,15 @@ ID_ALIAS = {'cdc_places_county_2025_pilot': {'county': 'county_fips', 'tract': '
 
 @lru_cache(maxsize=None)
 def _by_dataset() -> dict:
-    return {load_history_registry(p)['current_dataset_id']: p for p in products()}
+    """Valid history registries by current dataset. An invalid registry is skipped (its product
+    simply shows no earlier periods) so it can never break the current catalogs or maps."""
+    result = {}
+    for product in products():
+        try:
+            result[load_history_registry(product)['current_dataset_id']] = product
+        except (ValueError, KeyError) as exc:
+            logging.getLogger(__name__).error('History registry %s skipped: %s', product, exc)
+    return result
 
 
 def config_for(dataset_id: str) -> dict | None:
