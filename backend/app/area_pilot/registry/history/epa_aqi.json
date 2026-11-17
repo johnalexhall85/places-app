@@ -1,0 +1,515 @@
+{
+ "dataset_id": "epa_airdata_aqi_county_2025:history",
+ "current_dataset_id": "epa_airdata_aqi_county_2025",
+ "product": "epa_aqi",
+ "parser": "epa_aqi",
+ "auto_publish": false,
+ "name": "EPA AirData annual AQI by county, earlier years",
+ "publisher": "U.S. Environmental Protection Agency, AirData (Air Quality System)",
+ "source_release_id": "EPA AirData annual_aqi_by_county 2020-2024 (pre-generated files)",
+ "levels": [
+  "county"
+ ],
+ "statuses": [
+  "available",
+  "true_zero"
+ ],
+ "null_statuses": [],
+ "uncertainty_kind": "none",
+ "unmatched_tolerance": {
+  "county": 0
+ },
+ "selection": {
+  "expected_header": [
+   "State",
+   "County",
+   "Year",
+   "Days with AQI",
+   "Good Days",
+   "Moderate Days",
+   "Unhealthy for Sensitive Groups Days",
+   "Unhealthy Days",
+   "Very Unhealthy Days",
+   "Hazardous Days",
+   "Max AQI",
+   "90th Percentile AQI",
+   "Median AQI",
+   "Days CO",
+   "Days NO2",
+   "Days Ozone",
+   "Days PM2.5",
+   "Days PM10"
+  ],
+  "site_listing_member": "aqs_sites.csv",
+  "site_listing_fields": [
+   "State Code",
+   "County Code",
+   "State Name",
+   "County Name"
+  ],
+  "reviewed_state_variants": {
+   "Virgin Islands": {
+    "statefp": "78",
+    "evidence": "TIGER 2024 state NAME 'United States Virgin Islands'; EPA State Name omits 'United States'."
+   }
+  },
+  "reviewed_name_variants": [
+   {
+    "state": "Illinois",
+    "county": "Saint Clair",
+    "geoid": "17163",
+    "tiger_namelsad": "St. Clair County",
+    "evidence": "EPA site listing code 17-163; EPA spells out Saint."
+   },
+   {
+    "state": "Minnesota",
+    "county": "Saint Louis",
+    "geoid": "27137",
+    "tiger_namelsad": "St. Louis County",
+    "evidence": "EPA site listing code 27-137; EPA spells out Saint."
+   },
+   {
+    "state": "Missouri",
+    "county": "Saint Charles",
+    "geoid": "29183",
+    "tiger_namelsad": "St. Charles County",
+    "evidence": "EPA site listing code 29-183; EPA spells out Saint."
+   },
+   {
+    "state": "Missouri",
+    "county": "Saint Louis",
+    "geoid": "29189",
+    "tiger_namelsad": "St. Louis County",
+    "evidence": "EPA site listing code 29-189 (county, distinct from 'St. Louis City' 29-510)."
+   },
+   {
+    "state": "Missouri",
+    "county": "Sainte Genevieve",
+    "geoid": "29186",
+    "tiger_namelsad": "Ste. Genevieve County",
+    "evidence": "EPA site listing code 29-186; EPA spells out Sainte."
+   },
+   {
+    "state": "Virginia",
+    "county": "Charles",
+    "geoid": "51036",
+    "tiger_namelsad": "Charles City County",
+    "evidence": "EPA site listing code 51-036; EPA truncates 'Charles City'. No other Virginia county or city is named Charles."
+   },
+   {
+    "state": "Puerto Rico",
+    "county": "Mayagnez",
+    "geoid": "72097",
+    "tiger_namelsad": "Mayagüez Municipio",
+    "evidence": "EPA site listing code 72-097; EPA text substitutes n for ü."
+   },
+   {
+    "state": "Virgin Islands",
+    "county": "St John",
+    "geoid": "78020",
+    "tiger_namelsad": "St. John Island",
+    "evidence": "EPA site listing code 78-020; EPA omits the period. Excluded from the map: territory outside the CHIP 2024 boundary layer."
+   }
+  ],
+  "independent_city_lsad": "25",
+  "exclusions": [
+   {
+    "state": "Country Of Mexico",
+    "county": "SONORA",
+    "epa_code": "80026",
+    "reason": "non_us_jurisdiction"
+   },
+   {
+    "state": "Virgin Islands",
+    "county": "St John",
+    "reason": "territory_outside_chip_2024_boundary_layer"
+   }
+  ],
+  "excluded_note": "Rows listed in exclusions are counted per year and not stored. Counties without an EPA row are not stored; the map labels them no_reported_value at read time, as for the current year. EPA AQS still reports Connecticut by its eight former counties, which match the 2020 county boundaries used for every earlier year."
+ },
+ "sources": [
+  {
+   "role": "county_zip_2020",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/annual_aqi_by_county_2020.zip"
+  },
+  {
+   "role": "county_zip_2021",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/annual_aqi_by_county_2021.zip"
+  },
+  {
+   "role": "county_zip_2022",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/annual_aqi_by_county_2022.zip"
+  },
+  {
+   "role": "county_zip_2023",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/annual_aqi_by_county_2023.zip"
+  },
+  {
+   "role": "county_zip_2024",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/annual_aqi_by_county_2024.zip"
+  },
+  {
+   "role": "site_listing_zip",
+   "url": "https://aqs.epa.gov/aqsweb/airdata/aqs_sites.zip"
+  },
+  {
+   "role": "tiger_county_2020",
+   "archived_path": "history/boundaries/tiger2020/tl_2020_us_county.zip",
+   "sha256": "a490d33145b8cd308b0b53113d4bb31575b84a2b4cf6ec28fa5855be37559d8d",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2020/COUNTY/tl_2020_us_county.zip"
+  },
+  {
+   "role": "tiger_state_2024",
+   "archived_path": "acs5_2024_b19013/boundaries/tl_2024_us_state.zip",
+   "sha256": "ad00cbe66c7177091b668cee202e93d4a1ddcee271c28d1c9f9874af59c04b92",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/STATE/tl_2024_us_state.zip"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "median_aqi",
+   "label": "Median AQI",
+   "current_period": "2025",
+   "population": "days with a reported daily AQI from county monitoring sites",
+   "value_type": "annual_aqi_summary",
+   "periods": [
+    {
+     "period": "2024",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2024. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2024",
+      "member": "annual_aqi_by_county_2024.csv",
+      "source_field": "Median AQI"
+     }
+    },
+    {
+     "period": "2023",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2023. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2023",
+      "member": "annual_aqi_by_county_2023.csv",
+      "source_field": "Median AQI"
+     }
+    },
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2022. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2022",
+      "member": "annual_aqi_by_county_2022.csv",
+      "source_field": "Median AQI"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2021. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2021",
+      "member": "annual_aqi_by_county_2021.csv",
+      "source_field": "Median AQI"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2020. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2020",
+      "member": "annual_aqi_by_county_2020.csv",
+      "source_field": "Median AQI"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "p90_aqi",
+   "label": "90th percentile AQI",
+   "current_period": "2025",
+   "population": "days with a reported daily AQI from county monitoring sites",
+   "value_type": "annual_aqi_summary",
+   "periods": [
+    {
+     "period": "2024",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2024. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2024",
+      "member": "annual_aqi_by_county_2024.csv",
+      "source_field": "90th Percentile AQI"
+     }
+    },
+    {
+     "period": "2023",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2023. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2023",
+      "member": "annual_aqi_by_county_2023.csv",
+      "source_field": "90th Percentile AQI"
+     }
+    },
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2022. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2022",
+      "member": "annual_aqi_by_county_2022.csv",
+      "source_field": "90th Percentile AQI"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2021. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2021",
+      "member": "annual_aqi_by_county_2021.csv",
+      "source_field": "90th Percentile AQI"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2020. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2020",
+      "member": "annual_aqi_by_county_2020.csv",
+      "source_field": "90th Percentile AQI"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "max_aqi",
+   "label": "Maximum AQI",
+   "current_period": "2025",
+   "population": "days with a reported daily AQI from county monitoring sites",
+   "value_type": "annual_aqi_summary",
+   "periods": [
+    {
+     "period": "2024",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2024. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2024",
+      "member": "annual_aqi_by_county_2024.csv",
+      "source_field": "Max AQI"
+     }
+    },
+    {
+     "period": "2023",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2023. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2023",
+      "member": "annual_aqi_by_county_2023.csv",
+      "source_field": "Max AQI"
+     }
+    },
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2022. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2022",
+      "member": "annual_aqi_by_county_2022.csv",
+      "source_field": "Max AQI"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2021. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2021",
+      "member": "annual_aqi_by_county_2021.csv",
+      "source_field": "Max AQI"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2020. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2020",
+      "member": "annual_aqi_by_county_2020.csv",
+      "source_field": "Max AQI"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "days_with_aqi",
+   "label": "Days with AQI",
+   "current_period": "2025",
+   "population": "calendar days in 2025 with a reported daily AQI from county monitoring sites",
+   "value_type": "annual_aqi_summary",
+   "periods": [
+    {
+     "period": "2024",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2024. Connecticut is shown as its eight former counties, as EPA reports it. Counts days with an AQI in a leap year (366 days).",
+     "locator": {
+      "year": "2024",
+      "member": "annual_aqi_by_county_2024.csv",
+      "source_field": "Days with AQI"
+     }
+    },
+    {
+     "period": "2023",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2023. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2023",
+      "member": "annual_aqi_by_county_2023.csv",
+      "source_field": "Days with AQI"
+     }
+    },
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2022. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2022",
+      "member": "annual_aqi_by_county_2022.csv",
+      "source_field": "Days with AQI"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2021. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2021",
+      "member": "annual_aqi_by_county_2021.csv",
+      "source_field": "Days with AQI"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2020. Connecticut is shown as its eight former counties, as EPA reports it. Counts days with an AQI in a leap year (366 days).",
+     "locator": {
+      "year": "2020",
+      "member": "annual_aqi_by_county_2020.csv",
+      "source_field": "Days with AQI"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "good_days",
+   "label": "Good days",
+   "current_period": "2025",
+   "population": "days with a reported daily AQI from county monitoring sites",
+   "value_type": "annual_aqi_summary",
+   "periods": [
+    {
+     "period": "2024",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2024. Connecticut is shown as its eight former counties, as EPA reports it. Counts days with an AQI in a leap year (366 days).",
+     "locator": {
+      "year": "2024",
+      "member": "annual_aqi_by_county_2024.csv",
+      "source_field": "Good Days"
+     }
+    },
+    {
+     "period": "2023",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2023. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2023",
+      "member": "annual_aqi_by_county_2023.csv",
+      "source_field": "Good Days"
+     }
+    },
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2022. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2022",
+      "member": "annual_aqi_by_county_2022.csv",
+      "source_field": "Good Days"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2021. Connecticut is shown as its eight former counties, as EPA reports it.",
+     "locator": {
+      "year": "2021",
+      "member": "annual_aqi_by_county_2021.csv",
+      "source_field": "Good Days"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "EPA's final pre-generated annual file for 2020. Connecticut is shown as its eight former counties, as EPA reports it. Counts days with an AQI in a leap year (366 days).",
+     "locator": {
+      "year": "2020",
+      "member": "annual_aqi_by_county_2020.csv",
+      "source_field": "Good Days"
+     }
+    }
+   ]
+  }
+ ]
+}
