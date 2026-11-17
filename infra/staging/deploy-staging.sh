@@ -65,4 +65,14 @@ CODE="$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8080/api/area/c
 [ "$CODE" = "401" ] || { echo "Anonymous staging catalog returned $CODE, expected 401" >&2; exit 4; }
 PAGE="$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8080/')"
 [ "$PAGE" = "200" ] || { echo "Staging page returned $PAGE" >&2; exit 4; }
+
+# MCP server (docs/mcp/PLAN.md): separate venv and service; skipped until the unit is installed.
+if systemctl list-unit-files chip-mcp-staging.service 2>/dev/null | grep -q chip-mcp-staging; then
+  cd "$BETA_DIR/backend"
+  if [ ! -x .venv-mcp/bin/python ]; then python3 -m venv .venv-mcp; .venv-mcp/bin/pip install -q -r app/mcp_server/requirements.txt
+  elif changed backend/app/mcp_server/requirements.txt; then .venv-mcp/bin/pip install -q -r app/mcp_server/requirements.txt; fi
+  sudo -n systemctl restart chip-mcp-staging
+  for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:8011/healthz >/dev/null 2>&1 && break; sleep 1; done
+  curl -fsS http://127.0.0.1:8011/healthz >/dev/null || { echo "MCP staging health check failed" >&2; exit 5; }
+fi
 echo "Staging deployed: beta $AFTER (was $BEFORE)"

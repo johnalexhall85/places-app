@@ -190,3 +190,13 @@ These were found by running things on the VM, and they replace the matching line
   - Claude custom connectors support authless remote servers on every plan (the free plan allows one) and connect from Anthropic's cloud, so the URL must be public.
   - ChatGPT needs Developer mode on a paid plan; Plus and Pro allow read-only connectors.
   - Both use Streamable HTTP.
+
+## Amendment 2026-11-17: work split by allowance (John's plans)
+
+John's plans are ChatGPT Pro (Codex), a Google AI bundle at about $20 (Antigravity), and Claude Pro at $20 (Claude). From now on:
+
+- **Codex** does all code writing, every fix round (batched into one task), and code-quality review.
+- **Antigravity** takes small, bounded, independent tasks: evaluation, client reports, proofreading.
+- **Claude** writes short task files, checks work with test runs and diff summaries, and handles infra and gates.
+
+Remaining Claude-owned code work, if any, goes to Codex unless it touches migrations or `area_pilot`.

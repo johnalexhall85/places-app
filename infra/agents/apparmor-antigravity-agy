@@ -1,0 +1,16 @@
+# Lets the Antigravity CLI (agy) create user namespaces so its terminal sandbox (namespaces plus
+# Landlock) can run, which `agy --mode auto` requires. Ubuntu 24.04 blocks unprivileged user
+# namespaces by default (kernel.apparmor_restrict_unprivileged_userns=1). Same pattern as
+# Ubuntu's linux-sandbox profile and infra/agents/apparmor-codex-bwrap. Grants nothing else.
+# Install:  sudo install -m 644 infra/agents/apparmor-antigravity-agy /etc/apparmor.d/antigravity-agy
+#           sudo apparmor_parser -r /etc/apparmor.d/antigravity-agy
+# Remove:   sudo apparmor_parser -R /etc/apparmor.d/antigravity-agy && sudo rm /etc/apparmor.d/antigravity-agy
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile antigravity-agy /home/*/.gemini/bin/agy flags=(unconfined) {
+  userns,
+
+  include if exists <local/antigravity-agy>
+}
