@@ -131,6 +131,8 @@ ACROSS_AREAS_MEASURE_REQUIRED_KEYS: frozenset[str] = frozenset({
     "value_type",
     "release_id",
     "citation",
+    "uncertainty_kind",
+    "uncertainty_label",
 })
 
 ACROSS_AREAS_MEASURE_OPTIONAL_KEYS: frozenset[str] = frozenset({
@@ -438,7 +440,7 @@ def check_value_row_shape(row: dict[str, Any]) -> list[str]:
 
 
 def check_across_areas_measure_meta(measure_meta: Any) -> list[str]:
-    """Verify `data.measure` in `get_measure_across_areas` carries shared fields (Amendment 1 §2)."""
+    """Verify `data.measure` in `get_measure_across_areas` carries shared fields (Amendment 1 §2 & §2a)."""
     failures: list[str] = []
     if not isinstance(measure_meta, dict):
         return [f"data.measure must be a dict, got {type(measure_meta).__name__}"]
@@ -453,19 +455,38 @@ def check_across_areas_measure_meta(measure_meta: Any) -> list[str]:
         failures.append(f"data.measure has unexpected extra keys: {sorted(extra)}")
 
     measure_key = measure_meta.get("measure_key")
+    product = ""
     if not isinstance(measure_key, str) or ":" not in measure_key:
         failures.append(f"data.measure has invalid measure_key: {measure_key!r}")
-    elif measure_key.split(":", 1)[0] == "ahrf":
-        failures.append(f"Excluded product 'ahrf' in data.measure.measure_key: {measure_key!r}")
+    else:
+        product = measure_key.split(":", 1)[0]
+        if product == "ahrf":
+            failures.append(f"Excluded product 'ahrf' in data.measure.measure_key: {measure_key!r}")
 
     citation = measure_meta.get("citation")
     if not isinstance(citation, str) or not citation.startswith("Source: ") or "release " not in citation:
         failures.append(f"data.measure has invalid citation format: {citation!r}")
 
-    for str_key in ("label", "period", "population", "value_type", "release_id"):
+    for str_key in (
+        "label",
+        "period",
+        "population",
+        "value_type",
+        "release_id",
+        "uncertainty_kind",
+        "uncertainty_label",
+    ):
         val = measure_meta.get(str_key)
         if not isinstance(val, str) or not val.strip():
             failures.append(f"data.measure.{str_key} must be a non-empty string, got {val!r}")
+
+    unc_kind = measure_meta.get("uncertainty_kind")
+    if isinstance(unc_kind, str) and unc_kind not in ("ci95", "moe90", "none"):
+        failures.append(f"data.measure.uncertainty_kind must be 'ci95', 'moe90', or 'none', got {unc_kind!r}")
+    elif product in SPEC_UNCERTAINTY and unc_kind != SPEC_UNCERTAINTY[product]:
+        failures.append(
+            f"data.measure.uncertainty_kind={unc_kind!r}, expected {SPEC_UNCERTAINTY[product]!r} for product {product!r}"
+        )
 
     return failures
 
@@ -474,10 +495,11 @@ def check_compact_value_row_shape(
     row: dict[str, Any],
     *,
     product: str = "",
+    uncertainty_kind: str = "",
     require_position: bool = False,
     allow_boundary_vintage: bool = False,
 ) -> list[str]:
-    """Verify a compact row in `get_measure_across_areas` (Amendment 1 §2–3)."""
+    """Verify a compact row in `get_measure_across_areas` (Amendment 1 §2, §2a, §3)."""
     failures: list[str] = []
     if not isinstance(row, dict):
         return [f"Compact value row is not a dict: {type(row).__name__}"]
@@ -517,14 +539,28 @@ def check_compact_value_row_shape(
         failures.append("Compact row missing status_text")
 
     uncertainty = row.get("uncertainty")
-    if not isinstance(uncertainty, dict) or "kind" not in uncertainty:
-        failures.append(f"Compact row missing uncertainty.kind: {uncertainty!r}")
-    elif product in SPEC_UNCERTAINTY:
-        expected_kind = SPEC_UNCERTAINTY[product]
-        if uncertainty.get("kind") != expected_kind:
+    if not isinstance(uncertainty, dict):
+        failures.append(f"Compact row uncertainty must be a dict: {uncertainty!r}")
+    else:
+        repeated_unc = {"kind", "label"} & set(uncertainty.keys())
+        if repeated_unc:
             failures.append(
-                f"Compact row uncertainty.kind={uncertainty.get('kind')!r}, "
-                f"expected {expected_kind!r} for product {product!r}"
+                f"Compact row uncertainty must not repeat {sorted(repeated_unc)} (moved to data.measure): {uncertainty!r}"
+            )
+        eff_kind = uncertainty_kind or SPEC_UNCERTAINTY.get(product, "")
+        if eff_kind == "ci95":
+            expected_unc_keys: set[str] | None = {"low", "high"}
+        elif eff_kind == "moe90":
+            expected_unc_keys = {"moe"}
+        elif eff_kind == "none":
+            expected_unc_keys = set()
+        else:
+            expected_unc_keys = None
+
+        if expected_unc_keys is not None and set(uncertainty.keys()) != expected_unc_keys:
+            failures.append(
+                f"Compact row uncertainty keys {sorted(uncertainty.keys())} do not match "
+                f"expected interval keys {sorted(expected_unc_keys)} for uncertainty_kind={eff_kind!r}"
             )
 
     return failures
@@ -661,6 +697,11 @@ def check_envelope(
         failures.extend(check_across_areas_measure_meta(measure_meta))
         mk = measure_meta.get("measure_key", "") if isinstance(measure_meta, dict) else ""
         product = mk.split(":", 1)[0] if isinstance(mk, str) and ":" in mk else ""
+        unc_kind = (
+            str(measure_meta.get("uncertainty_kind") or "")
+            if isinstance(measure_meta, dict)
+            else ""
+        )
         has_shared_bv = isinstance(measure_meta, dict) and bool(measure_meta.get("boundary_vintage"))
 
         with_val = data.get("with_value")
@@ -677,6 +718,7 @@ def check_envelope(
                 row_errs = check_compact_value_row_shape(
                     row,
                     product=product,
+                    uncertainty_kind=unc_kind,
                     require_position=require_pos,
                     allow_boundary_vintage=(not has_shared_bv),
                 )
@@ -688,6 +730,7 @@ def check_envelope(
                 row_errs = check_compact_value_row_shape(
                     row,
                     product=product,
+                    uncertainty_kind=unc_kind,
                     require_position=False,
                     allow_boundary_vintage=(not has_shared_bv),
                 )
@@ -1055,6 +1098,7 @@ def compute_expected_for_call(
         sliced_with_val = with_val[:limit]
 
         first_row = all_rows[0] if all_rows else {}
+        first_unc = first_row.get("uncertainty") or {}
         measure_meta = {
             "measure_key": mk,
             "label": raw["measure"]["label"],
@@ -1065,6 +1109,8 @@ def compute_expected_for_call(
             "value_type": raw["measure"]["value_type"],
             "release_id": (raw["release"] or {}).get("release_id"),
             "boundary_vintage": first_row.get("boundary_vintage"),
+            "uncertainty_kind": raw["measure"].get("uncertainty_kind") or first_unc.get("kind"),
+            "uncertainty_label": first_unc.get("label"),
         }
 
         return {
@@ -1295,7 +1341,18 @@ def verify_call_against_lookup_and_checks(
         elif tool == "get_measure_across_areas":
             exp_meta = expected_lookup.get("measure_meta") or {}
             act_meta = data.get("measure") or {}
-            for meta_field in ("measure_key", "label", "unit", "storage_scale", "period", "population", "value_type", "release_id"):
+            for meta_field in (
+                "measure_key",
+                "label",
+                "unit",
+                "storage_scale",
+                "period",
+                "population",
+                "value_type",
+                "release_id",
+                "uncertainty_kind",
+                "uncertainty_label",
+            ):
                 if exp_meta.get(meta_field) is not None and act_meta.get(meta_field) != exp_meta.get(meta_field):
                     failures.append(
                         f"data.measure.{meta_field} mismatch: got {act_meta.get(meta_field)!r}, "
@@ -1362,7 +1419,7 @@ def verify_call_against_lookup_and_checks(
                         break
                 act_unc = act_r.get("uncertainty") or {}
                 exp_unc = exp_row_for_geoid.get("uncertainty") or {}
-                for unc_k in ("kind", "low", "high", "moe"):
+                for unc_k in ("low", "high", "moe"):
                     if unc_k in exp_unc and act_unc.get(unc_k) != exp_unc.get(unc_k):
                         failures.append(
                             f"with_value[{idx}] ({act_geoid}) uncertainty.{unc_k} mismatch: "

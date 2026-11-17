@@ -54,6 +54,8 @@ def _sample_value_row(
 def _sample_measure_meta(
     *,
     measure_key: str = "places:diabetes_crudeprev",
+    uncertainty_kind: str = "ci95",
+    uncertainty_label: str = "95% confidence interval",
     boundary_vintage: str | None = "TIGER/Line 2023 county",
 ) -> dict[str, Any]:
     meta: dict[str, Any] = {
@@ -66,6 +68,8 @@ def _sample_measure_meta(
         "value_type": "crude_prevalence",
         "release_id": "7bf96574-ac68-4d2f-9db8-95b07fbbf622",
         "citation": "Source: Centers for Disease Control and Prevention · PLACES 2025 county and tract pilot · 2023 · release 2025-12-12",
+        "uncertainty_kind": uncertainty_kind,
+        "uncertainty_label": uncertainty_label,
     }
     if boundary_vintage is not None:
         meta["boundary_vintage"] = boundary_vintage
@@ -83,13 +87,15 @@ def _sample_compact_row(
     position: int | None = None,
     notes: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    uncertainty: dict[str, Any] = {"kind": uncertainty_kind, "label": "95% confidence interval"}
     if uncertainty_kind == "ci95":
-        uncertainty |= {"low": 11.1 if value is not None else None, "high": 15.6 if value is not None else None}
+        uncertainty: dict[str, Any] = {
+            "low": 11.1 if value is not None else None,
+            "high": 15.6 if value is not None else None,
+        }
     elif uncertainty_kind == "moe90":
-        uncertainty = {"kind": "moe90", "moe": 1.2 if value is not None else None, "label": "90% margin of error"}
+        uncertainty = {"moe": 1.2 if value is not None else None}
     else:
-        uncertainty = {"kind": "none", "label": "No uncertainty published"}
+        uncertainty = {}
 
     row: dict[str, Any] = {
         "area": {"level": "county", "geoid": geoid, "name": name},
@@ -208,23 +214,76 @@ def test_without_value_rows_check():
 
 
 def test_compact_row_and_measure_meta_shapes():
-    # Valid measure meta and compact row
+    # Valid measure meta and compact rows for ci95, moe90, and none (Amendment 1 §2 & §2a)
     meta = _sample_measure_meta()
     assert run_eval.check_across_areas_measure_meta(meta) == []
 
-    row = _sample_compact_row(position=1, notes={"days_with_aqi": 274})
-    assert run_eval.check_compact_value_row_shape(row, product="places", require_position=True) == []
+    # Missing uncertainty_kind or uncertainty_label in data.measure must fail
+    for req_unc_key in ("uncertainty_kind", "uncertainty_label"):
+        missing_unc = copy.deepcopy(meta)
+        del missing_unc[req_unc_key]
+        errs = run_eval.check_across_areas_measure_meta(missing_unc)
+        assert any(req_unc_key in e for e in errs)
+
+    # ci95 compact row -> {"low", "high"} only
+    row_ci95 = _sample_compact_row(uncertainty_kind="ci95", position=1, notes={"days_with_aqi": 274})
+    assert run_eval.check_compact_value_row_shape(
+        row_ci95, product="places", uncertainty_kind="ci95", require_position=True
+    ) == []
+
+    # moe90 compact row -> {"moe"} only
+    row_moe90 = _sample_compact_row(uncertainty_kind="moe90", position=1)
+    assert run_eval.check_compact_value_row_shape(
+        row_moe90, product="acs", uncertainty_kind="moe90", require_position=True
+    ) == []
+
+    # none compact row -> {} (no interval keys)
+    row_none = _sample_compact_row(uncertainty_kind="none", position=1)
+    assert row_none["uncertainty"] == {}
+    assert run_eval.check_compact_value_row_shape(
+        row_none, product="epa_aqi", uncertainty_kind="none", require_position=True
+    ) == []
+
+    # Compact rows repeating kind or label in uncertainty must fail (item 2a)
+    repeated_kind = _sample_compact_row(uncertainty_kind="ci95", position=1)
+    repeated_kind["uncertainty"]["kind"] = "ci95"
+    errs = run_eval.check_compact_value_row_shape(
+        repeated_kind, product="places", uncertainty_kind="ci95", require_position=True
+    )
+    assert any("must not repeat" in e for e in errs)
+
+    repeated_label = _sample_compact_row(uncertainty_kind="moe90", position=1)
+    repeated_label["uncertainty"]["label"] = "90% margin of error"
+    errs = run_eval.check_compact_value_row_shape(
+        repeated_label, product="acs", uncertainty_kind="moe90", require_position=True
+    )
+    assert any("must not repeat" in e for e in errs)
+
+    # Interval keys mismatching data.measure.uncertainty_kind must fail (item 2a)
+    errs = run_eval.check_compact_value_row_shape(
+        row_moe90, product="places", uncertainty_kind="ci95", require_position=True
+    )
+    assert any("uncertainty keys" in e for e in errs)
+
+    errs = run_eval.check_compact_value_row_shape(
+        row_ci95, product="epa_aqi", uncertainty_kind="none", require_position=True
+    )
+    assert any("uncertainty keys" in e for e in errs)
 
     # Empty notes dict on compact row must fail (Amendment 1 §2: omit notes when empty)
     empty_notes_row = _sample_compact_row(position=1)
     empty_notes_row["notes"] = {}
-    errs = run_eval.check_compact_value_row_shape(empty_notes_row, product="places", require_position=True)
+    errs = run_eval.check_compact_value_row_shape(
+        empty_notes_row, product="places", uncertainty_kind="ci95", require_position=True
+    )
     assert any("omit 'notes' when empty" in e for e in errs)
 
     # Repeating shared fields (e.g. citation or measure_key) on compact row must fail
     bloated_row = _sample_compact_row(position=1)
     bloated_row["citation"] = meta["citation"]
-    errs = run_eval.check_compact_value_row_shape(bloated_row, product="places", require_position=True)
+    errs = run_eval.check_compact_value_row_shape(
+        bloated_row, product="places", uncertainty_kind="ci95", require_position=True
+    )
     assert any("unexpected extra keys" in e for e in errs)
 
     # Full row in get_area_values must NOT have position (even null)
