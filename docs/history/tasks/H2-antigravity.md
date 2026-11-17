@@ -32,7 +32,7 @@ Only in these paths: `backend/app/area_pilot/history/parsers/<product>.py`, `bac
 ## Environment
 
 - No network. Do not try to work around this.
-- Run tests with `cd backend && PYTHONPATH=. .venv/bin/python -m pytest -q tests/test_history_parsers_<product>.py`. If the venv is missing in your worktree, use `/home/john/chip-claude/backend/.venv/bin/python`.
+- Run tests with `cd backend && PYTHONPATH=. .venv-mcp/bin/python -m pytest -q tests/test_history_parsers_<product>.py` (the venv in your worktree; it has everything the parsers need).
 - Do not run the store, the CLI, or anything that needs a database.
 
 ## Rules
