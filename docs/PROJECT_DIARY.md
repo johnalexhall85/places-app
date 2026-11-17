@@ -29,6 +29,7 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
   - The 30 requests per minute per IP limit is too tight for production, because ChatGPT and Claude call from shared cloud IPs. Raise it at M5.
   - Antigravity's sandbox has no network, so Claude runs its database-dependent steps.
   - Merging Codex's 2026-11-16 entries put them below older Claude entries in this file. Order is otherwise preserved.
+- **Correction:** the 2026-11-17T18:30Z entry below was stamped ahead of the clock; that work finished at about 14:35Z.
 - **Live:** nothing changed. **Next:** Gate A, John tries the connector in Claude and ChatGPT. After that: M5 (production hostname, live role, rate limit) and M6 (Codex: "Use CHIP with AI" page).
 
 ## 2026-11-17T18:30:00+00:00 — MCP server planned; M0 setup and M1 read layer (Claude)
