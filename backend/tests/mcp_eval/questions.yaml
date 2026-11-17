@@ -1,0 +1,1109 @@
+# CHIP MCP Server — Independent Evaluation Suite (M3)
+# Ground-truth contract: docs/mcp/TOOL_CONTRACT.md
+# Expected values are computed dynamically from app.area_pilot.lookup against places_staging.
+
+questions:
+  - id: Q01
+    question: "What is the diagnosed diabetes prevalence among adults in Person County, North Carolina, including its 95% confidence interval and source release?"
+    trap: false
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "Person County, NC"
+          levels: ["county"]
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145"]
+          measure_keys: ["places:diabetes_crudeprev"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_match_geoid: "37145"
+          expect_match_level: "county"
+        - call_index: 1
+          expected_sources: ["places"]
+          expected_row_count: 1
+          spot_values:
+            - geoid: "37145"
+              measure_key: "places:diabetes_crudeprev"
+              value: 14.9
+              status: "available"
+              uncertainty_kind: "ci95"
+              ci_low: 12.7
+              ci_high: 17.2
+              period: "2023"
+              population: "adults"
+
+  - id: Q02
+    question: "Compare adult obesity, high blood pressure, and all-ages poverty rates across Person County (NC), Kanawha County (WV), and Fresno County (CA)."
+    trap: false
+    products: ["places", "acs_profile"]
+    levels: ["county"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "Kanawha County, WV"
+          levels: ["county"]
+      - tool: find_places
+        arguments:
+          query: "Fresno County, CA"
+          levels: ["county"]
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145", "54039", "06019"]
+          measure_keys:
+            - "places:obesity_crudeprev"
+            - "places:bphigh_crudeprev"
+            - "acs_profile:poverty_pct"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_match_geoid: "54039"
+        - call_index: 1
+          expect_match_geoid: "06019"
+        - call_index: 2
+          expected_sources: ["places", "acs_profile"]
+          expected_row_count: 9
+
+  - id: Q03
+    question: "How do median household income, household broadband access, households without a vehicle, and renter housing cost burden compare between Person County, NC and Kanawha County, WV?"
+    trap: false
+    products: ["acs", "clh"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145", "54039"]
+          measure_keys:
+            - "acs:B19013_001E"
+            - "clh:ACS_PCT_HH_BROADBAND_ANY"
+            - "clh:ACS_PCT_HU_NO_VEH"
+            - "clh:ACS_PCT_RENTER_HU_COST_30PCT"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["acs", "clh"]
+          expected_row_count: 8
+
+  - id: Q04
+    question: "What does the food environment look like in Fresno County, CA and Person County, NC across all published food-environment measures (low-income low supermarket access, SNAP stores, WIC stores, farmers' markets, no-car low-access households, and grocery stores per 1,000)?"
+    trap: false
+    products: ["usda_fea", "clh"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["06019", "37145"]
+          topic: "food-environment"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["usda_fea", "clh"]
+          expected_row_count: 12
+
+  - id: Q05
+    question: "What are the 2025 EPA Air Quality Index summary measures (median AQI, 90th percentile AQI, max AQI, days with AQI, and good days) for Kanawha County, WV and Fresno County, CA?"
+    trap: false
+    products: ["epa_aqi"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["54039", "06019"]
+          topic: "environment"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["epa_aqi"]
+          expected_row_count: 10
+          spot_values:
+            - geoid: "54039"
+              measure_key: "epa_aqi:median_aqi"
+              value: 39
+              status: "available"
+              uncertainty_kind: "none"
+
+  - id: Q06
+    question: "How do state-level BRFSS direct survey estimates for adult diabetes, current smoking, depression, and binge drinking compare across North Carolina, West Virginia, and California?"
+    trap: false
+    products: ["brfss"]
+    levels: ["state"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "North Carolina"
+          levels: ["state"]
+      - tool: get_area_values
+        arguments:
+          level: "state"
+          geoids: ["37", "54", "06"]
+          measure_keys:
+            - "brfss:diabetes"
+            - "brfss:current_smoking"
+            - "brfss:depression"
+            - "brfss:binge_drinking"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_match_geoid: "37"
+          expect_match_level: "state"
+        - call_index: 1
+          expected_sources: ["brfss"]
+          expected_row_count: 12
+
+  - id: Q07
+    question: "What are the published Census ACS community profile estimates (total population, poverty rate, age 65+, under 18, disability, uninsured, and limited English proficiency) for West Virginia's 1st congressional district (WV-01)?"
+    trap: false
+    products: ["acs_profile"]
+    levels: ["cd"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "WV-01"
+          levels: ["cd"]
+      - tool: get_area_values
+        arguments:
+          level: "cd"
+          geoids: ["5401"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_match_geoid: "5401"
+          expect_match_level: "cd"
+        - call_index: 1
+          expected_sources: ["acs_profile"]
+          expected_row_count: 7
+          spot_values:
+            - geoid: "5401"
+              measure_key: "acs_profile:total_population"
+              value: 877069
+              status: "available"
+              uncertainty_kind: "moe90"
+            - geoid: "5401"
+              measure_key: "acs_profile:poverty_pct"
+              value: 18.8
+              status: "available"
+              uncertainty_kind: "moe90"
+
+  - id: Q08
+    question: "Which congressional districts overlap Person County, NC (37145), and how many HRSA health center sites, CMS nursing homes, and EPA TRI reporting facilities are mapped inside the county?"
+    trap: false
+    products: ["health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "county"
+          geoid: "37145"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_facility_counts:
+            health_centers: 4
+            nursing_homes: 2
+            tri_facilities: 6
+
+  - id: Q09
+    question: "Give me the area context and mapped facility counts (HRSA health centers, CMS nursing homes, and EPA TRI facilities) for Kanawha County, West Virginia (54039)."
+    trap: false
+    products: ["health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "county"
+          geoid: "54039"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_facility_counts:
+            health_centers: 36
+            nursing_homes: 9
+            tri_facilities: 18
+
+  - id: Q10
+    question: "Which 119th Congress districts overlap Fresno County, California (06019), and what are the counts of mapped HRSA health centers, CMS nursing homes, and TRI reporting facilities in the county?"
+    trap: false
+    products: ["health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "county"
+          geoid: "06019"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_facility_counts:
+            health_centers: 111
+            nursing_homes: 30
+            tri_facilities: 33
+
+  - id: Q11
+    question: "Which counties overlap West Virginia's 1st congressional district (5401), and how many health centers, nursing homes, and TRI reporting facilities are located inside the district?"
+    trap: false
+    products: ["health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["cd"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "cd"
+          geoid: "5401"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_related_counties_count: 28
+          expected_facility_counts:
+            health_centers: 347
+
+  - id: Q12
+    question: "What are the counties, 119th Congress districts, and mapped facility inventories for the state of North Carolina (37)?"
+    trap: false
+    products: ["health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "state"
+          geoid: "37"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_related_counties_count: 100
+          expected_related_districts_count: 14
+
+  - id: Q13
+    question: "Which county and state contain census tract 54039000100 in West Virginia?"
+    trap: false
+    products: ["acs_profile"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_area_context
+        arguments:
+          level: "tract"
+          geoid: "54039000100"
+      - tool: get_area_values
+        arguments:
+          level: "tract"
+          geoids: ["54039000100"]
+          measure_keys: ["acs_profile:poverty_pct"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 1
+          expected_sources: ["acs_profile"]
+          spot_values:
+            - geoid: "54039000100"
+              measure_key: "acs_profile:poverty_pct"
+              value: 40.3
+              status: "available"
+              uncertainty_kind: "moe90"
+
+  - id: Q14
+    question: "List adult diagnosed diabetes prevalence (places:diabetes_crudeprev) across all 67 counties of Alabama in GEOID order."
+    trap: false
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:diabetes_crudeprev"
+          level: "county"
+          within: "01"
+          sort: "geoid"
+          limit: 100
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places"]
+          expected_total_areas: 67
+          expected_with_value_count: 67
+          expected_without_value_count: 0
+          expected_truncated: false
+          spot_first_with_value:
+            geoid: "01001"
+            value: 13.3
+
+  - id: Q15
+    question: "Which counties in Alabama have the highest point estimates of adult obesity (places:obesity_crudeprev), sorted descending?"
+    trap: false
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:obesity_crudeprev"
+          level: "county"
+          within: "AL"
+          sort: "value_desc"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places"]
+          expected_total_areas: 67
+          expected_with_value_count: 25
+          expected_without_value_count: 0
+          expected_truncated: true
+
+  - id: Q16
+    question: "Show diagnosed diabetes prevalence (places:diabetes_crudeprev) across all 254 counties in Texas, including any county with no row in the published release."
+    trap: false
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:diabetes_crudeprev"
+          level: "county"
+          within: "48"
+          sort: "value_desc"
+          limit: 300
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places"]
+          expected_total_areas: 254
+          expected_without_value_count: 1
+          expected_without_value_statuses:
+            - status: "not_in_release"
+
+  - id: Q17
+    question: "How does the poverty rate (acs_profile:poverty_pct) vary across the 7 census tracts of Person County, North Carolina (37145)?"
+    trap: false
+    products: ["acs_profile"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "acs_profile:poverty_pct"
+          level: "tract"
+          within: "37145"
+          sort: "value_desc"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["acs_profile"]
+          expected_total_areas: 7
+
+  - id: Q18
+    question: "What is the tract-level distribution of current cigarette smoking (places:csmoking_crudeprev) across the 57 census tracts in Kanawha County, WV (54039)?"
+    trap: false
+    products: ["places"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:csmoking_crudeprev"
+          level: "tract"
+          within: "54039"
+          sort: "value_desc"
+          limit: 60
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places"]
+          expected_total_areas: 57
+
+  - id: Q19
+    question: "List the top 25 census tracts in Fresno County, CA (06019) by percentage of occupied housing units without a vehicle (clh:ACS_PCT_HU_NO_VEH)."
+    trap: false
+    products: ["clh"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "clh:ACS_PCT_HU_NO_VEH"
+          level: "tract"
+          within: "06019"
+          sort: "value_desc"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["clh"]
+          expected_total_areas: 225
+          expected_with_value_count: 25
+          expected_truncated: true
+
+  - id: Q20
+    question: "Compare the all-ages uninsured rate (acs_profile:uninsured_pct) across all 14 congressional districts in North Carolina."
+    trap: false
+    products: ["acs_profile"]
+    levels: ["cd"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "acs_profile:uninsured_pct"
+          level: "cd"
+          within: "37"
+          sort: "value_desc"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["acs_profile"]
+          expected_total_areas: 14
+          expected_with_value_count: 14
+          expected_without_value_count: 0
+
+  - id: Q21
+    question: "How does median household income (acs:B19013_001E) compare across all states, DC, and Puerto Rico, ordered from lowest to highest?"
+    trap: false
+    products: ["acs"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "acs:B19013_001E"
+          level: "state"
+          sort: "value_asc"
+          limit: 60
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["acs"]
+          expected_total_areas: 52
+          expected_with_value_count: 52
+          expected_without_value_count: 0
+
+  - id: Q22
+    question: "List the counties of West Virginia by SNAP-authorized stores per 1,000 residents (usda_fea:snap_stores_per_1000)."
+    trap: false
+    products: ["usda_fea"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "usda_fea:snap_stores_per_1000"
+          level: "county"
+          within: "54"
+          sort: "value_desc"
+          limit: 60
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["usda_fea"]
+          expected_total_areas: 55
+
+  - id: Q23
+    question: "Compare dental visits (places:dental_crudeprev), median household income (acs:B19013_001E), disability prevalence (acs_profile:disability_pct), and renter cost burden (clh:ACS_PCT_RENTER_HU_COST_30PCT) between census tracts 54039000100 and 54039000200 in Kanawha County, WV."
+    trap: false
+    products: ["places", "acs", "acs_profile", "clh"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "tract"
+          geoids: ["54039000100", "54039000200"]
+          measure_keys:
+            - "places:dental_crudeprev"
+            - "acs:B19013_001E"
+            - "acs_profile:disability_pct"
+            - "clh:ACS_PCT_RENTER_HU_COST_30PCT"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places", "acs", "acs_profile", "clh"]
+          expected_row_count: 8
+
+  - id: Q24
+    question: "What community health topics can I browse in CHIP when calling search_measures with no arguments?"
+    trap: false
+    products: ["places", "acs", "acs_profile", "brfss", "clh", "cms_gv", "epa_aqi", "usda_fea"]
+    levels: ["state", "county", "tract", "cd"]
+    expected_calls:
+      - tool: search_measures
+        arguments: {}
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_topics_present: true
+          expect_no_withheld_topic: true
+          expect_warning_substring: "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) is on the CHIP website but not available through this public server."
+
+  - id: Q25
+    question: "Which health insurance or uninsured measures are available in CHIP at the county level?"
+    trap: false
+    products: ["places", "acs_profile"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "uninsured"
+          level: "county"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_measure_keys_include:
+            - "places:access2_crudeprev"
+            - "acs_profile:uninsured_pct"
+          expect_all_measures_have_level: "county"
+
+  - id: Q26
+    question: "What are the definitions, population universes, observation periods, and paired measure relationships for places:access2_crudeprev, acs_profile:uninsured_pct, and brfss:uninsured_18_64?"
+    trap: false
+    products: ["places", "acs_profile", "brfss"]
+    levels: ["state", "county", "tract", "cd"]
+    expected_calls:
+      - tool: get_measure_details
+        arguments:
+          measure_keys:
+            - "places:access2_crudeprev"
+            - "acs_profile:uninsured_pct"
+            - "brfss:uninsured_18_64"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_measure_count: 3
+
+  - id: Q27
+    question: "Show the official definitions, units, storage scales, observation periods, and product limitations for cms_gv:readmission_rate, usda_fea:farmers_markets_per_1000, epa_aqi:median_aqi, and clh:CCBP_FCRSC_RATE."
+    trap: false
+    products: ["cms_gv", "usda_fea", "epa_aqi", "clh"]
+    levels: ["state", "county"]
+    expected_calls:
+      - tool: get_measure_details
+        arguments:
+          measure_keys:
+            - "cms_gv:readmission_rate"
+            - "usda_fea:farmers_markets_per_1000"
+            - "epa_aqi:median_aqi"
+            - "clh:CCBP_FCRSC_RATE"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_measure_count: 4
+
+  - id: Q28
+    question: "Which data products and facility overlays does the CHIP MCP server publish, what are their active releases, why is AHRF excluded, and what do the status codes mean?"
+    trap: false
+    products: ["places", "acs", "acs_profile", "brfss", "clh", "cms_gv", "epa_aqi", "usda_fea", "health_centers", "nursing_homes", "tri_facilities"]
+    levels: ["state", "county", "tract", "cd"]
+    expected_calls:
+      - tool: list_data_sources
+        arguments: {}
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_public_products_exact:
+            - "places"
+            - "acs"
+            - "acs_profile"
+            - "brfss"
+            - "clh"
+            - "cms_gv"
+            - "epa_aqi"
+            - "usda_fea"
+          expect_excluded_ahrf: true
+
+  - id: Q29
+    question: "Resolve the GEOIDs for 'fips:37145', 'Fresno', 'West Virginia 1st', and 'Alabama'."
+    trap: false
+    products: ["places", "acs_profile"]
+    levels: ["state", "county", "cd"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "fips:37145"
+          levels: ["county"]
+      - tool: find_places
+        arguments:
+          query: "Fresno"
+          levels: ["county"]
+      - tool: find_places
+        arguments:
+          query: "West Virginia 1st"
+          levels: ["cd"]
+      - tool: find_places
+        arguments:
+          query: "Alabama"
+          levels: ["state"]
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_match_geoid: "37145"
+          expect_match_level: "county"
+        - call_index: 1
+          expect_match_geoid: "06019"
+          expect_match_level: "county"
+        - call_index: 2
+          expect_match_geoid: "5401"
+          expect_match_level: "cd"
+        - call_index: 3
+          expect_match_geoid: "01"
+          expect_match_level: "state"
+
+  - id: Q30
+    question: "Look up the GEOID for 'Nonexistent Atlantis County, ZZ' and verify a helpful warning is returned when nothing matches."
+    trap: false
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: find_places
+        arguments:
+          query: "Nonexistent Atlantis County, ZZ"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_empty_matches: true
+          expect_warning_non_empty: true
+
+  - id: Q31
+    question: "Give me the complete county profile of all published public measures for Person County, North Carolina (37145)."
+    trap: false
+    products: ["places", "acs", "acs_profile", "clh", "cms_gv", "epa_aqi", "usda_fea"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["places", "acs", "acs_profile", "clh", "cms_gv", "epa_aqi", "usda_fea"]
+          expected_row_count: 41
+
+  - id: Q32
+    question: "Retrieve all published state-level measures for West Virginia (54) across ACS, BRFSS, and CMS Medicare Geographic Variation."
+    trap: false
+    products: ["acs", "acs_profile", "brfss", "cms_gv"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "state"
+          geoids: ["54"]
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["acs", "acs_profile", "brfss", "cms_gv"]
+          expected_row_count: 33
+
+  # --- TRAP QUESTIONS (Q33 - Q44) ---
+
+  - id: Q33
+    question: "How many primary care doctors (ahrf:phys_nf_prim_care_pc_exc_rsdt_23) and hospital beds (ahrf:hosp_beds_23) are in Person County, NC (37145)?"
+    trap: true
+    trap_kind: "ahrf_excluded"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "primary care doctors"
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145"]
+          measure_keys:
+            - "ahrf:phys_nf_prim_care_pc_exc_rsdt_23"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 1
+          expect_error: true
+          expect_error_Substrings_any:
+            - "ahrf"
+            - "not available"
+            - "excluded"
+            - "redistribution"
+            - "public"
+
+  - id: Q34
+    question: "How has adult diabetes prevalence (places:diabetes_crudeprev) in Kanawha County, WV (54039) trended year-over-year from 2018 to 2023?"
+    trap: true
+    trap_kind: "time_trend_one_period"
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["54039"]
+          measure_keys: ["places:diabetes_crudeprev"]
+      - tool: list_data_sources
+        arguments: {}
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_row_count: 1
+          expect_single_period_per_measure: true
+          expect_interpretation_rule_substring: "Each measure has one published period in CHIP; there is no time series."
+        - call_index: 1
+          expect_notes_mention_no_time_series: true
+
+  - id: Q35
+    question: "Which county in Alabama is the healthiest overall based on a composite health score?"
+    trap: true
+    trap_kind: "no_composite_score"
+    products: ["places"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "composite health score"
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:diabetes_crudeprev"
+          level: "county"
+          within: "01"
+          sort: "value_asc"
+          limit: 10
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expect_no_composite_measure: true
+        - call_index: 1
+          expect_interpretation_rule_substring: "CHIP never adds, averages, or derives values across areas."
+          expect_warning_substring: "This is a list of one published measure, not a ranking of overall health."
+
+  - id: Q36
+    question: "What is the median AQI (epa_aqi:median_aqi) across Alabama counties, and what is reported for counties without an EPA air monitor such as Autauga County (01001)?"
+    trap: true
+    trap_kind: "epa_aqi_no_monitor"
+    products: ["epa_aqi"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["01001", "01055"]
+          measure_keys: ["epa_aqi:median_aqi"]
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "epa_aqi:median_aqi"
+          level: "county"
+          within: "01"
+          sort: "value_desc"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["epa_aqi"]
+          spot_values:
+            - geoid: "01001"
+              measure_key: "epa_aqi:median_aqi"
+              value: null
+              status: "no_reported_value"
+              uncertainty_kind: "none"
+            - geoid: "01055"
+              measure_key: "epa_aqi:median_aqi"
+              value: 45
+              status: "available"
+              uncertainty_kind: "none"
+        - call_index: 1
+          expected_sources: ["epa_aqi"]
+          expected_total_areas: 67
+          expected_with_value_count: 15
+          expected_without_value_count: 52
+          expected_without_value_statuses:
+            - status: "no_reported_value"
+
+  - id: Q37
+    question: "What is Kentucky's 2023 state BRFSS adult diabetes prevalence (brfss:diabetes), and how does get_measure_across_areas report Kentucky and Pennsylvania?"
+    trap: true
+    trap_kind: "kentucky_brfss_not_published"
+    products: ["brfss"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "state"
+          geoids: ["21"]
+          measure_keys: ["brfss:diabetes", "brfss:dental_visit"]
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "brfss:diabetes"
+          level: "state"
+          sort: "value_desc"
+          limit: 60
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["brfss"]
+          spot_values:
+            - geoid: "21"
+              measure_key: "brfss:diabetes"
+              value: null
+              status: "not_published"
+              uncertainty_kind: "ci95"
+            - geoid: "21"
+              measure_key: "brfss:dental_visit"
+              value: 60.3
+              status: "available"
+              uncertainty_kind: "ci95"
+        - call_index: 1
+          expected_sources: ["brfss"]
+          expected_without_value_count: 2
+          expected_without_value_geoids: ["21", "42"]
+          expected_without_value_statuses:
+            - status: "not_published"
+
+  - id: Q38
+    question: "What is the Medicare per-capita standardized spending (cms_gv:std_payment_per_capita) for West Virginia's 1st congressional district (5401)?"
+    trap: true
+    trap_kind: "cms_not_published_for_cd"
+    products: ["cms_gv", "acs_profile"]
+    levels: ["cd"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "cms_gv:std_payment_per_capita"
+          level: "cd"
+          within: "54"
+      - tool: get_area_values
+        arguments:
+          level: "cd"
+          geoids: ["5401"]
+          measure_keys:
+            - "cms_gv:std_payment_per_capita"
+            - "acs_profile:age_65_plus_pct"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_Substrings_any:
+            - "not published for cd"
+            - "state"
+            - "county"
+        - call_index: 1
+          expect_unpublished_level_handled:
+            skipped_measure_key: "cms_gv:std_payment_per_capita"
+            published_levels: ["state", "county"]
+
+  - id: Q39
+    question: "Show tract-level diagnosed diabetes (places:diabetes_crudeprev) across all census tracts in North Carolina without specifying a county."
+    trap: true
+    trap_kind: "tracts_require_county"
+    products: ["places"]
+    levels: ["tract"]
+    expected_calls:
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:diabetes_crudeprev"
+          level: "tract"
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "places:diabetes_crudeprev"
+          level: "tract"
+          within: "37"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_Substrings_any:
+            - "county"
+            - "GEOID"
+        - call_index: 1
+          expect_error: true
+          expect_error_Substrings_any:
+            - "county"
+            - "5-digit"
+            - "GEOID"
+
+  - id: Q40
+    question: "What are the Medicare beneficiary count, standardized per-capita spending, inpatient stays, ER visits, and 30-day hospital readmission rate in Person County, NC (37145) and Kanawha County, WV (54039), and who is covered by those figures?"
+    trap: true
+    trap_kind: "medicare_original_beneficiaries"
+    products: ["cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145", "54039"]
+          topic: "medicare-use-and-spending"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["cms_gv"]
+          expected_row_count: 10
+          expect_all_rows_population_substring: "Original Medicare beneficiaries"
+          expect_interpretation_rule_substring: "Medicare (cms_gv) measures describe Original Medicare beneficiaries, not all residents."
+
+  - id: Q41
+    question: "What are the USDA Food Environment low-access share (usda_fea:low_income_low_access_pct) and CMS Medicare spending (cms_gv:std_payment_per_capita) for Connecticut's Capitol Planning Region (09110) and Adjuntas Municipio, Puerto Rico (72001)?"
+    trap: true
+    trap_kind: "ct_pr_coverage_status"
+    products: ["usda_fea", "cms_gv"]
+    levels: ["county"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["09110", "72001"]
+          measure_keys:
+            - "usda_fea:low_income_low_access_pct"
+            - "cms_gv:std_payment_per_capita"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_sources: ["usda_fea", "cms_gv"]
+          spot_values:
+            - geoid: "09110"
+              measure_key: "usda_fea:low_income_low_access_pct"
+              value: null
+              status: "boundary_not_comparable"
+            - geoid: "72001"
+              measure_key: "usda_fea:low_income_low_access_pct"
+              value: null
+              status: "not_covered"
+            - geoid: "72001"
+              measure_key: "cms_gv:std_payment_per_capita"
+              value: null
+              status: "not_published"
+
+  - id: Q42
+    question: "What happens if I request all 41 county measures for 12 counties at once (492 rows, exceeding the 400-row cap), or request median household income across all 2,498 tracts of Los Angeles County (06037)?"
+    trap: true
+    trap_kind: "limits_and_truncation"
+    products: ["acs", "places"]
+    levels: ["county", "tract"]
+    expected_calls:
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["01001", "01003", "01005", "01007", "01009", "01011", "01013", "01015", "01017", "01019", "01021", "01023"]
+      - tool: get_measure_across_areas
+        arguments:
+          measure_key: "acs:B19013_001E"
+          level: "tract"
+          within: "06037"
+          sort: "value_desc"
+          limit: 300
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_Substrings_any:
+            - "400"
+            - "narrow"
+            - "limit"
+            - "too many"
+            - "rows"
+        - call_index: 1
+          match_lookup: true
+          expected_sources: ["acs"]
+          expected_total_areas: 2498
+          expected_truncated: true
+
+  - id: Q43
+    question: "What happens when I request the 'Health care resources' topic (topic='health-care-resources') in search_measures or get_area_values for Person County, NC (37145)?"
+    trap: true
+    trap_kind: "ahrf_withheld_topic"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          topic: "health-care-resources"
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145"]
+          topic: "health-care-resources"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_substrings_all:
+            - "Health care resources"
+            - "AHRF"
+            - "not available through this public server"
+          forbid_error_substrings:
+            - "Unknown topic"
+        - call_index: 1
+          expect_error: true
+          expect_error_substrings_all:
+            - "Health care resources"
+            - "AHRF"
+            - "not available through this public server"
+          forbid_error_substrings:
+            - "Unknown topic"
+
+  - id: Q44
+    question: "Search CHIP measures for 'hospital beds', 'dentists', and 'psychiatrists', and browse topics with search_measures() to verify withheld HRSA AHRF content is explained rather than silently hidden."
+    trap: true
+    trap_kind: "ahrf_withheld_queries"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "hospital beds"
+      - tool: search_measures
+        arguments:
+          query: "dentists"
+      - tool: search_measures
+        arguments:
+          query: "psychiatrists"
+      - tool: search_measures
+        arguments: {}
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 1
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 2
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 3
+          expect_topics_present: true
+          expect_no_withheld_topic: true
+          expect_warning_substring: "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) is on the CHIP website but not available through this public server."
