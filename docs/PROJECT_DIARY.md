@@ -2,6 +2,31 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T16:32:00+00:00 — MCP server live at mcp.publicdataobservatory.org (Claude, Gate B)
+
+- **Approval:** John tested the staging connector in Claude ("works perfectly"), added the DNS record for `mcp.publicdataobservatory.org`, and approved Gate B.
+- **Rollback pair:** `data/deploy-recovery/mcp-promotion-20261117/` holds `commit-before.txt` (`51d0d7e`), `webroot-bundle-before.txt` (`index-D7zfOmSk.js`), and `pointers-before.txt` (12 pointers).
+- **State-changing commands on live:**
+  - `git merge --ff-only beta` in `/home/john/places-app` (to `2347b88`; no frontend or migration changes), then `systemctl restart places-backend`.
+  - Created role `chip_mcp_ro` on the `places` database and set default privileges. No data changed.
+  - Wrote `~/.config/chip/mcp-live.env` (mode 600) and built `.venv-mcp` in the live checkout.
+  - Installed and enabled `chip-mcp.service`.
+  - Obtained a certbot webroot certificate for `mcp.publicdataobservatory.org` (expires 2027-02-15).
+  - Added Nginx site `chip-mcp`, enabled as `zz-chip-mcp`.
+- **Incident:**
+  - **What happened:** at about 16:22Z I enabled the site as `sites-enabled/chip-mcp`. Because it sorted before `places-demo`, its port-80 block became Nginx's implicit default, and `http://<IP>/` returned a 301 to the MCP host for about 2 minutes. Requests by hostname were not affected, and the staging host was not affected.
+  - **Fix:** renamed the link to `zz-chip-mcp`. Live by IP and `/api/health` returned 200 again.
+  - **Earlier near-miss:** a truncated config failed `nginx -t`, but piping that test into `tail` let the reload run. Nginx rejected the reload and kept serving the old config, so there was no outage. Reloads are now gated on the test result (README updated).
+- **Side effect fixed:** Postgres roles are cluster-wide, so setting the password for live also changed the staging role's password. I synced `mcp-staging.env`, restarted `chip-mcp-staging`, and checked it.
+- **Verification:**
+  - The 44-question evaluation through `https://mcp.publicdataobservatory.org/mcp`, with expected values from the live database: 44/44, p50 14 ms, p95 101 ms.
+  - Live role: UPDATE refused, `demo_access_codes` denied, 5 s timeout.
+  - `/mcp`: no Set-Cookie, `Cache-Control: no-store`. Everything except `/mcp` and `/healthz` returns 404.
+  - The 120/min rate limit returns 429 on a burst.
+  - Live site 200; anonymous community catalog 401; pointers unchanged.
+- **Not verified by the agent:** ChatGPT Developer mode against production (John tested Claude on staging).
+- **Next:** M6, a "Use CHIP in your AI assistant" page (Codex). John to try ChatGPT. Decide later whether to list the server in directories.
+
 ## 2026-11-17T15:37:00+00:00 — MCP server built, evaluated, and public on staging; Gate A open (Claude)
 
 - **Built by the agents (dispatched headlessly; Claude reviewed and committed):**
