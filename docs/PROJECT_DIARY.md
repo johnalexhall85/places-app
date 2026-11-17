@@ -2,6 +2,30 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-16T15:40:00+00:00 — CHIP slide library deck (Claude)
+
+- **Request (John):** a PDO-branded "library" deck covering all of CHIP, with screenshots of every part (maps, comparisons, profiles, and so on), to pull slides from for any audience.
+- **Outcome:** `/home/john/CHIP_Slide_Library.pptx`, 71 slides in nine PowerPoint sections (guide, core story, product tour, data maps, data sources, trust and methods, funding views, audiences, under the hood, roadmap and close), outside the repository. Every slide's notes start with "Use for:" and a talk track.
+- **Screenshots:** 40 fresh captures from staging (`http://127.0.0.1:8080`, same commit as live, `51d0d7e`), signed in with the existing staging access-code file used by `npm run test:beta`; read-only browsing plus GETs of the Kanawha County PDF and CSV. The code was not printed or stored elsewhere. The standalone map would not open at tract level from a URL (`geography=tract` with `focus=county:54039` still showed county shapes); the tract slide uses the profile's tract map instead. **Possible product gap, not investigated.**
+- **Unconfirmed content:** "What's next" is proposed direction, as in the funder deck. The state funding profile screenshot shows a staging dollar total; notes say to check live before quoting it.
+- **Verification:** skill validator passed; every slide checked for text, table, and image overflow in an HTML mirror with Roboto Slab loaded, and reviewed visually. Not opened in PowerPoint or LibreOffice (not installed on this VM).
+- **No application, data, staging, or live change.** Handbook unchanged.
+
+## 2026-11-16T00:30:00+00:00 — Funder slide deck for CHIP (Claude)
+
+- **Request (John):** a PowerPoint deck on CHIP in the PDO brand for future funder presentations; plain language, Smart Brevity.
+- **Outcome:** `/home/john/CHIP_Funder_Deck.pptx` (12 slides, 16:9, speaker notes on every slide), outside the repository. Built with pptxgenjs to match `PDO_Presentation_Template.pptx` (navy cover and title band, peach rule, Roboto Slab headings, Arial body, brand theme colors). Uses three Gate 3 staging screenshots from `deliverables/beta/screenshots/` (landing, Person County profile, three-county comparison); they predate the 2026-11-15 map polish but show the current page design.
+- **Unconfirmed content:** the "What's next" slide (public site, mortality and more measures, scheduled source checks, user testing) is proposed direction drawn from the execution plan and handbook, not an approved roadmap; its notes say to confirm before presenting.
+- **Verification:** skill validator passed; text checked for overflow in an HTML mirror of every slide with Roboto Slab loaded. Not opened in PowerPoint or LibreOffice (not installed on this VM).
+- **No application, data, staging, or live change.** Handbook unchanged.
+
+## 2026-11-16T00:05:00+00:00 — Internal team brief on place-first CHIP (Claude)
+
+- **Request (John):** a two-page (front and back) Word brief for the internal team on the move from data maps to place pages, the public health measures CHIP shows, and how it serves the intended users; in brand, plain language.
+- **Outcome:** `/home/john/CHIP_Place_First_Team_Brief.docx`, outside the repository. Built with docx-js in the PDO Fact Sheet layout (navy header with PDO mark, 2-inch stat cards beside narrative, Roboto Slab only for title and stat numbers, Arial elsewhere, brand palette). Figures taken from the topic and product registries and the coverage matrix: 66 measures, 7 agencies, 12 active releases, 4 geography levels, 54,560 mapped facilities (19,200 + 13,878 + 21,482).
+- **Verification:** rendered with docx-preview in Chromium; both pages fit with about 0.5 inch to spare. Not checked in Word or LibreOffice (neither is installed on this VM), and Roboto Slab was substituted in the preview.
+- **No application, data, staging, or live change.** Handbook unchanged.
+
 ## 2026-11-15T23:58:00+00:00 — Instant map tooltips; map polish promoted to live (Claude)
 
 - **Request (John):** make hover tooltips on the county maps instant with no animation, because the fade looked janky, and then go live.
