@@ -2,6 +2,32 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T18:30:00+00:00 — MCP server planned; M0 setup and M1 read layer (Claude)
+
+- **Request (John):** build a public CHIP MCP server so ChatGPT, Claude, and other AI assistants can query published CHIP data; Claude manages and hands work to Codex and Google Antigravity without copy-paste. **Decisions with John:** sort one measure across areas (no composite scores); open, no login, read-only, AHRF excluded; staging at `chip-beta.publicdataobservatory.org`, production at `mcp.publicdataobservatory.org` (DNS record pending); John approves only Gate A (staging tryout) and Gate B (go public). Plan: [docs/mcp/PLAN.md](mcp/PLAN.md); contract: [docs/mcp/TOOL_CONTRACT.md](mcp/TOOL_CONTRACT.md).
+- **Built on `claude/mcp-m0`:**
+  - `lookup.measure_values_within`, which returns one measure for every area inside a parent, keeps areas without rows with their read-time status, and keeps source-only areas.
+  - Four unit tests.
+  - The tool contract, the plan with M0 amendments, and the status files.
+  - An `AGENTS.md` MCP ownership section.
+  - `infra/mcp/` (two units, the read-only role script, the Nginx snippet, and a README; **none installed**).
+  - `infra/staging/nginx-chip-beta.conf` (a copy of the active system site, per Codex's TLS handoff).
+  - A handbook correction on the public beta host.
+- **System changes:**
+  - With John's approval, installed `/etc/apparmor.d/codex-bwrap` (source `infra/agents/apparmor-codex-bwrap`) and loaded it with `apparmor_parser -r`. Without it, Ubuntu blocked Codex's bundled bubblewrap (`setting up uid map: Permission denied`).
+  - Added the launcher `~/.local/bin/codex-cli`, outside the repository.
+- **Findings:**
+  - `mcp` 2.3.0 has no `FastMCP`; the class is `MCPServer`. Installing it would upgrade Starlette to 1.10 and break FastAPI 0.115, so the MCP server gets its own venv.
+  - The SDK checks Host headers, so the public hostnames must be in the allowed list.
+  - Codex and Antigravity cannot commit from the sandbox (worktree git metadata sits outside it), so Claude commits after review.
+  - The Antigravity CLI needs John to sign in once.
+- **Verification:**
+  - A spike `MCPServer` served `lookup.area_values` from `places_staging` to the SDK client: Person County diabetes 14.9 (ci95 12.7–17.2), about 30 ms.
+  - A headless Codex dry run reached `places_staging` (12 pointers), passed 8 community tests, and was refused a write outside its worktree.
+  - `measure_values_within` on staging returned 67 Alabama counties, 254 Texas counties, 2,498 Los Angeles tracts in 0.41 s, and BRFSS `not_published` for KY and PA.
+  - Area, community, and lookup tests: 252 passed. The 7 `test_federal_account_lookup` failures and the `test_profile_scope` collection error are the known missing-input cases in this worktree.
+- **Live:** nothing changed. **Next:** merge to `beta` and deploy staging; dispatch Codex for M2; Antigravity M3 after John signs in to `agy`.
+
 ## 2026-11-16T15:40:00+00:00 — CHIP slide library deck (Claude)
 
 - **Request (John):** a PDO-branded "library" deck covering all of CHIP, with screenshots of every part (maps, comparisons, profiles, and so on), to pull slides from for any audience.

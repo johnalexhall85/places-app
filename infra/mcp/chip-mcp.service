@@ -1,0 +1,23 @@
+[Unit]
+Description=CHIP MCP server (production, live data, read-only)
+After=network.target
+
+[Service]
+Type=simple
+User=john
+Group=john
+WorkingDirectory=/home/john/places-app/backend
+# DATABASE_URL (role chip_mcp_ro on the live database) and CHIP_MCP_ALLOWED_HOSTS. Mode 600, outside the repository.
+EnvironmentFile=/home/john/.config/chip/mcp-live.env
+Environment=PATH=/home/john/places-app/backend/.venv-mcp/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/john/places-app/backend/.venv-mcp/bin/uvicorn app.mcp_server.app:app --host 127.0.0.1 --port 8012 --workers 2 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=3
+MemoryMax=1G
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

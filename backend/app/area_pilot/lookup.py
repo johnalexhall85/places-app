@@ -374,6 +374,61 @@ def county_tract_values(db, county_geoid: str, product: str, measure_id: str) ->
             'values': [_row(meta, 'tract', r['geoid'], release, config, r, spec) for r in rows]}
 
 
+WITHIN_PARENT = {'state': None, 'county': 'state', 'cd': 'state', 'tract': 'county'}
+
+
+def measure_values_within(db, product: str, measure_id: str, level: str, parent_geoid: str | None = None) -> dict:
+    """One measure for every area at `level` inside a parent: all states, the counties or districts
+    of one state, or the tracts of one county.
+
+    The area list is the union of the CHIP boundaries inside the parent and the areas the release
+    has rows for, so an area without a row comes back with the product's read-time status (never
+    dropped and never zero), and source-only areas such as Connecticut's former counties are kept,
+    with `name` None when no current boundary carries them. Rows have the `area_values` shape plus
+    `name`, in GEOID order. Nothing is sorted by value, aggregated, or ranked here.
+    """
+    if level not in WITHIN_PARENT:
+        raise LookupError_(f'Unsupported level {level!r}; use state, county, tract, or cd')
+    parent_level = WITHIN_PARENT[level]
+    if parent_level is None:
+        if parent_geoid:
+            raise LookupError_('State values are listed for the whole country; omit the parent GEOID')
+        prefix = ''
+    else:
+        if not parent_geoid:
+            raise LookupError_(f'{level} values are listed within one {parent_level}; provide its GEOID')
+        (prefix,) = _check(parent_level, [parent_geoid])
+    spec = next((s for s in SPECS if s.key == product), None)
+    if spec is None:
+        raise LookupError_(f'Unknown product {product!r}')
+    config = spec.load()
+    measure = next((m for m in config['measures'] if m['measure_id'] == measure_id), None)
+    if measure is None:
+        raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+    meta = _measure_meta(spec, config, measure)
+    if level not in meta['levels']:
+        raise LookupError_(f'{product}:{measure_id} is not published for {level}; '
+                           f'it is published for {", ".join(meta["levels"]) or "no level"}')
+    out = {'product': product, 'measure': meta, 'level': level, 'parent_level': parent_level,
+           'parent_geoid': parent_geoid or None}
+    release = active_releases(db).get(config['dataset_id'])
+    if release is None:
+        return out | {'release': None, 'values': []}
+    names = {r['geoid']: r['name'] for r in db.execute(text(f'''SELECT geoid,name FROM {BOUNDARY} b
+        WHERE level=:level AND geoid LIKE :prefix ORDER BY geoid'''),
+        {'level': level, 'prefix': prefix + '%'}).mappings()}
+    table, key, level_col = spec.tables[level]
+    columns = ','.join(('value', 'status') + spec.extra)
+    stored = {r['geoid']: r for r in db.execute(text(f'''SELECT {key} AS geoid,{columns}
+        FROM {S}.{table} WHERE release_id=:release AND {key} LIKE :prefix AND measure_id=:measure AND observation_period=:period
+        AND population=:population AND value_type=:value_type {"AND " + level_col + "=:level" if level_col else ""}'''),
+        {'release': release['release_id'], 'prefix': prefix + '%', 'measure': measure_id, 'level': level,
+         'period': meta['period'], 'population': meta['population'], 'value_type': meta['value_type']}).mappings()}
+    values = [_row(meta, level, geoid, release, config, stored.get(geoid), spec) | {'name': names.get(geoid)}
+              for geoid in sorted(set(names) | set(stored))]
+    return out | {'release': release, 'values': values}
+
+
 # --- facilities -----------------------------------------------------------------------------
 
 _AREA = f'(SELECT geom FROM {BOUNDARY} area WHERE level=:level AND geoid=:geoid)'

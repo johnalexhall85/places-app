@@ -1,0 +1,23 @@
+[Unit]
+Description=CHIP MCP server (staging, beta branch, read-only)
+After=network.target
+
+[Service]
+Type=simple
+User=john
+Group=john
+WorkingDirectory=/home/john/chip-beta/backend
+# DATABASE_URL (role chip_mcp_ro on places_staging) and CHIP_MCP_ALLOWED_HOSTS. Mode 600, outside the repository.
+EnvironmentFile=/home/john/.config/chip/mcp-staging.env
+Environment=PATH=/home/john/chip-beta/backend/.venv-mcp/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/john/chip-beta/backend/.venv-mcp/bin/uvicorn app.mcp_server.app:app --host 127.0.0.1 --port 8011 --workers 2 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=3
+MemoryMax=1G
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

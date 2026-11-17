@@ -185,3 +185,57 @@ def test_quintile_breaks_use_published_values_for_the_whole_release_not_the_view
     assert 'ST_MakeEnvelope' not in sql and "status IN ('available','true_zero')" in sql and 'level=:level' in sql
     assert 'west' not in params
     assert legend_breaks.quantile_breaks(Db({'n': 3, 'cuts': [1, 2, 3, 4]}), 'area_pilot.observation', p) is None
+
+
+class WithinDb(FakeDb):
+    """FakeDb that also answers the boundary-list query used by measure_values_within."""
+    def __init__(self, tables, areas, releases=None):
+        super().__init__(tables, releases)
+        self.areas = areas
+    def execute(self, statement, params=None):
+        sql = str(statement)
+        if 'cd_boundary_119' in sql and 'UNION ALL' in sql and 'SELECT geoid,name FROM' in sql:
+            self.calls.append((sql, params))
+            return Result(self.areas)
+        return super().execute(statement, params)
+
+
+def test_measure_within_keeps_areas_without_rows_and_source_only_areas():
+    places = measure('places')
+    db = WithinDb({'observation': [stored(places, '09001', value=Decimal('9.5'), ci_low=Decimal('8'), ci_high=Decimal('11')),
+                                   stored(places, '09110', value=Decimal('10.1'), ci_low=Decimal('9'), ci_high=Decimal('11'))]},
+                  areas=[{'geoid': '09110', 'name': 'Capitol'}, {'geoid': '09120', 'name': 'Greater Bridgeport'}])
+    result = lookup.measure_values_within(db, 'places', places['measure_id'], 'county', '09')
+    rows = {r['geoid']: r for r in result['values']}
+    assert list(rows) == ['09001', '09110', '09120']                      # GEOID order, nothing sorted by value
+    assert rows['09001']['name'] is None and rows['09001']['value'] == 9.5   # source-only former county kept
+    assert rows['09120']['status'] == lookup.NOT_IN_RELEASE and rows['09120']['value'] is None
+    assert rows['09110']['uncertainty']['kind'] == 'ci95' and rows['09110']['name'] == 'Capitol'
+    sql, params = db.calls[-1]
+    assert params['prefix'] == '09%' and params['measure'] == places['measure_id']
+
+
+def test_measure_within_uses_product_read_time_status():
+    aqi = measure('epa_aqi')
+    db = WithinDb({}, areas=[{'geoid': '01001', 'name': 'Autauga'}])
+    (row,) = lookup.measure_values_within(db, 'epa_aqi', aqi['measure_id'], 'county', '01')['values']
+    assert row['status'] == 'no_reported_value' and row['value'] is None
+
+
+def test_measure_within_validates_parent_and_level():
+    places, acs, brfss = measure('places'), measure('acs'), measure('brfss')
+    db = WithinDb({}, areas=[])
+    with pytest.raises(lookup.LookupError_): lookup.measure_values_within(db, 'places', places['measure_id'], 'county')
+    with pytest.raises(lookup.LookupError_): lookup.measure_values_within(db, 'places', places['measure_id'], 'tract', '37')
+    with pytest.raises(lookup.LookupError_): lookup.measure_values_within(db, 'acs', acs['measure_id'], 'state', '37')
+    with pytest.raises(lookup.LookupError_, match='published for'):
+        lookup.measure_values_within(db, 'places', places['measure_id'], 'state')
+    with pytest.raises(lookup.LookupError_): lookup.measure_values_within(db, 'nope', 'x', 'county', '37')
+    assert lookup.measure_values_within(db, 'brfss', brfss['measure_id'], 'state')['parent_level'] is None
+    assert lookup.measure_values_within(db, 'acs', acs['measure_id'], 'tract', '37145')['parent_geoid'] == '37145'
+
+
+def test_measure_within_unpublished_product_returns_no_values():
+    places = measure('places')
+    result = lookup.measure_values_within(WithinDb({}, areas=[], releases=[]), 'places', places['measure_id'], 'county', '01')
+    assert result['release'] is None and result['values'] == []

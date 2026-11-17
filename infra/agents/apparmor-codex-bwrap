@@ -1,0 +1,16 @@
+# Lets the Codex CLI's bundled bubblewrap create user namespaces so `codex exec -s workspace-write`
+# can sandbox its commands. Ubuntu 24.04 blocks unprivileged user namespaces by default
+# (kernel.apparmor_restrict_unprivileged_userns=1). Same pattern as Ubuntu's own
+# /etc/apparmor.d/linux-sandbox profile. Grants nothing to any other program.
+# Install:  sudo install -m 644 infra/agents/apparmor-codex-bwrap /etc/apparmor.d/codex-bwrap
+#           sudo apparmor_parser -r /etc/apparmor.d/codex-bwrap
+# Remove:   sudo apparmor_parser -R /etc/apparmor.d/codex-bwrap && sudo rm /etc/apparmor.d/codex-bwrap
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile codex-bwrap /home/*/.vscode-server/extensions/openai.chatgpt-*/bin/linux-x86_64/codex-resources/bwrap flags=(unconfined) {
+  userns,
+
+  include if exists <local/codex-bwrap>
+}

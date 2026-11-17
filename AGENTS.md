@@ -27,3 +27,14 @@ The [beta execution plan](docs/beta/EXECUTION_PLAN.md) governs the funder beta. 
 - New pages and exports follow the PDO Brand & Style Guide summarized in the plan.
 
 Never put secrets, access codes, cookies, or secret-bearing URLs in these documents. Preserve existing entries; add explicit corrections instead of rewriting history. If either document is missing, create a minimal version and record the gap.
+
+## MCP server: three-agent ownership (from 2026-11-17)
+
+The [MCP plan](docs/mcp/PLAN.md) and the [tool contract](docs/mcp/TOOL_CONTRACT.md) govern the MCP server work. Claude Code is the project manager: it writes each task file in `docs/mcp/tasks/`, starts Codex and Antigravity headlessly, reviews their diffs, commits, merges to `beta`, and deploys. Read your task file, the contract, and the files in [docs/mcp/status](docs/mcp/status/) before starting.
+
+- **Claude Code owns** `backend/app/area_pilot/**`, `infra/**`, `docs/mcp/**` (except the other agents' status files), and the handbook.
+- **Codex owns** `backend/app/mcp_server/**` and `backend/tests/test_mcp_*`, and later the "Use CHIP with AI" page under `frontend/**`. Its status file is `docs/mcp/status/codex.md`.
+- **Antigravity owns** `backend/tests/mcp_eval/**`, `deliverables/mcp/**`, and `docs/mcp/status/antigravity.md`. It works in `/home/john/chip-agy`.
+- Codex and Antigravity **do not commit, push, merge, deploy, or use sudo**. They leave their changes uncommitted in their own worktree, update their status file, and stop. Claude commits after review.
+- The MCP server reads data only through `app.area_pilot.lookup`, `app.routers.search.search_counties`, and `app/community/topics.json`. It writes nothing. AHRF is not exposed.
+- Headless runs record their diary facts in the status file. Claude adds the diary entry when it commits.
