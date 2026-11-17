@@ -1,5 +1,6 @@
 """Staging-only contract checks and one real Streamable HTTP client call."""
 import asyncio
+import json
 import os
 import socket
 import subprocess
@@ -11,7 +12,7 @@ from mcp import Client
 from app.db import SessionLocal
 from app.area_pilot import lookup
 from app.mcp_server import tools
-from app.mcp_server.config import ORDER_WARNING
+from app.mcp_server.config import MAX_BYTES, ORDER_WARNING, WITHHELD_TOPIC_WARNING
 from app.mcp_server.envelope import size_bytes
 
 
@@ -60,7 +61,7 @@ def test_missing_statuses_and_large_tract(staging):
     assert tracts.data['total_areas'] == 2498
     assert len(tracts.data['without_value']) == 42
     assert {r['status'] for r in tracts.data['without_value']} == {'missing'}
-    assert size_bytes(tracts) <= 60_000
+    assert size_bytes(tracts) <= MAX_BYTES
     with SessionLocal() as db:
         published = lookup.measure_values_within(db, 'acs', 'B19013_001E', 'tract', '06037')['values']
     assert sum(r['status'] == 'available' for r in published) == 2440
@@ -72,12 +73,30 @@ def test_search_context_and_sources(staging):
     assert district.data['matches'][0]['geoid'] == '5401'
     assert district.data['matches'][0]['display_name'] == 'West Virginia 1st congressional district (119th Congress)'
     topic = tools.search_measures()
-    assert 'ahrf' not in topic.model_dump_json().lower()
+    assert 'ahrf' not in json.dumps(topic.data).lower()
+    assert WITHHELD_TOPIC_WARNING in topic.warnings
     sources = tools.list_data_sources()
     assert len(sources.data['products']) == 8
     assert {p['product'] for p in sources.data['products']}.isdisjoint({'ahrf'})
     context = tools.get_area_context('county', '37145')
     assert len(context.data['facilities']['health_centers']['examples']) <= 10
+
+
+def test_all_texas_counties_fit_client_size(staging):
+    for sort in ('geoid', 'value_desc', 'value_asc'):
+        result = tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', '48', sort, 300)
+        data = result.data
+        assert data['total_areas'] == 254
+        assert len(data['with_value']) == 253 and len(data['without_value']) == 1
+        assert data['truncated'] is False
+        assert size_bytes(result) <= MAX_BYTES
+        assert size_bytes(result) == len(json.dumps(result.model_dump(mode='json'),
+                                                 separators=(',', ':'), ensure_ascii=False).encode('utf-8'))
+        assert data['measure']['uncertainty_kind'] == 'ci95'
+        assert data['measure']['uncertainty_label'] == '95% confidence interval'
+        assert all(set(r) <= {'area', 'value', 'status', 'status_text', 'uncertainty', 'notes', 'position'}
+                   for r in data['with_value'])
+        assert all(('position' in r) == (sort != 'geoid') for r in data['with_value'])
 
 
 def test_http_client(staging):
@@ -115,6 +134,19 @@ def test_http_client(staging):
                 data = result.structured_content['data']
                 assert len(data['with_value']) == 5
                 assert ORDER_WARNING in result.structured_content['warnings']
+                assert len(json.dumps(result.structured_content, separators=(',', ':'),
+                                      ensure_ascii=False).encode('utf-8')) <= MAX_BYTES
+                texas = await client.call_tool('get_measure_across_areas', {
+                    'measure_key': 'places:diabetes_crudeprev', 'level': 'county',
+                    'within': 'TX', 'sort': 'value_desc', 'limit': 300})
+                assert not texas.is_error
+                tx_data = texas.structured_content['data']
+                assert tx_data['total_areas'] == 254
+                assert len(tx_data['with_value']) == 253
+                assert len(tx_data['without_value']) == 1
+                assert tx_data['truncated'] is False
+                assert len(json.dumps(texas.structured_content, separators=(',', ':'),
+                                      ensure_ascii=False).encode('utf-8')) <= MAX_BYTES
         asyncio.run(call())
     finally:
         process.terminate()

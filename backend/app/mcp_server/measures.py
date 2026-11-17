@@ -1,7 +1,7 @@
 """Public catalog, topic filtering, and compact keyword search."""
 import json
 from pathlib import Path
-from .config import PUBLIC_PRODUCTS
+from .config import PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING
 
 TOPICS_PATH = Path(__file__).resolve().parents[1] / 'community' / 'topics.json'
 SYNONYMS = {
@@ -13,6 +13,7 @@ SYNONYMS = {
     'blood pressure': ('blood pressure', 'hypertension'), 'hypertension': ('blood pressure', 'hypertension'),
     'smoking': ('smoking', 'tobacco'), 'tobacco': ('smoking', 'tobacco'),
     'obesity': ('obesity',), 'mental': ('mental', 'depression'), 'depression': ('depression', 'mental'),
+    'doctors': ('physicians',), 'doctor': ('physician',),
 }
 
 
@@ -40,6 +41,29 @@ def topic_map():
     return mapping
 
 
+def _matches_query(measure, tokens, topic_names):
+    key = f"{measure['product']}:{measure['measure_id']}"
+    haystack = ' '.join(str(x or '') for x in (
+        measure['label'], measure['definition'], measure['measure_id'], measure.get('category'),
+        measure['product_name'], *topic_names.get(key, []))).lower()
+    return all(any(alt in haystack for alt in SYNONYMS.get(token, (token,))) for token in tokens)
+
+
+def withheld_query_match(catalog, query, level=None):
+    if not query or not query.strip():
+        return False
+    tokens = _tokens(query)
+    return any(m['product'] == 'ahrf' and (not level or level in m['levels'])
+               and _matches_query(m, tokens, {}) for m in catalog['measures'])
+
+
+def _tokens(query):
+    if not query:
+        return []
+    normalized = query.lower().strip()
+    return [normalized] if normalized in SYNONYMS else normalized.split()
+
+
 def search(catalog, query=None, topic=None, level=None, limit=25):
     products, measures = public_catalog(catalog)
     ts = topics()
@@ -49,10 +73,12 @@ def search(catalog, query=None, topic=None, level=None, limit=25):
     selected = next((t for t in ts if t['slug'] == topic), None) if topic else None
     if topic and selected is None:
         from mcp.server.mcpserver.exceptions import ToolError
+        if topic == 'health-care-resources':
+            raise ToolError(WITHHELD_TOPIC_WARNING)
         raise ToolError('Unknown topic; call search_measures with no arguments to list topics')
     allowed_keys = set(selected['measure_keys']) if selected else None
     topic_names = topic_map()
-    tokens = ([query.lower().strip()] if query and query.lower().strip() in SYNONYMS else query.lower().split()) if query else []
+    tokens = _tokens(query)
     matches = []
     for m in measures:
         key = f"{m['product']}:{m['measure_id']}"
@@ -60,9 +86,7 @@ def search(catalog, query=None, topic=None, level=None, limit=25):
             continue
         if level and level not in m['levels']:
             continue
-        haystack = ' '.join(str(x or '') for x in (m['label'], m['definition'], m['measure_id'], m.get('category'),
-                    m['product_name'], *topic_names.get(key, []))).lower()
-        if tokens and not all(any(alt in haystack for alt in SYNONYMS.get(token, (token,))) for token in tokens):
+        if tokens and not _matches_query(m, tokens, topic_names):
             continue
         matches.append({'measure_key': key, 'label': m['label'], 'product_name': m['product_name'],
                         'publisher': m['publisher'], 'unit': m['unit'], 'period': m['period'],

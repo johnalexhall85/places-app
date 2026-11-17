@@ -1,4 +1,5 @@
 """The public envelope and exact published value-row projection."""
+import json
 from typing import Any
 from pydantic import BaseModel, Field
 from .config import MAX_BYTES, RULES
@@ -36,6 +37,27 @@ def value_row(row, product, release, name=None):
     }
 
 
+def compact_value_row(row, name=None, position=None, include_boundary=False,
+                      shared_uncertainty_label=None, shared_uncertainty_kind=None):
+    """Project one across-areas row; shared measure fields live in data.measure."""
+    result = {
+        'area': {'level': row['level'], 'geoid': row['geoid'], 'name': name},
+        'value': row['value'], 'status': row['status'], 'status_text': row['status_text'],
+        'uncertainty': row['uncertainty'].copy() if isinstance(row['uncertainty'], dict) else row['uncertainty'],
+    }
+    if shared_uncertainty_label is not None and isinstance(result['uncertainty'], dict):
+        result['uncertainty'].pop('label', None)
+    if shared_uncertainty_kind is not None and isinstance(result['uncertainty'], dict):
+        result['uncertainty'].pop('kind', None)
+    if row.get('notes'):
+        result['notes'] = row['notes']
+    if include_boundary:
+        result['boundary_vintage'] = row.get('boundary_vintage')
+    if position is not None:
+        result['position'] = position
+    return result
+
+
 def build(data, products=(), warnings=()):
     used = [p for p in products if p.get('release')]
     rules = list(RULES)
@@ -46,7 +68,8 @@ def build(data, products=(), warnings=()):
 
 
 def size_bytes(result):
-    return len(result.model_dump_json(exclude_none=False).encode('utf-8'))
+    structured_content = result.model_dump(mode='json') if isinstance(result, BaseModel) else result
+    return len(json.dumps(structured_content, separators=(',', ':'), ensure_ascii=False).encode('utf-8'))
 
 
 def fit_rows(result, collection, warning='Response size limit reached; narrow the request.'):

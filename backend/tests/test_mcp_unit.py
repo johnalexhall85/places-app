@@ -3,7 +3,7 @@ import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 from app.mcp_server import tools, measures, places, cache
 from app.mcp_server.envelope import build, fit_rows, size_bytes, value_row
-from app.mcp_server.config import MAX_BYTES, ORDER_WARNING
+from app.mcp_server.config import MAX_BYTES, ORDER_WARNING, WITHHELD_TOPIC_WARNING
 
 
 class Session:
@@ -65,6 +65,9 @@ def test_public_only_search_details_and_values(stub):
     assert result.data['measures'] == []
     result = tools.get_measure_details(['places:diabetes_crudeprev'])
     assert 'ahrf' not in result.model_dump_json().lower()
+    assert result.data['measures'][0]['measure_key'] == 'places:diabetes_crudeprev'
+    assert result.data['measures'][0]['product'] == 'places'
+    assert result.data['measures'][0]['measure_id'] == 'diabetes_crudeprev'
     result = tools.get_area_values('county', ['37145'], ['places:diabetes_crudeprev'])
     assert len(result.data['values']) == 1
     assert 'ahrf' not in result.model_dump_json().lower()
@@ -93,6 +96,12 @@ def test_sorted_ties_and_missing_never_cut(stub):
     assert out.data['without_value'][0]['area']['geoid'] == '01007'
     assert out.data['truncated'] is True
     assert ORDER_WARNING in out.warnings
+    assert all('position' not in r for r in out.data['without_value'])
+    assert out.data['measure']['citation'].startswith('Source: CDC')
+    assert out.data['measure']['boundary_vintage'] == 'TIGER 2023'
+    assert 'measure_key' not in out.data['with_value'][0]
+    assert 'notes' not in out.data['with_value'][0]
+    assert tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', 'AL', 'geoid', 10).data['with_value'][0].get('position') is None
 
 
 def test_row_cap_and_actionable_errors(stub):
@@ -115,6 +124,70 @@ def test_size_limit_preserves_missing_rows():
     assert size_bytes(result) <= MAX_BYTES
     assert result.data['truncated']
     assert result.data['without_value'] == [{'status': 'missing', 'geoid': '001'}]
+
+
+def test_size_uses_client_json_serialization():
+    result = build({'text': 'é<>&'})
+    expected = len(json.dumps(result.model_dump(mode='json'), separators=(',', ':'),
+                              ensure_ascii=False).encode('utf-8'))
+    assert size_bytes(result) == expected
+
+
+def test_unpublished_level_and_metadata_source(stub):
+    monkeypatch, _ = stub
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: catalog())
+    monkeypatch.setattr(tools.lookup, 'area_info', lambda *args: [{'geoid': '01', 'name': 'Alabama'}])
+    values = tools.get_area_values('state', ['01'], ['places:diabetes_crudeprev'])
+    assert values.data['values'] == [] and values.sources == []
+    assert 'published for county, tract' in values.warnings[0]
+    monkeypatch.setattr(tools.lookup, 'measure_values_within', lambda *args: {'values': []})
+    monkeypatch.setattr(tools.lookup, 'states', lambda db: [{'geoid': '01', 'name': 'Alabama'}])
+    across = tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', 'AL')
+    assert across.data['with_value'] == []
+    assert across.data['measure']['release_id'] == 'rid'
+    assert [s['product'] for s in across.sources] == ['places']
+    with pytest.raises(ToolError, match='published for county, tract'):
+        tools.get_measure_across_areas('places:diabetes_crudeprev', 'state')
+
+
+def test_open_ended_value_and_varying_boundary(stub):
+    monkeypatch, _ = stub
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: catalog())
+    monkeypatch.setattr(tools.lookup, 'states', lambda db: [{'geoid': '01', 'name': 'Alabama'}])
+    rows = [dict(row(value=8, status='open_ended', geoid='01001'), name='Autauga'),
+            dict(row(value=None, geoid='01003'), name='Baldwin', boundary_vintage='TIGER 2024')]
+    monkeypatch.setattr(tools.lookup, 'measure_values_within', lambda *args: {'values': rows})
+    out = tools.get_measure_across_areas('places:diabetes_crudeprev', 'county', 'AL')
+    assert len(out.data['with_value']) == len(out.data['without_value']) == 1
+    assert out.data['with_value'][0]['status'] == 'open_ended'
+    assert 'boundary_vintage' not in out.data['measure']
+    assert [r['boundary_vintage'] for r in out.data['with_value'] + out.data['without_value']] == ['TIGER 2023', 'TIGER 2024']
+
+
+def test_withheld_topic_and_search_explanations(stub):
+    monkeypatch, _ = stub
+    private = [dict(catalog()['measures'][0], product='ahrf', measure_id=measure_id,
+                    label=label, definition=label, product_name='HRSA AHRF')
+               for measure_id, label in [('physicians', 'Primary care physicians'),
+                                         ('hospitals', 'Hospital beds'),
+                                         ('dentists', 'Professionally active dentists'),
+                                         ('psychiatrists', 'Psychiatrists in patient care')]]
+    c = catalog()
+    c['measures'].extend(private)
+    monkeypatch.setattr(tools.lookup, 'catalog', lambda db: c)
+    browse = tools.search_measures()
+    assert WITHHELD_TOPIC_WARNING in browse.warnings
+    assert all(t['slug'] != 'health-care-resources' for t in browse.data['topics'])
+    for call in (lambda: tools.search_measures(topic='health-care-resources'),
+                 lambda: tools.get_area_values('county', ['37145'], topic='health-care-resources')):
+        with pytest.raises(ToolError, match='Health care resources') as exc:
+            call()
+        assert 'HRSA AHRF' in str(exc.value)
+        assert 'Unknown topic' not in str(exc.value)
+    for query in ('primary care doctors', 'hospital beds', 'dentists', 'psychiatrists'):
+        result = tools.search_measures(query=query)
+        assert result.data['measures'] == []
+        assert any('HRSA AHRF' in warning for warning in result.warnings)
 
 
 def test_district_parser():

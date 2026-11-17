@@ -14,7 +14,9 @@ RULES = (
 )
 ORDER_WARNING = ('Order is by point estimate. Where uncertainty ranges overlap, the difference may not be meaningful. '
                  'This is a list of one published measure, not a ranking of overall health.')
-MAX_BYTES = 60_000
+MAX_BYTES = 50_000
+WITHHELD_TOPIC_WARNING = ("The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) "
+                          'is on the CHIP website but not available through this public server.')
 MAX_ROWS = 400
 
 

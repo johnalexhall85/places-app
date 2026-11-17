@@ -8,8 +8,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 from app import db as db_module
 from app.area_pilot import lookup
 from . import cache, measures, places
-from .config import FACILITY_PRODUCTS, LEVELS, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS
-from .envelope import Envelope, build, fit_rows, size_bytes, value_row
+from .config import FACILITY_PRODUCTS, LEVELS, MAX_BYTES, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING
+from .envelope import Envelope, build, compact_value_row, fit_rows, size_bytes, value_row, citation
 
 log = logging.getLogger(__name__)
 
@@ -145,7 +145,12 @@ def search_measures(query: str | None = None, topic: str | None = None, level: s
         catalog = _catalog(db)
         data = measures.search(catalog, query, topic, level, limit)
         used = [key.split(':')[0] for key in (m['measure_key'] for m in data['measures'])]
-        return build(data, _used(catalog, used))
+        warnings = []
+        if query is None and topic is None and level is None:
+            warnings.append(WITHHELD_TOPIC_WARNING)
+        elif not data['measures'] and measures.withheld_query_match(catalog, query, level):
+            warnings.append('HRSA AHRF measures are on the CHIP website but not available through this public server.')
+        return build(data, _used(catalog, used), warnings)
     return _run('search_measures', locals_args(query=query, topic=topic, level=level, limit=limit), work)
 
 
@@ -184,6 +189,8 @@ def get_area_values(level: str, geoids: list[str], measure_keys: list[str] | Non
         catalog = _catalog(db)
         all_measures = [m for m in catalog['measures'] if m['product'] in PUBLIC_PRODUCTS]
         if topic is not None:
+            if topic == 'health-care-resources':
+                raise ToolError(WITHHELD_TOPIC_WARNING)
             t = next((t for t in measures.topics() if t['slug'] == topic), None)
             if t is None:
                 raise ToolError('Unknown topic; use search_measures with no arguments to list topics')
@@ -261,25 +268,51 @@ def get_measure_across_areas(measure_key: str, level: str, within: str | None = 
             with_value.sort(key=lambda r: (r['value'], r['geoid']))
         else:
             with_value.sort(key=lambda r: r['geoid'])
-        order_values = sorted((r['value'] for r in with_value), reverse=sort != 'value_asc')
         positions = {}
-        for index, value in enumerate(order_values, 1):
-            positions.setdefault(value, index)
-        numbered = [value_row(row, pdata, release, row.get('name')) | {'position': positions[row['value']]}
+        if sort != 'geoid':
+            order_values = sorted((r['value'] for r in with_value), reverse=sort == 'value_desc')
+            for index, value in enumerate(order_values, 1):
+                positions.setdefault(value, index)
+        vintages = {r.get('boundary_vintage') for r in rows}
+        shared_boundary = len(vintages) <= 1
+        uncertainty_labels = {r['uncertainty'].get('label') for r in rows if isinstance(r.get('uncertainty'), dict)}
+        shared_uncertainty_label = next(iter(uncertainty_labels)) if len(uncertainty_labels) == 1 else None
+        uncertainty_kinds = {r['uncertainty'].get('kind') for r in rows if isinstance(r.get('uncertainty'), dict)}
+        shared_uncertainty_kind = next(iter(uncertainty_kinds)) if len(uncertainty_kinds) == 1 else None
+        numbered = [compact_value_row(row, row.get('name'), positions.get(row['value']), not shared_boundary,
+                                      shared_uncertainty_label, shared_uncertainty_kind)
                     for row in with_value]
-        missing = [value_row(r, pdata, release, r.get('name')) for r in sorted(without_value, key=lambda r: r['geoid'])]
+        missing = [compact_value_row(r, r.get('name'), include_boundary=not shared_boundary,
+                                     shared_uncertainty_label=shared_uncertainty_label,
+                                     shared_uncertainty_kind=shared_uncertainty_kind)
+                   for r in sorted(without_value, key=lambda r: r['geoid'])]
         clipped = len(numbered) > limit
         warnings = [ORDER_WARNING] if sort != 'geoid' else []
         if clipped:
             warnings.append(f'Showing {limit} of {len(numbered)} areas with values.')
-        compact = {k: m.get(k) for k in ('label', 'unit', 'period', 'population', 'levels')} | {'measure_key': measure_key}
+        representative = rows[0] if rows else m
+        compact = {k: representative.get(k) for k in ('label', 'unit', 'storage_scale', 'period',
+                                                       'population', 'value_type', 'release_id')}
+        compact['release_id'] = compact['release_id'] or release.get('release_id')
+        compact['measure_key'] = measure_key
+        compact['citation'] = citation(pdata, representative.get('period'), release)
+        if shared_uncertainty_label is not None:
+            compact['uncertainty_label'] = shared_uncertainty_label
+        if shared_uncertainty_kind is not None:
+            compact['uncertainty_kind'] = shared_uncertainty_kind
+        if shared_boundary:
+            compact['boundary_vintage'] = next(iter(vintages)) if vintages else m.get('boundary_vintage')
         response = build({'measure': compact, 'parent': parent, 'total_areas': len(rows),
                           'with_value': numbered[:limit], 'without_value': missing, 'truncated': clipped},
-                         [pdata] if rows else [], warnings)
-        fit_rows(response, 'with_value')
-        if len(response.data['with_value']) < len(with_value):
+                         [pdata], warnings)
+        while True:
+            before = len(response.data['with_value'])
             response.warnings = [w for w in response.warnings if not w.startswith('Showing ')]
-            response.warnings.append(f"Showing {len(response.data['with_value'])} of {len(with_value)} areas with values.")
+            if before < len(with_value):
+                response.warnings.append(f'Showing {before} of {len(with_value)} areas with values.')
+            fit_rows(response, 'with_value')
+            if len(response.data['with_value']) == before:
+                break
         return response
     return _run('get_measure_across_areas', locals_args(measure_key=measure_key, level=level, within=within, sort=sort, limit=limit), work)
 
@@ -313,7 +346,7 @@ def get_area_context(level: str, geoid: str) -> Envelope:
         if blocks is not None:
             response.sources.extend(_facility_sources(blocks))
             _facility_rules(response, blocks)
-        if size_bytes(response) > 60_000:
+        if size_bytes(response) > MAX_BYTES:
             raise ToolError('Area context exceeds the size limit; choose a county or district')
         return response
     return _run('get_area_context', locals_args(level=level, geoid=geoid), work)

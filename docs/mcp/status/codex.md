@@ -4,7 +4,16 @@ Updated by Codex at the end of each task. Claude reads this file before reviewin
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| M2b evaluation fixes | Implemented; review pending | `codex/mcp-m2b` | Client JSON cap is 50,000 bytes; Texas county calls fit all 254 rows. 18 MCP tests passed against staging, including HTTP client; 26 website tests passed. Uncommitted and undeployed. |
 | M2 MCP server | Implemented; review pending | `codex/mcp-m2` | Seven typed, read-only tools and Streamable HTTP app; 13 MCP tests passed with staging integration run, plus 26 website lookup/community tests. Uncommitted and undeployed. |
+
+## M2b handoff — 2026-11-17T15:16:07+00:00
+
+- **Objective and result:** Applied the evaluation amendment: client-equivalent UTF-8 JSON sizing with a 50,000-byte cap; compact across-areas rows with shared citation and measure fields; positions only for value sorts; metadata sources even when an across-areas call has zero value rows; explicit withheld AHRF topic and query explanations. The existing unpublished-level warning/error split, `measure_key` in details, and null-only `without_value` behavior were verified in tests.
+- **Texas evidence:** All 254 counties (253 values, one `not_in_release`) fit without truncation: 43,786 bytes for GEOID order and 47,646 bytes for either value order, measured as the client measures `structured_content`. The real HTTP client also received all 254 value and null rows below the cap. Los Angeles tract null count remains 42.
+- **Verification:** `PYTHONPATH=. .venv-mcp/bin/python -m pytest -q tests/test_mcp_*.py`: 18 passed against `places_staging`, integration not skipped, including HTTP. Website venv `test_area_lookup.py test_community_api.py`: 26 passed, three existing dependency/deprecation warnings. `git diff --check` passed. No database writes, migration, service change, commit, push, or deployment.
+- **Contract interpretation for Claude:** The listed shared fields alone cannot fit all 254 Texas counties under 50,000 bytes, especially with `position` in value sorts. I also move the identical uncertainty kind and label into `data.measure.uncertainty_kind` and `.uncertainty_label`; each row keeps its published low/high interval, and heterogeneous kind/label values stay per row. This preserves the information but extends amendment item 2 and changes the original pass-through representation. Please confirm this lossless shared-field form in the contract during review; the implemented client instructions explain it.
+- **State and next action:** Only MCP-owned code, MCP tests, and this status file changed in this worktree. The MCP service remains undeployed. Claude should review this branch and settle the compact uncertainty representation before committing or staging integration.
 
 ## M2 handoff — 2026-11-17T14:42:51+00:00
 
