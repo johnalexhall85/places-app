@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic evaluation runner for the CHIP MCP server (Task M3).
+"""Deterministic evaluation runner for the CHIP MCP server (Task M3 / M3b).
 
 Modes:
   --validate        Validate questions.yaml structure and coverage offline (no DB or server).
@@ -14,7 +14,6 @@ import asyncio
 import copy
 import json
 import math
-import os
 import re
 import subprocess
 import sys
@@ -70,6 +69,8 @@ SHOWCASE_GEOIDS: tuple[str, ...] = ("37145", "54039", "06019", "5401")
 
 REQUIRED_TRAP_KINDS: tuple[str, ...] = (
     "ahrf_excluded",
+    "ahrf_withheld_topic",
+    "ahrf_withheld_queries",
     "time_trend_one_period",
     "no_composite_score",
     "epa_aqi_no_monitor",
@@ -93,7 +94,12 @@ ORDERING_WARNING = (
     "This is a list of one published measure, not a ranking of overall health."
 )
 
-MAX_RESPONSE_BYTES = 60_000
+WITHHELD_TOPIC_EXPLANATION = (
+    "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) "
+    "is on the CHIP website but not available through this public server."
+)
+
+MAX_RESPONSE_BYTES = 50_000
 
 VALUE_ROW_REQUIRED_KEYS: frozenset[str] = frozenset({
     "measure_key",
@@ -113,6 +119,33 @@ VALUE_ROW_REQUIRED_KEYS: frozenset[str] = frozenset({
     "notes",
     "source_credit",
     "citation",
+})
+
+ACROSS_AREAS_MEASURE_REQUIRED_KEYS: frozenset[str] = frozenset({
+    "measure_key",
+    "label",
+    "unit",
+    "storage_scale",
+    "period",
+    "population",
+    "value_type",
+    "release_id",
+    "citation",
+})
+
+ACROSS_AREAS_MEASURE_OPTIONAL_KEYS: frozenset[str] = frozenset({
+    "boundary_vintage",
+    "source_credit",
+    "product",
+    "measure_id",
+})
+
+COMPACT_ROW_REQUIRED_KEYS: frozenset[str] = frozenset({
+    "area",
+    "value",
+    "status",
+    "status_text",
+    "uncertainty",
 })
 
 SPEC_UNCERTAINTY: dict[str, str] = {spec.key: spec.uncertainty for spec in lookup.SPECS}
@@ -152,37 +185,60 @@ def compute_competition_positions(values: list[float | int]) -> list[int]:
     return positions
 
 
-def check_no_ahrf(payload: Any, *, allow_excluded_list: bool = False) -> list[str]:
-    """Verify 'ahrf' never appears anywhere in the serialized output.
+def check_no_ahrf(
+    payload: Any,
+    *,
+    allow_excluded_list: bool = False,
+    allow_withheld_warning: bool = False,
+) -> list[str]:
+    """Verify 'ahrf' never appears in data/sources output.
 
-    When `allow_excluded_list=True` (for `list_data_sources`), `data.excluded` is
-    removed prior to scanning because TOOL_CONTRACT.md §7 specifies
-    `excluded: [{"product": "ahrf", ...}]`.
+    - When `allow_excluded_list=True` (for `list_data_sources`), `data.excluded` is
+      removed prior to scanning because TOOL_CONTRACT.md §7 specifies
+      `excluded: [{"product": "ahrf", ...}]`.
+    - When `allow_withheld_warning=True` (for `search_measures`), `warnings` may name
+      HRSA AHRF in an explanatory withheld-content warning (Amendment 1 §7), while
+      `data` and `sources` must still never contain 'ahrf'.
     """
     target = payload
-    if allow_excluded_list and isinstance(payload, dict) and isinstance(payload.get("data"), dict):
+    if isinstance(payload, dict) and (allow_excluded_list or allow_withheld_warning):
         target = copy.deepcopy(payload)
-        target["data"].pop("excluded", None)
+        if allow_excluded_list and isinstance(target.get("data"), dict):
+            target["data"].pop("excluded", None)
+        if allow_withheld_warning:
+            warnings = target.pop("warnings", None)
+            if isinstance(warnings, list):
+                for w in warnings:
+                    if isinstance(w, str) and "ahrf" in w.lower():
+                        w_low = w.lower()
+                        if not any(
+                            phrase in w_low
+                            for phrase in ("not available", "withheld", "excluded", "redistribution")
+                        ):
+                            return [
+                                f"Warning mentions 'ahrf' without explaining that it is withheld/unavailable: {w!r}"
+                            ]
     serialized = json.dumps(target, ensure_ascii=False)
     if "ahrf" in serialized.lower():
         return ["Found forbidden 'ahrf' reference in serialized response output"]
     return []
 
 
+def measure_response_bytes(structured_content: Any) -> int:
+    """Measure response size per Amendment 1 §1."""
+    return len(
+        json.dumps(structured_content, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    )
+
+
 def check_response_size(
     payload: Any,
-    raw_text: str | None = None,
     max_bytes: int = MAX_RESPONSE_BYTES,
 ) -> list[str]:
-    """Verify serialized response size is under max_bytes (60,000 bytes)."""
-    serialized_bytes = len(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+    """Verify serialized response size is under max_bytes (50,000 bytes, Amendment 1 §1)."""
+    serialized_bytes = measure_response_bytes(payload)
     if serialized_bytes > max_bytes:
         return [f"Serialized response size {serialized_bytes} bytes exceeds cap of {max_bytes} bytes"]
-    if raw_text is not None:
-        raw_bytes = len(raw_text.encode("utf-8"))
-        # Only fail on raw_text if compact JSON also exceeds or if raw_text is compact
-        if raw_bytes > max_bytes and "\n  " not in raw_text:
-            return [f"Raw text response size {raw_bytes} bytes exceeds cap of {max_bytes} bytes"]
     return []
 
 
@@ -205,7 +261,6 @@ def check_forbidden_words(payload: Any) -> list[str]:
     """Check that 'best', 'worst', or 'score' do not appear in keys or warnings."""
     failures: list[str] = []
     for key_path, key_name in _collect_dict_keys(payload):
-        # Split camelCase and snake_case tokens
         tokens = [
             t.lower()
             for t in re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key_name).replace("-", "_").split("_")
@@ -228,7 +283,12 @@ def check_competition_positions(
     with_value_rows: list[dict[str, Any]],
     sort_mode: str = "value_desc",
 ) -> list[str]:
-    """Check sort order and competition position numbering (1, 2, 2, 4) on with_value rows."""
+    """Check sort order and position rules on with_value rows (Amendment 1 §3).
+
+    - When sort_mode is 'value_desc' or 'value_asc': every row in with_value must carry
+      'position' using competition numbering (1, 2, 2, 4).
+    - When sort_mode is 'geoid': rows must be sorted by area.geoid and must NOT carry 'position'.
+    """
     failures: list[str] = []
     values: list[float | int] = []
     actual_positions: list[int] = []
@@ -239,14 +299,22 @@ def check_competition_positions(
         if val is None or isinstance(val, bool) or not isinstance(val, (int, float)):
             failures.append(f"with_value[{idx}] has null or non-numeric value: {val!r}")
             return failures
-        pos = row.get("position")
-        if not isinstance(pos, int) or isinstance(pos, bool) or pos < 1:
-            failures.append(f"with_value[{idx}] has invalid position: {pos!r}")
-            return failures
         values.append(val)
-        actual_positions.append(pos)
         area = row.get("area") or {}
         geoids.append(str(area.get("geoid", "")))
+
+        if sort_mode in ("value_desc", "value_asc"):
+            pos = row.get("position")
+            if not isinstance(pos, int) or isinstance(pos, bool) or pos < 1:
+                failures.append(f"with_value[{idx}] has invalid position: {pos!r}")
+                return failures
+            actual_positions.append(pos)
+        elif sort_mode == "geoid":
+            if "position" in row:
+                failures.append(
+                    f"with_value[{idx}] must not have 'position' when sort='geoid' (got {row.get('position')!r})"
+                )
+                return failures
 
     if sort_mode == "value_desc":
         for i in range(1, len(values)):
@@ -281,21 +349,6 @@ def check_competition_positions(
                     f"with_value not sorted by geoid at index {i}: {geoids[i]!r} < {geoids[i - 1]!r}"
                 )
                 break
-        expected_adjacent = compute_competition_positions(values)
-        sequential = list(range(1, len(values) + 1))
-        # Also allow competition rank computed by value_desc or value_asc
-        desc_rank_map: dict[float | int, int] = {}
-        for idx, v in enumerate(sorted(values, reverse=True)):
-            desc_rank_map.setdefault(v, idx + 1)
-        asc_rank_map: dict[float | int, int] = {}
-        for idx, v in enumerate(sorted(values)):
-            asc_rank_map.setdefault(v, idx + 1)
-        by_desc = [desc_rank_map[v] for v in values]
-        by_asc = [asc_rank_map[v] for v in values]
-        if actual_positions not in (expected_adjacent, sequential, by_desc, by_asc):
-            failures.append(
-                f"Positions under sort='geoid' did not match competition numbering: got {actual_positions[:10]}"
-            )
     else:
         failures.append(f"Unknown sort_mode {sort_mode!r}")
 
@@ -303,12 +356,14 @@ def check_competition_positions(
 
 
 def check_without_value_rows(without_value_rows: list[dict[str, Any]]) -> list[str]:
-    """Check that every row in without_value has null value, status/status_text, and GEOID order."""
+    """Check that every row in without_value has null value, no position, status/status_text, and GEOID order."""
     failures: list[str] = []
     prev_geoid = ""
     for idx, row in enumerate(without_value_rows):
         if row.get("value") is not None:
             failures.append(f"without_value[{idx}] has non-null value: {row.get('value')!r}")
+        if "position" in row:
+            failures.append(f"without_value[{idx}] must not contain 'position': {row.get('position')!r}")
         status = row.get("status")
         status_text = row.get("status_text")
         if not status or not isinstance(status, str):
@@ -327,20 +382,20 @@ def check_without_value_rows(without_value_rows: list[dict[str, Any]]) -> list[s
     return failures
 
 
-def check_value_row_shape(row: dict[str, Any], *, allow_position: bool = False) -> list[str]:
-    """Verify a single value row conforms to TOOL_CONTRACT.md §Value row."""
+def check_value_row_shape(row: dict[str, Any]) -> list[str]:
+    """Verify a full value row in `get_area_values` conforms to TOOL_CONTRACT.md & Amendment 1 §2–3."""
     failures: list[str] = []
     if not isinstance(row, dict):
         return [f"Value row is not a dict: {type(row).__name__}"]
+
+    if "position" in row:
+        failures.append(f"Full value row in get_area_values must not contain 'position' (got {row.get('position')!r})")
 
     missing = VALUE_ROW_REQUIRED_KEYS - set(row.keys())
     if missing:
         failures.append(f"Value row missing required keys: {sorted(missing)}")
 
-    allowed = VALUE_ROW_REQUIRED_KEYS | (
-        {"position"} if (allow_position or row.get("position") is None) else set()
-    )
-    extra = set(row.keys()) - allowed
+    extra = set(row.keys()) - VALUE_ROW_REQUIRED_KEYS
     if extra:
         failures.append(f"Value row has unexpected extra keys: {sorted(extra)}")
 
@@ -382,6 +437,99 @@ def check_value_row_shape(row: dict[str, Any], *, allow_position: bool = False) 
     return failures
 
 
+def check_across_areas_measure_meta(measure_meta: Any) -> list[str]:
+    """Verify `data.measure` in `get_measure_across_areas` carries shared fields (Amendment 1 §2)."""
+    failures: list[str] = []
+    if not isinstance(measure_meta, dict):
+        return [f"data.measure must be a dict, got {type(measure_meta).__name__}"]
+
+    missing = ACROSS_AREAS_MEASURE_REQUIRED_KEYS - set(measure_meta.keys())
+    if missing:
+        failures.append(f"data.measure missing required shared keys: {sorted(missing)}")
+
+    allowed = ACROSS_AREAS_MEASURE_REQUIRED_KEYS | ACROSS_AREAS_MEASURE_OPTIONAL_KEYS
+    extra = set(measure_meta.keys()) - allowed
+    if extra:
+        failures.append(f"data.measure has unexpected extra keys: {sorted(extra)}")
+
+    measure_key = measure_meta.get("measure_key")
+    if not isinstance(measure_key, str) or ":" not in measure_key:
+        failures.append(f"data.measure has invalid measure_key: {measure_key!r}")
+    elif measure_key.split(":", 1)[0] == "ahrf":
+        failures.append(f"Excluded product 'ahrf' in data.measure.measure_key: {measure_key!r}")
+
+    citation = measure_meta.get("citation")
+    if not isinstance(citation, str) or not citation.startswith("Source: ") or "release " not in citation:
+        failures.append(f"data.measure has invalid citation format: {citation!r}")
+
+    for str_key in ("label", "period", "population", "value_type", "release_id"):
+        val = measure_meta.get(str_key)
+        if not isinstance(val, str) or not val.strip():
+            failures.append(f"data.measure.{str_key} must be a non-empty string, got {val!r}")
+
+    return failures
+
+
+def check_compact_value_row_shape(
+    row: dict[str, Any],
+    *,
+    product: str = "",
+    require_position: bool = False,
+    allow_boundary_vintage: bool = False,
+) -> list[str]:
+    """Verify a compact row in `get_measure_across_areas` (Amendment 1 §2–3)."""
+    failures: list[str] = []
+    if not isinstance(row, dict):
+        return [f"Compact value row is not a dict: {type(row).__name__}"]
+
+    required = COMPACT_ROW_REQUIRED_KEYS | ({"position"} if require_position else set())
+    missing = required - set(row.keys())
+    if missing:
+        failures.append(f"Compact row missing required keys: {sorted(missing)}")
+
+    if not require_position and "position" in row:
+        failures.append(f"Compact row must not contain 'position' (got {row.get('position')!r})")
+
+    if "notes" in row:
+        notes_val = row.get("notes")
+        if not isinstance(notes_val, dict) or len(notes_val) == 0:
+            failures.append(f"Compact row must omit 'notes' when empty (got {notes_val!r})")
+
+    allowed = (
+        COMPACT_ROW_REQUIRED_KEYS
+        | ({"position"} if require_position else set())
+        | ({"notes"} if "notes" in row else set())
+        | ({"boundary_vintage"} if allow_boundary_vintage else set())
+    )
+    extra = set(row.keys()) - allowed
+    if extra:
+        failures.append(f"Compact row has unexpected extra keys (must be in data.measure): {sorted(extra)}")
+
+    area = row.get("area")
+    if not isinstance(area, dict) or not area.get("geoid"):
+        failures.append(f"Invalid area object on compact row: {area!r}")
+
+    status = row.get("status")
+    status_text = row.get("status_text")
+    if not isinstance(status, str) or not status.strip():
+        failures.append("Compact row missing status")
+    if not isinstance(status_text, str) or not status_text.strip():
+        failures.append("Compact row missing status_text")
+
+    uncertainty = row.get("uncertainty")
+    if not isinstance(uncertainty, dict) or "kind" not in uncertainty:
+        failures.append(f"Compact row missing uncertainty.kind: {uncertainty!r}")
+    elif product in SPEC_UNCERTAINTY:
+        expected_kind = SPEC_UNCERTAINTY[product]
+        if uncertainty.get("kind") != expected_kind:
+            failures.append(
+                f"Compact row uncertainty.kind={uncertainty.get('kind')!r}, "
+                f"expected {expected_kind!r} for product {product!r}"
+            )
+
+    return failures
+
+
 def check_envelope(
     payload: Any,
     tool_name: str,
@@ -411,9 +559,13 @@ def check_envelope(
     if failures:
         return failures
 
-    # Global checks required by M3
+    # Global checks required by M3 / M3b
     failures.extend(
-        check_no_ahrf(payload, allow_excluded_list=(tool_name == "list_data_sources"))
+        check_no_ahrf(
+            payload,
+            allow_excluded_list=(tool_name == "list_data_sources"),
+            allow_withheld_warning=(tool_name == "search_measures"),
+        )
     )
     failures.extend(check_response_size(payload))
     failures.extend(check_forbidden_words(payload))
@@ -426,14 +578,69 @@ def check_envelope(
 
     data = payload["data"]
     args = arguments or {}
+    source_products = {
+        s.get("product") for s in payload["sources"] if isinstance(s, dict) and s.get("product")
+    }
 
-    if tool_name == "get_area_values":
+    if tool_name == "find_places":
+        if payload["sources"] != []:
+            failures.append(f"find_places sources must be [], got {payload['sources']!r}")
+
+    elif tool_name == "search_measures":
+        measures_list = data.get("measures") or []
+        if measures_list:
+            expected_prods = {
+                m["measure_key"].split(":", 1)[0]
+                for m in measures_list
+                if isinstance(m, dict) and isinstance(m.get("measure_key"), str) and ":" in m["measure_key"]
+            }
+            if source_products != expected_prods:
+                failures.append(
+                    f"search_measures sources products {sorted(source_products)} do not match "
+                    f"data.measures products {sorted(expected_prods)}"
+                )
+        elif not data.get("topics") and payload["sources"] != []:
+            failures.append(
+                f"search_measures with no matching measures must have empty sources [], got {payload['sources']!r}"
+            )
+
+    elif tool_name == "get_measure_details":
+        measures_list = data.get("measures")
+        if not isinstance(measures_list, list):
+            failures.append("get_measure_details data.measures must be a list")
+        else:
+            expected_prods: set[str] = set()
+            for idx, m in enumerate(measures_list):
+                if not isinstance(m, dict):
+                    failures.append(f"get_measure_details measures[{idx}] is not a dict")
+                    continue
+                mk = m.get("measure_key")
+                prod = m.get("product")
+                mid = m.get("measure_id")
+                if not mk or not prod or not mid:
+                    failures.append(
+                        f"get_measure_details measures[{idx}] must carry 'measure_key', 'product', and 'measure_id' "
+                        f"(got measure_key={mk!r}, product={prod!r}, measure_id={mid!r})"
+                    )
+                elif mk != f"{prod}:{mid}":
+                    failures.append(
+                        f"get_measure_details measures[{idx}] measure_key={mk!r} != '{prod}:{mid}'"
+                    )
+                else:
+                    expected_prods.add(str(prod))
+            if source_products != expected_prods:
+                failures.append(
+                    f"get_measure_details sources products {sorted(source_products)} do not match "
+                    f"data.measures products {sorted(expected_prods)}"
+                )
+
+    elif tool_name == "get_area_values":
         values = data.get("values")
         if not isinstance(values, list):
             failures.append("get_area_values data.values must be a list")
         else:
             for idx, row in enumerate(values):
-                row_errs = check_value_row_shape(row, allow_position=False)
+                row_errs = check_value_row_shape(row)
                 if row_errs:
                     failures.extend([f"values[{idx}]: {e}" for e in row_errs])
                     if len(failures) > 15:
@@ -443,37 +650,59 @@ def check_envelope(
                 for row in values
                 if isinstance(row, dict) and isinstance(row.get("measure_key"), str) and ":" in row["measure_key"]
             }
-            source_products = {
-                s.get("product") for s in payload["sources"] if isinstance(s, dict)
-            }
             if row_products != source_products:
                 failures.append(
-                    f"sources products {sorted(filter(None, source_products))} do not match "
+                    f"sources products {sorted(source_products)} do not match "
                     f"data products {sorted(row_products)}"
                 )
 
     elif tool_name == "get_measure_across_areas":
+        measure_meta = data.get("measure")
+        failures.extend(check_across_areas_measure_meta(measure_meta))
+        mk = measure_meta.get("measure_key", "") if isinstance(measure_meta, dict) else ""
+        product = mk.split(":", 1)[0] if isinstance(mk, str) and ":" in mk else ""
+        has_shared_bv = isinstance(measure_meta, dict) and bool(measure_meta.get("boundary_vintage"))
+
         with_val = data.get("with_value")
         without_val = data.get("without_value")
         if not isinstance(with_val, list):
             failures.append("get_measure_across_areas data.with_value must be a list")
         if not isinstance(without_val, list):
             failures.append("get_measure_across_areas data.without_value must be a list")
+
         if isinstance(with_val, list) and isinstance(without_val, list):
+            sort_mode = args.get("sort", "geoid")
+            require_pos = sort_mode in ("value_desc", "value_asc")
             for idx, row in enumerate(with_val):
-                row_errs = check_value_row_shape(row, allow_position=True)
+                row_errs = check_compact_value_row_shape(
+                    row,
+                    product=product,
+                    require_position=require_pos,
+                    allow_boundary_vintage=(not has_shared_bv),
+                )
                 if row_errs:
                     failures.extend([f"with_value[{idx}]: {e}" for e in row_errs])
                     if len(failures) > 15:
                         break
             for idx, row in enumerate(without_val):
-                row_errs = check_value_row_shape(row, allow_position=True)
+                row_errs = check_compact_value_row_shape(
+                    row,
+                    product=product,
+                    require_position=False,
+                    allow_boundary_vintage=(not has_shared_bv),
+                )
                 if row_errs:
                     failures.extend([f"without_value[{idx}]: {e}" for e in row_errs])
                     if len(failures) > 15:
                         break
 
-            sort_mode = args.get("sort", "geoid")
+            all_rows = with_val + without_val
+            if not has_shared_bv and all_rows:
+                if not all(isinstance(r, dict) and bool(r.get("boundary_vintage")) for r in all_rows):
+                    failures.append(
+                        "boundary_vintage is missing from data.measure and not present on every row"
+                    )
+
             failures.extend(check_competition_positions(with_val, sort_mode=sort_mode))
             failures.extend(check_without_value_rows(without_val))
 
@@ -485,25 +714,17 @@ def check_envelope(
 
             if data.get("truncated") is True:
                 if not any(
-                    ("Showing " in w or "truncated" in w.lower() or "60,000" in w)
+                    ("Showing " in w or "truncated" in w.lower() or "50,000" in w or "60,000" in w)
                     for w in payload["warnings"]
                     if isinstance(w, str)
                 ):
                     failures.append("data.truncated is True, but warnings has no truncation notice")
 
-            all_rows = with_val + without_val
-            row_products = {
-                row["measure_key"].split(":", 1)[0]
-                for row in all_rows
-                if isinstance(row, dict) and isinstance(row.get("measure_key"), str) and ":" in row["measure_key"]
-            }
-            source_products = {
-                s.get("product") for s in payload["sources"] if isinstance(s, dict)
-            }
-            if all_rows and row_products != source_products:
+            expected_prods = {product} if product and all_rows else set()
+            if all_rows and source_products != expected_prods:
                 failures.append(
-                    f"sources products {sorted(filter(None, source_products))} do not match "
-                    f"data products {sorted(row_products)}"
+                    f"sources products {sorted(source_products)} do not match "
+                    f"data.measure product {sorted(expected_prods)}"
                 )
 
     return failures
@@ -608,7 +829,6 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
                 errors.append(f"{qid} call[{c_idx}]: 'arguments' must be a dict")
                 continue
 
-            # Track GEOIDs and within values for showcase/state coverage checks
             if "geoid" in args and isinstance(args["geoid"], str):
                 geoids_seen.add(args["geoid"])
             if "geoids" in args and isinstance(args["geoids"], list):
@@ -619,9 +839,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
             if "level" in args and args["level"] in level_counts:
                 level_counts[args["level"]] += 1
 
-            # Validate measure_key / measure_keys / topic references offline
             if "topic" in args and args["topic"] is not None:
-                if args["topic"] not in valid_topics:
+                if args["topic"] not in valid_topics and not q.get("trap"):
                     errors.append(f"{qid} call[{c_idx}]: unknown topic {args['topic']!r}")
             if "measure_key" in args and isinstance(args["measure_key"], str):
                 mk = args["measure_key"]
@@ -632,7 +851,6 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
                     if mk not in reg_measures and not q.get("trap"):
                         errors.append(f"{qid} call[{c_idx}]: unknown measure_key {mk!r}")
 
-    # Coverage checks required by M3-antigravity.md
     for tool, count in tool_counts.items():
         if count == 0:
             errors.append(f"Tool {tool!r} has 0 calls across questions.yaml")
@@ -654,8 +872,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
     if "48" not in within_seen and "48" not in geoids_seen:
         errors.append("Texas ('48', 254 counties) is not covered in questions.yaml")
 
-    if len(trap_questions) < 8:
-        errors.append(f"At least 8 trap questions required, found {len(trap_questions)}")
+    if len(trap_questions) < 10:
+        errors.append(f"At least 10 trap questions required (including Amendment 1 §7), found {len(trap_questions)}")
 
     missing_traps = set(REQUIRED_TRAP_KINDS) - trap_kinds_seen
     if missing_traps:
@@ -714,12 +932,17 @@ def compute_expected_for_call(
         measure_keys = arguments.get("measure_keys")
         topic_slug = arguments.get("topic")
 
+        if topic_slug == "health-care-resources":
+            return {
+                "expect_error": True,
+                "reason": WITHHELD_TOPIC_EXPLANATION,
+            }
+
         if measure_keys:
             for mk in measure_keys:
                 if str(mk).startswith("ahrf:"):
                     return {"expect_error": True, "reason": "Excluded product ahrf requested"}
 
-        # Determine requested (product, measure_id) pairs
         cat = lookup.catalog(db)
         by_key = {
             f"{m['product']}:{m['measure_id']}": m
@@ -761,9 +984,10 @@ def compute_expected_for_call(
 
         if not selected_keys:
             return {
-                "expect_error_or_empty": True,
+                "expect_error": False,
                 "skipped_unpublished": skipped_unpublished,
                 "rows_by_key_geoid": {},
+                "expected_row_count": 0,
                 "expected_sources": [],
                 "area_names": {},
             }
@@ -822,18 +1046,34 @@ def compute_expected_for_call(
         else:
             with_val.sort(key=lambda r: r["geoid"])
 
-        positions = compute_competition_positions([r["value"] for r in with_val])
-        for r, pos in zip(with_val, positions):
-            r["position"] = pos
+        if sort_mode in ("value_desc", "value_asc"):
+            positions = compute_competition_positions([r["value"] for r in with_val])
+            for r, pos in zip(with_val, positions):
+                r["position"] = pos
 
         truncated_by_limit = len(with_val) > limit
         sliced_with_val = with_val[:limit]
 
+        first_row = all_rows[0] if all_rows else {}
+        measure_meta = {
+            "measure_key": mk,
+            "label": raw["measure"]["label"],
+            "unit": raw["measure"]["unit"],
+            "storage_scale": raw["measure"]["storage_scale"],
+            "period": raw["measure"]["period"],
+            "population": raw["measure"]["population"],
+            "value_type": raw["measure"]["value_type"],
+            "release_id": (raw["release"] or {}).get("release_id"),
+            "boundary_vintage": first_row.get("boundary_vintage"),
+        }
+
         return {
             "expect_error": False,
+            "measure_meta": measure_meta,
             "total_areas": len(all_rows),
             "all_with_value_count": len(with_val),
             "with_value": sliced_with_val,
+            "with_value_by_geoid": {r["geoid"]: r for r in with_val},
             "without_value": without_val,
             "truncated_by_limit": truncated_by_limit,
             "expected_sources": [product] if all_rows else [],
@@ -898,6 +1138,11 @@ def compute_expected_for_call(
         return {"expect_error": False, "query": arguments.get("query")}
 
     elif tool == "search_measures":
+        if arguments.get("topic") == "health-care-resources":
+            return {
+                "expect_error": True,
+                "reason": WITHHELD_TOPIC_EXPLANATION,
+            }
         return {"expect_error": False, "arguments": arguments}
 
     return {"expect_error": False}
@@ -919,6 +1164,30 @@ def _extract_error_text(call_result: Any) -> str:
     return " ".join(parts)
 
 
+def verify_error_message_checks(error_text: str, call_check_spec: dict[str, Any]) -> list[str]:
+    """Validate error text against substring requirements and forbidden substrings."""
+    failures: list[str] = []
+    substrings_any = call_check_spec.get("expect_error_Substrings_any") or []
+    if substrings_any:
+        if not any(sub.lower() in error_text.lower() for sub in substrings_any):
+            failures.append(
+                f"ToolError message {error_text!r} did not contain any of {substrings_any}"
+            )
+    substrings_all = call_check_spec.get("expect_error_substrings_all") or []
+    for sub in substrings_all:
+        if sub.lower() not in error_text.lower():
+            failures.append(
+                f"ToolError message {error_text!r} missing required substring {sub!r}"
+            )
+    forbid_substrings = call_check_spec.get("forbid_error_substrings") or []
+    for bad in forbid_substrings:
+        if bad.lower() in error_text.lower():
+            failures.append(
+                f"ToolError message {error_text!r} contained forbidden substring {bad!r}"
+            )
+    return failures
+
+
 def verify_call_against_lookup_and_checks(
     tool: str,
     arguments: dict[str, Any],
@@ -936,44 +1205,38 @@ def verify_call_against_lookup_and_checks(
     # 1. Handle calls that expect a ToolError
     if call_check_spec.get("expect_error") is True:
         if not is_error:
-            # Check if the server returned an empty values list with a warning instead
             failures.append(
                 f"Expected ToolError for {tool}({arguments}), but call succeeded with: "
                 f"{json.dumps(structured)[:240]}"
             )
             return failures
-        substrings_any = call_check_spec.get("expect_error_Substrings_any") or []
-        if substrings_any:
-            if not any(sub.lower() in error_text.lower() for sub in substrings_any):
-                failures.append(
-                    f"ToolError message {error_text!r} did not contain any of {substrings_any}"
-                )
+        failures.extend(verify_error_message_checks(error_text, call_check_spec))
         return failures
 
-    # 2. Handle unpublished level in get_area_values (contract allows skipping with warning OR ToolError)
+    # 2. Handle unpublished level in get_area_values (Amendment 1 §4: must skip with warning, not raise ToolError)
     if "expect_unpublished_level_handled" in call_check_spec:
         spec_info = call_check_spec["expect_unpublished_level_handled"]
         skipped_key = spec_info["skipped_measure_key"]
         pub_levels = spec_info["published_levels"]
         if is_error:
-            for lvl in pub_levels:
-                if lvl.lower() not in error_text.lower():
-                    failures.append(
-                        f"Error message {error_text!r} did not mention published level {lvl!r}"
-                    )
-            return failures
-        # Otherwise it succeeded: verify skipped_key is NOT in data.values and IS mentioned in warnings
+            return [
+                f"Amendment 1 §4 requires get_area_values to skip unpublished measure {skipped_key!r} "
+                f"with a warning, not raise ToolError: {error_text!r}"
+            ]
         if not isinstance(structured, dict):
             return ["Response missing structured_content"]
         failures.extend(check_envelope(structured, tool, arguments))
         values = structured.get("data", {}).get("values", [])
         if any(r.get("measure_key") == skipped_key for r in values if isinstance(r, dict)):
-            failures.append(f"Unpublished measure {skipped_key!r} should have been skipped at level={arguments.get('level')!r}")
+            failures.append(
+                f"Unpublished measure {skipped_key!r} should have been skipped at level={arguments.get('level')!r}"
+            )
         warnings_joined = " ".join(str(w) for w in structured.get("warnings", []))
         for lvl in pub_levels:
             if lvl.lower() not in warnings_joined.lower():
                 failures.append(
-                    f"Warnings {structured.get('warnings')!r} did not mention published level {lvl!r} for skipped measure {skipped_key!r}"
+                    f"Warnings {structured.get('warnings')!r} did not mention published level {lvl!r} "
+                    f"for skipped measure {skipped_key!r}"
                 )
         return failures
 
@@ -984,12 +1247,7 @@ def verify_call_against_lookup_and_checks(
     if not isinstance(structured, dict):
         return [f"{tool} did not return structured_content dict (got {type(structured).__name__})"]
 
-    # Run global contract checks
-    raw_text = None
-    content_list = getattr(call_result, "content", None)
-    if content_list and hasattr(content_list[0], "text"):
-        raw_text = content_list[0].text
-    failures.extend(check_response_size(structured, raw_text=raw_text))
+    # Run global contract checks (includes check_response_size, check_no_ahrf, check_forbidden_words)
     failures.extend(check_envelope(structured, tool, arguments))
     if failures:
         return failures
@@ -1015,7 +1273,10 @@ def verify_call_against_lookup_and_checks(
                     failures.append(f"Unexpected (measure_key, geoid) row in get_area_values: {key}")
                     continue
                 exp = exp_rows[key]
-                for field in ("value", "status", "status_text", "period", "population", "unit", "storage_scale", "value_type", "boundary_vintage", "release_id", "source_credit"):
+                for field in (
+                    "value", "status", "status_text", "period", "population", "unit",
+                    "storage_scale", "value_type", "boundary_vintage", "release_id", "source_credit",
+                ):
                     if row.get(field) != exp.get(field):
                         failures.append(
                             f"Row {key} field {field!r} mismatch: got {row.get(field)!r}, lookup has {exp.get(field)!r}"
@@ -1032,6 +1293,21 @@ def verify_call_against_lookup_and_checks(
                     )
 
         elif tool == "get_measure_across_areas":
+            exp_meta = expected_lookup.get("measure_meta") or {}
+            act_meta = data.get("measure") or {}
+            for meta_field in ("measure_key", "label", "unit", "storage_scale", "period", "population", "value_type", "release_id"):
+                if exp_meta.get(meta_field) is not None and act_meta.get(meta_field) != exp_meta.get(meta_field):
+                    failures.append(
+                        f"data.measure.{meta_field} mismatch: got {act_meta.get(meta_field)!r}, "
+                        f"lookup has {exp_meta.get(meta_field)!r}"
+                    )
+            if "boundary_vintage" in act_meta and exp_meta.get("boundary_vintage") is not None:
+                if act_meta.get("boundary_vintage") != exp_meta.get("boundary_vintage"):
+                    failures.append(
+                        f"data.measure.boundary_vintage mismatch: got {act_meta.get('boundary_vintage')!r}, "
+                        f"lookup has {exp_meta.get('boundary_vintage')!r}"
+                    )
+
             if data.get("total_areas") != expected_lookup["total_areas"]:
                 failures.append(
                     f"total_areas mismatch: got {data.get('total_areas')}, lookup has {expected_lookup['total_areas']}"
@@ -1040,12 +1316,18 @@ def verify_call_against_lookup_and_checks(
             exp_without = expected_lookup["without_value"]
             if len(act_without) != len(exp_without):
                 failures.append(
-                    f"without_value count mismatch (must never be truncated): got {len(act_without)}, lookup has {len(exp_without)}"
+                    f"without_value count mismatch (must never be truncated): got {len(act_without)}, "
+                    f"lookup has {len(exp_without)}"
                 )
             else:
                 for idx, (act_r, exp_r) in enumerate(zip(act_without, exp_without)):
                     act_geoid = (act_r.get("area") or {}).get("geoid")
-                    if act_geoid != exp_r["geoid"] or act_r.get("status") != exp_r["status"] or act_r.get("value") is not None:
+                    if (
+                        act_geoid != exp_r["geoid"]
+                        or act_r.get("status") != exp_r["status"]
+                        or act_r.get("status_text") != exp_r["status_text"]
+                        or act_r.get("value") is not None
+                    ):
                         failures.append(
                             f"without_value[{idx}] mismatch: got ({act_geoid}, {act_r.get('status')}, {act_r.get('value')}), "
                             f"lookup has ({exp_r['geoid']}, {exp_r['status']}, None)"
@@ -1054,6 +1336,7 @@ def verify_call_against_lookup_and_checks(
 
             act_with = data.get("with_value", [])
             exp_with = expected_lookup["with_value"]
+            exp_by_geoid = expected_lookup.get("with_value_by_geoid") or {}
             if not data.get("truncated") and len(act_with) != len(exp_with):
                 failures.append(
                     f"with_value count mismatch: got {len(act_with)}, lookup has {len(exp_with)}"
@@ -1066,9 +1349,31 @@ def verify_call_against_lookup_and_checks(
                         f"lookup has {exp_r['value']} ({exp_r['geoid']})"
                     )
                     break
-                if act_geoid == exp_r["geoid"] and act_r.get("status") != exp_r["status"]:
+                exp_row_for_geoid = exp_by_geoid.get(str(act_geoid))
+                if exp_row_for_geoid is None:
+                    failures.append(f"with_value[{idx}] geoid {act_geoid!r} not found in lookup with_value rows")
+                    break
+                for fld in ("value", "status", "status_text"):
+                    if act_r.get(fld) != exp_row_for_geoid.get(fld):
+                        failures.append(
+                            f"with_value[{idx}] ({act_geoid}) {fld} mismatch: got {act_r.get(fld)!r}, "
+                            f"lookup has {exp_row_for_geoid.get(fld)!r}"
+                        )
+                        break
+                act_unc = act_r.get("uncertainty") or {}
+                exp_unc = exp_row_for_geoid.get("uncertainty") or {}
+                for unc_k in ("kind", "low", "high", "moe"):
+                    if unc_k in exp_unc and act_unc.get(unc_k) != exp_unc.get(unc_k):
+                        failures.append(
+                            f"with_value[{idx}] ({act_geoid}) uncertainty.{unc_k} mismatch: "
+                            f"got {act_unc.get(unc_k)!r}, lookup has {exp_unc.get(unc_k)!r}"
+                        )
+                        break
+                act_notes = act_r.get("notes") or {}
+                exp_notes = exp_row_for_geoid.get("notes") or {}
+                if act_notes != exp_notes:
                     failures.append(
-                        f"with_value[{idx}] status mismatch for {act_geoid}: got {act_r.get('status')!r}, lookup has {exp_r['status']!r}"
+                        f"with_value[{idx}] ({act_geoid}) notes mismatch: got {act_notes!r}, lookup has {exp_notes!r}"
                     )
                     break
 
@@ -1105,12 +1410,12 @@ def verify_call_against_lookup_and_checks(
                     f"get_measure_details count mismatch: got {len(act_list)}, expected {len(exp_measures)}"
                 )
             for m in act_list:
-                mk = m.get("measure_key") or f"{m.get('product')}:{m.get('measure_id')}"
+                mk = m.get("measure_key")
                 if mk not in exp_measures:
                     failures.append(f"Unexpected measure in get_measure_details: {mk!r}")
                     continue
                 exp_m = exp_measures[mk]
-                for fld in ("unit", "storage_scale", "period", "population", "value_type", "levels", "uncertainty_kind"):
+                for fld in ("product", "measure_id", "unit", "storage_scale", "period", "population", "value_type", "levels", "uncertainty_kind"):
                     if m.get(fld) != exp_m.get(fld):
                         failures.append(
                             f"get_measure_details[{mk}] field {fld!r} mismatch: got {m.get(fld)!r}, lookup has {exp_m.get(fld)!r}"
@@ -1149,9 +1454,14 @@ def verify_call_against_lookup_and_checks(
         if matches != []:
             failures.append(f"Expected empty matches list, got {matches!r}")
 
+    if call_check_spec.get("expect_empty_measures") is True:
+        measures = data.get("measures", [])
+        if measures != []:
+            failures.append(f"Expected empty measures list [], got {measures!r}")
+
     if call_check_spec.get("expect_warning_non_empty") is True:
         if not warnings:
-            failures.append("Expected non-empty warnings list when no places matched")
+            failures.append("Expected non-empty warnings list")
 
     if "expected_sources" in call_check_spec:
         exp_src = set(call_check_spec["expected_sources"])
@@ -1284,8 +1594,14 @@ def verify_call_against_lookup_and_checks(
 
     if call_check_spec.get("expect_topics_present") is True:
         topics = data.get("topics")
-        if not isinstance(topics, list) or len(topics) < 6:
-            failures.append(f"Expected topics list in search_measures(), got {topics!r}")
+        if not isinstance(topics, list) or len(topics) != 6:
+            failures.append(f"Expected 6 public topics in search_measures(), got {topics!r}")
+
+    if call_check_spec.get("expect_no_withheld_topic") is True:
+        topics = data.get("topics") or []
+        slugs = {t.get("slug") for t in topics if isinstance(t, dict)}
+        if "health-care-resources" in slugs:
+            failures.append("Withheld topic 'health-care-resources' must not appear in search_measures() topics")
 
     if "expect_measure_keys_include" in call_check_spec:
         act_keys = {m.get("measure_key") for m in data.get("measures", []) if isinstance(m, dict)}
@@ -1337,7 +1653,9 @@ def verify_call_against_lookup_and_checks(
     if call_check_spec.get("expect_notes_mention_no_time_series") is True:
         notes_blob = json.dumps(data.get("notes", ""), ensure_ascii=False).lower()
         if "time series" not in notes_blob and "one period" not in notes_blob and "single period" not in notes_blob:
-            failures.append(f"list_data_sources data.notes did not mention one period / no time series: {data.get('notes')!r}")
+            failures.append(
+                f"list_data_sources data.notes did not mention one period / no time series: {data.get('notes')!r}"
+            )
 
     if call_check_spec.get("expect_no_composite_measure") is True:
         for m in data.get("measures", []):
@@ -1348,7 +1666,13 @@ def verify_call_against_lookup_and_checks(
     if "expect_warning_substring" in call_check_spec:
         sub = call_check_spec["expect_warning_substring"]
         if not any(sub in str(w) for w in warnings):
-            failures.append(f"warnings did not contain {sub!r}")
+            failures.append(f"warnings did not contain {sub!r} (got {warnings!r})")
+
+    if "expect_warning_substrings_any" in call_check_spec:
+        subs = call_check_spec["expect_warning_substrings_any"]
+        warnings_low = " ".join(str(w).lower() for w in warnings)
+        if not warnings or not any(str(s).lower() in warnings_low for s in subs):
+            failures.append(f"warnings {warnings!r} did not contain any of {subs!r}")
 
     if "expect_all_rows_population_substring" in call_check_spec:
         sub = call_check_spec["expect_all_rows_population_substring"]
@@ -1482,17 +1806,14 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                 c["call_index"]: c for c in q.get("checks", {}).get("call_checks", [])
             }
             q_failures: list[str] = []
-            call_summaries: list[dict[str, Any]] = []
             for idx, call in enumerate(calls):
                 tool = call["tool"]
                 args = call.get("arguments", {})
                 c_check = call_checks_by_idx.get(idx, {})
                 exp = compute_expected_for_call(db, tool, args, topics_list)
-                call_summaries.append({"tool": tool, "arguments": args, "expected": exp})
 
-                # Validate that spot checks in questions.yaml match lookup on places_staging
                 if c_check.get("expect_error") is True:
-                    if tool in ("get_area_values", "get_measure_across_areas") and not exp.get("expect_error"):
+                    if tool in ("get_area_values", "get_measure_across_areas", "search_measures") and not exp.get("expect_error"):
                         q_failures.append(
                             f"Call {idx} ({tool}) expected error in YAML, but lookup succeeded"
                         )
@@ -1616,13 +1937,9 @@ async def run_live_eval(
                         latencies_ms.append(dt_ms)
                         q_latencies.append(dt_ms)
                         if c_check.get("expect_error") is True:
-                            substrings_any = c_check.get("expect_error_Substrings_any") or []
-                            if substrings_any and not any(
-                                s.lower() in str(exc).lower() for s in substrings_any
-                            ):
-                                q_failures.append(
-                                    f"Call {idx} ({tool}) raised {exc!r}, missing expected {substrings_any}"
-                                )
+                            err_checks = verify_error_message_checks(str(exc), c_check)
+                            for e in err_checks:
+                                q_failures.append(f"Call {idx} ({tool}): {e}")
                         else:
                             q_failures.append(f"Call {idx} ({tool}) raised exception: {exc}")
                         continue

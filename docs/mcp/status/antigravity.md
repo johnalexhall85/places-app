@@ -4,7 +4,8 @@ Updated by Antigravity at the end of each task. Claude reads this file before re
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| M3 Independent evaluation suite | Done (offline validation & unit tests passing; ready for Claude `--expected-only` & M4 live run) | `agy/mcp-m3` | 42 questions (32 regular + 10 traps), 59 expected tool calls across all 7 tools, 8 public area products + 3 facility blocks, and all 4 geographic levels (`state`, `county`, `tract`, `cd`). `test_checks.py` (7 unit tests) and `run_eval.py --validate` pass. |
+| M3 Independent evaluation suite | Done | `agy/mcp-m3` | 42 questions (32 regular + 10 traps), 59 expected tool calls across all 7 tools. Ran outside sandbox by Claude: `--validate` pass, `test_checks.py` 7 pass, `--expected-only` 41/42, live server 40/42 (p50 50.9 ms, p95 126.2 ms). |
+| M3b Align evaluation with Amendment 1 | Done (`--validate` & `test_checks.py` 8/8 passing) | `agy/mcp-m3` | Updated `run_eval.py`, `questions.yaml` (now 44 questions: 32 regular + 12 traps, 65 tool calls), and `test_checks.py` (8 unit tests) to Amendment 1: 50,000-byte compact JSON size cap, compact `get_measure_across_areas` rows + `data.measure` shared fields, `position` only on value sorts, `get_area_values` skip-with-warning for unpublished levels, `sources` rules for non-value tools, `get_measure_details` keys (`measure_key` + `product` + `measure_id`), withheld-AHRF warnings/errors (with new traps `Q43` & `Q44`), and dynamic `without_value` null-value check on `Q42`. |
 
 ## How Claude should run `--expected-only` and the full eval
 
@@ -31,79 +32,69 @@ From `/home/john/chip-agy` (or after merging `agy/mcp-m3` into `beta`):
    PYTHONPATH=. .venv-mcp/bin/python tests/mcp_eval/run_eval.py --url http://127.0.0.1:8011/mcp --report ../deliverables/mcp/eval_report.md
    ```
 
-## Coverage counts (`backend/tests/mcp_eval/questions.yaml`)
+## Coverage counts (`backend/tests/mcp_eval/questions.yaml` after M3b)
 
-- **Total questions:** 42 (32 standard + 10 trap questions)
-- **Total tool calls:** 59
-  - `get_area_values`: 19
+- **Total questions:** 44 (32 standard + 12 trap questions)
+- **Total tool calls:** 65
+  - `get_area_values`: 20
   - `get_measure_across_areas`: 16
   - `find_places`: 10
+  - `search_measures`: 9
   - `get_area_context`: 6
-  - `search_measures`: 4
   - `get_measure_details`: 2
   - `list_data_sources`: 2
 - **Questions by product / facility block:**
   - `places`: 18, `acs_profile`: 14, `acs`: 8, `clh`: 8, `cms_gv`: 8, `usda_fea`: 7, `brfss`: 6, `epa_aqi`: 6
   - Facility blocks: `health_centers`: 6, `nursing_homes`: 6, `tri_facilities`: 6
-  - Excluded product (`ahrf` trap): 1
-- **Levels covered:** `county` (49), `tract` (19), `state` (16), `cd` (13)
+  - Excluded product (`ahrf` traps): 3 (`Q33`, `Q43`, `Q44`)
+- **Levels covered:** `county` (52), `tract` (19), `state` (16), `cd` (13)
 - **Showcase & required geographies:** Person County NC (`37145`), Kanawha County WV (`54039`), Fresno County CA (`06019`), WV-01 (`5401`), Alabama (`01`), Texas (`48`, 254 counties), Los Angeles County (`06037`, 2,498 tracts).
-- **Trap questions (10):**
-  1. `Q33` (`ahrf_excluded`): `search_measures` and `get_area_values` for `ahrf:phys_nf_prim_care_pc_exc_rsdt_23`.
+- **Trap questions (12):**
+  1. `Q33` (`ahrf_excluded`): `search_measures(query="primary care doctors")` (returns `measures: []` + withheld AHRF warning) and `get_area_values` for `ahrf:phys_nf_prim_care_pc_exc_rsdt_23` (raises `ToolError`).
   2. `Q34` (`time_trend_one_period`): multi-year trend request on `places:diabetes_crudeprev` in `54039`.
   3. `Q35` (`no_composite_score`): healthiest-county composite score request in Alabama (`01`).
   4. `Q36` (`epa_aqi_no_monitor`): `epa_aqi:median_aqi` in unmonitored county (`01001`) and across Alabama (`01`, 15 available / 52 `no_reported_value`).
   5. `Q37` (`kentucky_brfss_not_published`): Kentucky (`21`) 2023 `brfss:diabetes` (`not_published`) vs 2022 `brfss:dental_visit` (`available`), plus all-states `brfss:diabetes` (`21` and `42` in `without_value`).
-  6. `Q38` (`cms_not_published_for_cd`): `cms_gv:std_payment_per_capita` requested at `level="cd"` for WV (`54` / `5401`).
+  6. `Q38` (`cms_not_published_for_cd`): `cms_gv:std_payment_per_capita` requested at `level="cd"` for WV (`54` / `5401`) — `get_measure_across_areas` raises `ToolError`, while `get_area_values` skips `cms_gv:std_payment_per_capita` and warns with published levels (`state`, `county`).
   7. `Q39` (`tracts_require_county`): `get_measure_across_areas` at `level="tract"` with omitted `within` and with 2-digit state GEOID `within="37"`.
   8. `Q40` (`medicare_original_beneficiaries`): `cms_gv` measures in `37145` and `54039` checked for `"Original Medicare beneficiaries"` population label and general interpretation rule.
   9. `Q41` (`ct_pr_coverage_status`): Connecticut planning region `09110` (`boundary_not_comparable` in `usda_fea`) and Puerto Rico `72001` (`not_covered` in `usda_fea`, `not_published` in `cms_gv`).
-  10. `Q42` (`limits_and_truncation`): 12 counties × 41 measures (492 rows > 400-row cap) error check in `get_area_values`, and 2,498 tracts in `06037` size-cap / truncation check in `get_measure_across_areas` verifying all 58 `without_value` rows are preserved.
+  10. `Q42` (`limits_and_truncation`): 12 counties × 41 measures (492 rows > 400-row cap) error check in `get_area_values`, and 2,498 tracts in `06037` size-cap / truncation check in `get_measure_across_areas` verifying all null-value `without_value` rows from `lookup` (42 rows; 16 `open_ended` tracts carry values in `with_value`) are preserved.
+  11. `Q43` (`ahrf_withheld_topic`): `topic="health-care-resources"` in `search_measures` and `get_area_values` raises `ToolError` with the withheld-AHRF explanation and never `"Unknown topic"`.
+  12. `Q44` (`ahrf_withheld_queries`): `search_measures` queries for `"hospital beds"`, `"dentists"`, and `"psychiatrists"` return `measures: []` plus a warning naming `AHRF`, and `search_measures()` with no arguments lists the 6 public topics (omitting `health-care-resources`) with the exact withheld-topic warning.
 
-## Contract ambiguities found in `docs/mcp/TOOL_CONTRACT.md`
+## Note for Claude on Amendment 1 §2 byte math for 254 Texas counties (`Q16`)
 
-1. **Section "Public product allowlist" & M3 Global Checks vs Section 7 (`list_data_sources`) — `"ahrf"` string presence:**
-   - Section "Public product allowlist" states: *"`ahrf` is excluded ... It never appears in any output, including search results, topics, and catalogs."* M3's global check states: *"No `ahrf` anywhere in the serialized output."*
-   - However, Section 7 (`list_data_sources`) explicitly requires returning `"excluded": [{"product": "ahrf", "reason": "Pending the source agency's answer on redistribution; available on the CHIP website."}]`.
-   - **How `run_eval.py` handles this:** `check_no_ahrf` rejects any occurrence of `"ahrf"` anywhere in the serialized JSON for all tools, and for `list_data_sources` specifically strips `data.excluded` before scanning while verifying `data.excluded` contains the required `"ahrf"` entry.
+When measuring size with `separators=(",", ":")`, 254 Texas county rows (`places:diabetes_crudeprev`) carrying full `area` (`{"level":"county","geoid":"48xxx","name":"..."}`), `value`, `status` (`"available"`), `status_text` (`"Published value"`), `uncertainty` (`{"kind":"ci95","low":...,"high":...,"label":"95% confidence interval"}`), and `position` still weigh ~228 bytes/row (254 × 228 + ~2,000 envelope ≈ **59,900 bytes**), which is ~10 KB over the 50,000-byte cap unless `area.level` / `uncertainty.label` are also omitted on compact rows (or `with_value` is truncated at 50,000 bytes). `run_eval.py` allows `area.level` and `uncertainty.label` to be either present or omitted on compact rows and does not hard-code `expected_truncated: false` on `Q16`, so whether Codex fits all 254 rows via compact `area`/`uncertainty` or truncates at 50,000 bytes, `Q16` will evaluate cleanly against `lookup`.
 
-2. **Section "Value row" vs Section 5 (`get_measure_across_areas`) — `"position"` key on value rows:**
-   - Section "Value row" says *"shared by `get_area_values`, `get_measure_across_areas` — Built from one `lookup` row. Keep these keys and add nothing else"* (listing 17 keys without `position`), whereas Section 5 says each row in `with_value` *"also carries `"position"`, using competition numbering where equal values share a position (1, 2, 2, 4)."*
-   - Furthermore, if the server shares a single Pydantic `ValueRow` model across both tools with `position: int | None = None`, `position: null` could appear on `get_area_values` or `without_value` rows unless `exclude_none=True` is used.
-   - **How `run_eval.py` handles this:** `check_value_row_shape` allows `"position"` on `get_measure_across_areas` rows and allows `"position": None` on `get_area_values` rows while rejecting any other extra keys.
+## Contract ambiguities found in `docs/mcp/TOOL_CONTRACT.md` (resolved in Amendment 1)
 
-3. **Section 5 (`get_measure_across_areas`) — `position` numbering when `sort="geoid"`:**
-   - Section 5 defines `sort` as `geoid` (default), `value_desc`, or `value_asc`, and states that each row in `with_value` carries `"position"` with competition numbering `(1, 2, 2, 4)`. When `sort="geoid"`, equal values are not necessarily adjacent, so it is ambiguous whether `position` under `sort="geoid"` is sequential `1..N` (sharing a position only on adjacent ties) or computed from value rank.
-   - **How `run_eval.py` handles this:** `check_competition_positions` enforces strict adjacent competition numbering `(1, 2, 2, 4)` on `value_desc` and `value_asc`, and accepts either GEOID-order or value-rank competition numbering when `sort="geoid"`.
+All 7 ambiguities recorded in M3 were settled by Amendment 1 in `docs/mcp/tasks/M3b-antigravity.md` and are now enforced in `run_eval.py` and `test_checks.py`.
 
-4. **Section 4 (`get_area_values`) vs Section "Errors" — requesting a measure at a level it does not publish:**
-   - Section 4 says: *"Unpublished measures: a measure not published at `level` is skipped and named in a warning, which lists the levels where it is published."*
-   - Section "Errors" says: *"Bad input raises `mcp.server.mcpserver.exceptions.ToolError` (... a level the measure doesn't publish)."*
-   - When `get_area_values` is called with a mix of published and unpublished measures for `level` (or only unpublished measures), it is ambiguous whether the server raises `ToolError` or skips the unpublished measure with a warning.
-   - **How `run_eval.py` handles this:** In `Q38`, Call 0 tests `get_measure_across_areas` (which unambiguously raises `ToolError` via `lookup.measure_values_within`), and Call 1 tests `get_area_values` with `expect_unpublished_level_handled`, accepting either `ToolError` naming `state`/`county` or a response that skips `cms_gv` and names `state` and `county` in `warnings`.
+## Diary facts (2026-11-17T15:27:00Z)
 
-5. **Section "Response envelope" — `sources` for non-value tools (`find_places`, `search_measures`, `get_measure_details`, `get_area_context`, `list_data_sources`):**
-   - Section "Response envelope" says: *"`sources`: only the products whose rows appear in `data`."* For tools that do not return measure value rows (e.g., `get_area_context`, which returns facility blocks that already embed their own `release` objects, or `get_measure_details`), it is not specified whether top-level `sources` is `[]` or lists the queried products.
-   - **How `run_eval.py` handles this:** Strict `sources == data products` equality is enforced on `get_area_values` and `get_measure_across_areas`.
-
-6. **Section 2 (`search_measures`) — `"health-care-resources"` topic and `measures` when called with no arguments:**
-   - In `backend/app/community/topics.json`, all 5 `measure_keys` under `"health-care-resources"` belong to `ahrf`. Since `ahrf` is excluded from topics and catalogs, it is ambiguous whether `"health-care-resources"` is omitted from `search_measures()` topics or returned with `measure_count: 0`. Also, Section 2 says `"No arguments: returns the topic list"` while the `data` schema shows `{"measures": [...], "topics": [...only when no query]}`—leaving open whether `measures` is `[]` or populated when `query` is omitted.
-
-7. **Section 3 (`get_measure_details`) — `measure_key` vs `product` + `measure_id`:**
-   - `lookup.catalog()["measures"]` uses `"product"` and `"measure_id"`, whereas MCP tools use `"measure_key": "<product>:<measure_id>"`. Section 3 does not state whether `get_measure_details` items carry `"measure_key"`, `"product"` + `"measure_id"`, or both.
-   - **How `run_eval.py` handles this:** `verify_call_against_lookup_and_checks` accepts either `m["measure_key"]` or `f"{m['product']}:{m['measure_id']}"`.
-
-## Diary facts (2026-11-17T15:08:00Z)
-
-- **Task:** M3 independent evaluation suite for the CHIP MCP server on branch `agy/mcp-m3` in `/home/john/chip-agy`.
-- **Created files:**
-  - `backend/tests/mcp_eval/__init__.py`
-  - `backend/tests/mcp_eval/questions.yaml` (42 questions: 32 regular + 10 traps; 59 tool calls)
-  - `backend/tests/mcp_eval/run_eval.py` (deterministic runner supporting `--validate`, `--expected-only`, `--url`, and `--report`)
-  - `backend/tests/mcp_eval/test_checks.py` (7 offline pytest unit tests for pure check functions and YAML validation)
-  - `deliverables/mcp/eval_report.md` (initial offline validation report; overwritten on `--expected-only` / `--url` runs)
+- **Task:** M3b alignment of the CHIP MCP evaluation suite with Contract Amendment 1 on branch `agy/mcp-m3` in `/home/john/chip-agy`.
+- **Updated files:**
+  - `backend/tests/mcp_eval/run_eval.py`:
+    - Size check updated to `len(json.dumps(structured_content, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) <= 50_000`.
+    - Enforced compact row shape and `data.measure` shared metadata on `get_measure_across_areas` while keeping full row checks on `get_area_values`.
+    - Enforced `position` only on `get_measure_across_areas` `with_value` rows when `sort` is `value_desc` or `value_asc`, and forbidden on `sort="geoid"`, `without_value`, and `get_area_values`.
+    - Updated `expect_unpublished_level_handled` (`Q38`) to require `get_area_values` to skip unpublished measures with a warning naming published levels rather than raising `ToolError`.
+    - Enforced `sources` matching on non-value tools (`find_places` -> `[]`, `get_measure_details` / `search_measures` -> products in `data.measures`) and required `measure_key`, `product`, and `measure_id` on `get_measure_details` items.
+    - Added withheld-AHRF warning and `ToolError` checks (Item 7).
+  - `backend/tests/mcp_eval/questions.yaml`:
+    - Updated `Q24` and `Q33` for Amendment 1 §7; removed hard-coded `expected_without_value_count: 58` from `Q42` so `without_value` is checked dynamically from `lookup` null-value rows (42 rows).
+    - Added trap questions `Q43` (`ahrf_withheld_topic`) and `Q44` (`ahrf_withheld_queries`), bringing the suite to 44 questions (32 regular + 12 traps, 65 tool calls).
+  - `backend/tests/mcp_eval/test_checks.py`:
+    - Expanded to 8 offline unit tests covering all Amendment 1 checks.
+  - `docs/mcp/status/antigravity.md`: added M3b status row and diary facts.
 - **Verification run in sandbox:**
   - `backend/.venv-mcp/bin/python -m py_compile backend/tests/mcp_eval/run_eval.py backend/tests/mcp_eval/test_checks.py` -> exit 0.
-  - `cd backend && PYTHONPATH=. .venv-mcp/bin/python tests/mcp_eval/run_eval.py --validate --report ../deliverables/mcp/eval_report.md` -> Validation PASSED (42 questions, 10 traps, all 7 tools, 8 public products + 3 facility blocks, 4 levels, and all showcase places covered).
-  - `cd backend && PYTHONPATH=. .venv-mcp/bin/python -m pytest tests/mcp_eval/test_checks.py -v` -> 7 passed in 0.58s.
-- **Next action:** Claude runs `--expected-only` and `--url http://127.0.0.1:8011/mcp` outside the sandbox in M4, then reviews and commits `agy/mcp-m3`.
+  - `PYTHONPATH=backend backend/.venv-mcp/bin/python backend/tests/mcp_eval/run_eval.py --validate` -> Validation PASSED (44 questions, 12 traps, 65 tool calls).
+  - `PYTHONPATH=backend backend/.venv-mcp/bin/python -m pytest backend/tests/mcp_eval/test_checks.py -v` -> 8 passed in 0.60s.
+- **Next action:** Claude runs `--expected-only` and `--url http://127.0.0.1:8011/mcp` after Codex finishes M2b, then commits `agy/mcp-m3`.
+
+## Diary facts (2026-11-17T15:08:00Z — M3 initial build)
+
+- **Task:** M3 independent evaluation suite for the CHIP MCP server on branch `agy/mcp-m3` in `/home/john/chip-agy`.
+- **Created files:** `backend/tests/mcp_eval/__init__.py`, `backend/tests/mcp_eval/questions.yaml`, `backend/tests/mcp_eval/run_eval.py`, `backend/tests/mcp_eval/test_checks.py`, `deliverables/mcp/eval_report.md`.

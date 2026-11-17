@@ -549,6 +549,8 @@ questions:
       call_checks:
         - call_index: 0
           expect_topics_present: true
+          expect_no_withheld_topic: true
+          expect_warning_substring: "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) is on the CHIP website but not available through this public server."
 
   - id: Q25
     question: "Which health insurance or uninsured measures are available in CHIP at the county level?"
@@ -714,10 +716,10 @@ questions:
           expected_sources: ["acs", "acs_profile", "brfss", "cms_gv"]
           expected_row_count: 33
 
-  # --- TRAP QUESTIONS (Q33 - Q42) ---
+  # --- TRAP QUESTIONS (Q33 - Q44) ---
 
   - id: Q33
-    question: "How many primary care physicians (ahrf:phys_nf_prim_care_pc_exc_rsdt_23) and hospital beds (ahrf:hosp_beds_23) are in Person County, NC (37145)?"
+    question: "How many primary care doctors (ahrf:phys_nf_prim_care_pc_exc_rsdt_23) and hospital beds (ahrf:hosp_beds_23) are in Person County, NC (37145)?"
     trap: true
     trap_kind: "ahrf_excluded"
     products: ["ahrf"]
@@ -725,7 +727,7 @@ questions:
     expected_calls:
       - tool: search_measures
         arguments:
-          query: "primary care physicians"
+          query: "primary care doctors"
       - tool: get_area_values
         arguments:
           level: "county"
@@ -736,6 +738,9 @@ questions:
       call_checks:
         - call_index: 0
           expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
         - call_index: 1
           expect_error: true
           expect_error_Substrings_any:
@@ -1027,5 +1032,78 @@ questions:
           match_lookup: true
           expected_sources: ["acs"]
           expected_total_areas: 2498
-          expected_without_value_count: 58
           expected_truncated: true
+
+  - id: Q43
+    question: "What happens when I request the 'Health care resources' topic (topic='health-care-resources') in search_measures or get_area_values for Person County, NC (37145)?"
+    trap: true
+    trap_kind: "ahrf_withheld_topic"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          topic: "health-care-resources"
+      - tool: get_area_values
+        arguments:
+          level: "county"
+          geoids: ["37145"]
+          topic: "health-care-resources"
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_substrings_all:
+            - "Health care resources"
+            - "AHRF"
+            - "not available through this public server"
+          forbid_error_substrings:
+            - "Unknown topic"
+        - call_index: 1
+          expect_error: true
+          expect_error_substrings_all:
+            - "Health care resources"
+            - "AHRF"
+            - "not available through this public server"
+          forbid_error_substrings:
+            - "Unknown topic"
+
+  - id: Q44
+    question: "Search CHIP measures for 'hospital beds', 'dentists', and 'psychiatrists', and browse topics with search_measures() to verify withheld HRSA AHRF content is explained rather than silently hidden."
+    trap: true
+    trap_kind: "ahrf_withheld_queries"
+    products: ["ahrf"]
+    levels: ["county"]
+    expected_calls:
+      - tool: search_measures
+        arguments:
+          query: "hospital beds"
+      - tool: search_measures
+        arguments:
+          query: "dentists"
+      - tool: search_measures
+        arguments:
+          query: "psychiatrists"
+      - tool: search_measures
+        arguments: {}
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 1
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 2
+          expect_no_ahrf_measures: true
+          expect_empty_measures: true
+          expect_warning_substrings_any:
+            - "ahrf"
+        - call_index: 3
+          expect_topics_present: true
+          expect_no_withheld_topic: true
+          expect_warning_substring: "The topic 'Health care resources' (HRSA AHRF workforce and hospital measures) is on the CHIP website but not available through this public server."
