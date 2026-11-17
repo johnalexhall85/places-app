@@ -2,6 +2,25 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T21:35:00+00:00 — Historical periods complete on staging; awaiting Gate A (Claude)
+
+- **Request:** John asked for earlier years on every `/area/*` map (Year dropdown) and for the AI assistant, without changing profiles. Plan approved 2026-11-17; Antigravity wrote the parsers (H2a–i) and MCP eval questions (H6), Codex the Year dropdown (H4, H4b, H4c) and MCP Amendment 2 (H5); Claude did sources, schema, store, read layer, review, ingest, and deploy.
+- **Data, staging only:** nine `:history` releases published on `places_staging` (IDs and counts in `docs/history/status/claude.md`); the 12 current pointers are unchanged (diffed against the pre-work capture). Spot values equal the archived publisher files for every product.
+- **Failures and fixes this session:**
+  - A queued ingest never started: its `pgrep -f` wait loop matched its own command line. It was stopped and rerun.
+  - ACS income and ACS community were first held with 22,873 unmatched tracts. ACS 2016–2020 uses 2020 tracts; the registries were fixed and the rerun passed.
+  - CLH was held on 11,389 and 10,480 unmatched tracts and 8–9 Connecticut counties. These were blank placeholder rows in AHRQ's own files. New opt-in store flag `drop_unbounded_blank_areas` (commit `8d715cf`) drops only blank area-periods with no boundary in their own vintage; 22,709 were dropped and counted, and real blank areas are kept.
+  - The legend said "colour classes are for this year only" on fixed-break maps. Backend `colour_note` (`1942f0d`) and Codex H4c (`bc03d4e`) fixed it.
+  - The `.venv-mcp` symlinks in the agent worktrees had become a loop. The venv was rebuilt in `chip-claude` and Antigravity's link repointed. `backend/.venv-mcp` had been committed by mistake in `5e7ae79`; it is untracked now and the ignore rule matches symlinks.
+  - A hard reset of Codex's worktree was blocked by the permission classifier; it was not needed, because Codex's files already equalled Claude's branch.
+- **Commands:** `history.cli --product <p> fetch-stage-validate`, then `review` and `approve-publish` with digests for acs, acs_profile, and clh; `infra/staging/deploy-staging.sh claude/history-h0` (twice; now `bc03d4e`).
+- **Verification:**
+  - Signed-in Playwright walkthrough: 18/18 (nine maps at 1365 px and 375 px; shapes, legend and table period, `?period=` reload, no overflow, no page errors).
+  - MCP eval 54/54, both `--expected-only` and via `chip-mcp-staging`.
+  - Frontend 169/169, MCP 34/34, backend 735 passed. 13 funding and recon tests fail only because untracked `data/recon` and `data/chipfunding` files are absent from worktrees.
+- **Not done:** nothing is on live. No merge to `main`.
+- **Next:** John tries the Year dropdown and the AI connector on staging (Gate A); on approval, run [PROMOTION.md](history/PROMOTION.md) (Gate B).
+
 ## 2026-11-17T17:10:00+00:00 — Mobile menu and map-panel drawer promoted to live (Claude)
 
 - **Approval:** John checked MOBILE-1 on staging ("everything looks good") and approved promotion.
