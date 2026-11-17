@@ -2,6 +2,13 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T17:10:00+00:00 — Mobile menu and map-panel drawer promoted to live (Claude)
+
+- **Approval:** John checked MOBILE-1 on staging ("everything looks good") and approved promotion.
+- **Built:** Codex MOBILE-1 (task `docs/beta/tasks/MOBILE-1-codex.md`). On mobile only: the menu button is in the top-right corner and opens the full menu. Map pages open showing only the map. A "Panels" button or a swipe from the left edge opens a drawer with all the legends and panels, and a first-visit hint explains this. The drawer is `MobileMapPanels.jsx`, used on the home page, `/area/*` maps, and county tract maps. Frontend 164 tests passed (rerun by Claude).
+- **Promotion:** application only, frontend. Rollback pair: `data/deploy-recovery/mobile-1-20261117/` (`commit-before.txt` = `baf5498`, `webroot-before/`). Commands: `git merge --ff-only beta` (to `bbd42a0`), `npm run build` with `VITE_API_BASE_URL=/api`, `rsync --delete` to `/var/www/places`. No backend restart, no migration; pointers untouched.
+- **Verification:** live and staging bundles are equal (`index-CtZcc-GM.js`). `/`, `/ai`, `/explore/map`, `/area/places-2025`, and `/api/health` returned 200 on live; MCP `/healthz` returned 200. Signed-in pages on live were not checked by the agent; John reviewed the same build on staging.
+
 ## 2026-11-17T16:55:00+00:00 — "Use CHIP in your AI assistant" page promoted to live (Claude)
 
 - **Approval:** John reviewed `/ai` on staging ("looks great") and approved promotion.
