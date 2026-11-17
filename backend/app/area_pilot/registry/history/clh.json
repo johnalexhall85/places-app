@@ -1,0 +1,486 @@
+{
+ "dataset_id": "ahrq_clh_2023_curated:history",
+ "current_dataset_id": "ahrq_clh_2023_curated",
+ "product": "clh",
+ "parser": "clh",
+ "auto_publish": false,
+ "name": "AHRQ Community-Level Health (CLH) data, earlier years",
+ "publisher": "AHRQ",
+ "source_release_id": "AHRQ CLH v2.0 files 2018-2022",
+ "levels": [
+  "county",
+  "tract"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "missing"
+ ],
+ "null_statuses": [
+  "missing"
+ ],
+ "uncertainty_kind": "none",
+ "unmatched_tolerance": {
+  "county": 12,
+  "tract": 400
+ },
+ "selection": {
+  "sheets": [
+   "Layout",
+   "Data"
+  ],
+  "excluded_note": "Rows for territories without a CHIP boundary (60, 66, 69, 78 prefixes) are counted and not stored. Blank cells are stored as missing."
+ },
+ "sources": [
+  {
+   "role": "clh2018_county",
+   "archived_path": "history/clh/source/clh_2018_county_2_0.xlsx",
+   "sha256": "bd28e724841beaf61e856c9716b09cbf2874a964b0778fa79b6863594787f8b4",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2018_county_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2018_tract",
+   "archived_path": "history/clh/source/clh_2018_tract_2_0.xlsx",
+   "sha256": "570f39de6cc0e3c7da6843829990256b18cc9cd9c851a1a2b5cb7739180f234d",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2018_tract_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2019_county",
+   "archived_path": "history/clh/source/clh_2019_county_2_0.xlsx",
+   "sha256": "cc58712590373f66346abd0bd69d3f623c9f61541226bb0a71aa0aac5f5de119",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2019_county_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2019_tract",
+   "archived_path": "history/clh/source/clh_2019_tract_2_0.xlsx",
+   "sha256": "PENDING",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2019_tract_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2020_county",
+   "archived_path": "history/clh/source/clh_2020_county_2_0.xlsx",
+   "sha256": "df6865966536972b9c5c2e83c07322d5d09a5de8719c2814c3303f3c190fe8f4",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2020_county_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2020_tract",
+   "archived_path": "history/clh/source/clh_2020_tract_2_0.xlsx",
+   "sha256": "PENDING",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2020_tract_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2021_county",
+   "archived_path": "history/clh/source/clh_2021_county_2_0.xlsx",
+   "sha256": "9329bca96e63245083bd892d4b9f81bed1b8f138123d8a73646a25a658bf19ac",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2021_county_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2021_tract",
+   "archived_path": "history/clh/source/clh_2021_tract_2_0.xlsx",
+   "sha256": "PENDING",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2021_tract_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2022_county",
+   "archived_path": "history/clh/source/clh_2022_county_2_0.xlsx",
+   "sha256": "13edc3197a01eb7a8a00dd4064ed57813fd550de96ebe5ec8b3e3ee9452ec47e",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2022_county_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  },
+  {
+   "role": "clh2022_tract",
+   "archived_path": "history/clh/source/clh_2022_tract_2_0.xlsx",
+   "sha256": "PENDING",
+   "url": "https://www.ahrq.gov/sites/default/files/wysiwyg/sdoh/clh_2022_tract_2_0.xlsx",
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "ACS_PCT_HH_BROADBAND_ANY",
+   "label": "Households with broadband of any type",
+   "current_period": "2019–2023",
+   "population": "all households",
+   "value_type": "published_rate_or_percentage",
+   "levels": [
+    "county",
+    "tract"
+   ],
+   "periods": [
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "AHRQ CLH 2022 file (v2.0), same variable and label as the current file. Source: ACS 2018–2022 5-year.",
+     "locator": {
+      "file_year": "2022",
+      "column": "ACS_PCT_HH_BROADBAND_ANY",
+      "label": "Percentage of households with broadband of any type"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "AHRQ CLH 2021 file (v2.0), same variable and label as the current file. Source: ACS 2017–2021 5-year. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2021",
+      "column": "ACS_PCT_HH_BROADBAND_ANY",
+      "label": "Percentage of households with broadband of any type"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2020",
+      "column": "ACS_PCT_HH_BROADBAND_ANY",
+      "label": "Percentage of households with broadband of any type"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2019 file (v2.0), same variable and label as the current file. Source: ACS 2015–2019 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2019",
+      "column": "ACS_PCT_HH_BROADBAND_ANY",
+      "label": "Percentage of households with broadband of any type"
+     }
+    },
+    {
+     "period": "2014–2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2018 file (v2.0), same variable and label as the current file. Source: ACS 2014–2018 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2018",
+      "column": "ACS_PCT_HH_BROADBAND_ANY",
+      "label": "Percentage of households with broadband of any type"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "ACS_PCT_HU_NO_VEH",
+   "label": "Occupied housing units without a vehicle",
+   "current_period": "2019–2023",
+   "population": "occupied housing units",
+   "value_type": "published_rate_or_percentage",
+   "levels": [
+    "county",
+    "tract"
+   ],
+   "periods": [
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "AHRQ CLH 2022 file (v2.0), same variable and label as the current file. Source: ACS 2018–2022 5-year.",
+     "locator": {
+      "file_year": "2022",
+      "column": "ACS_PCT_HU_NO_VEH",
+      "label": "Percentage of housing units with no vehicle available"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "AHRQ CLH 2021 file (v2.0), same variable and label as the current file. Source: ACS 2017–2021 5-year. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2021",
+      "column": "ACS_PCT_HU_NO_VEH",
+      "label": "Percentage of housing units with no vehicle available"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2020",
+      "column": "ACS_PCT_HU_NO_VEH",
+      "label": "Percentage of housing units with no vehicle available"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2019 file (v2.0), same variable and label as the current file. Source: ACS 2015–2019 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2019",
+      "column": "ACS_PCT_HU_NO_VEH",
+      "label": "Percentage of housing units with no vehicle available"
+     }
+    },
+    {
+     "period": "2014–2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2018 file (v2.0), same variable and label as the current file. Source: ACS 2014–2018 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2018",
+      "column": "ACS_PCT_HU_NO_VEH",
+      "label": "Percentage of housing units with no vehicle available"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "ACS_PCT_RENTER_HU_COST_30PCT",
+   "label": "Renter housing cost burden, at least 30% of income",
+   "current_period": "2019–2023",
+   "population": "renter-occupied housing units with computed rent-to-income ratio",
+   "value_type": "published_rate_or_percentage",
+   "levels": [
+    "county",
+    "tract"
+   ],
+   "periods": [
+    {
+     "period": "2018–2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "AHRQ CLH 2022 file (v2.0), same variable and label as the current file. Source: ACS 2018–2022 5-year.",
+     "locator": {
+      "file_year": "2022",
+      "column": "ACS_PCT_RENTER_HU_COST_30PCT",
+      "label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income"
+     }
+    },
+    {
+     "period": "2017–2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2020"
+     },
+     "note": "AHRQ CLH 2021 file (v2.0), same variable and label as the current file. Source: ACS 2017–2021 5-year. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2021",
+      "column": "ACS_PCT_RENTER_HU_COST_30PCT",
+      "label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income"
+     }
+    },
+    {
+     "period": "2016–2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: ACS 2016–2020 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2020",
+      "column": "ACS_PCT_RENTER_HU_COST_30PCT",
+      "label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income"
+     }
+    },
+    {
+     "period": "2015–2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2019 file (v2.0), same variable and label as the current file. Source: ACS 2015–2019 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2019",
+      "column": "ACS_PCT_RENTER_HU_COST_30PCT",
+      "label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income"
+     }
+    },
+    {
+     "period": "2014–2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "AHRQ CLH 2018 file (v2.0), same variable and label as the current file. Source: ACS 2014–2018 5-year. Counties use Connecticut's eight former counties. Tracts are 2010 Census tracts.",
+     "locator": {
+      "file_year": "2018",
+      "column": "ACS_PCT_RENTER_HU_COST_30PCT",
+      "label": "Percentage of renter-occupied housing units with rent equal to 30 percent or more of household income"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "CCBP_SOGS_RATE",
+   "label": "Supermarkets and grocery stores per 1,000 residents",
+   "current_period": "2023",
+   "population": "paid-employee establishments, NAICS 445110",
+   "value_type": "published_rate_or_percentage",
+   "levels": [
+    "county"
+   ],
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "AHRQ CLH 2022 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2022.",
+     "locator": {
+      "file_year": "2022",
+      "column": "CCBP_SOGS_RATE",
+      "label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2021 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2021. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2021",
+      "column": "CCBP_SOGS_RATE",
+      "label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2020. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2020",
+      "column": "CCBP_SOGS_RATE",
+      "label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2019 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2019. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2019",
+      "column": "CCBP_SOGS_RATE",
+      "label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2018 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2018. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2018",
+      "column": "CCBP_SOGS_RATE",
+      "label": "Total number of supermarkets and other grocery (except convenience) stores per 1,000 people"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "CCBP_FCRSC_RATE",
+   "label": "Fitness and recreational sports centers per 1,000 residents",
+   "current_period": "2023",
+   "population": "paid-employee establishments, NAICS 713940",
+   "value_type": "published_rate_or_percentage",
+   "levels": [
+    "county"
+   ],
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024"
+     },
+     "note": "AHRQ CLH 2022 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2022.",
+     "locator": {
+      "file_year": "2022",
+      "column": "CCBP_FCRSC_RATE",
+      "label": "Total number of fitness centers and recreational sports centers per 1,000 people"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2021 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2021. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2021",
+      "column": "CCBP_FCRSC_RATE",
+      "label": "Total number of fitness centers and recreational sports centers per 1,000 people"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2020 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2020. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2020",
+      "column": "CCBP_FCRSC_RATE",
+      "label": "Total number of fitness centers and recreational sports centers per 1,000 people"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2019 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2019. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2019",
+      "column": "CCBP_FCRSC_RATE",
+      "label": "Total number of fitness centers and recreational sports centers per 1,000 people"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "AHRQ CLH 2018 file (v2.0), same variable and label as the current file. Source: County Business Patterns 2018. Counties use Connecticut's eight former counties.",
+     "locator": {
+      "file_year": "2018",
+      "column": "CCBP_FCRSC_RATE",
+      "label": "Total number of fitness centers and recreational sports centers per 1,000 people"
+     }
+    }
+   ]
+  }
+ ]
+}
