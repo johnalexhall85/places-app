@@ -20,6 +20,8 @@ S = 'area_pilot'
 CAP = 5000
 COLOURS_NOTE = ('Colour classes are computed for this year only. The same colour can mean a different value '
                 'in another year, so compare values, not colours.')
+FIXED_COLOURS_NOTE = ('Colour classes use the same fixed cut-points in every year. Where the note reports a '
+                      'boundary or method change, compare with care.')
 VINTAGE_LABEL = {'2024': 'TIGER/Line 2024', '2020': 'TIGER/Line 2020 (Connecticut former counties)',
                  '2019': 'TIGER/Line 2019 tracts (2010 Census basis)'}
 ID_ALIAS = {'cdc_places_county_2025_pilot': {'county': 'county_fips', 'tract': 'tract_fips'}}
@@ -159,7 +161,7 @@ def _base(db, config, measure, spec, p, geography, bbox, dataset_id):
             'population': p['population'], 'value_type': p['value_type'], 'geography': geography,
             'unit': current.get('unit') or current.get('_unit'), 'bbox': bbox, 'note': spec['note'],
             'boundary_vintage': VINTAGE_LABEL[vintage], 'legend_breaks': breaks,
-            'colour_note': COLOURS_NOTE, 'uncertainty_kind': measure.get('uncertainty_kind',
+            'colour_note': FIXED_COLOURS_NOTE if breaks else COLOURS_NOTE, 'uncertainty_kind': measure.get('uncertainty_kind',
                                                                           config.get('uncertainty_kind', 'none'))}
 
 
