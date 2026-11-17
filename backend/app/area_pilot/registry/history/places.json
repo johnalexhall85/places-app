@@ -1,0 +1,1066 @@
+{
+ "dataset_id": "cdc_places_county_2025_pilot:history",
+ "current_dataset_id": "cdc_places_county_2025_pilot",
+ "product": "places",
+ "parser": "places",
+ "auto_publish": false,
+ "name": "CDC PLACES county and tract estimates, earlier years",
+ "publisher": "Centers for Disease Control and Prevention",
+ "source_release_id": "PLACES releases 2020-2024 (data years 2017-2022), crude prevalence",
+ "levels": [
+  "county",
+  "tract"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "suppressed",
+  "missing"
+ ],
+ "null_statuses": [
+  "suppressed",
+  "missing"
+ ],
+ "uncertainty_kind": "ci95",
+ "unmatched_tolerance": {
+  "county": 10,
+  "tract": 250
+ },
+ "selection": {
+  "datavaluetypeid": "CrdPrv",
+  "releases": {
+   "2024": {
+    "county_view": "fu4u-a9bh",
+    "tract_view": "ai6z-tcin"
+   },
+   "2023": {
+    "county_view": "h3ej-a9ec",
+    "tract_view": "em5e-5hvn"
+   },
+   "2022": {
+    "county_view": "duw2-7jbt",
+    "tract_view": "nw2y-v4gm"
+   },
+   "2021": {
+    "county_view": "pqpp-u99h",
+    "tract_view": "373s-ayzu"
+   },
+   "2020": {
+    "county_view": "dv4u-3x3q",
+    "tract_view": "4ai3-zynv"
+   }
+  },
+  "excluded_note": "Rows for (measure, year) pairs a newer release also publishes are skipped and counted; one value per data year, newest release wins. State and national rows are not stored."
+ },
+ "sources": [
+  {
+   "role": "places2024_county",
+   "url": "https://data.cdc.gov/resource/fu4u-a9bh.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2024_county.csv"
+  },
+  {
+   "role": "places2024_tract",
+   "url": "https://data.cdc.gov/resource/ai6z-tcin.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2024_tract.csv"
+  },
+  {
+   "role": "places2023_county",
+   "url": "https://data.cdc.gov/resource/h3ej-a9ec.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2023_county.csv"
+  },
+  {
+   "role": "places2023_tract",
+   "url": "https://data.cdc.gov/resource/em5e-5hvn.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2023_tract.csv"
+  },
+  {
+   "role": "places2022_county",
+   "url": "https://data.cdc.gov/resource/duw2-7jbt.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2022_county.csv"
+  },
+  {
+   "role": "places2022_tract",
+   "url": "https://data.cdc.gov/resource/nw2y-v4gm.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2022_tract.csv"
+  },
+  {
+   "role": "places2021_county",
+   "url": "https://data.cdc.gov/resource/pqpp-u99h.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2021_county.csv"
+  },
+  {
+   "role": "places2021_tract",
+   "url": "https://data.cdc.gov/resource/373s-ayzu.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2021_tract.csv"
+  },
+  {
+   "role": "places2020_county",
+   "url": "https://data.cdc.gov/resource/dv4u-3x3q.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2020_county.csv"
+  },
+  {
+   "role": "places2020_tract",
+   "url": "https://data.cdc.gov/resource/4ai3-zynv.csv",
+   "socrata_paged": true,
+   "page_size": 50000,
+   "params": {
+    "$select": "year,stateabbr,locationname,measureid,datavaluetypeid,data_value,low_confidence_limit,high_confidence_limit,data_value_footnote_symbol,data_value_footnote,locationid,countyfips,countyname",
+    "$where": "datavaluetypeid='CrdPrv' AND measureid in('ACCESS2','BPHIGH','CASTHMA','CHD','CHECKUP','COPD','CSMOKING','DENTAL','DEPRESSION','DIABETES','MHLTH','OBESITY','STROKE')"
+   },
+   "filename": "places2020_tract.csv"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "dental_crudeprev",
+   "label": "Visited dentist or dental clinic in the past year",
+   "current_period": "2022",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "DENTAL",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "DENTAL",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "access2_crudeprev",
+   "label": "Current lack of health insurance",
+   "current_period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "ACCESS2",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "ACCESS2",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "ACCESS2",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "ACCESS2",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "ACCESS2",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "diabetes_crudeprev",
+   "label": "Diagnosed diabetes",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "DIABETES",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "DIABETES",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "DIABETES",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "DIABETES",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "DIABETES",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "bphigh_crudeprev",
+   "label": "High blood pressure",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "BPHIGH",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "BPHIGH",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2017",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2017 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "BPHIGH",
+      "year": "2017"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "obesity_crudeprev",
+   "label": "Obesity",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "OBESITY",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "OBESITY",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "OBESITY",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "OBESITY",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "OBESITY",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "chd_crudeprev",
+   "label": "Coronary heart disease",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "CHD",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "CHD",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "CHD",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "CHD",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "CHD",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "stroke_crudeprev",
+   "label": "Stroke",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "STROKE",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "STROKE",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "STROKE",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "STROKE",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "STROKE",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "copd_crudeprev",
+   "label": "Chronic obstructive pulmonary disease (COPD)",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "COPD",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "COPD",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "COPD",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "COPD",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "COPD",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "casthma_crudeprev",
+   "label": "Current asthma",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "CASTHMA",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "CASTHMA",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "CASTHMA",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "CASTHMA",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "CASTHMA",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "depression_crudeprev",
+   "label": "Depression",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "DEPRESSION",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "DEPRESSION",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "DEPRESSION",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "DEPRESSION",
+      "year": "2019"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "mhlth_crudeprev",
+   "label": "Frequent mental distress",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "MHLTH",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "MHLTH",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "MHLTH",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "MHLTH",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "MHLTH",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "csmoking_crudeprev",
+   "label": "Current cigarette smoking",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "CSMOKING",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "CSMOKING",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "CSMOKING",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "CSMOKING",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "CSMOKING",
+      "year": "2018"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "checkup_crudeprev",
+   "label": "Routine checkup within the past year",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "county": "2024",
+      "tract": "2024"
+     },
+     "note": "PLACES 2024 release, modeled from BRFSS 2022 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution.",
+     "locator": {
+      "release": "2024",
+      "measureid": "CHECKUP",
+      "year": "2022"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2023 release, modeled from BRFSS 2021 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2023",
+      "measureid": "CHECKUP",
+      "year": "2021"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2022 release, modeled from BRFSS 2020 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2022",
+      "measureid": "CHECKUP",
+      "year": "2020"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2021 release, modeled from BRFSS 2019 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts.",
+     "locator": {
+      "release": "2021",
+      "measureid": "CHECKUP",
+      "year": "2019"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "county": "2020",
+      "tract": "2019"
+     },
+     "note": "PLACES 2020 release, modeled from BRFSS 2018 data. CDC notes that estimates from different PLACES releases can differ because methods and inputs change; compare with caution. Counties use Connecticut's eight former counties; tracts are 2010 Census tracts. This release's county file has no FIPS codes; county codes are taken from the same release's tract file.",
+     "locator": {
+      "release": "2020",
+      "measureid": "CHECKUP",
+      "year": "2018"
+     }
+    }
+   ]
+  }
+ ]
+}
