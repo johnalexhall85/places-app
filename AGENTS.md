@@ -38,3 +38,13 @@ The [MCP plan](docs/mcp/PLAN.md) and the [tool contract](docs/mcp/TOOL_CONTRACT.
 - Codex and Antigravity **do not commit, push, merge, deploy, or use sudo**. They leave their changes uncommitted in their own worktree, update their status file, and stop. Claude commits after review.
 - The MCP server reads data only through `app.area_pilot.lookup`, `app.routers.search.search_counties`, and `app/community/topics.json`. It writes nothing. AHRF is not exposed.
 - Headless runs record their diary facts in the status file. Claude adds the diary entry when it commits.
+
+## Historical periods: three-agent ownership (from 2026-11-17)
+
+The [history plan](docs/history/PLAN.md) and [source specification](docs/history/SOURCES.md) govern the work that adds earlier periods to the `/area/*` maps and the MCP server. Claude manages it as for the MCP server: it writes task files in `docs/history/tasks/`, dispatches Codex and Antigravity with `chip-dispatch`, reviews, commits, merges to `beta`, and deploys staging. Read your task file and the files in [docs/history/status](docs/history/status/) first.
+
+- **Claude Code owns** everything under `backend/app/area_pilot/**` except the parser paths below, `backend/alembic/**`, `infra/**`, `docs/history/**` (except the other agents' status files), and the handbook. Claude runs every ingest and publication.
+- **Antigravity owns** `backend/app/area_pilot/history/parsers/**`, `backend/tests/test_history_parsers_*`, and `docs/history/status/antigravity.md`, as well as its MCP evaluation paths. Its parsers read only source files that Claude has archived and fixtures that Claude provides; they make no network calls and write no database rows.
+- **Codex owns** `frontend/**`, `backend/app/mcp_server/**`, `backend/tests/test_mcp_*`, and `docs/history/status/codex.md`.
+- County, state, and district profiles must not change: `backend/app/community/**` keeps calling the current-period lookup functions, and the `docs/beta/contract-examples` snapshots stay byte-identical.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo. AHRF history is not exposed by the MCP server.
