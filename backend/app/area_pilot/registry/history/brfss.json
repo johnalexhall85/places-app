@@ -1,0 +1,1556 @@
+{
+ "dataset_id": "cdc_brfss_state_prevalence:history",
+ "current_dataset_id": "cdc_brfss_state_prevalence",
+ "product": "brfss",
+ "parser": "brfss",
+ "auto_publish": false,
+ "name": "CDC BRFSS state prevalence, earlier years",
+ "publisher": "Centers for Disease Control and Prevention",
+ "source_release_id": "BRFSS Prevalence Data (2011 to present), dttw-5yxu, years 2017-2022",
+ "levels": [
+  "state"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "not_available"
+ ],
+ "null_statuses": [
+  "not_available"
+ ],
+ "uncertainty_kind": "ci95",
+ "unmatched_tolerance": {
+  "state": 1
+ },
+ "selection": {
+  "source_filters": {
+   "break_out": "Overall",
+   "data_value_type": "Crude Prevalence",
+   "data_value_unit": "%",
+   "datasource": "BRFSS"
+  },
+  "expected_locations": {
+   "2017": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "12": "FL",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "34": "NJ",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   },
+   "2018": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "12": "FL",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "34": "NJ",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   },
+   "2019": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "12": "FL",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   },
+   "2020": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "12": "FL",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "34": "NJ",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   },
+   "2021": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "34": "NJ",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "78": "VI",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   },
+   "2022": {
+    "08": "CO",
+    "24": "MD",
+    "46": "SD",
+    "56": "WY",
+    "30": "MT",
+    "05": "AR",
+    "33": "NH",
+    "50": "VT",
+    "35": "NM",
+    "28": "MS",
+    "98": "UW",
+    "04": "AZ",
+    "20": "KS",
+    "22": "LA",
+    "72": "PR",
+    "47": "TN",
+    "13": "GA",
+    "40": "OK",
+    "36": "NY",
+    "51": "VA",
+    "42": "PA",
+    "53": "WA",
+    "55": "WI",
+    "99": "US",
+    "66": "GU",
+    "29": "MO",
+    "12": "FL",
+    "38": "ND",
+    "48": "TX",
+    "09": "CT",
+    "34": "NJ",
+    "11": "DC",
+    "19": "IA",
+    "15": "HI",
+    "32": "NV",
+    "31": "NE",
+    "39": "OH",
+    "78": "VI",
+    "21": "KY",
+    "25": "MA",
+    "27": "MN",
+    "18": "IN",
+    "02": "AK",
+    "17": "IL",
+    "37": "NC",
+    "26": "MI",
+    "41": "OR",
+    "49": "UT",
+    "23": "ME",
+    "54": "WV",
+    "10": "DE",
+    "45": "SC",
+    "01": "AL",
+    "44": "RI",
+    "16": "ID",
+    "06": "CA"
+   }
+  },
+  "median_locations": {
+   "98": "All States and DC (median)",
+   "99": "All States, DC and Territories (median)"
+  },
+  "source_only_locations": {
+   "66": "Guam",
+   "78": "Virgin Islands"
+  },
+  "excluded_note": "Median rows (98, 99) and territories without a CHIP boundary (66, 78) are counted per year in evidence and not stored. A (measure, year, state) with no CDC row is not stored; the map shows it as not published."
+ },
+ "sources": [
+  {
+   "role": "brfss_csv",
+   "url": "https://data.cdc.gov/resource/dttw-5yxu.csv",
+   "socrata_paged": true,
+   "page_size": 20000,
+   "params": {
+    "$where": "break_out='Overall' AND ((year='2022' AND questionid='DIABETE4' AND responseid='RESP046') OR (year='2021' AND questionid='DIABETE4' AND responseid='RESP046') OR (year='2020' AND questionid='DIABETE4' AND responseid='RESP046') OR (year='2019' AND questionid='DIABETE4' AND responseid='RESP046') OR (year='2018' AND questionid='DIABETE3' AND responseid='RESP046') OR (year='2021' AND questionid='_RFHYPE6' AND responseid='RESP046') OR (year='2019' AND questionid='_RFHYPE5' AND responseid='RESP046') OR (year='2017' AND questionid='_RFHYPE5' AND responseid='RESP046') OR (year='2022' AND questionid='_BMI5CAT' AND responseid='RESP039') OR (year='2021' AND questionid='_BMI5CAT' AND responseid='RESP039') OR (year='2020' AND questionid='_BMI5CAT' AND responseid='RESP039') OR (year='2019' AND questionid='_BMI5CAT' AND responseid='RESP039') OR (year='2018' AND questionid='_BMI5CAT' AND responseid='RESP039') OR (year='2022' AND questionid='CVDCRHD4' AND responseid='RESP046') OR (year='2021' AND questionid='CVDCRHD4' AND responseid='RESP046') OR (year='2020' AND questionid='CVDCRHD4' AND responseid='RESP046') OR (year='2019' AND questionid='CVDCRHD4' AND responseid='RESP046') OR (year='2018' AND questionid='CVDCRHD4' AND responseid='RESP046') OR (year='2022' AND questionid='CVDSTRK3' AND responseid='RESP046') OR (year='2021' AND questionid='CVDSTRK3' AND responseid='RESP046') OR (year='2020' AND questionid='CVDSTRK3' AND responseid='RESP046') OR (year='2019' AND questionid='CVDSTRK3' AND responseid='RESP046') OR (year='2018' AND questionid='CVDSTRK3' AND responseid='RESP046') OR (year='2022' AND questionid='CHCCOPD3' AND responseid='RESP046') OR (year='2021' AND questionid='CHCCOPD3' AND responseid='RESP046') OR (year='2020' AND questionid='CHCCOPD2' AND responseid='RESP046') OR (year='2019' AND questionid='CHCCOPD2' AND responseid='RESP046') OR (year='2018' AND questionid='CHCCOPD1' AND responseid='RESP046') OR (year='2022' AND questionid='_CASTHM1' AND responseid='RESP046') OR (year='2021' AND questionid='_CASTHM1' AND responseid='RESP046') OR (year='2020' AND questionid='_CASTHM1' AND responseid='RESP046') OR (year='2019' AND questionid='_CASTHM1' AND responseid='RESP046') OR (year='2018' AND questionid='_CASTHM1' AND responseid='RESP046') OR (year='2022' AND questionid='ADDEPEV3' AND responseid='RESP046') OR (year='2021' AND questionid='ADDEPEV3' AND responseid='RESP046') OR (year='2020' AND questionid='ADDEPEV3' AND responseid='RESP046') OR (year='2019' AND questionid='ADDEPEV3' AND responseid='RESP046') OR (year='2018' AND questionid='ADDEPEV2' AND responseid='RESP046') OR (year='2022' AND questionid='_MENT14D' AND responseid='RESP224') OR (year='2021' AND questionid='_MENT14D' AND responseid='RESP224') OR (year='2020' AND questionid='_MENT14D' AND responseid='RESP224') OR (year='2019' AND questionid='_MENT14D' AND responseid='RESP224') OR (year='2022' AND questionid='_RFSMOK3' AND responseid='RESP046') OR (year='2021' AND questionid='_RFSMOK3' AND responseid='RESP046') OR (year='2020' AND questionid='_RFSMOK3' AND responseid='RESP046') OR (year='2019' AND questionid='_RFSMOK3' AND responseid='RESP046') OR (year='2018' AND questionid='_RFSMOK3' AND responseid='RESP046') OR (year='2022' AND questionid='CHECKUP1' AND responseid='RESP063') OR (year='2021' AND questionid='CHECKUP1' AND responseid='RESP063') OR (year='2020' AND questionid='CHECKUP1' AND responseid='RESP063') OR (year='2019' AND questionid='CHECKUP1' AND responseid='RESP063') OR (year='2018' AND questionid='CHECKUP1' AND responseid='RESP063') OR (year='2022' AND questionid='_HCVU652' AND responseid='RESP234') OR (year='2021' AND questionid='_HCVU652' AND responseid='RESP234') OR (year='2020' AND questionid='_DENVST3' AND responseid='RESP046') OR (year='2018' AND questionid='_DENVST3' AND responseid='RESP046') OR (year='2022' AND questionid='_RFBING6' AND responseid='RESP046') OR (year='2021' AND questionid='_RFBING5' AND responseid='RESP046') OR (year='2020' AND questionid='_RFBING5' AND responseid='RESP046') OR (year='2019' AND questionid='_RFBING5' AND responseid='RESP046') OR (year='2018' AND questionid='_RFBING5' AND responseid='RESP046') OR (year='2022' AND questionid='_TOTINDA' AND responseid='RESP054') OR (year='2021' AND questionid='_TOTINDA' AND responseid='RESP054') OR (year='2020' AND questionid='_TOTINDA' AND responseid='RESP054') OR (year='2019' AND questionid='_TOTINDA' AND responseid='RESP054') OR (year='2018' AND questionid='_TOTINDA' AND responseid='RESP054') OR (year='2022' AND questionid='_RFHLTH' AND responseid='RESP062') OR (year='2021' AND questionid='_RFHLTH' AND responseid='RESP062') OR (year='2020' AND questionid='_RFHLTH' AND responseid='RESP062') OR (year='2019' AND questionid='_RFHLTH' AND responseid='RESP062') OR (year='2018' AND questionid='_RFHLTH' AND responseid='RESP062') OR (year='2022' AND questionid='_PHYS14D' AND responseid='RESP221') OR (year='2021' AND questionid='_PHYS14D' AND responseid='RESP221') OR (year='2020' AND questionid='_PHYS14D' AND responseid='RESP221') OR (year='2019' AND questionid='_PHYS14D' AND responseid='RESP221') OR (year='2022' AND questionid='_DRDXAR2' AND responseid='RESP046') OR (year='2021' AND questionid='_DRDXAR3' AND responseid='RESP046') OR (year='2020' AND questionid='_DRDXAR2' AND responseid='RESP046') OR (year='2019' AND questionid='_DRDXAR2' AND responseid='RESP046') OR (year='2018' AND questionid='_DRDXAR1' AND responseid='RESP046') OR (year='2022' AND questionid='CHCKDNY2' AND responseid='RESP046') OR (year='2021' AND questionid='CHCKDNY2' AND responseid='RESP046') OR (year='2020' AND questionid='CHCKDNY2' AND responseid='RESP046') OR (year='2019' AND questionid='CHCKDNY2' AND responseid='RESP046') OR (year='2018' AND questionid='CHCKDNY1' AND responseid='RESP046') OR (year='2022' AND questionid='MEDCOST1' AND responseid='RESP046') OR (year='2021' AND questionid='MEDCOST1' AND responseid='RESP046'))"
+   }
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "diabetes",
+   "label": "Diagnosed diabetes",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "DIABETE4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "DIABETE4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "DIABETE4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "DIABETE4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable DIABETE3 (current year uses DIABETE4); same published question and response.",
+     "locator": {
+      "question_id": "DIABETE3",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "high_blood_pressure",
+   "label": "High blood pressure",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFHYPE6",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFHYPE5 (current year uses _RFHYPE6); same published question and response.",
+     "locator": {
+      "question_id": "_RFHYPE5",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2017",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFHYPE5 (current year uses _RFHYPE6); same published question and response.",
+     "locator": {
+      "question_id": "_RFHYPE5",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "obesity",
+   "label": "Obesity",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_BMI5CAT",
+      "response_id": "RESP039"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_BMI5CAT",
+      "response_id": "RESP039"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_BMI5CAT",
+      "response_id": "RESP039"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_BMI5CAT",
+      "response_id": "RESP039"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_BMI5CAT",
+      "response_id": "RESP039"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "coronary_heart_disease",
+   "label": "Coronary heart disease",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDCRHD4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDCRHD4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "CVDCRHD4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDCRHD4",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDCRHD4",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "stroke",
+   "label": "Stroke",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDSTRK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDSTRK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "CVDSTRK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDSTRK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CVDSTRK3",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "copd",
+   "label": "Chronic obstructive pulmonary disease (COPD)",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHCCOPD3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHCCOPD3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable CHCCOPD2 (current year uses CHCCOPD3); same published question and response. 2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "CHCCOPD2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable CHCCOPD2 (current year uses CHCCOPD3); same published question and response.",
+     "locator": {
+      "question_id": "CHCCOPD2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable CHCCOPD1 (current year uses CHCCOPD3); same published question and response.",
+     "locator": {
+      "question_id": "CHCCOPD1",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "current_asthma",
+   "label": "Current asthma",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_CASTHM1",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_CASTHM1",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_CASTHM1",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_CASTHM1",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_CASTHM1",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "depression",
+   "label": "Depression",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "ADDEPEV3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "ADDEPEV3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "ADDEPEV3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "ADDEPEV3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable ADDEPEV2 (current year uses ADDEPEV3); same published question and response.",
+     "locator": {
+      "question_id": "ADDEPEV2",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "frequent_mental_distress",
+   "label": "Frequent mental distress",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_MENT14D",
+      "response_id": "RESP224"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_MENT14D",
+      "response_id": "RESP224"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_MENT14D",
+      "response_id": "RESP224"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_MENT14D",
+      "response_id": "RESP224"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "current_smoking",
+   "label": "Current cigarette smoking",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFSMOK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFSMOK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_RFSMOK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFSMOK3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFSMOK3",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "routine_checkup",
+   "label": "Routine checkup within the past year",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHECKUP1",
+      "response_id": "RESP063"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHECKUP1",
+      "response_id": "RESP063"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "CHECKUP1",
+      "response_id": "RESP063"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHECKUP1",
+      "response_id": "RESP063"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHECKUP1",
+      "response_id": "RESP063"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "uninsured_18_64",
+   "label": "Current lack of health insurance",
+   "current_period": "2023",
+   "population": "adults aged 18-64",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _HCVU652 (current year uses _HCVU653); same published question and response.",
+     "locator": {
+      "question_id": "_HCVU652",
+      "response_id": "RESP234"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _HCVU652 (current year uses _HCVU653); same published question and response.",
+     "locator": {
+      "question_id": "_HCVU652",
+      "response_id": "RESP234"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "dental_visit",
+   "label": "Visited dentist or dental clinic in the past year",
+   "current_period": "2022",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_DENVST3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_DENVST3",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "binge_drinking",
+   "label": "Binge drinking",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFBING6",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFBING5 (current year uses _RFBING6); same published question and response.",
+     "locator": {
+      "question_id": "_RFBING5",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFBING5 (current year uses _RFBING6); same published question and response. 2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_RFBING5",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFBING5 (current year uses _RFBING6); same published question and response.",
+     "locator": {
+      "question_id": "_RFBING5",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _RFBING5 (current year uses _RFBING6); same published question and response.",
+     "locator": {
+      "question_id": "_RFBING5",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "no_leisure_physical_activity",
+   "label": "No leisure-time physical activity",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_TOTINDA",
+      "response_id": "RESP054"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_TOTINDA",
+      "response_id": "RESP054"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_TOTINDA",
+      "response_id": "RESP054"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_TOTINDA",
+      "response_id": "RESP054"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_TOTINDA",
+      "response_id": "RESP054"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "fair_or_poor_health",
+   "label": "Fair or poor self-rated health",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFHLTH",
+      "response_id": "RESP062"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFHLTH",
+      "response_id": "RESP062"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_RFHLTH",
+      "response_id": "RESP062"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFHLTH",
+      "response_id": "RESP062"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_RFHLTH",
+      "response_id": "RESP062"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "frequent_physical_distress",
+   "label": "Frequent physical distress",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_PHYS14D",
+      "response_id": "RESP221"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_PHYS14D",
+      "response_id": "RESP221"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_PHYS14D",
+      "response_id": "RESP221"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_PHYS14D",
+      "response_id": "RESP221"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "arthritis",
+   "label": "Arthritis",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_DRDXAR2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _DRDXAR3 (current year uses _DRDXAR2); same published question and response.",
+     "locator": {
+      "question_id": "_DRDXAR3",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "_DRDXAR2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "_DRDXAR2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable _DRDXAR1 (current year uses _DRDXAR2); same published question and response.",
+     "locator": {
+      "question_id": "_DRDXAR1",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "kidney_disease",
+   "label": "Kidney disease",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHCKDNY2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHCKDNY2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2020",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "2020 interviews were affected by the COVID-19 pandemic; CDC notes possible effects on response.",
+     "locator": {
+      "question_id": "CHCKDNY2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2019",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "CHCKDNY2",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2018",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "CDC variable CHCKDNY1 (current year uses CHCKDNY2); same published question and response.",
+     "locator": {
+      "question_id": "CHCKDNY1",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "cost_barrier_to_care",
+   "label": "Could not see a doctor because of cost",
+   "current_period": "2023",
+   "population": "adults",
+   "value_type": "crude_prevalence",
+   "uncertainty_kind": "ci95",
+   "periods": [
+    {
+     "period": "2022",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "MEDCOST1",
+      "response_id": "RESP046"
+     }
+    },
+    {
+     "period": "2021",
+     "boundary_vintage": {
+      "state": "2024"
+     },
+     "note": "Same CDC question and response as the current year.",
+     "locator": {
+      "question_id": "MEDCOST1",
+      "response_id": "RESP046"
+     }
+    }
+   ]
+  }
+ ]
+}

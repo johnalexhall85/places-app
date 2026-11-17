@@ -1,0 +1,159 @@
+{
+ "dataset_id": "usda_ers_food_environment_atlas:history",
+ "current_dataset_id": "usda_ers_food_environment_atlas",
+ "product": "usda_fea",
+ "parser": "usda_fea",
+ "auto_publish": false,
+ "name": "USDA ERS Food Environment Atlas, earlier years",
+ "publisher": "U.S. Department of Agriculture, Economic Research Service (ERS)",
+ "source_release_id": "Food Environment Atlas July 2025 CSV, earlier-year variables",
+ "levels": [
+  "county"
+ ],
+ "statuses": [
+  "available",
+  "true_zero",
+  "not_available",
+  "did_not_exist"
+ ],
+ "null_statuses": [
+  "not_available",
+  "did_not_exist"
+ ],
+ "uncertainty_kind": "none",
+ "unmatched_tolerance": {
+  "county": 20
+ },
+ "selection": {
+  "expected_values_header": [
+   "FIPS",
+   "State",
+   "County",
+   "Variable_Code",
+   "Value"
+  ],
+  "sentinels": {
+   "-9999": "not_available",
+   "N/A": "not_available",
+   "": "not_available",
+   "-8888": "did_not_exist"
+  },
+  "excluded_note": "State and national rows (FIPS ending 000) are not county values and are counted in evidence, not stored. Any other non-5-digit FIPS is a parse error."
+ },
+ "sources": [
+  {
+   "role": "values_csv",
+   "archived_path": "usda_food_environment_atlas/051e1926-88c6-4a87-a748-482b710e2748/StateAndCountyData.csv",
+   "sha256": "03aa52c9b2069dabab9e03467ad59df5811c5710d78bc2d589dc573fa1feefcd",
+   "url": "https://www.ers.usda.gov/media/5570/food-environment-atlas-csv-files.zip?v=40916"
+  },
+  {
+   "role": "variables_csv",
+   "archived_path": "usda_food_environment_atlas/051e1926-88c6-4a87-a748-482b710e2748/VariableList.csv",
+   "sha256": "3844f6a0c6b5d914f49665f36a712c89f47891419eb35b3f4fe5d466f54ce59f",
+   "url": "https://www.ers.usda.gov/media/5570/food-environment-atlas-csv-files.zip?v=40916"
+  }
+ ],
+ "measures": [
+  {
+   "measure_id": "low_income_low_access_pct",
+   "label": "Low-income residents with low supermarket access (share of all residents)",
+   "current_period": "2019",
+   "population": "total county population",
+   "value_type": "published_county_value",
+   "periods": [
+    {
+     "period": "2015",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "Based on 2015 store locations (ERS low-income, low-access tracts, 2015). Connecticut is shown as its eight former counties, as USDA publishes it.",
+     "locator": {
+      "variable_code": "PCT_LACCESS_LOWI15",
+      "variable_name": "Low income & low access to store (%), 2015"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "snap_stores_per_1000",
+   "label": "SNAP-authorized stores per 1,000 residents",
+   "current_period": "2023",
+   "population": "county residents",
+   "value_type": "published_county_value",
+   "periods": [
+    {
+     "period": "2017",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "Average monthly SNAP-authorized stores in 2017. Connecticut is shown as its eight former counties, as USDA publishes it.",
+     "locator": {
+      "variable_code": "SNAPSPTH17",
+      "variable_name": "SNAP-authorized stores/1,000 pop, 2017"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "wic_stores_per_1000",
+   "label": "WIC-authorized stores per 1,000 residents",
+   "current_period": "2022",
+   "population": "county residents",
+   "value_type": "published_county_value",
+   "periods": [
+    {
+     "period": "2016",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "WIC-authorized stores counted in 2016. Connecticut is shown as its eight former counties, as USDA publishes it.",
+     "locator": {
+      "variable_code": "WICSPTH16",
+      "variable_name": "WIC-authorized stores/1,000 pop, 2016"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "farmers_markets_per_1000",
+   "label": "Farmers' markets per 1,000 residents",
+   "current_period": "2018",
+   "population": "county residents",
+   "value_type": "published_county_value",
+   "periods": [
+    {
+     "period": "2013",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "Markets listed in the voluntary 2013 directory. Connecticut is shown as its eight former counties, as USDA publishes it. Before the 2015–2019 county changes in Alaska and South Dakota, some codes have no 2020 shape and are listed in the table only.",
+     "locator": {
+      "variable_code": "FMRKTPTH13",
+      "variable_name": "Farmers' markets/1,000 pop, 2013"
+     }
+    }
+   ]
+  },
+  {
+   "measure_id": "no_car_low_access_households_pct",
+   "label": "Housing units with no car and low supermarket access",
+   "current_period": "2019",
+   "population": "county housing units",
+   "value_type": "published_county_value",
+   "periods": [
+    {
+     "period": "2015",
+     "boundary_vintage": {
+      "county": "2020"
+     },
+     "note": "Based on 2015 store locations (ERS low-income, low-access tracts, 2015). Connecticut is shown as its eight former counties, as USDA publishes it.",
+     "locator": {
+      "variable_code": "PCT_LACCESS_HHNV15",
+      "variable_name": "Households, no car & low access to store (%), 2015"
+     }
+    }
+   ]
+  }
+ ]
+}
