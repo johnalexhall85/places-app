@@ -4,9 +4,16 @@ Updated at the end of each task. Claude reads this file before reviewing.
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| H4c legend colour note | Implemented, uncommitted; awaiting Claude review | `codex/history` | Historical maps show the loaded legend's `colour_note`; no colour sentence is shown before the legend loads or for the latest year. PLACES per-year and ACS community fixed-break notes have assertions. Frontend 169/169 tests, Vite build, and `git diff --check` passed. |
 | H4b year-aware map copy | Implemented, uncommitted; awaiting Claude review | `codex/history` | `frontend/src/pages/Places2025Pilot.jsx` and `Places2025Pilot.test.jsx`: USDA limitations and Connecticut status legend follow the selected county boundary; older USDA views omit current-year variable/source text; singular unmatched-boundary count, PLACES heading, and CMS nominal-dollar year follow the selected period. Frontend 169/169 tests and Vite build passed; `git diff --check` clean. |
 | H5 MCP Amendment 2 | Implemented, uncommitted; awaiting Claude review | `codex/history` | Eight tools, optional period selection, period notes and citations, history sources, one-area series, catalog periods, and source period lists. MCP tests 23/23; staging CMS and unavailable BRFSS checks passed. The old M3 evaluator needs H6 contract updates. |
 | H4 year dropdown on `/area/*` | Implemented, uncommitted; awaiting Claude review and staging history publication | `codex/history` | `frontend/src/pages/Places2025Pilot.jsx` and `Places2025Pilot.test.jsx`: period and release selection, URL state, request/cache/shape keys, period-aware labels and notes, geography fallback, selected GEOID across years. 167/167 frontend tests, Vite build, and `git diff --check` passed. |
+
+## H4c diary facts — 2026-11-17T21:12:43+00:00
+
+- **Objective and outcome:** Replaced the hard-coded historical map colour caution with `legend.colour_note`, shown only after the selected legend is ready. The latest year continues to omit the history note. Tests cover PLACES per-year classes, ACS community fixed breaks, and the loading state.
+- **Files and verification:** Changed `frontend/src/pages/Places2025Pilot.jsx`, `Places2025Pilot.test.jsx`, and this status file. `npm test` passed 169/169 across 23 files; `npm run build` passed with the existing large-chunk warning; focused map tests passed 35/35; `git diff --check` passed. The first full run exposed a cache collision in a test fixture; moving the fixed-break assertion to the existing ACS community test resolved it. A focused run then needed an asynchronous assertion for the legend load; the final focused and full runs passed.
+- **Publication and next action:** No dataset, release, migration, database, service, staging or live deployment, commit, or push changed. Claude should review and verify the rendered notes in the signed-in staging walkthrough. The project diary and handbook were not edited because H4c restricts Codex writes to `frontend/**` and this status file; fold these facts into Claude-owned documents after review.
 
 ## H4b diary facts — 2026-11-17T18:32:00+00:00
 

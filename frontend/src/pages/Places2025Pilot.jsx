@@ -739,7 +739,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           {!periodEntry?.current && <div className="pilot-history-notes">
             {periodEntry?.note && <p>{periodEntry.note}</p>}
             {(periodEntry?.boundary_vintage?.[geography] || legend?.boundary_vintage) && <p>Boundary: {periodEntry?.boundary_vintage?.[geography] || legend?.boundary_vintage}.</p>}
-            <p>Colour classes are for this year only; compare values, not colours.</p>
+            {ready && legend?.colour_note && <p>{legend.colour_note}</p>}
             {ready && Number(legend?.published_without_boundary) > 0 && <p>{legend.published_without_boundary} {Number(legend.published_without_boundary) === 1 ? "area published for this year has" : "areas published for this year have"} no matching boundary and {Number(legend.published_without_boundary) === 1 ? "is" : "are"} not drawn.</p>}
           </div>}
           {ready && legend && isBrfss ? <>
