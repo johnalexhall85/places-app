@@ -2,6 +2,21 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T16:55:00+00:00 — "Use CHIP in your AI assistant" page promoted to live (Claude)
+
+- **Approval:** John reviewed `/ai` on staging ("looks great") and approved promotion.
+- **Built:** Codex M6 and M6b. The `/ai` page has a copyable connector URL (`https://mcp.publicdataobservatory.org`), Claude and ChatGPT setup steps, coverage, and interpretation rules, and is linked from the header and About. README section added. Frontend 160 tests passed (rerun by Claude).
+- **Also live:** the bare production host is an MCP endpoint (Nginx `location = /` proxies to `/mcp`; a browser GET gets a plain-text note). It was verified with `mcp.Client` against `/`, `/` with trailing slash, and `/mcp`.
+- **Promotion:** application only, frontend.
+  - Rollback pair: `data/deploy-recovery/ai-page-20261117/` (`commit-before.txt` = `35e25c5`, `webroot-before/` with `index-D7zfOmSk.js`).
+  - Commands: `git merge --ff-only beta` (to `66bb495`), `npm run build` with `VITE_API_BASE_URL=/api`, `rsync --delete` to `/var/www/places`.
+  - No backend restart (no backend change), no migration; pointers untouched.
+- **Verification:**
+  - Live and staging bundles are equal (`index-DxwxITqQ.js`).
+  - `/`, `/ai`, `/explore/map`, `/area/places-2025`, and `/api/health` returned 200; the anonymous community catalog returned 401; MCP `/healthz` returned 200.
+  - Signed-in pages on live were not checked by the agent (it has no live access code); John reviewed the same build on staging.
+- **Open:** ChatGPT Developer mode not yet tested against production.
+
 ## 2026-11-17T16:32:00+00:00 — MCP server live at mcp.publicdataobservatory.org (Claude, Gate B)
 
 - **Approval:** John tested the staging connector in Claude ("works perfectly"), added the DNS record for `mcp.publicdataobservatory.org`, and approved Gate B.
