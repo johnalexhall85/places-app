@@ -1,0 +1,32 @@
+#!/bin/bash
+# Watch the agent sessions Claude starts with chip-dispatch.
+#   chip-watch          list sessions and what is running
+#   chip-watch codex    watch Codex (read-only)
+#   chip-watch agy      watch Antigravity (read-only)
+# Leave a session with Ctrl-b then d; the agent keeps running.
+case "${1:-ls}" in
+  codex|chip-codex) s=chip-codex ;;
+  agy|antigravity|chip-agy) s=chip-agy ;;
+  ls|list|"")
+    echo "Agent sessions:"
+    tmux ls 2>/dev/null | grep -E '^chip-(codex|agy):' || echo "  (none)"
+    for s in chip-codex chip-agy; do
+      if tmux has-session -t "$s" 2>/dev/null; then
+        state=$(tmux capture-pane -p -t "$s" -S -200 2>/dev/null | grep -q "=== $s: finished" && echo finished || echo running)
+        echo "  $s: $state   ->  chip-watch ${s#chip-}"
+      fi
+    done
+    exit 0 ;;
+  *) echo "usage: chip-watch [codex|agy|ls]" >&2; exit 2 ;;
+esac
+if tmux has-session -t "$s" 2>/dev/null; then
+  exec tmux attach -r -t "$s"
+fi
+echo "No $s session. Latest log instead (Ctrl-c to stop):"
+if [ "$s" = chip-agy ]; then
+  exec tail -n 40 -f "$(ls -t "$HOME"/.gemini/antigravity-cli/log/cli-*.log | head -1)"
+else
+  f="$(ls -t "$HOME"/.codex/sessions/*/*/*/*.jsonl 2>/dev/null | head -1)"
+  echo "Codex has no session running. Replay the latest one with: ~/.local/bin/codex-cli resume"
+  [ -n "$f" ] && echo "Raw event log: $f"
+fi

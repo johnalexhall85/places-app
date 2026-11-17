@@ -1,0 +1,46 @@
+#!/bin/bash
+# Start a Codex or Antigravity task inside a named tmux session so John can watch it,
+# and block until it finishes (so Claude's background job is notified on completion).
+#   chip-dispatch codex <worktree> <log> "<prompt>"
+#   chip-dispatch agy   <worktree> <log> "<prompt>"
+# Watch:  chip-watch codex   |   chip-watch agy
+set -euo pipefail
+agent="$1"; worktree="$2"; log="$3"; prompt="$4"
+case "$agent" in
+  codex) session=chip-codex
+         cmd=("$HOME/.local/bin/codex-cli" exec -C "$worktree" -s workspace-write
+              -c sandbox_workspace_write.network_access=true -o "$log.final.md" "$prompt") ;;
+  agy)   session=chip-agy
+         cmd=("$HOME/.gemini/bin/agy" --sandbox --mode auto --output-format text -p "$prompt") ;;
+  *) echo "agent must be codex or agy" >&2; exit 2 ;;
+esac
+command -v tmux >/dev/null || { echo "tmux is required" >&2; exit 2; }
+tmux kill-session -t "$session" 2>/dev/null || true
+
+runner="$(mktemp "${TMPDIR:-/tmp}/$session.XXXXXX.sh")"
+{
+  echo '#!/bin/bash'
+  echo "cd $(printf '%q' "$worktree")"
+  echo "echo '=== $session: started '\$(date -u +%FT%TZ)' in $worktree ==='"
+  printf '%q ' "${cmd[@]}"; echo "2>&1 | tee $(printf '%q' "$log")"
+  echo 'rc=${PIPESTATUS[0]}'
+  echo "echo; echo \"=== $session: finished \$(date -u +%FT%TZ), exit \$rc. Window stays open; Ctrl-b d to leave. ===\""
+  echo "echo \$rc > $(printf '%q' "$log.exit")"
+  echo "tmux wait-for -S $session-done"
+  echo 'sleep 86400'
+} > "$runner"
+chmod +x "$runner"
+
+tmux new-session -d -s "$session" -x 200 -y 50 "$runner"
+if [ "$agent" = agy ]; then
+  # Headless agy prints only its final answer, so show its live activity log in a second pane.
+  sleep 3
+  agylog="$(ls -t "$HOME"/.gemini/antigravity-cli/log/cli-*.log 2>/dev/null | head -1)"
+  [ -n "$agylog" ] && tmux split-window -v -t "$session" \
+    "tail -n 20 -f '$agylog' | grep --line-buffered -v -E 'http_helpers|telemetry|Trace:'"
+fi
+echo "Started $session. Watch with: chip-watch ${agent}"
+tmux wait-for "$session-done"
+rc="$(cat "$log.exit" 2>/dev/null || echo 1)"
+rm -f "$runner"
+exit "$rc"
