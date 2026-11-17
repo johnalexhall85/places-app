@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 
 LEVEL_LENGTH = {'state': 2, 'county': 5, 'tract': 11}
 UNCERTAINTY_KINDS = ('ci95', 'moe90', 'none')
-MAX_SCALE = 6          # observation_history numeric(18,6)
+MAX_SCALE = 12         # sanity bound only; observation_history stores unbounded numeric (migration a8c2e6f0d4b1)
 
 
 @dataclass(frozen=True)
