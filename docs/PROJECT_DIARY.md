@@ -2,6 +2,27 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T23:25:00+00:00 — Historical periods promoted to live (Claude, Gate B)
+
+- **Approval:** John said "Push it live" for `beta` `aaaf7ac`, after the staging handover. The runbook was [PROMOTION.md](history/PROMOTION.md).
+- **Recovery set:**
+  - `data/deploy-recovery/history-20261117/`: `commit-before.txt` = `7c8a29f`, `webroot-before/` (`index-CtZcc-GM.js`), `pointers-before.txt` (12), `alembic-before.txt` (`e6b3a8d0f2c5`), `profiles-before.json`.
+  - Private `pg_dump -Fc -n area_pilot` at `/home/john/chip-recovery/20261117T221417Z-history/`: 864 MB; `pg_restore --list` read 264 entries and 38 table-data items.
+- **Commands:**
+  - `git merge --ff-only aaaf7ac`, then `alembic upgrade head` (to `a8c2e6f0d4b1`).
+  - Copied `data/ingest/history/` (2.2 GB) from `chip-claude`. All 18 registry `sha256` pins matched.
+  - `history.boundaries --vintage 2020 --vintage 2019`: county 2020 3,221; tract 2020 85,395; tract 2019 74,001 (equal to staging).
+  - Per product: `fetch-stage-validate`, `review`, and `approve-publish`. A script stopped on any difference from the staging release's semantic, schema, or metadata digest or row count; none differed, including the API-fetched BRFSS, EPA, ACS, and PLACES.
+  - `npm run build` (`VITE_API_BASE_URL=/api`, bundle `index-2Nm0E_1F.js` equal to staging), `rsync --delete` to `/var/www/places`, `systemctl restart places-backend chip-mcp`.
+- **Verification:**
+  - Pointer diff: only the 9 `:history` rows were added.
+  - `profiles-before.json` and the post-restart capture are identical (`lookup.area_values` for 37145, 54039, 06019, district 5401, and state 37).
+  - Local Nginx: `/api/health`, `/`, `/area/cms-gv`, and `/ai` returned 200; the anonymous catalog returned 401. MCP `/healthz` returned 200.
+  - MCP evaluation through `https://mcp.publicdataobservatory.org/mcp`, with expected values from the live database: 54/54 (p50 15 ms). The worktree `.venv-mcp` was used because the production MCP venv has no `pyyaml`, and the report was written to the scratchpad, not the repository.
+- **Observation:** `https://publicdataobservatory.org/` returns an HTTP 403 challenge page to curl, even with a browser user agent. It comes from a front service, not this VM; the VM's Nginx (`server_name _`) answers 200. Not investigated further.
+- **Not verified by the agent:** signed-in map pages on live (no live access code). John should check the Year dropdown on live.
+- **Next:** John checks the live maps.
+
 ## 2026-11-17T21:35:00+00:00 — Historical periods complete on staging; awaiting Gate A (Claude)
 
 - **Request:** John asked for earlier years on every `/area/*` map (Year dropdown) and for the AI assistant, without changing profiles. Plan approved 2026-11-17; Antigravity wrote the parsers (H2a–i) and MCP eval questions (H6), Codex the Year dropdown (H4, H4b, H4c) and MCP Amendment 2 (H5); Claude did sources, schema, store, read layer, review, ingest, and deploy.
