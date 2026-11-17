@@ -1,0 +1,22 @@
+"""Public MCP policy, shared by all seven tools."""
+import os
+
+PUBLIC_PRODUCTS = frozenset({'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea'})
+FACILITY_PRODUCTS = ('health_centers', 'nursing_homes', 'tri_facilities')
+LEVELS = {'state': 2, 'county': 5, 'tract': 11, 'cd': 4}
+RULES = (
+    'Values are published by the named source for exactly the area shown; CHIP never adds, averages, or derives values across areas.',
+    'A missing, suppressed, or not-published value is not zero; read `status_text`.',
+    'Each value has its own period, population, and source; do not treat different periods or populations as directly comparable without saying so.',
+    'Medicare (cms_gv) measures describe Original Medicare beneficiaries, not all residents.',
+    "TRI facilities are facilities that report to EPA's Toxics Release Inventory; reporting does not mean a release, a violation, or a health risk.",
+    'Each measure has one published period in CHIP; there is no time series.',
+)
+ORDER_WARNING = ('Order is by point estimate. Where uncertainty ranges overlap, the difference may not be meaningful. '
+                 'This is a list of one published measure, not a ranking of overall health.')
+MAX_BYTES = 60_000
+MAX_ROWS = 400
+
+
+def allowed_hosts():
+    return [item.strip() for item in os.getenv('CHIP_MCP_ALLOWED_HOSTS', '127.0.0.1:*,localhost:*').split(',') if item.strip()]
