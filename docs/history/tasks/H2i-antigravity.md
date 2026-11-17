@@ -2,7 +2,7 @@
 
 Follow [H2-antigravity.md](H2-antigravity.md). Product key `clh`.
 
-- **Registry:** `backend/app/area_pilot/registry/history/clh.json`. It has 5 measures and file years 2018–2022.
+- **Registry:** `backend/app/area_pilot/registry/history/clh.json.draft` (renamed to `clh.json` by Claude once every download is checksummed; load it in tests with `json.load` and build `_index` as `registry.load_history_registry` does). It has 5 measures and file years 2018–2022.
   - The three `ACS_*` measures are at county and tract level, with ACS-window periods (e.g. `2018–2022`).
   - The two `CCBP_*` measures are county only, with year periods.
   - Locators give `file_year`, `column`, and `label`.
