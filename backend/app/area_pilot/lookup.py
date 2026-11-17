@@ -377,7 +377,8 @@ def county_tract_values(db, county_geoid: str, product: str, measure_id: str) ->
 WITHIN_PARENT = {'state': None, 'county': 'state', 'cd': 'state', 'tract': 'county'}
 
 
-def measure_values_within(db, product: str, measure_id: str, level: str, parent_geoid: str | None = None) -> dict:
+def measure_values_within(db, product: str, measure_id: str, level: str, parent_geoid: str | None = None,
+                          period: str | None = None) -> dict:
     """One measure for every area at `level` inside a parent: all states, the counties or districts
     of one state, or the tracts of one county.
 
@@ -386,7 +387,14 @@ def measure_values_within(db, product: str, measure_id: str, level: str, parent_
     dropped and never zero), and source-only areas such as Connecticut's former counties are kept,
     with `name` None when no current boundary carries them. Rows have the `area_values` shape plus
     `name`, in GEOID order. Nothing is sorted by value, aggregated, or ranked here.
+    `period` (optional) selects an earlier published period; None or the current period reads as before.
     """
+    if period is not None:
+        spec_ = next((s for s in SPECS if s.key == product), None)
+        current_ = spec_.load() if spec_ else None
+        measure_ = current_ and next((m for m in current_['measures'] if m['measure_id'] == measure_id), None)
+        if measure_ and measure_['observation_period'] != period:
+            return history_values_within(db, product, measure_id, level, parent_geoid, period)
     if level not in WITHIN_PARENT:
         raise LookupError_(f'Unsupported level {level!r}; use state, county, tract, or cd')
     parent_level = WITHIN_PARENT[level]
@@ -625,3 +633,171 @@ def brfss_medians(db) -> list[dict]:
                 'uncertainty': {'kind': 'none', 'label': 'CDC publishes this median without a confidence interval'},
                 'release_id': release['release_id'], 'source_release_id': release['source_release_id']})
     return out
+
+
+# --- earlier periods (history releases) --------------------------------------------------------
+# Profiles never call these. Each history value carries its own period, release, boundary vintage,
+# and comparability note; nothing here combines periods or computes a change.
+
+def _history(spec_key: str):
+    from app.area_pilot.history_api import active_release, config_for
+    spec = next((s for s in SPECS if s.key == spec_key), None)
+    if spec is None:
+        raise LookupError_(f'Unknown product {spec_key!r}')
+    current = spec.load()
+    return spec, current, config_for(current['dataset_id']), active_release
+
+
+def measure_periods(db, product: str, measure_id: str) -> list[dict]:
+    """Every published period of one measure, current first, then earlier periods newest first."""
+    from app.area_pilot.history_api import active_release, periods_for
+    spec, current, hconfig, _ = _history(product)
+    measure = next((m for m in current['measures'] if m['measure_id'] == measure_id), None)
+    if measure is None:
+        raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+    release = active_releases(db).get(current['dataset_id'])
+    history = active_release(db, hconfig) if hconfig else None
+    return periods_for(hconfig, measure, release['release_id'] if release else None, history)
+
+
+def _history_period(db, product: str, measure_id: str, period: str):
+    """(spec, current config, history config, measure meta for that period, period spec, history release)."""
+    from app.area_pilot.history_api import active_release
+    spec, current, hconfig, _ = _history(product)
+    measure = next((m for m in current['measures'] if m['measure_id'] == measure_id), None)
+    if measure is None:
+        raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+    entry = hconfig and hconfig['_index'].get((measure_id, period))
+    if not entry or not entry[1].get('available', True):
+        published = [p['period'] for p in measure_periods(db, product, measure_id) if p['available']]
+        raise LookupError_(f'{product}:{measure_id} is not published for {period!r}; '
+                           f'published periods: {", ".join(published)}')
+    release = active_release(db, hconfig)
+    if release is None:
+        raise LookupError_(f'Earlier periods of {product} are not published yet')
+    hmeasure, pspec = entry
+    meta = _measure_meta(spec, current, measure) | {
+        'period': period, 'population': pspec.get('population', hmeasure['population']),
+        'value_type': hmeasure['value_type'], 'levels': hmeasure.get('levels', hconfig['levels'])}
+    rel = {'release_id': str(release['id']), 'source_release_id': release['source_release_id']}
+    return spec, current, hconfig, meta, pspec, rel
+
+
+def _history_row(meta, level, geoid, release, hconfig, pspec, row, spec):
+    from app.area_pilot.history_api import VINTAGE_LABEL
+    adapted = None
+    if row is not None:
+        adapted = {'value': row['value'], 'status': row['status'], 'ci_low': row['low'], 'ci_high': row['high'],
+                   'moe': row['moe'], 'moe_confidence': None, 'moe_annotation': None} | {n: None for n in spec.extra
+                                                                                           if n not in ('ci_low', 'ci_high', 'moe')}
+    out = _row(meta, level, geoid, release, {}, adapted, spec)
+    if row is None and hconfig.get('absent_status'):
+        status = next((s for p, s in hconfig.get('absent_status_by_prefix', {}).items() if geoid.startswith(p)),
+                      hconfig['absent_status'])
+        out |= {'status': status, 'status_text': (getattr(spec.api, 'STATUS_TEXT', None) or {}).get(status)
+                or STATUS_TEXT.get(status, status)}
+    return out | {'boundary_vintage': VINTAGE_LABEL[pspec['boundary_vintage'][level]], 'note': pspec['note'],
+                  'current_period': False}
+
+
+def _history_names(db, level: str, vintage: str, prefix: str = '', geoids: list[str] | None = None) -> dict:
+    from app.area_pilot.history_api import _boundary_sql
+    where = ' AND b.geoid = ANY(:geoids)' if geoids is not None else ' AND b.geoid LIKE :prefix'
+    return {r['geoid']: r['name'] for r in db.execute(text(f'''SELECT b.geoid,b.name
+        FROM {_boundary_sql(level, vintage)} b WHERE true{where}'''),
+        {'level': level, 'vintage': vintage, 'prefix': prefix + '%', 'geoids': geoids}).mappings()}
+
+
+def area_values_for_period(db, level: str, geoids: list[str], period: str, measure_keys: list[tuple[str, str]]) -> dict:
+    """Values of the given (product, measure_id) pairs for one period. The current period is read
+    exactly as `area_values` reads it; an earlier period comes from that product's history release.
+    Pairs with nothing published for `period` or `level` are listed in `unavailable` with a reason."""
+    geoids = _check(level, geoids)
+    values, releases, unavailable = [], {}, []
+    for product, measure_id in measure_keys:
+        spec = next((s for s in SPECS if s.key == product), None)
+        if spec is None:
+            raise LookupError_(f'Unknown product {product!r}')
+        current = spec.load()
+        measure = next((m for m in current['measures'] if m['measure_id'] == measure_id), None)
+        if measure is None:
+            raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+        if measure['observation_period'] == period:
+            result = area_values(db, level, geoids, [product], [measure_id])
+            values += [v | {'current_period': True, 'note': None} for v in result['values']]
+            releases |= result['releases']
+            if not result['values']:
+                unavailable.append({'product': product, 'measure_id': measure_id,
+                                    'reason': f'not published for {level}'})
+            continue
+        try:
+            spec, current, hconfig, meta, pspec, release = _history_period(db, product, measure_id, period)
+        except LookupError_ as exc:
+            unavailable.append({'product': product, 'measure_id': measure_id, 'reason': str(exc)})
+            continue
+        if level not in meta['levels']:
+            unavailable.append({'product': product, 'measure_id': measure_id,
+                                'reason': f'not published for {level} in {period}'})
+            continue
+        rows = {r['geoid']: r for r in db.execute(text(f'''SELECT geoid,value,status,low,high,moe
+            FROM {S}.observation_history WHERE release_id=:release AND level=:level AND measure_id=:measure
+            AND observation_period=:period AND geoid = ANY(:geoids)'''),
+            {'release': release['release_id'], 'level': level, 'measure': measure_id, 'period': period,
+             'geoids': geoids}).mappings()}
+        for geoid in geoids:
+            values.append(_history_row(meta, level, geoid, release, hconfig, pspec, rows.get(geoid), spec))
+        releases[hconfig['dataset_id']] = release
+    return {'level': level, 'geoids': geoids, 'period': period, 'values': values, 'releases': releases,
+            'unavailable': unavailable}
+
+
+def history_values_within(db, product: str, measure_id: str, level: str, parent_geoid: str | None,
+                          period: str) -> dict:
+    """`measure_values_within` for an earlier period, on that period's own boundaries."""
+    parent_level = WITHIN_PARENT.get(level, 'invalid')
+    if parent_level == 'invalid':
+        raise LookupError_(f'Unsupported level {level!r}; use state, county, or tract')
+    if level == 'cd':
+        raise LookupError_('Congressional districts have no earlier periods in CHIP: older Congresses had different districts')
+    if parent_level is None:
+        if parent_geoid:
+            raise LookupError_('State values are listed for the whole country; omit the parent GEOID')
+        prefix = ''
+    else:
+        if not parent_geoid:
+            raise LookupError_(f'{level} values are listed within one {parent_level}; provide its GEOID')
+        (prefix,) = _check(parent_level, [parent_geoid])
+    spec, current, hconfig, meta, pspec, release = _history_period(db, product, measure_id, period)
+    if level not in meta['levels']:
+        raise LookupError_(f'{product}:{measure_id} is not published for {level} in {period}')
+    vintage = pspec['boundary_vintage'][level]
+    names = _history_names(db, level, vintage, prefix)
+    stored = {r['geoid']: r for r in db.execute(text(f'''SELECT geoid,value,status,low,high,moe
+        FROM {S}.observation_history WHERE release_id=:release AND level=:level AND measure_id=:measure
+        AND observation_period=:period AND geoid LIKE :prefix'''),
+        {'release': release['release_id'], 'level': level, 'measure': measure_id, 'period': period,
+         'prefix': prefix + '%'}).mappings()}
+    geoids = sorted(set(names) | set(stored)) if hconfig.get('absent_status') else sorted(stored)
+    values = [_history_row(meta, level, g, release, hconfig, pspec, stored.get(g), spec) | {'name': names.get(g)}
+              for g in geoids]
+    return {'product': product, 'measure': meta | {'note': pspec['note']}, 'level': level,
+            'parent_level': parent_level, 'parent_geoid': parent_geoid or None, 'release': release, 'values': values}
+
+
+def area_measure_series(db, level: str, geoid: str, product: str, measure_id: str) -> dict:
+    """One measure for one area in every published period, oldest first. Values are side by side as
+    published; periods can differ in method or boundaries (see each row's `note`). No change is computed."""
+    (geoid,) = _check(level, [geoid])
+    periods = measure_periods(db, product, measure_id)
+    series, unavailable = [], []
+    for item in sorted(periods, key=lambda p: p['period']):
+        if not item['available']:
+            unavailable.append({'period': item['period'], 'reason': item['note'] or 'not published'})
+            continue
+        result = area_values_for_period(db, level, [geoid], item['period'], [(product, measure_id)])
+        if result['values']:
+            series.extend(result['values'])
+        else:
+            unavailable.extend({'period': item['period'], 'reason': u['reason']} for u in result['unavailable'])
+    return {'level': level, 'geoid': geoid, 'product': product, 'measure_id': measure_id,
+            'series': series, 'unavailable_periods': unavailable}

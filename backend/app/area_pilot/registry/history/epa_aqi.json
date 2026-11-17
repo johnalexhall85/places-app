@@ -511,5 +511,6 @@
     }
    ]
   }
- ]
+ ],
+ "absent_status": "no_reported_value"
 }

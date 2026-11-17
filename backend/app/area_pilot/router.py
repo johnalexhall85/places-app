@@ -9,6 +9,7 @@ from app.db import get_db
 from app.area_pilot.registry import load_registry
 from app.area_pilot import legend_breaks
 from app.area_pilot import acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, epa_aqi_api, usda_fea_api
+from app.area_pilot import history_api
 from app.geometry_sql import fitted_geom
 
 router = APIRouter(prefix='/area', tags=['area-pilot'])
@@ -78,6 +79,11 @@ def ensure_cap(db, query_params, geography='county'):
 
 @router.get('/catalog')
 def catalog(dataset_id: str | None = None, db: Session = Depends(get_db)):
+    """Each product's catalog, with the published periods (current first) for every measure."""
+    return history_api.attach_periods(db, current_catalog(dataset_id, db))
+
+
+def current_catalog(dataset_id, db):
     if dataset_id == brfss_api.load_registry()['dataset_id']:
         return brfss_api.catalog(db)
     if dataset_id == acs_profile_api.load_registry()['dataset_id']:
@@ -115,6 +121,9 @@ def catalog(dataset_id: str | None = None, db: Session = Depends(get_db)):
 @router.get('/map')
 def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
              geography: str, bbox: str, simplify: float = Query(0.04, ge=0, le=0.5), db: Session = Depends(get_db)):
+    if history_api.is_history_request(dataset_id, measure_id, period):
+        return history_api.map_data(db, dataset_id, release_id, measure_id, period, population, value_type,
+                                    geography, bounds(bbox), bbox, simplify)
     if dataset_id == brfss_api.load_registry()['dataset_id']:
         config, measure = brfss_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox)
@@ -180,6 +189,9 @@ def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, po
 @router.get('/legend')
 def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
            geography: str, bbox: str, db: Session = Depends(get_db)):
+    if history_api.is_history_request(dataset_id, measure_id, period):
+        return history_api.legend(db, dataset_id, release_id, measure_id, period, population, value_type,
+                                  geography, bounds(bbox), bbox)
     if dataset_id == brfss_api.load_registry()['dataset_id']:
         config, measure = brfss_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox)
@@ -235,6 +247,9 @@ def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, popu
 @router.get('/table')
 def table(dataset_id: str, release_id: UUID, measure_id: str, period: str, population: str, value_type: str,
           geography: str, bbox: str, limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0), db: Session = Depends(get_db)):
+    if history_api.is_history_request(dataset_id, measure_id, period):
+        return history_api.table(db, dataset_id, release_id, measure_id, period, population, value_type,
+                                 geography, bounds(bbox), bbox, limit, offset)
     if dataset_id == brfss_api.load_registry()['dataset_id']:
         config, measure = brfss_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox)

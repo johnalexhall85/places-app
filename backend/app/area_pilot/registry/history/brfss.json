@@ -1552,5 +1552,6 @@
     }
    ]
   }
- ]
+ ],
+ "absent_status": "not_published"
 }
