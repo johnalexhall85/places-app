@@ -15,6 +15,8 @@ describe("routeResolver", () => {
     expect(resolveRoute("/topics")).toEqual({ type: "community-topics" });
     expect(resolveRoute("/topics/food-environment")).toEqual({ type: "community-topic", slug: "food-environment" });
     expect(resolveRoute("/about")).toEqual({ type: "community-about" });
+    expect(resolveRoute("/ai")).toEqual({ type: "community-ai" });
+    expect(resolveRoute("/ai/")).toEqual({ type: "community-ai" });
     expect(resolveRoute("/methodology")).toEqual({ type: "community-methodology" });
   });
   it("matches the funding model builder route", () => {

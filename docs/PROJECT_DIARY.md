@@ -27,6 +27,12 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Not verified by the agent:** ChatGPT Developer mode against production (John tested Claude on staging).
 - **Next:** M6, a "Use CHIP in your AI assistant" page (Codex). John to try ChatGPT. Decide later whether to list the server in directories.
 
+## 2026-11-17T16:30:20+00:00 — M6 connector URL follow-up (Codex)
+
+- **Request and outcome:** Changed the uncommitted `/ai` page, its Copy action and test, and the README section to use the bare host `https://mcp.publicdataobservatory.org`. The page also names `/mcp` as an alternate endpoint. John requested the change and reported Claude's `mcp.Client` verification; Codex did not repeat the live client check.
+- **Verification:** `npm test` passed 160/160; `npm run build` passed with a bundle-size warning. No database, service, publication, deployment, commit, or push. The page remains uncommitted and undeployed on `codex/mcp-m6`.
+- **Next:** Claude reviews and incorporates M6 through the MCP workflow. The handbook was not changed because this follow-up does not change deployed state; the M6 URL decision is recorded in `docs/mcp/status/codex.md` for Claude.
+
 ## 2026-11-17T15:37:00+00:00 — MCP server built, evaluated, and public on staging; Gate A open (Claude)
 
 - **Built by the agents (dispatched headlessly; Claude reviewed and committed):**

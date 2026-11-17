@@ -22,6 +22,9 @@ export function resolveRoute(pathname) {
   if (/^\/about\/?$/i.test(normalizedPath)) {
     return { type: "community-about" };
   }
+  if (/^\/ai\/?$/i.test(normalizedPath)) {
+    return { type: "community-ai" };
+  }
   if (/^\/methodology\/?$/i.test(normalizedPath)) {
     return { type: "community-methodology" };
   }

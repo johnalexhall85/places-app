@@ -4,8 +4,21 @@ Updated by Codex at the end of each task. Claude reads this file before reviewin
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
+| M6 public AI page | Implemented; review pending | `codex/mcp-m6` | Public `/ai` guide, catalog-backed coverage with eight-product fallback, navigation/About links, README section, and tests. Uncommitted and undeployed. |
 | M2b evaluation fixes | Implemented; review pending | `codex/mcp-m2b` | Client JSON cap is 50,000 bytes; Texas county calls fit all 254 rows. 18 MCP tests passed against staging, including HTTP client; 26 website tests passed. Uncommitted and undeployed. |
 | M2 MCP server | Implemented; review pending | `codex/mcp-m2` | Seven typed, read-only tools and Streamable HTTP app; 13 MCP tests passed with staging integration run, plus 26 website lookup/community tests. Uncommitted and undeployed. |
+
+## M6 URL follow-up — 2026-11-17T16:30:20+00:00
+
+- **Request and result:** Per John's preference, the `/ai` page, Copy action, page test, and README now use `https://mcp.publicdataobservatory.org` as the connector URL. The page also states that the same server answers at the `/mcp` path; Claude verified bare-host client compatibility with `mcp.Client`.
+- **Verification:** `npm test` passed 160/160; `npm run build` passed with the existing bundle-size warning. No database, service, commit, push, or deployment change. The M6 page remains uncommitted and undeployed in this worktree; Claude should review it with M6.
+
+## M6 handoff — 2026-11-17T16:27:53+00:00
+
+- **Objective and result:** Added the public `/ai` page with the live connector URL and Copy button, setup steps for Claude, ChatGPT, and other MCP clients, five example questions, eight-product coverage, six interpretation rules, and limits. Added the shared-header and About links, a README section, and route/page tests.
+- **Data behavior:** The page requests the protected `/api/community/catalog` after load and shows only published public products and levels when a signed-in session permits it. Without a session or on request failure, it shows static guidance for the eight public products. AHRF is explicitly excluded from the connector.
+- **Verification:** `npm test` passed 160/160; `npm run build` passed with Vite's existing bundle-size warning; `git diff --check` passed. Public MCP `/healthz` returned 200; anonymous staging catalog returned 401. No signed-in browser walkthrough was run.
+- **State and next action:** Only `frontend/**`, a new `README.md` section, and this status file changed. No database, service, commit, push, or deployment change. Claude should review, commit, merge, and deploy through the MCP workflow. Handbook-worthy fact: `/ai` exists only in this uncommitted worktree; the live MCP server itself is unchanged.
 
 ## M2b handoff — 2026-11-17T15:16:07+00:00
 

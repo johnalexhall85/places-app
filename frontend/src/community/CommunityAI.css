@@ -1,0 +1,78 @@
+.community-ai {
+  max-width: 960px;
+}
+
+.community-ai p,
+.community-ai li {
+  max-width: 78ch;
+}
+
+.community-ai li {
+  margin-block: 8px;
+}
+
+.community-ai ul {
+  padding-left: 24px;
+}
+
+.community-ai-url {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: var(--pdo-surface);
+}
+
+.community-ai-url code {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  overflow-wrap: anywhere;
+  align-self: center;
+  color: var(--pdo-text);
+  font-family: var(--body-font);
+}
+
+.community-ai-url button {
+  padding: 8px 24px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--pdo-primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.community-ai-url button:hover {
+  background: var(--chip-navy);
+}
+
+.community-ai-feedback {
+  min-height: 24px;
+  margin: 8px 0 0;
+  color: var(--pdo-text-muted);
+}
+
+.community-ai-setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+}
+
+.community-ai-setup > div {
+  padding: 24px;
+  border: 1px solid var(--pdo-border);
+  border-radius: 8px;
+  background: var(--pdo-surface);
+}
+
+.community-ai-setup h3 {
+  color: var(--pdo-primary);
+}
+
+.community-ai-products {
+  columns: 2 300px;
+}

@@ -84,6 +84,12 @@ is determined dynamically from the API response. The obligation chart defaults t
 quarterly mode, and hides FY2021 from the comparison scale unless requested. No database schema, stored data, or
 ingestion changes are required for this page behavior.
 
+## Use CHIP from AI assistants
+
+Connect Claude, ChatGPT, or another Streamable HTTP MCP client to the public, read-only CHIP server at
+`https://mcp.publicdataobservatory.org`. No authentication is needed. The CHIP site has a setup and interpretation
+guide at `/ai`. Server operations are documented in [infra/mcp/README.md](infra/mcp/README.md).
+
 ## Demo access gate
 
 CHIP uses a lightweight demo access gate before loading the app. Configure these backend environment variables before starting FastAPI:

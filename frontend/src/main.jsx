@@ -19,6 +19,7 @@ import { CommunityState } from "./community/CommunityState";
 import CommunityCompare from "./community/CommunityCompare";
 import { CommunityTopics, CommunityTopic } from "./community/CommunityTopics";
 import { CommunityAbout, CommunityMethodology } from "./community/CommunityInfo";
+import CommunityAI from "./community/CommunityAI";
 import { CommunityDistrict, CommunityDistricts } from "./community/CommunityDistrict";
 import { resolveRoute } from "./utils/routeResolver";
 
@@ -81,6 +82,8 @@ function Root() {
     routedPage = <CommunityTopic slug={route.slug} />;
   } else if (route.type === "community-about") {
     routedPage = <CommunityAbout />;
+  } else if (route.type === "community-ai") {
+    routedPage = <CommunityAI />;
   } else if (route.type === "community-methodology") {
     routedPage = <CommunityMethodology />;
   } else if (route.type === "cdc-state-funding-profile") {
@@ -115,7 +118,7 @@ function Root() {
     // /explore/map and any unknown path open the published-release map (the legacy map was retired 2026-11-16).
     routedPage = <Places2025Pilot />;
   }
-  return <DemoAccessGate>{routedPage}</DemoAccessGate>;
+  return route.type === "community-ai" ? routedPage : <DemoAccessGate>{routedPage}</DemoAccessGate>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

@@ -11,6 +11,7 @@ export const SITE_NAV = [
   { href: "/districts", label: "Districts" },
   { href: "/explore/map", label: "Explore data" },
   { href: "/cdc-funding", label: "Funding" },
+  { href: "/ai", label: "Use CHIP with AI" },
   { href: "/about", label: "About" },
 ];
 

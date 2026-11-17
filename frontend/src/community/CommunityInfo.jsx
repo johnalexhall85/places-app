@@ -15,6 +15,7 @@ export function CommunityAbout() {
       <section><h2>Use the evidence carefully</h2><p>CHIP displays source-published values. It keeps missing and suppressed values distinct from a published zero. Different measures may describe different people and years; a mapped facility location does not establish access or service capacity.</p></section>
     </div>
     <p><a href="/methodology">Read how CHIP selects, displays, and cites data →</a></p>
+    <p><a href="/ai">Use CHIP in your AI assistant →</a></p>
   </div></CommunityShell>;
 }
 
