@@ -2,6 +2,35 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-17T15:45:00+00:00 — MCP server built, evaluated, and public on staging; Gate A open (Claude)
+
+- **Built by the agents (dispatched headlessly; Claude reviewed and committed):**
+  - Codex M2: seven tools, 13 tests.
+  - Codex M2b: 50 KB size rule, compact list rows, withheld AHRF explained, 18 tests.
+  - Antigravity M3, M3b, M3c: 44-question deterministic evaluation with 12 traps.
+  - Contract amendment 1 settled the size rule and Antigravity's seven ambiguities. Item 2a was accepted from Codex.
+- **System changes (staging):**
+  - Role `chip_mcp_ro` on `places_staging` only: read-only, 5 s statement timeout, SELECT on `area_pilot` plus `dim_county` and `dim_county_boundary`. Default privileges for future `area_pilot` tables.
+  - Env file `~/.config/chip/mcp-staging.env` (mode 600).
+  - `.venv-mcp` in `/home/john/chip-beta`.
+  - `chip-mcp-staging.service` installed and enabled.
+  - `/etc/nginx/conf.d/chip-mcp-ratelimit.conf`, and an include of `infra/mcp/nginx-mcp.conf` in `/etc/nginx/sites-available/chip-beta` (the `nginx -t` test passed; reloaded). The repo copy is updated.
+  - `/etc/apparmor.d/antigravity-agy` (approved by John).
+  - `chip-dispatch` and `chip-watch` in `/usr/local/bin`.
+  - `deploy-staging.sh` now refreshes and restarts the MCP service; it did so at 15:17:50Z.
+- **Verification:**
+  - Evaluation 44/44 (65 calls, p50 53 ms, p95 125 ms).
+  - All seven tools work through the public HTTPS URL.
+  - The role refuses UPDATE and CREATE, is denied `demo_access_codes`, and cancels `pg_sleep(6)` at 5 s.
+  - `/mcp` sets no cookie and sends `Cache-Control: no-store`.
+  - The website catalog still returns 401.
+  - A burst of 40 requests gave 13 × 200 and 27 × 429.
+- **Open:**
+  - The 30 requests per minute per IP limit is too tight for production, because ChatGPT and Claude call from shared cloud IPs. Raise it at M5.
+  - Antigravity's sandbox has no network, so Claude runs its database-dependent steps.
+  - Merging Codex's 2026-11-16 entries put them below older Claude entries in this file. Order is otherwise preserved.
+- **Live:** nothing changed. **Next:** Gate A, John tries the connector in Claude and ChatGPT. After that: M5 (production hostname, live role, rate limit) and M6 (Codex: "Use CHIP with AI" page).
+
 ## 2026-11-17T18:30:00+00:00 — MCP server planned; M0 setup and M1 read layer (Claude)
 
 - **Request (John):** build a public CHIP MCP server so ChatGPT, Claude, and other AI assistants can query published CHIP data; Claude manages and hands work to Codex and Google Antigravity without copy-paste. **Decisions with John:** sort one measure across areas (no composite scores); open, no login, read-only, AHRF excluded; staging at `chip-beta.publicdataobservatory.org`, production at `mcp.publicdataobservatory.org` (DNS record pending); John approves only Gate A (staging tryout) and Gate B (go public). Plan: [docs/mcp/PLAN.md](mcp/PLAN.md); contract: [docs/mcp/TOOL_CONTRACT.md](mcp/TOOL_CONTRACT.md).

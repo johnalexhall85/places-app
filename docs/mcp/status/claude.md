@@ -4,7 +4,7 @@
 |---|---|---|---|
 | M0 Setup | Done | `claude/mcp-m0` | Dispatch tested for Codex (sandboxed, AppArmor profile added). Antigravity waits on John's CLI sign-in. Contract in `docs/mcp/TOOL_CONTRACT.md`. |
 | M1 Read layer and infra | Done | `claude/mcp-m0` | `lookup.measure_values_within` with 4 unit tests, checked on staging. `infra/mcp/` unit, role script, and Nginx snippet written; not installed. |
-| M4 Staging integration | Not started | | Waits for M2 and M3. |
+| M4 Staging integration | Done; Gate A open | `beta` `93daee8` | `chip-mcp-staging` on 8011 as `chip_mcp_ro`; public at `https://chip-beta.publicdataobservatory.org/mcp` (Nginx include, 30 r/min per IP, burst 20). Eval 44/44, p50 53 ms, p95 125 ms. |
 | M5 Production | Not started | | Waits for Gate A, then John's DNS record and Gate B. |
 
 ## What Codex and Antigravity can rely on now
