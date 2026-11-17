@@ -205,3 +205,5 @@ Where this differs from the sections above, this wins.
    - `topic="health-care-resources"` in `get_area_values` or `search_measures` raises a `ToolError` with the same explanation, never "Unknown topic".
    - A `search_measures` query that matches only withheld AHRF measures (for example "primary care doctors", "hospital beds", "dentists", "psychiatrists") returns no measures plus a warning naming the withheld product.
 8. **Null value.** An area belongs in `without_value` exactly when `value` is null. Statuses such as `open_ended` can carry a value and then belong in `with_value`. For Los Angeles County tracts and `acs:B19013_001E` that is 42 rows, not 58.
+
+2a. **Accepted from Codex (M2b):** `uncertainty.kind` and `uncertainty.label` also move into `data.measure` for `get_measure_across_areas`. Each row keeps its own interval values (`low`/`high` or `moe`).
