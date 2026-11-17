@@ -2,7 +2,7 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
-## 2026-11-17T15:45:00+00:00 — MCP server built, evaluated, and public on staging; Gate A open (Claude)
+## 2026-11-17T15:37:00+00:00 — MCP server built, evaluated, and public on staging; Gate A open (Claude)
 
 - **Built by the agents (dispatched headlessly; Claude reviewed and committed):**
   - Codex M2: seven tools, 13 tests.
