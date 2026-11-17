@@ -3,7 +3,7 @@
 **CHIP MCP server live, verified 2026-11-17T16:30Z (Claude, Gate B approved by John):**
 - **What:** a public, no-login, read-only MCP server for AI assistants at `https://mcp.publicdataobservatory.org/mcp`, serving live published data. Code is `backend/app/mcp_server/` (seven tools); the contract is [docs/mcp/TOOL_CONTRACT.md](mcp/TOOL_CONTRACT.md); operations are in [infra/mcp/README.md](../infra/mcp/README.md).
 - **Runs as:** `chip-mcp.service` (port 8012, `/home/john/places-app/backend/.venv-mcp`, role `chip_mcp_ro` on `places`).
-- **Nginx:** `sites-enabled/zz-chip-mcp`, which exposes only `/mcp` and `/healthz`, rate-limited to 120 requests per minute per IP.
+- **Nginx:** `sites-enabled/zz-chip-mcp`, which exposes only `/`, `/mcp`, and `/healthz`, rate-limited to 120 requests per minute per IP. The bare host is also the MCP endpoint (since 2026-11-17T16:45Z), so the connector URL can be `https://mcp.publicdataobservatory.org`; a browser GET there returns a plain-text note.
 - **Staging twin:** `chip-mcp-staging` at `https://chip-beta.publicdataobservatory.org/mcp`.
 - **Excluded:** AHRF, pending HRSA's answer on redistribution.
 - **Promotion:** `main` was fast-forwarded to `2347b88` and `places-backend` restarted. No migration; pointers unchanged (12); webroot unchanged (`index-D7zfOmSk.js`). Rollback pair: `data/deploy-recovery/mcp-promotion-20261117/`. To turn the MCP server off, remove `sites-enabled/zz-chip-mcp`, run `nginx -t`, reload, and `systemctl disable --now chip-mcp`.
