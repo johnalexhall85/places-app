@@ -36,7 +36,7 @@ Use the URL exactly as returned. The script expects `schema_version` to be `chip
 
 If the download fails because of a network or proxy error, the sandbox can't reach CHIP. Don't rebuild the dataset from tool calls. Tell the user:
 
-> Claude's code sandbox needs network access to `mcp.publicdataobservatory.org`. In claude.ai, open **Settings → Capabilities → Code execution and file creation**, allow network egress, and add that domain to the allowed domains (or allow all domains). Then ask again.
+> Claude's code sandbox needs network access to the CHIP host in the dataset link (`mcp.publicdataobservatory.org`, or `chip-beta.publicdataobservatory.org` for the staging tryout). In claude.ai, open **Settings → Capabilities → Code execution and file creation**, allow network egress, and add that domain to the allowed domains (or allow all domains). Then ask again.
 
 Meanwhile, offer a short in-chat summary built from `get_nofo_overview`, plus `list_nofo_recipients` for NOFOs with 100 or fewer recipients.
 

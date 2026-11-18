@@ -2,6 +2,45 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-18T21:25:00+00:00 — CDC NOFO recipient profiles: funding MCP tools and claude.ai skill on staging (Claude, with Codex and Antigravity)
+
+- **Request:** John asked for a claude.ai skill that builds his PS21-2102-style recipient dossier for any CDC NOFO, with or without sub-awardees, from CHIP data through the MCP server, in the PDO CHIP brand. The live MCP server should also gain funding tools.
+- **Decisions by John:**
+  - the skill downloads a dataset link into Claude's sandbox and renders the files there;
+  - CDC NOFOs only;
+  - PDO brand;
+  - account-level (File C) obligations, the `/cdc-funding` data.
+- **Plan:** [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3, and the AGENTS.md ownership section.
+- **Work:**
+  - **Claude (F0, FR, review, deploy):** migration `b3f9d2a7c1e4` (schema `funding_report`; grants `chip_mcp_ro` without a password change); `fetch_usaspending_cdc_award_files.py`; Nginx `/funding/nofo/`; SKILL.md, the report spec, and the zip builder.
+  - **Codex (F1–F3b):** `app.funding_report` build and lookup; 3 MCP tools and the gzip dataset route; the Word/Excel renderer.
+  - **Antigravity (F4):** 12 funding evaluation questions, `--dataset-check`, and the [fidelity report](../deliverables/funding-mcp/fidelity_report.md).
+- **Data findings:**
+  - Account-level obligations for PS21-2102 FY2021–FY2025 match the July dossier for 97/97 recipients and 485/485 cells. FY2026 is $10,166,689 (P12); the dossier had $0.
+  - Other-award differences (top 10: 485 to 495 rows) are all explained by the 2026-11-18 TAGGS FY2026 refresh.
+  - CE23-2301 sub-awards reproduce all 12 reference actions, plus 2 reported on 2026-07-27.
+  - The dossier's "33 states" was a miscount: its own table shows 31 states plus DC, PR, and VI.
+- **FY2026 award-level refresh:** On 2026-11-18, USAspending served no FY2026 HHS assistance prime transactions (CDC count 0, HHS 404; other agencies normal). The prime download was header-only and was **not** ingested. Sub-awards were available.
+  - **Staging change:** `ingest_usaspending_funding.py --profile-path data/usaspending/chipfunding/fy26_candidate/fy26_subaward_refresh_profile.json --fiscal-year 2026 --replace` on `places_staging` took FY2026 assistance sub-awards from 3,373 to 7,120 (through 2026-09-30).
+  - **Unchanged:** prime (22,208), contracts, and fact table.
+  - **Consequence:** awards first made after 2026-06-18 are not linked to a NOFO yet.
+- **Staging deploy:** `deploy-staging.sh claude/funding-report` (`beta` `d31733b`; frontend bundle unchanged at `index-U_xO52k_.js`); `nginx -t` and reload; `funding_report` build 6 active on `places_staging`.
+- **Verification:**
+  - MCP, funding, and check tests: 47 passed.
+  - Renderer tests: 3 passed.
+  - Contract-example profile tests: 10 passed (byte-identical).
+  - Evaluation through the running `chip-mcp-staging`: 66/66 (54 area unchanged + 12 funding; p50 53 ms).
+  - `--dataset-check` through Nginx passed.
+  - End to end: unzip the skill, curl `https://chip-beta.publicdataobservatory.org/funding/nofo/PS212102.json?subawards=1`, render in a clean venv: both files in 3.4 s.
+- **Not verified:**
+  - Page layout. LibreOffice is not installed, and the auto-mode classifier denied `apt-get install`, so the documents were checked structurally only.
+  - The skill inside claude.ai (Gate A).
+- **Live:** unchanged. There is no migration, build, sub-award refresh, Nginx change, or `CHIP_MCP_PUBLIC_BASE_URL` on live.
+- **Skill zip:** `/home/john/chip-claude/skills/dist/chip-nofo-recipient-profile.zip` (untracked build output).
+- **Next:**
+  1. **Gate A.** John imports the zip in claude.ai, adds the staging connector `https://chip-beta.publicdataobservatory.org/mcp`, allows that domain for code execution, and asks for the PS21-2102 profile with sub-awardees.
+  2. **Gate B.** The live promotion follows the PLAN F6 steps.
+
 ## 2026-11-18T17:05:00+00:00 — CDC funding FY2026 full year promoted to live (Claude)
 
 - **Approval:** John said "go live and git push it".
