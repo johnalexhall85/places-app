@@ -32,7 +32,37 @@ def integer(value):
 
 
 def period(start, end):
-    return f'{shown(start)}–{shown(end)}'
+    def display(value):
+        if value is None or value == '': return MISSING
+        try: return date.fromisoformat(str(value)[:10]).strftime('%B %-d, %Y')
+        except ValueError: return str(value)
+    return f'{display(start)} – {display(end)}'
+
+
+ACRONYMS = {'HIV','AIDS','STD','STI','TB','CDC','HHS','NCHHSTP','U.S.'}
+CONNECTORS = {'of','and','for','the','in','to','on','with','a','an','by'}
+
+
+def display_title(value):
+    if not value: return value
+    seen = False
+    def case(match):
+        nonlocal seen
+        word = match.group()
+        upper = word.upper()
+        if any(ch.isdigit() for ch in word) or upper in ACRONYMS:
+            result = upper
+        elif word.lower() in CONNECTORS and seen:
+            result = word.lower()
+        else:
+            result = word.title()
+        seen = True
+        return result
+    return re.sub(r'[A-Za-z0-9]+(?:\.[A-Za-z]+\.)?', case, value)
+
+
+def normalize_class(value):
+    return re.sub(r'\(\s*(.*?)\s*\)', lambda match: '(' + match.group(1).strip() + ')', value) if value else value
 
 
 def fiscal_range(years):

@@ -1,5 +1,11 @@
 # Funding MCP status: codex
 
+## 2026-11-18T21:15:31+00:00 — F3b review fixes complete
+- Builder now chooses CFDA by largest award transaction obligation, using TAGGS ALN for ties; PS21-2102 changed 42/97 awards, and Birmingham AIDS Outreach is 93.939. TAGGS abstracts take priority; cleaned full USAspending text and source are retained. Staging `places_staging` build 6 is active (5,545 NOFOs; 13,626 awards).
+- Word/Excel casing, class spacing, prose dates, location, Heading 3 profile sections, abstract source lines, territory naming, and Excel full abstracts/date cells are implemented. Both real fixtures and `/tmp/chip-nofo-{ps,ce}` reports regenerated. Renderer 3/3; funding/MCP 34/34; `git diff --check` passed. LibreOffice absent, so no visual PDF check.
+- Reference says 33 states plus DC/PR/VI, but active PS21-2102 aggregate has 31 states plus those three territories; renderer prints the data-derived count. Claude should reconcile reference geography and update `report_spec.md` for new abstract fields; it owns that file and the handbook.
+- No live database, service, deployment, commit, push, merge, or sudo change. Diary entry added for this direct user task; handbook unchanged under Claude ownership. Claude reviews and commits/deploys under the funding plan.
+
 ## 2026-11-18T21:06:35+00:00 — F3 and F2b complete in worktree
 - F2b: TAGGS modal award title, longest abstract, source loaded date/coverage, spaced period labels, plain caveats with award-link lag, and threaded dataset route; staging `places_staging` build 5 is active (5,545 NOFOs, 13,626 awards).
 - Renderer and assets: template-based Word, eight-sheet Excel with optional sub-award sheets, chart, TOC, hyperlinks, formulas, branded tables, CLI, and clean zip packager; real PS21-2102 (97 recipients) and CE23-2301 (13) fixtures and reports rendered under `/tmp/chip-nofo-ps` and `/tmp/chip-nofo-ce`.

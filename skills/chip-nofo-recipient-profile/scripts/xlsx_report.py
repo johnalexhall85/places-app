@@ -1,16 +1,17 @@
 """Build the sortable, numeric NOFO workbook."""
+from datetime import date
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.dimensions import ColumnDimension
-from common import MISSING, shown, fiscal_range, title_for
+from common import MISSING, shown, fiscal_range, title_for, display_title, normalize_class
 
 CURRENCY = '$#,##0.00;[Red]($#,##0.00);$0.00'
 NAVY = '003F61'
 LIGHT = 'F4F7FB'
 
 
-def sheet(wb, name, headers, rows, money_cols=(), link_col=None):
+def sheet(wb, name, headers, rows, money_cols=(), link_col=None, date_cols=()):
     ws = wb.create_sheet(name)
     ws.append(headers)
     for cell in ws[1]:
@@ -27,6 +28,11 @@ def sheet(wb, name, headers, rows, money_cols=(), link_col=None):
         for col in money_cols:
             if isinstance(ws.cell(idx, col).value, (int, float)) or str(ws.cell(idx, col).value).startswith('='):
                 ws.cell(idx, col).number_format = CURRENCY
+        for col in date_cols:
+            cell=ws.cell(idx,col)
+            if isinstance(cell.value,str) and len(cell.value)==10:
+                try: cell.value=date.fromisoformat(cell.value); cell.number_format='yyyy-mm-dd'
+                except ValueError: pass
         if link_col and str(ws.cell(idx,link_col).value).startswith('http'):
             ws.cell(idx,link_col).hyperlink = ws.cell(idx,link_col).value
             ws.cell(idx,link_col).font = Font(name='Arial',color='0277BD',underline='single',size=10)
@@ -47,9 +53,9 @@ def render(data, path, prepared, title):
     no, ag, people = data['nofo'], data['aggregates'], data['recipients']
     years = sorted(int(x['fiscal_year']) for x in no['fiscal_years'])
     about = [
-        ('Recipient Profile', title), ('Funding Opportunity',no['fon_display']),
-        ('Awarding Agency',no['awarding_agency']),
-        ('Assistance Listings', '; '.join(f"{x['number']} {shown(x.get('title'))}" for x in no['cfda'])),
+        ('Recipient Profile', display_title(title)), ('Funding Opportunity',no['fon_display']),
+        ('Awarding Agency',display_title(no['awarding_agency'])),
+        ('Assistance Listings', '; '.join(f"{x['number']} {shown(display_title(x.get('title')))}" for x in no['cfda'])),
         ('Period',f"{shown(no['period_of_performance']['start_min'])}–{shown(no['period_of_performance']['end_max'])}"),
         ('Recipients',no['recipient_count']), ('Fiscal years',fiscal_range(no['fiscal_years'])),
         ('Best-available total','Account obligations where available; otherwise award-level, then TAGGS.'),
@@ -65,9 +71,9 @@ def render(data, path, prepared, title):
     for n,p in enumerate(people,1):
         a,t,o,period = p['address'],p['totals'],p['other_awards'],p['period_of_performance']
         summary.append((n,p['recipient_name'],a.get('city'),a.get('state'),a.get('county'),p.get('congressional_district'),
-            p.get('recipient_class'),p.get('recipient_type'),p.get('metro_status'),p['fain'],p.get('project_title'),
-            t.get('best_available'),t.get('best_available_basis'),period.get('start'),period.get('end'),o.get('count'),o.get('top10_total'),p.get('usaspending_url')))
-    sheet(wb,'Recipient Summary',['#','Recipient','City','State','County','Cong. Dist.','Recipient Class','Org Type','Metro','Award #','Project Title','Total (best available)','Basis','Start','End','# Other Awards','Other Awards Top-10 Total','USAspending Link'],summary,(12,17),18)
+            normalize_class(p.get('recipient_class')),p.get('recipient_type'),p.get('metro_status'),p['fain'],p.get('project_title'),
+            t.get('best_available'),t.get('best_available_basis'),period.get('start'),period.get('end'),o.get('count'),o.get('top10_total'),p.get('usaspending_url'),p.get('abstract_full')))
+    sheet(wb,'Recipient Summary',['#','Recipient','City','State','County','Cong. Dist.','Recipient Class','Org Type','Metro','Award #','Project Title','Total (best available)','Basis','Start','End','# Other Awards','Other Awards Top-10 Total','USAspending Link','Abstract Full'],summary,(12,17),18,(14,15))
     fy_headers=['#','Recipient','State','Award #']+[f'FY{y}' + ('*' if any(x['fiscal_year']==y and not x['is_complete'] for x in no['fiscal_years']) else '') for y in years]+['Total']
     fyrows=[]
     for n,p in enumerate(people,2):
@@ -90,7 +96,7 @@ def render(data, path, prepared, title):
     other=[]
     for p in people:
         for x in p['other_awards']['top']:
-            other.append((p['recipient_name'],p['address'].get('state'),p['fain'],x.get('rank'),x.get('award_number'),x.get('amount'),x.get('opdiv'),x.get('aln'),x.get('aln_title'),x.get('fon'),x.get('first_fiscal_year'),x.get('last_fiscal_year'),x.get('award_title')))
+            other.append((p['recipient_name'],p['address'].get('state'),p['fain'],x.get('rank'),x.get('award_number'),x.get('amount'),x.get('opdiv'),x.get('aln'),display_title(x.get('aln_title')),x.get('fon'),x.get('first_fiscal_year'),x.get('last_fiscal_year'),x.get('award_title')))
     sheet(wb,'Other HHS Awards',['Recipient','State','Award #','Rank','Other Award #','Amount','OpDiv','ALN','Assistance Listing Title','FON','First FY','Last FY','Award Title'],other,(6,))
     portfolio=[]
     for heading, key, cols in [
@@ -101,13 +107,13 @@ def render(data, path, prepared, title):
         ('Other awards by OpDiv','other_awards_by_opdiv',['opdiv','awards','total']),
         ('Top assistance listings','other_awards_by_aln',['aln','title','awards','total']),
         ('Top recipients by other awards','top_recipients_by_other_awards',['recipient_name','state','other_award_count','other_awards_top10_total'])]:
-        for x in ag[key]: portfolio.append((heading,*[x.get(c) for c in cols]))
+        for x in ag[key]: portfolio.append((heading,*[normalize_class(x.get(c)) if key=='by_recipient_class' and c=='value' else display_title(x.get(c)) if key=='other_awards_by_aln' and c=='title' else x.get(c) for c in cols]))
     sheet(wb,'Portfolio Analysis',['Group','Item','Count / State','Total / Count','Other Total'],portfolio,(4,5))
     if data['subawards'] is not None:
         sub=data['subawards']
         sheet(wb,'Sub-awardees',['UEI','Name','Name Variants','DBA Names','Business Types','City','State','District','Prime FAINs','Prime Recipients','Actions','Reported Amount','First Date','Last Date'],[
             (x.get('uei'),x.get('name'),'; '.join(x.get('name_variants') or []),'; '.join(x.get('dba_names') or []),'; '.join(x.get('business_types') or []),
-             x.get('address',{}).get('city'),x.get('address',{}).get('state'),x.get('congressional_district'),'; '.join(x.get('prime_fains') or []),'; '.join(x.get('prime_recipients') or []),x.get('action_count'),x.get('reported_amount'),x.get('first_action_date'),x.get('last_action_date')) for x in sub['subawardees']],(12,))
+             x.get('address',{}).get('city'),x.get('address',{}).get('state'),x.get('congressional_district'),'; '.join(x.get('prime_fains') or []),'; '.join(x.get('prime_recipients') or []),x.get('action_count'),x.get('reported_amount'),x.get('first_action_date'),x.get('last_action_date')) for x in sub['subawardees']],(12,),date_cols=(13,14))
         sheet(wb,'Sub-award Actions',['Prime FAIN','Prime Recipient','Sub-award #','Action Date','Fiscal Year','Amount','Sub-awardee UEI','Sub-awardee Name','Description','SAM Report IDs','USAspending Link'],[
-            (x.get('prime_fain'),x.get('prime_recipient'),x.get('subaward_number'),x.get('action_date'),x.get('fiscal_year'),x.get('amount'),x.get('subawardee_uei'),x.get('subawardee_name'),x.get('description'),'; '.join(x.get('sam_report_ids') or []),x.get('usaspending_url')) for x in sub['actions']],(6,),11)
+            (x.get('prime_fain'),x.get('prime_recipient'),x.get('subaward_number'),x.get('action_date'),x.get('fiscal_year'),x.get('amount'),x.get('subawardee_uei'),x.get('subawardee_name'),x.get('description'),'; '.join(x.get('sam_report_ids') or []),x.get('usaspending_url')) for x in sub['actions']],(6,),11,(4,))
     wb.save(path)

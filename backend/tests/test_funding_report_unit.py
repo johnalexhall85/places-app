@@ -1,6 +1,6 @@
 from app.funding_report.keys import nofo_key
 from app.funding_report.method import best_available, caveats, dedupe_subawards, district
-from app.funding_report.build import longest
+from app.funding_report.build import longest, preferred_cfda, abstract_without_title
 
 
 def test_nofo_key():
@@ -58,3 +58,13 @@ def test_f2b_source_caveats_and_longest_abstract():
     assert 'unknown' not in ' '.join(rows).lower()
     assert not any('not complete' in x for x in rows)
     assert longest('Short','A much longer abstract')=='A much longer abstract'
+
+
+def test_f3b_cfda_obligations_and_abstract_prefix():
+    rows=[{'number':'93.940','amount':0,'title':'Other'},
+          {'number':'93.939','amount':100,'title':'Prevention'}]
+    assert preferred_cfda(rows,'93940') == ('93.939','Prevention')
+    rows[0]['amount']=100
+    assert preferred_cfda(rows,'93940')[0]=='93.940'
+    assert abstract_without_title('Project - Mixed case abstract','Project')=='Mixed case abstract'
+    assert abstract_without_title('Mixed case abstract','Project')=='Mixed case abstract'

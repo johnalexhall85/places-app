@@ -10,14 +10,25 @@ from openpyxl import load_workbook
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/'scripts/render.py'
+sys.path.insert(0,str(ROOT/'scripts'))
+from common import display_title, normalize_class, short_abstract
+
+
+def test_display_text_rules():
+    assert display_title('HIV/AIDS PREVENTION OF STD AND TB IN THE U.S.') == 'HIV/AIDS Prevention of STD and TB in the U.S.'
+    assert display_title('PROGRAM 2026 WITH CDC') == 'Program 2026 with CDC'
+    assert normalize_class('Private Profit ( Small Business ) Organizations') == 'Private Profit (Small Business) Organizations'
+    assert short_abstract('Short abstract') == 'Short abstract'
+    assert short_abstract('Long enough to cut', 12).endswith('…')
 
 
 def fixture(subawards=True):
     def person(name,state,fain,amount,other):
         return {'award_unique_key':f'A_{fain}','fain':fain,'uei':'U'+fain,'recipient_name':name,
-          'name_variants':[name],'address':{'line1':None,'city':'Town','state':state,'zip':None,'county':None},
+          'name_variants':[name],'address':{'line1':'205 32ND ST S','city':'Town','state':state,'zip':'35233','county':'JEFFERSON'},
           'congressional_district':None,'recipient_class':None,'recipient_type':None,'metro_status':None,
-          'business_types':[],'project_title':None,'abstract':None,'cfda':{'number':'93.001','title':'Example'},
+          'business_types':[],'project_title':None,'abstract':'Mixed case abstract','abstract_source':'taggs',
+          'abstract_full':'Full USAspending abstract','cfda':{'number':'93.001','title':'HIV PREVENTION OF AIDS'},
           'funding_office':None,'period_of_performance':{'start':'2021-01-01','end':'2022-12-31'},
           'totals':{'best_available':amount,'best_available_basis':'account'},
           'fiscal_years':[{'fiscal_year':2021,'account_obligation':amount,'award_obligation':None,'taggs_amount':None}],
@@ -33,7 +44,7 @@ def fixture(subawards=True):
       'actions':[{'prime_fain':'A1','prime_recipient':'Alpha','subaward_number':'SA1','action_date':'2021-05-01','fiscal_year':2021,'amount':50,'subawardee_uei':'S1','subawardee_name':'Sub A','description':None,'sam_report_ids':['1'],'usaspending_url':None}]} if subawards else None
     return {'schema_version':'chip.nofo_recipient_profile.v1','build':{'build_id':7,'method_version':'nofo-v1'},
       'sources':[{'id':'usaspending_account','citation':'Source: USAspending.gov · File C · FY2021'}],
-      'nofo':{'fon_display':'CDC-RFA-EX21-0001','awarding_agency':'CDC','awarding_offices':[],
+      'nofo':{'fon_display':'CDC-RFA-EX21-0001','awarding_agency':'CENTERS FOR DISEASE CONTROL AND PREVENTION','awarding_offices':[],
         'cfda':[{'number':'93.001','title':'Example','award_count':3}],
         'period_of_performance':{'start_min':'2021-01-01','end_max':'2022-12-31'},
         'recipient_count':3,'best_available_total':300,'fiscal_years':[{'fiscal_year':2021,'account_obligation':300,'is_complete':True}]},
@@ -59,16 +70,22 @@ def test_both_variants(tmp_path):
         meta=json.loads(result.stdout);assert meta['recipients']==3
         doc=Document(meta['docx']);heads=[p.text for p in doc.paragraphs if p.style and p.style.name.startswith('Heading')]
         assert 'Executive Summary' in heads and 'Alabama' in heads and 'California' in heads
+        assert next(p.style.name for p in doc.paragraphs if p.text=='Funded project')=='Heading 3'
         assert ('Sub-awardees' in heads)==include
         text='\n'.join(c.text for t in doc.tables for row in t.rows for c in row.cells)
         assert 'KEY FINDINGS' in text and 'About the Public Data Observatory' in text
         assert '—' in text and '$0' not in text
+        assert '205 32ND ST S, Town, AL 35233 (JEFFERSON County)' in text
+        assert 'January 1, 2021 – December 31, 2022' in text
+        assert 'Abstract: TAGGS award description' in '\n'.join(p.text for p in doc.paragraphs)
         wb=load_workbook(meta['xlsx']);names=wb.sheetnames
         assert names[:6]==['About','Recipient Summary','Funding by FY','FY Comparison','Other HHS Awards','Portfolio Analysis']
         assert ('Sub-awardees' in names)==include and ('Sub-award Actions' in names)==include
         assert wb['Funding by FY']['E5'].data_type=='f'
         assert wb['Recipient Summary']['L2'].data_type=='n'
         assert wb['Recipient Summary']['R2'].hyperlink is not None
+        assert wb['Recipient Summary']['S2'].value=='Full USAspending abstract'
+        assert wb['Recipient Summary']['N2'].data_type=='d'
 
 
 def test_bad_schema_and_missing_key(tmp_path):

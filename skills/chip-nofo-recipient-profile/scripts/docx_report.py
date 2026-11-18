@@ -13,7 +13,7 @@ from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
-from common import MISSING, STATES, dollars, shown, integer, period, fiscal_range, short_abstract, short_fon
+from common import MISSING, STATES, dollars, shown, integer, period, fiscal_range, short_abstract, short_fon, display_title, normalize_class
 
 NAVY='003F61'; BLUE='0277BD'; LIGHT='F4F7FB'; PEACH='F0B97D'; MUTED='546E7A'
 
@@ -147,7 +147,7 @@ def reset_template(doc):
     for child in list(body):
         if child.tag!=qn('w:sectPr'):body.remove(child)
     styles=doc.styles
-    for name in ('Normal','Heading 1','Heading 2'):
+    for name in ('Normal','Heading 1','Heading 2','Heading 3'):
         if name in styles:
             styles[name].font.name='Arial';styles[name].font.color.rgb=rgb(NAVY if name.startswith('Heading') else '1A2F3F')
     next(s for s in styles if s.name and s.name.lower() == 'normal').font.size=Pt(9)
@@ -171,13 +171,13 @@ def render(data, path, prepared, title, narrative, assets):
     logo=Path(assets)/'chip-logo-fullcolor-light-small.png'
     if logo.exists():
         pp.add_run().add_picture(str(logo),width=Inches(1.9))
-    for text,size in [('Recipient Profile',26),(fon,16),(title,12)]:
+    for text,size in [('Recipient Profile',26),(fon,16),(display_title(title),12)]:
         pp=c.add_paragraph();rr=pp.add_run(text);rr.font.name='Roboto Slab' if size==26 else 'Arial';rr.font.bold=True
         rr.font.color.rgb=rgb('FFFFFF');rr.font.size=Pt(size)
     doc.add_paragraph()
     sources='; '.join(s['citation'] for s in data['sources'])
-    label_table(doc,[('Funding Opportunity',fon),('Awarding Agency',no['awarding_agency']+'; '+', '.join(no['awarding_offices'])),
-        ('Assistance Listing(s)','; '.join(f"{x['number']} {shown(x.get('title'))}" for x in no['cfda'])),
+    label_table(doc,[('Funding Opportunity',fon),('Awarding Agency',display_title(no['awarding_agency'])+'; '+', '.join(map(display_title,no['awarding_offices']))),
+        ('Assistance Listing(s)','; '.join(f"{x['number']} {shown(display_title(x.get('title')))}" for x in no['cfda'])),
         ('Period of Performance',period(no['period_of_performance']['start_min'],no['period_of_performance']['end_max'])),
         ('Recipients Profiled',integer(no['recipient_count'])),
         ('Total obligated (best available)',f"{dollars(no['best_available_total'])} · {fy_range}"),
@@ -212,10 +212,17 @@ def render(data, path, prepared, title, narrative, assets):
     heading(doc,'Where recipients are located',2)
     states=ag['by_state'];metro=next((x['recipients'] for x in ag['by_metro'] if x['value']=='Metro'),0)
     top=', '.join(f"{STATES.get(x['state'],x['state'])} ({integer(x['recipients'])})" for x in states[:3])
-    p(doc,f"Recipients are located in {integer(len(states))} states or territories. The largest groups are {top or MISSING}. "
+    territories={'DC','PR','VI','GU','AS','MP'}
+    state_count=sum(x['state'] not in territories for x in states)
+    present={x['state'] for x in states}
+    territory_names={'DC':'the District of Columbia','PR':'Puerto Rico','VI':'the U.S. Virgin Islands',
+                     'GU':'Guam','AS':'American Samoa','MP':'the Northern Mariana Islands'}
+    named=[territory_names[code] for code in ('DC','PR','VI','GU','AS','MP') if code in present]
+    locations=f"{integer(state_count)} states" + (', ' + ', '.join(named[:-1]) + ', and ' + named[-1] if len(named)>1 else ' and ' + named[0] if named else '')
+    p(doc,f"Recipients are located in {locations}. The largest groups are {top or MISSING}. "
       f"TAGGS classifies {integer(metro)} recipients as Metro.")
     heading(doc,'What kinds of organizations they are',2)
-    classes=', '.join(f"{x['value']} ({integer(x['recipients'])})" for x in ag['by_recipient_class'][:5])
+    classes=', '.join(f"{normalize_class(x['value'])} ({integer(x['recipients'])})" for x in ag['by_recipient_class'][:5])
     types=', '.join(f"{x['value']} ({integer(x['recipients'])})" for x in ag['by_recipient_type'][:5])
     p(doc,f"Recipient classes include {classes or MISSING}. Organization types include {types or MISSING}.")
     heading(doc,'Their wider HHS funding',2)
@@ -243,29 +250,32 @@ def render(data, path, prepared, title, narrative, assets):
             heading(doc,x['recipient_name'],2)
             variants=[v for v in x.get('name_variants',[]) if v!=x['recipient_name']]
             if variants:p(doc,'Also known as: '+ '; '.join(variants),muted=True)
-            a=x['address'];location=', '.join(z for z in (a.get('line1'),a.get('city'),a.get('state'),a.get('zip')) if z)
+            a=x['address'];location=', '.join(z for z in (a.get('line1'),a.get('city'),' '.join(z for z in (a.get('state'),a.get('zip')) if z)) if z)
             if a.get('county'):location+=f" ({a['county']} County)"
             label_table(doc,[('UEI',shown(x.get('uei'))),('Location',location or MISSING),
-                ('Congressional District',shown(x.get('congressional_district'))),('Organization Class',shown(x.get('recipient_class'))),
+                ('Congressional District',shown(x.get('congressional_district'))),('Organization Class',shown(normalize_class(x.get('recipient_class')))),
                 ('Organization Type',shown(x.get('recipient_type'))+(' · '+x['metro_status'] if x.get('metro_status') else '')),
                 ('Business Type','; '.join(x.get('business_types') or []) or MISSING)])
-            heading(doc,short_fon(fon)+' Award',2)
+            heading(doc,short_fon(fon)+' Award',3)
             cfda=x.get('cfda') or {};t=x['totals'];perform=x['period_of_performance']
             label_table(doc,[('Award Number',shown(x.get('fain'))),('Project Title',shown(x.get('project_title'))),
-                ('Assistance Listing',f"{shown(cfda.get('number'))} · {shown(cfda.get('title'))}"),
+                ('Assistance Listing',f"{shown(cfda.get('number'))} · {shown(display_title(cfda.get('title')))}"),
                 ('Period of Performance',period(perform.get('start'),perform.get('end'))),
                 ('Total Obligated',f"{dollars(t.get('best_available'))} ({shown(t.get('best_available_basis'))} basis)")])
-            heading(doc,'Obligations by fiscal year',2)
+            heading(doc,'Obligations by fiscal year',3)
             fy={int(v['fiscal_year']):v.get('account_obligation') for v in x['fiscal_years']}
             grid(doc,[f'FY{y}' for y in sorted(fy)],[[dollars(fy[y]) for y in sorted(fy)]]) if fy else p(doc,MISSING)
-            heading(doc,'Funded project',2);p(doc,short_abstract(x.get('abstract')))
-            heading(doc,'Other HHS Awards',2)
+            heading(doc,'Funded project',3);p(doc,short_abstract(x.get('abstract')))
+            abstract_source=x.get('abstract_source')
+            if abstract_source in ('taggs','usaspending'):
+                p(doc,f"Abstract: {'TAGGS' if abstract_source=='taggs' else 'USAspending'} award description",muted=True)
+            heading(doc,'Other HHS Awards',3)
             other=x['other_awards']
             if other['count']:
                 p(doc,f"{integer(other['count'])} other HHS awards recorded · total {dollars(other.get('total'))} · top 10 shown")
                 rows=[]
                 for y in other['top']:
-                    program=' — '.join(z for z in (y.get('award_title'),y.get('aln_title')) if z) or MISSING
+                    program=' — '.join(z for z in (y.get('award_title'),display_title(y.get('aln_title'))) if z) or MISSING
                     if len(program)>140:program=short_abstract(program,140)
                     span=period(y.get('first_fiscal_year'),y.get('last_fiscal_year'))
                     rows.append((shown(y.get('rank')),shown(y.get('award_number')),dollars(y.get('amount')),shown(y.get('opdiv')),program,span,shown(y.get('aln'))))
@@ -273,7 +283,7 @@ def render(data, path, prepared, title, narrative, assets):
                      [.3,.85,.75,.5,2.8,.8,.5])
             else:p(doc,'No other HHS awards to this recipient are recorded in TAGGS.')
             if data['subawards'] is not None and x.get('subawards') and x['subawards']['action_count']:
-                s=x['subawards'];p(doc,f"Sub-awards reported: {integer(s['subawardee_count'])} sub-awardees · {integer(s['action_count'])} actions · {dollars(s['reported_amount'])} reported (not additional federal funding).")
+                s=x['subawards'];heading(doc,'Sub-awards',3);p(doc,f"Sub-awards reported: {integer(s['subawardee_count'])} sub-awardees · {integer(s['action_count'])} actions · {dollars(s['reported_amount'])} reported (not additional federal funding).")
             source=doc.add_paragraph();source.add_run('Source: ');hyperlink(source,x.get('usaspending_url') or MISSING,x.get('usaspending_url'))
     if data['subawards'] is not None:
         sub=data['subawards'];summ=sub['summary'];doc.add_page_break();heading(doc,'Sub-awardees')

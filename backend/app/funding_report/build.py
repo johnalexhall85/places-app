@@ -41,6 +41,27 @@ def longest(*values):
     return max(found, key=len) if found else None
 
 
+def abstract_without_title(description, title):
+    description = clean(description)
+    title = clean(title)
+    if description and title:
+        prefix = title + ' - '
+        if description[:len(prefix)].casefold() == prefix.casefold():
+            return clean(description[len(prefix):])
+    return description
+
+
+def preferred_cfda(rows, taggs_aln):
+    """Pick the listing with the greatest award-level obligation."""
+    taggs = clean(taggs_aln)
+    if taggs and '.' not in taggs and len(taggs) == 5:
+        taggs = taggs[:2] + '.' + taggs[2:]
+    if not rows:
+        return taggs, None
+    selected = min(rows, key=lambda row: (-row['amount'], row['number'] != taggs, row['number']))
+    return selected['number'], selected['title']
+
+
 def query(session, sql, params=None):
     return session.execute(text(sql), params or {})
 
@@ -201,6 +222,12 @@ def build_data(session, build_id, meta):
       nullif(trim(r->>'transaction_description'),'') AS description FROM fr_prime
       WHERE auk IN (SELECT auk FROM fr_link) AND nullif(trim(r->>'transaction_description'),'') IS NOT NULL
       ORDER BY auk,length(trim(r->>'transaction_description')) DESC,id DESC""").mappings()}
+    cfda_rows = defaultdict(list)
+    for row in query(session, """SELECT auk, r->>'cfda_number' AS number, sum(amount) AS amount,
+      (array_agg(nullif(r->>'cfda_title','') ORDER BY length(r->>'cfda_title') DESC NULLS LAST))[1] AS title
+      FROM fr_prime WHERE auk IN (SELECT auk FROM fr_link) AND nullif(r->>'cfda_number','') IS NOT NULL
+      GROUP BY auk, r->>'cfda_number'""").mappings():
+        cfda_rows[row['auk']].append({'number':row['number'],'amount':row['amount'] or 0,'title':row['title']})
     links = query(session, """SELECT l.nofo_key,l.auk AS link_auk,l.fain,p.r AS prime,a.*,t.legal_entity_name,t.legal_entity_city,
       t.legal_entity_state,t.legal_entity_zip_code,t.legal_entity_county,t.legal_entity_country,
       t.legal_entity_congressional_district,t.uei AS taggs_uei,t.recipient_class,t.recipient_type,
@@ -232,6 +259,12 @@ def build_data(session, build_id, meta):
         award_total = sum(x or 0 for x in award.get(auk,{}).values()) if auk in award else None
         taggs_total = sum(x or 0 for x in taggs.get((fain,key),{}).values()) if (fain,key) in taggs else None
         best,basis = best_available(account_total,award_total,taggs_total,auk in account,auk in award,(fain,key) in taggs)
+        title = first(titles.get(fain), (first(r.get('prime_award_base_transaction_description'),
+                      descriptions.get(auk),row['award_description']) or '').split(' - ',1)[0][:200])
+        full_abstract = longest(*(abstract_without_title(value,title) for value in
+            (descriptions.get(auk),r.get('transaction_description'),row['prime_award_base_transaction_description'])))
+        taggs_abstract = clean(row['award_description'])
+        cfda_number, cfda_title = preferred_cfda(cfda_rows.get(auk,[]),row['aln'])
         profile = {'award_unique_key':auk,'fain':fain,'uei':uei,'recipient_name':name,'name_variants':variants,
           'parent':{'uei':first(r.get('recipient_parent_uei'),row['recipient_parent_uei']),
                     'name':first(r.get('recipient_parent_name'),row['recipient_parent_name'])},
@@ -245,11 +278,12 @@ def build_data(session, build_id, meta):
           'recipient_class':clean(row['recipient_class']),'recipient_type':clean(row['recipient_type']),
           'metro_status':clean(row['metro_non_metro']),
           'business_types':sorted(set(filter(None,[clean(r.get('business_types_description'))]))),
-          'project_title':first(titles.get(fain), (first(r.get('prime_award_base_transaction_description'),
-                            descriptions.get(auk),row['award_description']) or '').split(' - ',1)[0][:200]),
-          'abstract':longest(descriptions.get(auk),r.get('transaction_description'),row['prime_award_base_transaction_description'],row['award_description']),
-          'cfda':{'number':first(r.get('cfda_number'),row['cfda_number'],row['aln']),
-                  'title':first(r.get('cfda_title'),row['cfda_title'],row['assistance_listing_title'])},
+          'project_title':title,
+          'abstract':taggs_abstract or full_abstract,
+          'abstract_source':'taggs' if taggs_abstract else 'usaspending' if full_abstract else None,
+          'abstract_full':full_abstract,
+          'cfda':{'number':first(cfda_number,row['cfda_number'],row['aln']),
+                  'title':first(cfda_title,row['cfda_title'],row['assistance_listing_title'])},
           'funding_office':first(r.get('funding_office_name'),row['funding_office_name'],row['program_office']),
           'period_of_performance':{'start':date(first(r.get('period_of_performance_start_date'),row['period_of_performance_start_date'],row['taggs_start'])),
                                    'end':date(first(r.get('period_of_performance_current_end_date'),row['period_of_performance_current_end_date'],row['taggs_end']))},
