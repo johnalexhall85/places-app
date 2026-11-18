@@ -1332,3 +1332,302 @@ questions:
           expected_without_value_count: 0
           expect_measure_period: "2020"
           expect_no_change_computed: true
+
+  # --- CDC NOFO FUNDING: NOFO MATCH (Q55 - Q57) ---
+
+  - id: Q55
+    question: "Give me an overview of CDC funding opportunity CDC-RFA-PS21-2102, including recipient count, period of performance, sources, caveats, and the dataset download URL."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          include_subawards: false
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_fon_display: "CDC-RFA-PS21-2102"
+          expected_recipient_count: 97
+          expected_award_count: 97
+          expected_subawards_null: true
+          expect_dataset_url_suffix: "/funding/nofo/PS212102.json?subawards=0"
+
+  - id: Q56
+    question: "Look up CDC NOFO 'ps21 2102' (lowercase with spaces and no CDC-RFA prefix) and confirm it resolves to CDC-RFA-PS21-2102 with the same 97 recipients and total obligations."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "ps21 2102"
+          include_subawards: false
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_fon_display: "CDC-RFA-PS21-2102"
+          expected_recipient_count: 97
+          expected_award_count: 97
+          expected_best_available_total: 239315542.0
+          expect_dataset_url_suffix: "/funding/nofo/PS212102.json?subawards=0"
+
+  - id: Q57
+    question: "Give me an overview of CDC NOFO CE23-2301, including its canonical FON, recipient count, and dataset download URL."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CE23-2301"
+          include_subawards: false
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "CE232301"
+          expected_fon_display: "CDC-RFA-CE23-2301"
+          expected_recipient_count: 13
+          expected_award_count: 13
+          expected_subawards_null: true
+          expect_dataset_url_suffix: "/funding/nofo/CE232301.json?subawards=0"
+
+  # --- CDC NOFO FUNDING: TOTALS BY FISCAL YEAR (Q58 - Q59) ---
+
+  - id: Q58
+    question: "What are the fiscal-year account-level (File C) obligations for CDC-RFA-PS21-2102 across FY2021–FY2026, and do they match the best-available total?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          include_subawards: false
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_best_available_total: 239315542.0
+          expected_fiscal_year_accounts:
+            2021: 42395995.0
+            2022: 49347654.0
+            2023: 52613214.0
+            2024: 42395995.0
+            2025: 42395995.0
+            2026: 10166689.0
+          expect_null_fiscal_year_fields:
+            - fiscal_year: 2026
+              field: "taggs_amount"
+
+  - id: Q59
+    question: "What are the fiscal-year account-level (File C) obligations for CDC-RFA-CE23-2301 across FY2023–FY2026?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CDC-RFA-CE23-2301"
+          include_subawards: false
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "CE232301"
+          expected_best_available_total: 23368125.0
+          expected_fiscal_year_accounts:
+            2023: 5840458.0
+            2024: 5833369.0
+            2025: 5847149.0
+            2026: 5847149.0
+          expect_null_fiscal_year_fields:
+            - fiscal_year: 2026
+              field: "taggs_amount"
+
+  # --- CDC NOFO FUNDING: NO MATCH & NON-CDC TRAPS (Q60 - Q61) ---
+
+  - id: Q60
+    question: "Show the funding overview for CDC NOFO PS21-9999."
+    trap: true
+    trap_kind: "funding_nofo_no_match"
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "PS21-9999"
+          include_subawards: false
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_substrings_all:
+            - "Unknown CDC NOFO"
+            - "Suggestions:"
+            - "CDC-RFA-PS21-2102"
+
+  - id: Q61
+    question: "Show the recipient funding overview for HHS funding opportunity HRSA-25-001."
+    trap: true
+    trap_kind: "funding_non_cdc_nofo"
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "HRSA-25-001"
+          include_subawards: false
+    checks:
+      call_checks:
+        - call_index: 0
+          expect_error: true
+          expect_error_substrings_all:
+            - "HRSA"
+            - "only CDC NOFOs are supported"
+
+  # --- CDC NOFO FUNDING: SUB-AWARDS & NO-ADD TRAP (Q62 - Q63) ---
+
+  - id: Q62
+    question: "Summarize the reported sub-awards for CDC NOFO CE23-2301, including distinct sub-awardees, deduplicated action count, duplicates removed, and reported sub-award amount."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CE23-2301"
+          include_subawards: true
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "CE232301"
+          expected_subaward_summary:
+            distinct_subawardees: 5
+            actions: 14
+            raw_records: 15
+            duplicates_removed: 1
+            reported_amount: 2181204.61
+            primes_with_subawards: 3
+          expect_dataset_url_suffix: "/funding/nofo/CE232301.json?subawards=1"
+          expect_warning_substring: "Sub-award amounts are reported by prime recipients and are not additional federal funding."
+
+  - id: Q63
+    question: "What is the total federal funding including sub-awards for CDC NOFO CE23-2301?"
+    trap: true
+    trap_kind: "funding_subawards_no_add"
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_nofo_overview
+        arguments:
+          nofo: "CE23-2301"
+          include_subawards: true
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "CE232301"
+          expected_best_available_total: 23368125.0
+          expected_subaward_summary:
+            distinct_subawardees: 5
+            actions: 14
+            reported_amount: 2181204.61
+          expect_no_subawards_added_to_prime: true
+          expect_interpretation_rule_substring: "never add them to prime obligations"
+          expect_warning_substring: "not additional federal funding"
+
+  # --- CDC NOFO FUNDING: RECIPIENT PAGING (Q64) ---
+
+  - id: Q64
+    question: "Page through all recipients of CDC-RFA-PS21-2102 in state and name order using 50-recipient pages (offset 0 and offset 50)."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: list_nofo_recipients
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          offset: 0
+          limit: 50
+      - tool: list_nofo_recipients
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          offset: 50
+          limit: 50
+    checks:
+      match_lookup: true
+      expect_paging_union_total: 97
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_total_recipients: 97
+          expected_page_count: 50
+          expected_offset: 0
+          expected_first_fain: "NU62PS924730"
+          expect_dataset_url_suffix: "/funding/nofo/PS212102.json?subawards=0"
+        - call_index: 1
+          expected_nofo_key: "PS212102"
+          expected_total_recipients: 97
+          expected_page_count: 47
+          expected_offset: 50
+          expected_first_fain: "NU62PS924705"
+          expect_dataset_url_suffix: "/funding/nofo/PS212102.json?subawards=0"
+
+  # --- CDC NOFO FUNDING: SINGLE RECIPIENT LOOKUP (Q65 - Q66) ---
+
+  - id: Q65
+    question: "Get the full CDC-RFA-PS21-2102 recipient funding profile for UEI W42VM3PLXYE4 (Birmingham AIDS Outreach Inc)."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_recipient_funding
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          recipient: "W42VM3PLXYE4"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_recipient_uei: "W42VM3PLXYE4"
+          expected_recipient_fain: "NU62PS924730"
+          expected_recipient_name: "BIRMINGHAM AIDS OUTREACH INC"
+          expected_recipient_state: "AL"
+          expected_recipient_best_available: 2978542.0
+          expected_recipient_basis: "account"
+          expect_dataset_url_suffix: "/funding/nofo/PS212102.json?subawards=1"
+
+  - id: Q66
+    question: "Look up the CE23-2301 recipient profile matching the name substring 'ALASKA NETWORK', including its prime obligations and reported sub-award summary."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_recipient_funding
+        arguments:
+          nofo: "CE23-2301"
+          recipient: "ALASKA NETWORK"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "CE232301"
+          expected_recipient_uei: "LLS6JKKAVML9"
+          expected_recipient_fain: "NUS4CE002311"
+          expected_recipient_name: "ALASKA NETWORK ON DOMESTIC VIOLENCE AND SEXUAL ASSAULT, INC."
+          expected_recipient_state: "AK"
+          expected_recipient_best_available: 2000000.0
+          expected_recipient_basis: "account"
+          expected_recipient_subaward_actions: 8
+          expected_recipient_subaward_amount: 796721.93
+          expect_dataset_url_suffix: "/funding/nofo/CE232301.json?subawards=1"

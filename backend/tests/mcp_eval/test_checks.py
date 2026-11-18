@@ -787,13 +787,313 @@ def test_envelope_checks_across_tools():
 def test_questions_yaml_validates_offline():
     ok, summary, errors = run_eval.validate_questions_yaml()
     assert ok, f"questions.yaml validation failed: {errors}"
-    assert summary["total_questions"] == 54
-    assert summary["regular_questions"] == 38
-    assert summary["trap_questions"] == 16
+    assert summary["total_questions"] == 66
+    assert summary["area_questions"] == 54
+    assert summary["funding_questions"] == 12
+    assert summary["regular_questions"] == 47
+    assert summary["trap_questions"] == 19
     for tool in run_eval.ALL_TOOLS:
         assert summary["tool_call_counts"][tool] >= 1
-    for prod in run_eval.PUBLIC_PRODUCTS + run_eval.FACILITY_BLOCKS:
+    for prod in run_eval.PUBLIC_PRODUCTS + run_eval.FACILITY_BLOCKS + run_eval.FUNDING_PRODUCTS:
         assert summary["product_question_counts"][prod] >= 1
     for lvl in run_eval.ALL_LEVELS:
         assert summary["level_counts"][lvl] >= 1
     assert set(run_eval.SHOWCASE_GEOIDS).issubset(set(summary["showcase_geoids_covered"]))
+
+
+def _sample_funding_sources() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "usaspending_account",
+            "publisher": "USAspending.gov",
+            "product": "Federal account award data (File C), CDC",
+            "coverage": "FY2020–FY2026",
+            "data_through": "FY2026P12",
+            "citation": "Source: USAspending.gov · Federal account award data (File C), CDC · data through FY2026P12",
+        },
+        {
+            "id": "usaspending_award",
+            "publisher": "USAspending.gov",
+            "product": "CDC assistance prime transactions",
+            "coverage": "CDC assistance awards",
+            "data_through": "2026-06-18",
+            "citation": "Source: USAspending.gov · CDC assistance prime transactions · data through 2026-06-18",
+        },
+        {
+            "id": "taggs",
+            "publisher": "HHS TAGGS",
+            "product": "HHS award actions",
+            "coverage": "HHS award records",
+            "data_through": None,
+            "citation": "Source: HHS TAGGS · HHS award actions · data through unknown",
+        },
+        {
+            "id": "usaspending_subawards",
+            "publisher": "USAspending.gov",
+            "product": "Assistance sub-award reports",
+            "coverage": "CDC prime-linked sub-awards",
+            "data_through": "2026-09-30",
+            "citation": "Source: USAspending.gov · Assistance sub-award reports · data through 2026-09-30",
+        },
+    ]
+
+
+def _sample_funding_dataset(*, with_subawards: bool = True) -> dict[str, Any]:
+    rec_a = {
+        "award_unique_key": "ASST_NON_NU62PS924730_075",
+        "fain": "NU62PS924730",
+        "uei": "W42VM3PLXYE4",
+        "recipient_name": "BIRMINGHAM AIDS OUTREACH INC",
+        "name_variants": ["BIRMINGHAM AIDS OUTREACH INC"],
+        "parent": {"uei": None, "name": None},
+        "address": {
+            "line1": "205 32ND ST S",
+            "line2": None,
+            "city": "BIRMINGHAM",
+            "state": "AL",
+            "zip": "35233",
+            "county": "JEFFERSON",
+            "country": "UNITED STATES",
+        },
+        "congressional_district": "AL-07",
+        "congressional_district_source": "usaspending_current",
+        "recipient_class": "Non-Profit Public Non-Government Organizations",
+        "recipient_type": "Community Action Organization",
+        "metro_status": "Metro",
+        "business_types": ["NONPROFIT"],
+        "project_title": "B-CHIP2",
+        "abstract": "HIV prevention",
+        "cfda": {"number": "93.939", "title": "HIV Prevention"},
+        "funding_office": "NCHHSTP",
+        "period_of_performance": {"start": "2021-07-01", "end": "2026-06-30"},
+        "totals": {
+            "account_obligation": 552042.0,
+            "award_obligation": 441625.0,
+            "taggs_amount": 441625.0,
+            "best_available": 552042.0,
+            "best_available_basis": "account",
+        },
+        "fiscal_years": [
+            {"fiscal_year": 2021, "account_obligation": 441625.0, "award_obligation": 441625.0, "taggs_amount": 441625.0},
+            {"fiscal_year": 2026, "account_obligation": 110417.0, "award_obligation": None, "taggs_amount": None},
+        ],
+        "usaspending_url": "https://www.usaspending.gov/award/ASST_NON_NU62PS924730_075/",
+        "other_awards": {
+            "count": 1,
+            "total": 1600000.0,
+            "top10_total": 1600000.0,
+            "top": [
+                {
+                    "rank": 1,
+                    "award_number": "NU65PS923761",
+                    "amount": 1600000.0,
+                    "opdiv": "CDC",
+                    "aln": "93939",
+                    "aln_title": "HIV Prevention",
+                    "fon": "CDC-RFA-PS22-2203",
+                    "first_fiscal_year": 2022,
+                    "last_fiscal_year": 2025,
+                    "award_title": "T-CHIP",
+                }
+            ],
+        },
+        "subawards": {"subawardee_count": 1, "action_count": 1, "reported_amount": 50000.0} if with_subawards else None,
+    }
+    rec_b = copy.deepcopy(rec_a)
+    rec_b.update({
+        "award_unique_key": "ASST_NON_NU62PS924651_075",
+        "fain": "NU62PS924651",
+        "uei": "TESTUEI00002",
+        "recipient_name": '"SOMEONE CARES" INC. OF ATLANTA',
+        "address": {**rec_a["address"], "state": "GA", "city": "ATLANTA"},
+        "totals": {
+            "account_obligation": 441625.0,
+            "award_obligation": 441625.0,
+            "taggs_amount": None,
+            "best_available": 441625.0,
+            "best_available_basis": "account",
+        },
+        "fiscal_years": [
+            {"fiscal_year": 2021, "account_obligation": 441625.0, "award_obligation": 441625.0, "taggs_amount": None},
+        ],
+        "subawards": {"subawardee_count": 0, "action_count": 0, "reported_amount": 0.0} if with_subawards else None,
+    })
+
+    sub_block = None
+    if with_subawards:
+        sub_block = {
+            "summary": {
+                "distinct_subawardees": 1,
+                "actions": 1,
+                "raw_records": 1,
+                "duplicates_removed": 0,
+                "reported_amount": 50000.0,
+                "primes_with_subawards": 1,
+            },
+            "by_fiscal_year": [{"fiscal_year": 2024, "actions": 1, "subawardees": 1, "reported_amount": 50000.0}],
+            "by_state": [{"state": "AL", "subawardees": 1}],
+            "subawardees": [
+                {
+                    "uei": "SUBUEI000001",
+                    "name": "SUB PARTNER INC",
+                    "name_variants": ["SUB PARTNER INC"],
+                    "dba_names": [],
+                    "business_types": ["NONPROFIT"],
+                    "address": copy.deepcopy(rec_a["address"]),
+                    "congressional_district": "AL-07",
+                    "prime_fains": ["NU62PS924730"],
+                    "prime_recipients": ["BIRMINGHAM AIDS OUTREACH INC"],
+                    "action_count": 1,
+                    "reported_amount": 50000.0,
+                    "first_action_date": "2024-05-01",
+                    "last_action_date": "2024-05-01",
+                    "fiscal_years": [{"fiscal_year": 2024, "actions": 1, "reported_amount": 50000.0}],
+                    "description_examples": ["Subaward activities"],
+                }
+            ],
+            "actions": [
+                {
+                    "prime_fain": "NU62PS924730",
+                    "prime_recipient": "BIRMINGHAM AIDS OUTREACH INC",
+                    "subaward_number": "SUB-1",
+                    "action_date": "2024-05-01",
+                    "fiscal_year": 2024,
+                    "amount": 50000.0,
+                    "subawardee_uei": "SUBUEI000001",
+                    "subawardee_name": "SUB PARTNER INC",
+                    "description": "Subaward activities",
+                    "sam_report_ids": ["SAM-1"],
+                    "usaspending_url": "https://www.usaspending.gov/award/ASST_NON_NU62PS924730_075/",
+                }
+            ],
+        }
+
+    return {
+        "schema_version": "chip.nofo_recipient_profile.v1",
+        "build": {"build_id": 3, "built_at": "2026-11-18T20:50:12+00:00", "method_version": "nofo-v1"},
+        "sources": _sample_funding_sources(),
+        "nofo": {
+            "nofo_key": "PS212102",
+            "fon_display": "CDC-RFA-PS21-2102",
+            "fon_variants": ["CDC-RFA-PS21-2102"],
+            "awarding_agency": "Centers for Disease Control and Prevention",
+            "awarding_offices": ["NCHHSTP"],
+            "cfda": [{"number": "93.939", "title": "HIV Prevention", "award_count": 2}],
+            "period_of_performance": {"start_min": "2021-07-01", "end_max": "2026-06-30"},
+            "award_count": 2,
+            "recipient_count": 2,
+            "fiscal_years": [
+                {"fiscal_year": 2021, "account_obligation": 883250.0, "award_obligation": 883250.0, "taggs_amount": 441625.0, "is_complete": True},
+                {"fiscal_year": 2026, "account_obligation": 110417.0, "award_obligation": None, "taggs_amount": None, "is_complete": True},
+            ],
+            "best_available_total": 993667.0,
+        },
+        "aggregates": {
+            "by_state": [{"state": "AL", "recipients": 1, "nofo_total": 552042.0, "other_awards_top10_total": 1600000.0}],
+            "by_recipient_class": [{"value": "Non-Profit Public Non-Government Organizations", "recipients": 2, "nofo_total": 993667.0}],
+            "by_recipient_type": [{"value": "Community Action Organization", "recipients": 2}],
+            "by_metro": [{"value": "Metro", "recipients": 2}],
+            "other_awards_by_opdiv": [{"opdiv": "CDC", "awards": 2, "total": 3200000.0}],
+            "other_awards_by_aln": [{"aln": "93939", "title": "HIV Prevention", "awards": 2, "total": 3200000.0}],
+            "top_recipients_by_other_awards": [
+                {
+                    "award_unique_key": "ASST_NON_NU62PS924730_075",
+                    "recipient_name": "BIRMINGHAM AIDS OUTREACH INC",
+                    "state": "AL",
+                    "other_award_count": 1,
+                    "other_awards_top10_total": 1600000.0,
+                }
+            ],
+            "other_awards_top10_total": 3200000.0,
+            "other_award_rows": 2,
+            "recipients_without_other_awards": 0,
+        },
+        "recipients": [rec_a, rec_b],
+        "subawards": sub_block,
+        "caveats": [
+            "Sub-award amounts are reported by prime recipients and are not additional federal funding.",
+            "Other federal awards are HHS awards in TAGGS only; the top 10 per recipient is shown, not a complete federal portfolio.",
+        ],
+    }
+
+
+def test_funding_envelope_and_source_isolation():
+    ds = _sample_funding_dataset(with_subawards=True)
+    overview_env = {
+        "data": {
+            "nofo": ds["nofo"],
+            "aggregates": ds["aggregates"],
+            "subawards": ds["subawards"]["summary"],
+            "caveats": ds["caveats"],
+            "dataset_url": "http://127.0.0.1:8011/funding/nofo/PS212102.json?subawards=1",
+        },
+        "sources": ds["sources"],
+        "interpretation_rules": list(run_eval.FUNDING_INTERPRETATION_RULES),
+        "warnings": list(ds["caveats"]),
+    }
+    assert run_eval.check_envelope(overview_env, "get_nofo_overview", {"nofo": "PS21-2102", "include_subawards": True}) == []
+
+    # Missing dataset_url fails
+    no_url = copy.deepcopy(overview_env)
+    del no_url["data"]["dataset_url"]
+    assert any("dataset_url" in e for e in run_eval.check_envelope(no_url, "get_nofo_overview", {"include_subawards": True}))
+
+    # Area source leaking into funding fails
+    leaked_area = copy.deepcopy(overview_env)
+    leaked_area["sources"].append({"dataset_id": "cdc_places_county_2025_pilot", "product": "places"})
+    assert any("Area-product source leaked" in e for e in run_eval.check_envelope(leaked_area, "get_nofo_overview", {"include_subawards": True}))
+
+    # Funding source leaking into area response fails
+    area_env = _sample_envelope(data={"matches": []}, sources=_sample_funding_sources()[:1])
+    assert any("Funding source leaked" in e for e in run_eval.check_envelope(area_env, "find_places", {"query": "AL"}))
+
+    # Funding rule leaking into area response fails
+    area_env_rule = _sample_envelope(data={"matches": []}, sources=[])
+    area_env_rule["interpretation_rules"].append(run_eval.FUNDING_INTERPRETATION_RULES[0])
+    assert any("Funding interpretation rule leaked" in e for e in run_eval.check_envelope(area_env_rule, "find_places", {"query": "AL"}))
+
+    # Subawards added to prime total fails
+    added_sub = copy.deepcopy(overview_env)
+    added_sub["data"]["nofo"]["best_available_total"] = 993667.0 + 50000.0
+    assert any("add subawards" in e for e in run_eval.check_envelope(added_sub, "get_nofo_overview", {"include_subawards": True}))
+
+    # Missing one funding rule fails
+    missing_rule = copy.deepcopy(overview_env)
+    missing_rule["interpretation_rules"].pop()
+    assert any("Missing funding interpretation rule" in e for e in run_eval.check_envelope(missing_rule, "get_nofo_overview", {"include_subawards": True}))
+
+
+def test_nofo_dataset_v1_contract_validator():
+    ds = _sample_funding_dataset(with_subawards=True)
+    assert run_eval.check_nofo_dataset_v1(ds, expect_subawards=True) == []
+
+    ds_no_sub = _sample_funding_dataset(with_subawards=False)
+    assert run_eval.check_nofo_dataset_v1(ds_no_sub, expect_subawards=False) == []
+
+    # Out-of-order recipients rejected
+    bad_order = copy.deepcopy(ds)
+    bad_order["recipients"].reverse()
+    assert any("out of (state, name) order" in e for e in run_eval.check_nofo_dataset_v1(bad_order, expect_subawards=True))
+
+    # Out-of-order fiscal_years rejected
+    bad_fy = copy.deepcopy(ds)
+    bad_fy["nofo"]["fiscal_years"].reverse()
+    assert any("not strictly ascending" in e for e in run_eval.check_nofo_dataset_v1(bad_fy, expect_subawards=True))
+
+    # Null coerced to 0 in money fields without source rows rejected (both NOFO-level and recipient-level)
+    zero_nofo = copy.deepcopy(ds)
+    zero_nofo["nofo"]["fiscal_years"][1]["taggs_amount"] = 0.0
+    assert any("null must never be written as 0" in e for e in run_eval.check_nofo_dataset_v1(zero_nofo, expect_subawards=True))
+
+    zero_rec = copy.deepcopy(ds)
+    zero_rec["recipients"][1]["totals"]["taggs_amount"] = 0.0
+    assert any("null must not be written as 0" in e for e in run_eval.check_nofo_dataset_v1(zero_rec, expect_subawards=True))
+
+    # Missing top-level key rejected
+    missing_key = copy.deepcopy(ds)
+    del missing_key["aggregates"]
+    assert any("missing top-level keys" in e for e in run_eval.check_nofo_dataset_v1(missing_key, expect_subawards=True))
+
+    # Origin helper
+    assert run_eval._origin_from_url("http://127.0.0.1:8011/mcp") == "http://127.0.0.1:8011"
+    assert run_eval._origin_from_url("https://mcp.publicdataobservatory.org/mcp") == "https://mcp.publicdataobservatory.org"
