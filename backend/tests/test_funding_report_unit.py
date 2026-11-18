@@ -57,6 +57,9 @@ def test_f2b_source_caveats_and_longest_abstract():
     assert any('loaded 2026-11-18' in x for x in rows)
     assert 'unknown' not in ' '.join(rows).lower()
     assert not any('not complete' in x for x in rows)
+    sources[1]['data_through']='2026-09-30'
+    full_year_rows=caveats(sources)
+    assert not any('awards first made after that date' in x for x in full_year_rows)
     assert longest('Short','A much longer abstract')=='A much longer abstract'
 
 

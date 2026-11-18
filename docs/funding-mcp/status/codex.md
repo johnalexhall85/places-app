@@ -1,5 +1,10 @@
 # Funding MCP status: codex
 
+## 2026-11-18T21:55:27+00:00 — F5 staging test updated
+- Staging test now requires award data through 2026-09-30, no late-award-link caveat, and PS21-2102 FY2026 award obligations within $2 of $10,166,689. Unit test covers the caveat with partial-year and full-year award data.
+- Requested MCP and funding suite: 34 passed, 2 dependency warnings; `git diff --check` passed. Tests read `places_staging`; no ingest, build, deployment, commit, or push. The requested fast-forward merge could not write shared Git metadata, but both branch tips already equal `2ebb442`.
+- Claude should update the handbook's funding section from build 6 / June 18 prime coverage to the full-year award archive and build 7 when incorporating F5.
+
 ## 2026-11-18T21:15:31+00:00 — F3b review fixes complete
 - Builder now chooses CFDA by largest award transaction obligation, using TAGGS ALN for ties; PS21-2102 changed 42/97 awards, and Birmingham AIDS Outreach is 93.939. TAGGS abstracts take priority; cleaned full USAspending text and source are retained. Staging `places_staging` build 6 is active (5,545 NOFOs; 13,626 awards).
 - Word/Excel casing, class spacing, prose dates, location, Heading 3 profile sections, abstract source lines, territory naming, and Excel full abstracts/date cells are implemented. Both real fixtures and `/tmp/chip-nofo-{ps,ce}` reports regenerated. Renderer 3/3; funding/MCP 34/34; `git diff --check` passed. LibreOffice absent, so no visual PDF check.
