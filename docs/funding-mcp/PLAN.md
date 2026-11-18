@@ -136,8 +136,8 @@ Funding interpretation rules (verbatim):
 | F1+F2 | Codex | `backend/app/funding_report/` build and lookup; MCP tools and dataset route | |
 | F3 | Codex | Renderer, assets, zip script | |
 | F4 | Antigravity | Funding eval questions and the PS21-2102 / CE23-2301 fidelity report | |
-| F5 | Claude | Review, merge to `beta`, staging deploy; Gate A: John tries the skill in claude.ai | |
-| F6 | Claude | Gate B: live migration, build, nginx, restart, final zip | |
+| F5 | Claude | Review, merge to `beta`, staging deploy; Gate A: John tries the skill in claude.ai | done (Gate A passed) |
+| F6 | Claude | Gate B: live migration, build, nginx, restart, final zip | done (live 2026-11-18) |
 
 ## FR outcome (2026-11-18)
 

@@ -2,6 +2,42 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-18T22:10:00+00:00 — CDC NOFO recipient profiles live; FY2026 award-level data through 2026-09-30 (Claude, with Codex)
+
+- **Approval:** after Gate A, John said "Everything works perfectly. now Let's update the USA spending award data all the way through the end of FY26. Then we can push it all live."
+- **Award-level FY2026:**
+  - **What USAspending serves:** its search and bulk index has no FY2026 HHS assistance transactions, but its per-award API and the monthly Award Data Archive do.
+  - **Archive:** downloaded `FY2026_075_Assistance_Full_20261106.zip` (SHA-256 in `data/usaspending/chipfunding/fy26_archive_20261106/SHA256SUMS`). It has 41,364 CDC rows through 2026-09-30, but the FON is blank on all but 704 of them.
+  - **FON restore:** `prepare_usaspending_cdc_archive.py` filled 21,768 FONs from the same transactions in the July download and 18,297 from each award's single historical FON. It left 595 blank, all on multi-FON awards that stay linked through earlier rows.
+  - **Contracts:** the CDC-funded contract download added 304 prime rows and 42 sub-award rows. Assistance had no funding-only rows.
+- **Staging, then live:** `ingest_usaspending_funding.py --profile-path …/fy26_full_year_profile.json --fiscal-year 2026 --replace` took about 2 minutes on each database.
+  - **FY2026 counts:** prime 22,208 → 41,364; sub-awards 3,373 → 7,120; contracts 1,886 / 109 → 5,012 / 161; fact table 24,094 → 46,376.
+  - **Builds:** staging build 7 and live build 1, each with 5,586 NOFOs and 13,687 awards.
+  - **PS21-2102:** FY2026 award-level obligations are $10,166,689, equal to account level. The "awards made after June are not linked" caveat no longer appears.
+- **Codex:**
+  - F5 updated the staging test for full-year data.
+  - F6 added `--allow-live` to the build, which by default refuses any database except `places_staging`.
+  - Claude reviewed and committed both. Codex's diary edits were dropped in favour of this entry.
+- **Live promotion:**
+  1. Recovery set saved to `data/deploy-recovery/funding-mcp-20261118/`.
+  2. `main` fast-forwarded from `a2ed4e8` to `1767316`.
+  3. `alembic upgrade head` to `b3f9d2a7c1e4`.
+  4. Live FY2026 ingest.
+  5. `python -m app.funding_report.build --allow-live` on `places`.
+  6. `CHIP_MCP_PUBLIC_BASE_URL` added to `mcp-live.env`.
+  7. `nginx-mcp-live.conf` installed as `sites-available/chip-mcp`, then `nginx -t` and a reload.
+  8. `systemctl restart chip-mcp`.
+  
+  No frontend build and no `places-backend` restart: neither the website nor its API changed.
+- **Verification:**
+  - Live `/healthz` and `/api/health` returned 200.
+  - `https://mcp.publicdataobservatory.org/funding/nofo/PS212102.json?subawards=1` returned 200 (gzip, ETag `"1-PS212102-1"`). `--dataset-check` passed.
+  - Evaluation against the live service (`127.0.0.1:8012`, live data): 66/66.
+  - Through the public URL, 59/66 passed. The 7 failures were Nginx 429 rate-limit responses to the 88-call burst; 8 429s appear in the access log.
+  - The skill renders CE23-2301 from the live dataset.
+- **Skill zip:** `/home/john/chip-claude/skills/dist/chip-nofo-recipient-profile.zip`. It is unchanged from Gate A and works against any CHIP host, because the dataset link comes from the tool.
+- **Next:** none required. Retry the USAspending search and bulk path, and the FON values in the archive, when HHS republishes. After any future TAGGS or USAspending ingest, rebuild `funding_report`.
+
 ## 2026-11-18T21:25:00+00:00 — CDC NOFO recipient profiles: funding MCP tools and claude.ai skill on staging (Claude, with Codex and Antigravity)
 
 - **Request:** John asked for a claude.ai skill that builds his PS21-2102-style recipient dossier for any CDC NOFO, with or without sub-awardees, from CHIP data through the MCP server, in the PDO CHIP brand. The live MCP server should also gain funding tools.

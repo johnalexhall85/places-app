@@ -1,20 +1,29 @@
 # CHIP project handbook
 
-**CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): on staging only, 2026-11-18 (Claude; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
-- **What:** three read-only MCP tools (`get_nofo_overview`, `list_nofo_recipients`, `get_recipient_funding`; 11 tools in total) and `GET /funding/nofo/{key}.json?subawards=0|1` (gzip dataset `chip.nofo_recipient_profile.v1`). The skill `skills/chip-nofo-recipient-profile/` (zipped by `skills/build_skill_zip.sh`) downloads that dataset in the assistant's sandbox and renders a PDO-branded Word report and Excel workbook (`scripts/render.py`). Scope: CDC NOFOs only; other HHS FONs are refused.
-- **Data:** read model `funding_report` (migration `b3f9d2a7c1e4`, which also grants `chip_mcp_ro` SELECT without a password change), rebuilt by `cd backend && python -m app.funding_report.build` (about 1 minute; keeps two builds; activates in one transaction). **Rebuild it after every TAGGS or CDC USAspending ingest.**
-  - **Obligations:** account-level `cdc_funding.cdc_funding_awards` (File C, the `/cdc-funding` data, through FY2026 P12).
-  - **NOFO link:** award-level prime transactions, through 2026-06-18.
-  - **Other HHS awards:** TAGGS by UEI.
-  - **Sub-awards:** award-level sub-awards.
-- **Staging state:** `places_staging` build 6.
-  - **PS21-2102 fidelity:** FY2021–FY2025 match John's July dossier to the dollar for 97 of 97 recipients (`deliverables/funding-mcp/fidelity_report.md`). FY2026 is $10,166,689.
-- **FY2026 award-level refresh (staging only):**
-  - **Sub-awards:** went from 3,373 to 7,120 rows, through 2026-09-30, via `backend/scripts/fetch_usaspending_cdc_award_files.py` and the profile `data/usaspending/chipfunding/fy26_candidate/fy26_subaward_refresh_profile.json`.
-  - **Prime transactions:** unchanged. On 2026-11-18 USAspending served no FY2026 HHS assistance prime transactions, so CDC awards first made after 2026-06-18 have no NOFO link yet.
-- **Infra:** Nginx `location ^~ /funding/nofo/` added to `infra/mcp/nginx-mcp.conf` (staging) and `nginx-mcp-live.conf` (live, not installed). `CHIP_MCP_PUBLIC_BASE_URL` set in `~/.config/chip/mcp-staging.env`.
-- **Live:** unchanged (no migration, no build, no sub-award refresh, no Nginx change) until Gate B.
-
+**CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): live since 2026-11-18T22:05Z (Claude; Gate A passed by John; Gate B approved: "push it all live"; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
+- **What:**
+  - **MCP tools:** three read-only tools (`get_nofo_overview`, `list_nofo_recipients`, `get_recipient_funding`), for 11 tools in total.
+  - **Dataset route:** `GET https://mcp.publicdataobservatory.org/funding/nofo/{key}.json?subawards=0|1`, a gzip dataset in `chip.nofo_recipient_profile.v1` format.
+  - **Skill:** `skills/chip-nofo-recipient-profile/`, zipped by `skills/build_skill_zip.sh` into `skills/dist/`. It downloads the dataset in the assistant's sandbox and renders a PDO-branded Word report and Excel workbook (`scripts/render.py`).
+  - **Scope:** CDC NOFOs only. Other HHS FONs are refused.
+- **Data:**
+  - **Read model:** `funding_report` (migration `b3f9d2a7c1e4`, which grants `chip_mcp_ro` SELECT without a password change).
+  - **Rebuild:** `cd backend && python -m app.funding_report.build [--allow-live]`. It takes about 85 s, keeps the two newest builds, and activates in one transaction. The default refuses any database except `places_staging`. **Rebuild after every TAGGS or CDC USAspending ingest.**
+  - **Sources:** obligations come from account-level `cdc_funding.cdc_funding_awards` (File C, through FY2026 P12). The NOFO link, identity, and abstracts come from award-level prime transactions; other HHS awards from TAGGS by UEI; sub-awards from the award-level sub-awards.
+  - **Live build 1 and staging build 7:** 5,586 NOFOs and 13,687 awards each.
+- **FY2026 award-level data through 2026-09-30 (live and staging):** USAspending's search and bulk index serves no FY2026 HHS assistance transactions, and its FY2026 HHS archive leaves `funding_opportunity_number` blank.
+  - **Prime transactions:** the CDC rows of archive `FY2026_075_Assistance_Full_20261106` (41,364), with the FON restored by `backend/scripts/prepare_usaspending_cdc_archive.py`. The `chip_fon_backfill` column in `raw_record` records the source of each value.
+  - **Sub-awards and contracts:** sub-awards (7,120) and contracts (5,012 prime and 161 sub-award rows, the union of awarding-CDC and funding-CDC) come from `fetch_usaspending_cdc_award_files.py`.
+  - **Ingest:** `ingest_usaspending_funding.py --profile-path data/usaspending/chipfunding/fy26_archive_20261106/fy26_full_year_profile.json --fiscal-year 2026 --replace`.
+  - **Before the refresh:** 22,208 prime rows, 3,373 sub-awards, 1,886 and 109 contract rows, and 24,094 fact rows. After it, the fact table has 46,376 rows.
+  - **Effect:** this also changes FY2026 rows that the legacy `/api/cdc/funding/*` routes and `mv_cdc_funding_map_county` read.
+- **Infra:**
+  - **Nginx:** `location ^~ /funding/nofo/` in `infra/mcp/nginx-mcp.conf` (staging) and in `/etc/nginx/sites-available/chip-mcp`, installed from `infra/mcp/nginx-mcp-live.conf`.
+  - **Environment:** `CHIP_MCP_PUBLIC_BASE_URL` is set in `~/.config/chip/mcp-live.env` (`https://mcp.publicdataobservatory.org`) and in `mcp-staging.env`.
+  - **Rate limit:** the public live limit (120 per minute, burst 60) returns 429 errors to the 88-call evaluation. Run the full evaluation against `http://127.0.0.1:8012/mcp`.
+- **Rollback:** the pair is in `data/deploy-recovery/funding-mcp-20261118/`: `commit-before.txt` (`a2ed4e8`), `alembic-before.txt` (`a8c2e6f0d4b1`), `fy26-counts-before.txt`, `nginx-chip-mcp-before.conf`, and the ingest and build logs.
+  - **Data:** rerun the ingest with `backend/data_profiles/usaspending_funding_file_profile.json --fiscal-year 2026 --replace`. The July files are unchanged in `fy26/`.
+  - **Code:** restore the Nginx file, then `git reset` `main` to `a2ed4e8` and `alembic downgrade a8c2e6f0d4b1` (drops `funding_report`). Restart `chip-mcp`.
 **Historical periods live, verified 2026-11-17T23:25Z (Claude, Gate B approved by John):** the section below is now true on live as well as staging. `main` in `/home/john/places-app` is at `aaaf7ac` or a documentation-only descendant; Alembic `a8c2e6f0d4b1`; webroot bundle `index-2Nm0E_1F.js` (equal to staging); `places-backend` and `chip-mcp` restarted at about 23:13Z, so the public MCP server has eight tools. Live pointers: the 12 current pointers are unchanged, and 9 `:history` pointers were added. Live history releases (each with semantic, schema, and metadata digests equal to staging): CMS GV `7e5e4251-f27e-4093-b4b7-6be541eb47c0`, USDA FEA `dc9f0388-875d-4164-8494-fa240907977b`, BRFSS `f6d3fad3-f84f-4c16-b88d-71f1d60ec4e3`, EPA AQI `7bb57ceb-6349-428d-a8d0-8e5265cd3a9c`, AHRF `e1664822-1efd-4a95-a6a8-72489323ff72`, ACS income `5fad92c6-9cb2-4acd-a51b-c0cfa884fb34`, ACS community `08785e0c-5797-4a0d-ab23-68bdc19529f9`, PLACES `97b0f536-6617-4de7-ab80-23527a276a68`, CLH `1ee7ba25-098e-43d9-920b-f5f582348bec`. Live `data/ingest/history/` holds the archived sources and TIGER 2019/2020 boundaries. Rollback: `python -m app.area_pilot.history.cli --product <p> deactivate` per product (data), or `data/deploy-recovery/history-20261117/` (`commit-before.txt` = `7c8a29f`, `webroot-before/`, `pointers-before.txt`, `profiles-before.json`) plus the private `area_pilot` dump in `/home/john/chip-recovery/20261117T221417Z-history/`.
 
 **Historical periods on the maps and the MCP server: first verified on staging 2026-11-17T21:30Z (Claude):**
