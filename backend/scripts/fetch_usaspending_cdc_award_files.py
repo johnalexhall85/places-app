@@ -44,14 +44,15 @@ def request(method: str, url: str, body: dict | None = None) -> dict:
         return json.load(resp)
 
 
-def download(prime_types: list[str], sub_types: list[str], start: str, end: str, out: Path, label: str) -> None:
+def download(prime_types: list[str], sub_types: list[str], start: str, end: str, out: Path, label: str,
+             agency_type: str = "awarding") -> None:
     payload = {
         "filters": {
             "prime_award_types": prime_types,
             "sub_award_types": sub_types,
             "date_type": "action_date",
             "date_range": {"start_date": start, "end_date": end},
-            "agencies": [AGENCY],
+            "agencies": [{**AGENCY, "type": agency_type}],
         },
         "file_format": "csv",
     }
@@ -81,14 +82,19 @@ def main() -> None:
     parser.add_argument("--fiscal-year", type=int, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--end-date", help="default: end of fiscal year or today, whichever is earlier")
+    parser.add_argument("--only", choices=["assistance", "contracts"], help="download one award family only")
+    parser.add_argument("--agency-type", choices=["awarding", "funding"], default="awarding")
     args = parser.parse_args()
     start = f"{args.fiscal_year - 1}-10-01"
     end = args.end_date or min(f"{args.fiscal_year}-09-30", date.today().isoformat())
     args.out.mkdir(parents=True, exist_ok=False)
-    download(ASSISTANCE_TYPES, ["grant"], start, end, args.out, "assistance")
-    download(CONTRACT_TYPES, ["procurement"], start, end, args.out, "contracts")
+    if args.only in (None, "assistance"):
+        download(ASSISTANCE_TYPES, ["grant"], start, end, args.out, "assistance", args.agency_type)
+    if args.only in (None, "contracts"):
+        download(CONTRACT_TYPES, ["procurement"], start, end, args.out, "contracts", args.agency_type)
     (args.out / "fetch_manifest.json").write_text(json.dumps(
-        {"fiscal_year": args.fiscal_year, "start_date": start, "end_date": end, "agency": AGENCY,
+        {"fiscal_year": args.fiscal_year, "start_date": start, "end_date": end,
+         "agency": {**AGENCY, "type": args.agency_type}, "only": args.only,
          "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "files": sorted(p.name for p in args.out.glob("*.csv"))}, indent=2) + "\n")
 

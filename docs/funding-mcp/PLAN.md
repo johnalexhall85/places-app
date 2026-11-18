@@ -150,3 +150,17 @@ Funding interpretation rules (verbatim):
   - Prime (22,208), contracts (1,886 / 109), and `fact_cdc_funding_prime_transaction` (24,094) are unchanged.
 - **Live:** not changed. Repeat the same command against `places` at Gate B.
 - **Consequence:** awards first made after 2026-06-18 still have no NOFO link. Account-level obligations through FY2026 P12 are unaffected. Retry the prime download later with `fetch_usaspending_cdc_award_files.py`.
+
+## FY2026 full-year award data (2026-11-18, after Gate A)
+
+- **Source.** USAspending's search and bulk-download index serves no FY2026 HHS assistance transactions. Its per-award pages still have them, and so does the monthly **Award Data Archive** `FY2026_075_Assistance_Full_20261106.zip` (262,541 HHS rows, of which 41,364 are CDC-awarded, through 2026-09-30; SHA-256 in `data/usaspending/chipfunding/fy26_archive_20261106/SHA256SUMS`). In that archive, `funding_opportunity_number` is blank on all but 704 CDC rows. 21,768 of those same transactions had it in CHIP's July download.
+- **Restoring the FONs.** `backend/scripts/prepare_usaspending_cdc_archive.py` writes the CDC rows with the FON restored, adding a `chip_fon_backfill` column that records the source:
+  - `usaspending`: 704 rows;
+  - `previous_transaction` (same transaction key in the July file): 21,768;
+  - `award_history` (the award's single FON in earlier raw rows): 18,297;
+  - blank: 595, all on awards with more than one historical FON. The builder still links these awards through their earlier rows.
+- **Contracts.** The FY2026 files are the union of the awarding-CDC and funding-CDC bulk downloads: 5,012 prime rows and 161 sub-award rows (`fy26_candidate/CDC_Contracts_*_awarding_or_funding_20261118.csv`). The July files had 1,886 and 109. Assistance has no funding-only CDC rows.
+- **Ingest.** Profile `data/usaspending/chipfunding/fy26_archive_20261106/fy26_full_year_profile.json`, run with `ingest_usaspending_funding.py --fiscal-year 2026 --replace`.
+  - **Staging:** FY2026 raw assistance prime rows went from 22,208 to 41,364, sub-awards from 3,373 to 7,120, and contracts from 1,886 to 5,012. The fact table now has 46,376 rows.
+  - **Build 7:** 5,586 NOFOs and 13,687 awards. PS21-2102 FY2026 award-level obligations are $10,166,689, equal to account level.
+- **Rollback.** Rerun the ingest with the original profile (`backend/data_profiles/usaspending_funding_file_profile.json --fiscal-year 2026 --replace`; the July files are unchanged in `fy26/`), then rebuild `funding_report`.
