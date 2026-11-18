@@ -232,3 +232,16 @@ Where this differs from the sections above, this wins. Data: the history release
 6. **`search_measures` items gain `periods`:** published period strings, current first. **`get_measure_details` items gain `periods`:** the full `lookup.measure_periods` entries (`period`, `current`, `available`, `note`, `boundary_vintage`), with `release_id` kept.
 7. **`list_data_sources` notes:** replace the one-period sentence with one line per product giving its published period range (e.g. "CMS Original Medicare GV: 2019–2024").
 8. **Unchanged:** no composite scores, no ranking across periods, no derived differences or percentage changes, and the same rate limits and size cap. Sorting (`value_desc`/`value_asc`) applies within one period only.
+
+## Amendment 3 (2026-11-18, Claude): CDC NOFO funding
+
+John approved funding tools on 2026-11-18. The full specification, including the dataset JSON contract, is [docs/funding-mcp/PLAN.md](../funding-mcp/PLAN.md). Where the two differ, the plan wins for funding.
+
+1. **New read layer:** `app.funding_report.lookup`, over schema `funding_report`. Funding tools read only through it. Area tools are unchanged and never read `funding_report`. The "no SQL in `mcp_server`" rule still holds.
+2. **Three tools are added, for 11 in total:** `get_nofo_overview`, `list_nofo_recipients`, and `get_recipient_funding`. Each has the same read-only annotations, returns an `Envelope`, and is subject to the 50,000-byte cap.
+3. **One HTTP route is added:** `GET /funding/nofo/{nofo_key}.json?subawards=0|1`. It is read-only, rate-limited by the same Nginx zone, and not subject to the 50,000-byte cap, because it is a download and not a tool response.
+4. **Funding citations and rules:**
+   - `sources` and `interpretation_rules` for funding responses come from the plan, not from `PUBLIC_PRODUCTS` or `RULES`.
+   - The cache fingerprint includes the active `funding_report` build id.
+5. **Wording:** the general wording rules apply. In addition, never add sub-award amounts to prime obligations, and never call the other-award list complete.
+6. **Not exposed:** funding for agencies other than CDC (refused with an explanation), legacy `/api/cdc/funding/*` data, and any write.

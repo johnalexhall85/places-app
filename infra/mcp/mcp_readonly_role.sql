@@ -1,7 +1,7 @@
 -- Read-only database role for the CHIP MCP server. Run once per database as a superuser:
 --   psql "<admin url>/places_staging" -v ro_password="'<secret>'" -f infra/mcp/mcp_readonly_role.sql
 -- The password is supplied at run time and stored only in ~/.config/chip/mcp-*.env (mode 600).
--- Rerunnable. Grants SELECT on the shared published-data schema and the two county-search tables only.
+-- Rerunnable. Grants SELECT on the shared published-data schema, the funding_report read model, and the two county-search tables only.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'chip_mcp_ro') THEN
     CREATE ROLE chip_mcp_ro LOGIN;
@@ -22,6 +22,13 @@ DO $$ BEGIN
     EXECUTE 'GRANT SELECT ON public.dim_county_boundary TO chip_mcp_ro';
   END IF;
 END $$;
+DO $$ BEGIN
+  IF to_regnamespace('funding_report') IS NOT NULL THEN
+    EXECUTE 'GRANT USAGE ON SCHEMA funding_report TO chip_mcp_ro';
+    EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA funding_report TO chip_mcp_ro';
+  END IF;
+END $$;
+-- funding_report (CDC NOFO read model) is also granted by its migration b3f9d2a7c1e4, without a password change.
 -- Tables added to area_pilot by later migrations are readable without rerunning this script.
 -- Must be run by the role that owns those tables (the application role):
 --   ALTER DEFAULT PRIVILEGES IN SCHEMA area_pilot GRANT SELECT ON TABLES TO chip_mcp_ro;
