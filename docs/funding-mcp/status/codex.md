@@ -1,5 +1,10 @@
 # Funding MCP status: codex
 
+## 2026-11-18T21:58:42+00:00 — F6 live build opt-in ready
+- `funding_report.build` now requires `--allow-live` for database names other than `places_staging`; its refusal uses the F6 wording. The success JSON names the selected database. Unit coverage parses arguments and checks the summary without opening a database.
+- Requested funding/MCP suite: 35 passed, 2 dependency warnings. The first run had a test-only regex assertion failure; the exact-message assertion fixed it. `git diff --check` passed. No build, database write, deployment, commit, push, merge, or sudo. Changes are uncommitted for Claude's Gate B review.
+- Handbook update is for Claude when it incorporates F6; F6 expressly says not to edit the diary. This status entry carries the handoff facts.
+
 ## 2026-11-18T21:55:27+00:00 — F5 staging test updated
 - Staging test now requires award data through 2026-09-30, no late-award-link caveat, and PS21-2102 FY2026 award obligations within $2 of $10,166,689. Unit test covers the caveat with partial-year and full-year award data.
 - Requested MCP and funding suite: 34 passed, 2 dependency warnings; `git diff --check` passed. Tests read `places_staging`; no ingest, build, deployment, commit, or push. The requested fast-forward merge could not write shared Git metadata, but both branch tips already equal `2ebb442`.

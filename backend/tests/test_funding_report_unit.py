@@ -1,6 +1,31 @@
+import pytest
+
 from app.funding_report.keys import nofo_key
 from app.funding_report.method import best_available, caveats, dedupe_subawards, district
-from app.funding_report.build import longest, preferred_cfda, abstract_without_title
+from app.funding_report.build import (
+    abstract_without_title, build_summary, longest, parse_arguments, preferred_cfda,
+)
+
+
+def test_build_database_guard_and_summary():
+    staging = parse_arguments(['--database-url', 'postgresql://localhost/places_staging'])
+    assert staging.database == 'places_staging'
+    assert not staging.allow_live
+
+    refusal = 'Refusing to build outside places_staging without --allow-live (Claude runs live builds after Gate B)'
+    with pytest.raises(SystemExit) as error:
+        parse_arguments(['--database-url', 'postgresql://localhost/places'])
+    assert str(error.value) == refusal
+    with pytest.raises(SystemExit) as error:
+        parse_arguments(['--database-url', 'postgresql://localhost/places?note=/places_staging'])
+    assert str(error.value) == refusal
+
+    live = parse_arguments(['--database-url', 'postgresql://localhost/places', '--allow-live'])
+    assert live.database == 'places'
+    summary = build_summary(7, live.database, 0, {'nofo': 2})
+    assert summary['database'] == 'places'
+    assert summary['build_id'] == 7
+    assert summary['counts'] == {'nofo': 2}
 
 
 def test_nofo_key():

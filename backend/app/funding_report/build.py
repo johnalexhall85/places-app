@@ -1,4 +1,4 @@
-"""Rebuild the CDC funding report snapshot from staging source tables.
+"""Rebuild the CDC funding report snapshot from source tables.
 
 All source scans, joins, and monetary aggregates are set-based. Python projects the
 resulting grouped rows into the versioned JSON contract.
@@ -13,6 +13,7 @@ import re
 import time
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from app.db import DATABASE_URL
 from .method import best_available, district
@@ -402,12 +403,25 @@ def write_model(session, build_id, meta, nofo_rows, by_uei, by_sub):
             'nofo_subaward':sum(map(len,by_sub.values()))}
 
 
-def main():
+def parse_arguments(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--database-url',default=DATABASE_URL)
-    args=parser.parse_args()
-    if '/places_staging' not in args.database_url:
-        raise SystemExit('Refusing to build outside places_staging in this Codex worktree')
+    parser.add_argument('--allow-live',action='store_true',
+                        help='Allow a build outside places_staging after Gate B approval')
+    args=parser.parse_args(argv)
+    args.database=make_url(args.database_url).database
+    if args.database != 'places_staging' and not args.allow_live:
+        raise SystemExit('Refusing to build outside places_staging without --allow-live (Claude runs live builds after Gate B)')
+    return args
+
+
+def build_summary(build_id, database, start, counts):
+    return {'build_id':build_id,'database':database,'status':'complete',
+            'duration_seconds':round(time.monotonic()-start,2),'counts':counts}
+
+
+def main():
+    args=parse_arguments()
     engine=create_engine(args.database_url,pool_pre_ping=True)
     start=time.monotonic()
     with Session(engine) as s:
@@ -430,7 +444,7 @@ def main():
             query(s,"""DELETE FROM funding_report.build_run WHERE build_id NOT IN
               (SELECT build_id FROM funding_report.build_run ORDER BY build_id DESC LIMIT 2)""")
             s.commit()
-        print(json.dumps({'build_id':build_id,'status':'complete','duration_seconds':round(time.monotonic()-start,2),'counts':counts}))
+        print(json.dumps(build_summary(build_id,args.database,start,counts)))
     except Exception as exc:
         with Session(engine) as s:
             query(s,"UPDATE funding_report.build_run SET status='failed',finished_at=now(),notes=:note WHERE build_id=:id",
