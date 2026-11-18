@@ -78,7 +78,6 @@ export default function CommunityAI() {
           <code>{CONNECTOR_URL}</code>
           <button type="button" onClick={copyUrl} aria-label="Copy connector URL">Copy</button>
         </div>
-        <p>The same server also answers at https://mcp.publicdataobservatory.org/mcp.</p>
         <p className="community-ai-feedback" role="status">{copyMessage}</p>
       </section>
 

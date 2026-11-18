@@ -22,7 +22,7 @@ describe("AI connector page", () => {
     expect(screen.getByRole("heading", { name: "Use CHIP in your AI assistant" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Use CHIP with AI" })).toHaveAttribute("href", "/ai");
     expect(screen.getByText("https://mcp.publicdataobservatory.org")).toBeInTheDocument();
-    expect(screen.getByText("The same server also answers at https://mcp.publicdataobservatory.org/mcp.")).toBeInTheDocument();
+    expect(screen.queryByText(/also answers at/)).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("CDC PLACES live")).toBeInTheDocument());
     expect(fetchCatalog).toHaveBeenCalledWith(expect.stringContaining("/community/catalog"), expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(screen.getByText(/counties, census tracts/)).toBeInTheDocument();
