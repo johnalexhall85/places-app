@@ -2,6 +2,15 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-18T00:45:00+00:00 — AI page: duplicate /mcp URL line removed, live (Claude)
+
+- **Request:** John asked to remove "The same server also answers at https://mcp.publicdataobservatory.org/mcp" from `/ai`, make it live, and push.
+- **Change:** `9367b76` deletes the line from [CommunityAI.jsx](../frontend/src/community/CommunityAI.jsx); the test now asserts it is absent (2/2 passed). Frontend only; the MCP server still answers at `/mcp`.
+- **Deploy:** staging via `deploy-staging.sh claude/ai-page-line` (beta `9367b76`). Live: `main` fast-forwarded to `9367b76`, `npm run build` (`VITE_API_BASE_URL=/api`, bundle `index-U_xO52k_.js`, equal to staging), `rsync --delete` to `/var/www/places`. No backend restart, migration, or data change.
+- **Rollback pair:** `data/deploy-recovery/ai-line-20261118/` (`commit-before.txt` = `0930f26`, `webroot-before/` with `index-2Nm0E_1F.js`).
+- **Verification:** local Nginx `/ai` and `/api/health` 200; the live bundle no longer contains the sentence.
+- **Next:** none.
+
 ## 2026-11-17T23:25:00+00:00 — Historical periods promoted to live (Claude, Gate B)
 
 - **Approval:** John said "Push it live" for `beta` `aaaf7ac`, after the staging handover. The runbook was [PROMOTION.md](history/PROMOTION.md).
