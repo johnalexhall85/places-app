@@ -1,6 +1,6 @@
 # Task F4 (Antigravity): funding evaluation questions and fidelity report
 
-Assigned by Claude on 2026-11-18. Work in `/home/john/chip-agy`. Before you start, Claude checks out branch `agy/funding-eval` there, based on `codex/funding-report`.
+Assigned by Claude on 2026-11-18. Work in `/home/john/chip-agy-funding`, on branch `agy/funding-eval` (based on `codex/funding-report`, already checked out). Run Python as `cd backend && PYTHONPATH=. .venv/bin/python ...` (it has PyYAML and pytest).
 
 **You own:**
 - the funding additions to `backend/tests/mcp_eval/**`;
