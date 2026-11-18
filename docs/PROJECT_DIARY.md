@@ -2,6 +2,14 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-18T17:05:00+00:00 — CDC funding FY2026 full year promoted to live (Claude)
+
+- **Approval:** John said "go live and git push it".
+- **Data:** moved `data/chipfunding/FY2026` (P10) to `FY2026_pre_P12_backup` and `FY2026_P12_candidate` to `FY2026`. From `/home/john/places-app/backend` (database `places`, the default; `.env` has no `DATABASE_URL`), the dry run passed (reconciliation difference 0.00). `--replace-fiscal-year` then completed as live import run 22.
+- **Verification:** the live service layer reports FY2026 total $10,217,257,000.89, `is_complete` true, and FY2026P12/Q4. Quarters match staging. `/api/health` returned 200. No restart or frontend build was needed. The signed-in live page was not opened by the agent.
+- **Rollback:** move `FY2026_pre_P12_backup` back to `FY2026` and rerun `--replace-fiscal-year`.
+- **Git:** `main` was fast-forwarded to `beta`, and `main` and `beta` were pushed to `origin`.
+
 ## 2026-11-18T16:55:00+00:00 — CDC funding FY2026 rebuilt to the full year (P12), on staging (Claude)
 
 - **Request:** John asked to extend FY2026 on `/cdc-funding` from P10 to the full year, using the new download `FY2026P01-P12_All_FA_*_2026-11-18_H15M49S09` in `data/usaspending/fed_account_data/`.
