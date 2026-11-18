@@ -108,9 +108,34 @@ FY2023 dry run and import enforce these verified controls:
 - Unmapped obligations: `3334802932.47`
 - Quarterly totals: Q1 `4509072828.31`, Q2 `2633431434.13`, Q3 `6085957664.86`, Q4 `5425952537.17`
 
+## Building a Fiscal-Year Bundle
+
+FY2020–FY2025 bundles and the FY2026 P10 bundle were built outside this repository by a Windows pipeline (`pipeline_version 1`, paths under `D:\DataProject\Budget\...` in each audit JSON). From FY2026 P12, [build_cdc_funding_bundle.py](../scripts/build_cdc_funding_bundle.py) builds the same 15 files on this host from a USAspending federal account download (`data/usaspending/fed_account_data/`). It follows the method recorded in `FY####_pipeline_audit.json`:
+
+- Assistance award rows are `Grant`, Contracts award rows are `Contract`, and Unlinked rows are excluded.
+- It keeps rows whose `awarding_subagency_name` is CDC **and** whose federal account symbol starts with `075-`. That account filter preserves the scope of the earlier HHS-only (`075`) downloads when the download covers all agencies (`_All_FA_`).
+- `Emergency` is NonEmergency when `disaster_emergency_fund_name` is blank or contains "nonemergency", and Emergency otherwise. Award values are copied unchanged, and negative values are kept.
+- It carries the reviewed category crosswalk forward unchanged from the previous bundle's `FY####_category_mapping_detail.csv`.
+- It writes the three `*_validation.json` files by re-reading the written CSVs and recomputing every control. Any failed check sets `passed: false`, and the importer then refuses the bundle.
+
+A download's cumulative outlay column (`gross_outlay_amount_FYB_to_period_end`) is populated only for its final submission period. A P12 bundle therefore carries full-year outlays at P12 and zero outlays for earlier months. That matches the earlier bundles.
+
+```bash
+cd backend
+S=/home/john/places-app/data/usaspending/fed_account_data
+./.venv/bin/python -I scripts/build_cdc_funding_bundle.py --fiscal-year 2026 \
+  --assistance $S/FY2026P01-P12_All_FA_Assistance_AccountBreakdownByAward_2026-11-18_H15M49S09_01.csv \
+               $S/FY2026P01-P12_All_FA_Assistance_AccountBreakdownByAward_2026-11-18_H15M49S09_02.csv \
+  --contracts  $S/FY2026P01-P12_All_FA_Contracts_AccountBreakdownByAward_2026-11-18_H15M49S09_01.csv \
+  --crosswalk  /home/john/places-app/data/chipfunding/FY2026/FY2026_category_mapping_detail.csv \
+  --output-dir /home/john/places-app/data/chipfunding/FY2026_P12_candidate
+```
+
+The full FY2026 build takes about 20 seconds. To check the builder against an older bundle, add `--max-period N` and compare the summary files by natural key. On 2026-11-18, `--max-period 10` reproduced the P10 bundle exactly for all grants, every category file, and the crosswalk. The only differences were 75 contract rows in 7 accounts, caused by USAspending revisions. On five of the six dropped awards, the awarding sub-agency had been changed from CDC to HHS's financial office (ASFR); three of those were confirmed in the raw file. One award was newly attributed to CDC. Then run the importer `--dry-run` on the output folder, then `--replace-fiscal-year`.
+
 ## Adding Another Fiscal Year
 
-Create the next folder, for example `data/chipfunding/FY2024`, with the same 15-file structure. Run the dry run first. If headers have changed, the importer fails with the missing, unexpected, or reordered columns; update the explicit header contract and migration only after intentionally accepting a new source schema.
+Create the next folder, for example `data/chipfunding/FY2024`, with the same 15-file structure (use the builder above). Run the dry run first. If headers have changed, the importer fails with the missing, unexpected, or reordered columns; update the explicit header contract and migration only after intentionally accepting a new source schema.
 
 Future read-only API and informational dashboard work should query these new tables as source-of-truth inputs rather than mutating source data or changing current map classifications.
 

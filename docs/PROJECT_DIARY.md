@@ -2,6 +2,26 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-18T16:55:00+00:00 — CDC funding FY2026 rebuilt to the full year (P12), on staging (Claude)
+
+- **Request:** John asked to extend FY2026 on `/cdc-funding` from P10 to the full year, using the new download `FY2026P01-P12_All_FA_*_2026-11-18_H15M49S09` in `data/usaspending/fed_account_data/`.
+- **Finding:** no build script for the bundle existed on this host. Earlier bundles came from John's Windows pipeline; Codex only ingested them on 2026-09-23. The new download covers all agencies (`_All_`), not just `075`.
+- **Change:** added [build_cdc_funding_bundle.py](../backend/scripts/build_cdc_funding_bundle.py) (standard library, about 20 seconds per year). It reproduces the recorded pipeline method, adds an HHS `075-` account filter, and recomputes the validation JSONs from the written files. The method is documented in the [ingestion guide](../backend/docs/cdc_funding_source_ingestion.md#building-a-fiscal-year-bundle).
+- **Fidelity check:** a `--max-period 10` run matched the loaded P10 bundle for all grants, every category file, and the crosswalk. It differed only in 75 contract rows in 7 accounts: 075-0955 obligations −$369,668.92 and 075-0959 +$580,016.00. These are USAspending revisions. On five of the six dropped awards, the awarding sub-agency had been changed to ASFR (three confirmed in the raw file); one award was newly attributed to CDC. The non-075 accounts held 0 CDC rows.
+- **Output:** `data/chipfunding/FY2026_P12_candidate/` (untracked):
+  - 105,508 awards; obligations $10,217,257,000.89.
+  - Q1 $1,106,735,486.78, Q2 $1,828,074,708.69, Q3 $3,369,387,188.20, Q4 $3,913,059,617.22.
+  - Outlays $15,268,001,270.05 (cumulative, at P12).
+  - 62 account rows, 45 unmapped; mapped $7,893,733,174.71; 0 name mismatches.
+  - All 58 validation checks pass; the importer dry run passed with a reconciliation difference of 0.00.
+- **Staging:** `ingest_cdc_funding_source.py --fiscal-year 2026 --replace-fiscal-year` from `chip-beta` → `places_staging` import run 22 completed. The service layer (read directly, since the API needs an access code) shows FY2026 `is_complete` true and `latest_submission_period` FY2026P12, with the same total. The signed-in staging page was not opened by the agent.
+- **Live:** not changed. It still holds P10 (run 21), and `data/chipfunding/FY2026` is untouched. To promote:
+  1. Move `FY2026` to `FY2026_pre_P12_backup` and the candidate to `FY2026`.
+  2. From `/home/john/places-app/backend`, run `--dry-run`, then `--replace-fiscal-year`.
+  3. No restart is needed.
+- **Known, unchanged:** `test_cdc_funding_outlay_backfill` FY2026 constants describe the P06 `with_outlays` bundle and still fail. `fed_account_data/outputs/` (account classification) was not refreshed.
+- **Next:** John reviews staging `/cdc-funding` and approves the live ingest.
+
 ## 2026-11-18T00:45:00+00:00 — AI page: duplicate /mcp URL line removed, live (Claude)
 
 - **Request:** John asked to remove "The same server also answers at https://mcp.publicdataobservatory.org/mcp" from `/ai`, make it live, and push.
