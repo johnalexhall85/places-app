@@ -16,6 +16,17 @@ Do not commit, deploy, or use sudo. Record your facts in the status file and sto
 - [references/report_spec.md](../../../skills/chip-nofo-recipient-profile/references/report_spec.md): the exact layout and brand tokens. This is the specification.
 - The content reference, John's restyled PS21-2102 dossier: `/home/john/places-app/data/cdcfundingprofiles/PS21-2102_Recipient_Dossier.docx` and `.xlsx`. Match its structure and completeness. Do **not** copy its navy/Arial look; use the PDO brand.
 
+## Part A first: F2b fixes from Claude's review of F1+F2 (your paths: `backend/app/funding_report/**`, `backend/app/mcp_server/**`, tests)
+
+1. **`project_title`:** use the TAGGS `award_title` (the most common non-empty value for the award). The reference shows "Birmingham Comprehensive High Impact Prevention Project 2 (B-CHIP2)…". Fall back to the USAspending description text before its first `" - "`, cut to 200 characters. `abstract` stays the longest description.
+2. **TAGGS data-through:** `action_issue_date` is null in every row, so use the latest successful `taggs.ingestion_runs` row. Set `data_through` to null, and add `loaded_at` (its `finished_at` date) and `coverage` "FY<min>–FY<max> funding fiscal years". The citation becomes "Source: HHS TAGGS · HHS award actions · FY2021–FY2026 · loaded 2026-11-18". Never print "unknown".
+3. **Period labels:** write `FY2026 P12`, not `FY2026P12`, in citations and caveats.
+4. **Caveats:** rewrite them as plain sentences, for example "USAspending federal account award data (File C) runs through FY2026 P12; FY2026 is complete." Add a caveat whenever the award-level `data_through` is earlier than the end of the last account fiscal year: "Award-level USAspending data runs through 2026-06-18; CDC awards first made after that date are not yet linked to a funding opportunity, although their obligations appear in the account data." Add the caveat about incomplete fiscal years only when one is incomplete.
+5. **Dataset route:** run the database and gzip work in `starlette.concurrency.run_in_threadpool` so the event loop is not blocked.
+6. **Rebuild** on `places_staging` after these changes. Rerun the funding and MCP tests and the area `--expected-only` evaluation.
+
+## Part B: the renderer (below)
+
 ## Requirements
 
 1. **CLI:** `scripts/render.py --dataset FILE --out DIR [--title TEXT] [--narrative FILE] [--prepared YYYY-MM-DD]`.
