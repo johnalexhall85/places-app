@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Deterministic evaluation runner for the CHIP MCP server (Task M3 / M3b / H6).
+"""Deterministic evaluation runner for the CHIP MCP server (Task M3 / M3b / H6 / F4).
 
 Modes:
   --validate        Validate questions.yaml structure and coverage offline (no DB or server).
-  --expected-only   Compute expected values directly from app.area_pilot.lookup against places_staging.
+  --expected-only   Compute expected values directly from lookup layers against places_staging.
+  --dataset-check   Fetch GET /funding/nofo/PS212102.json?subawards=1 and validate the v1 contract.
   --url URL         Run all expected_calls against the MCP server at URL, compare to lookup, and run checks.
   --report PATH     Write markdown evaluation report to PATH (default: deliverables/mcp/eval_report.md).
 """
@@ -12,12 +13,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import copy
+import gzip
 import json
 import math
 import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -31,12 +36,13 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.area_pilot import lookup  # noqa: E402
+from app.funding_report import lookup as funding_lookup  # noqa: E402
 
 DEFAULT_QUESTIONS_PATH = Path(__file__).resolve().parent / "questions.yaml"
 DEFAULT_REPORT_PATH = REPO_ROOT / "deliverables" / "mcp" / "eval_report.md"
 TOPICS_PATH = BACKEND_DIR / "app" / "community" / "topics.json"
 
-ALL_TOOLS: tuple[str, ...] = (
+AREA_TOOLS: tuple[str, ...] = (
     "find_places",
     "search_measures",
     "get_measure_details",
@@ -46,6 +52,14 @@ ALL_TOOLS: tuple[str, ...] = (
     "get_area_context",
     "list_data_sources",
 )
+
+FUNDING_TOOLS: tuple[str, ...] = (
+    "get_nofo_overview",
+    "list_nofo_recipients",
+    "get_recipient_funding",
+)
+
+ALL_TOOLS: tuple[str, ...] = AREA_TOOLS + FUNDING_TOOLS
 
 PUBLIC_PRODUCTS: tuple[str, ...] = (
     "places",
@@ -62,6 +76,19 @@ FACILITY_BLOCKS: tuple[str, ...] = (
     "health_centers",
     "nursing_homes",
     "tri_facilities",
+)
+
+FUNDING_PRODUCTS: tuple[str, ...] = ("cdc_nofo_funding",)
+
+FUNDING_SOURCE_IDS: frozenset[str] = frozenset({
+    "usaspending_account",
+    "usaspending_award",
+    "taggs",
+    "usaspending_subawards",
+})
+
+AREA_SOURCE_PRODUCTS: frozenset[str] = (
+    frozenset(PUBLIC_PRODUCTS) | frozenset(FACILITY_BLOCKS) | frozenset({"ahrf"})
 )
 
 ALL_LEVELS: tuple[str, ...] = ("state", "county", "tract", "cd")
@@ -83,6 +110,206 @@ REQUIRED_TRAP_KINDS: tuple[str, ...] = (
     "cms_not_published_for_cd",
     "tracts_require_county",
     "medicare_original_beneficiaries",
+    "funding_nofo_no_match",
+    "funding_non_cdc_nofo",
+    "funding_subawards_no_add",
+)
+
+FUNDING_INTERPRETATION_RULES: tuple[str, ...] = (
+    "Obligations are USAspending federal account (File C) obligations unless a row says otherwise; award-level and TAGGS amounts are shown for comparison and can differ.",
+    "Sub-award amounts are reported by prime recipients and are not additional federal funding; never add them to prime obligations.",
+    "Other federal awards are HHS awards recorded in TAGGS for the same UEI; they are not a complete federal funding portfolio.",
+    "State the data-through date of each source and say when a fiscal year is not complete.",
+    "Do not rank recipients by merit or describe funding as good or bad; report amounts, periods, and sources.",
+)
+
+FUNDING_ALLOWED_BEST_KEYS: frozenset[str] = frozenset({
+    "best_available",
+    "best_available_total",
+    "best_available_basis",
+})
+
+DATASET_V1_TOP_KEYS: frozenset[str] = frozenset({
+    "schema_version",
+    "build",
+    "sources",
+    "nofo",
+    "aggregates",
+    "recipients",
+    "subawards",
+    "caveats",
+})
+DATASET_V1_BUILD_KEYS: frozenset[str] = frozenset({"build_id", "built_at", "method_version"})
+DATASET_V1_SOURCE_KEYS: frozenset[str] = frozenset({
+    "id",
+    "publisher",
+    "product",
+    "coverage",
+    "data_through",
+    "citation",
+})
+DATASET_V1_NOFO_KEYS: frozenset[str] = frozenset({
+    "nofo_key",
+    "fon_display",
+    "fon_variants",
+    "awarding_agency",
+    "awarding_offices",
+    "cfda",
+    "period_of_performance",
+    "award_count",
+    "recipient_count",
+    "fiscal_years",
+    "best_available_total",
+})
+DATASET_V1_NOFO_FY_KEYS: frozenset[str] = frozenset({
+    "fiscal_year",
+    "account_obligation",
+    "award_obligation",
+    "taggs_amount",
+    "is_complete",
+})
+DATASET_V1_AGGREGATE_KEYS: frozenset[str] = frozenset({
+    "by_state",
+    "by_recipient_class",
+    "by_recipient_type",
+    "by_metro",
+    "other_awards_by_opdiv",
+    "other_awards_by_aln",
+    "top_recipients_by_other_awards",
+    "other_awards_top10_total",
+    "other_award_rows",
+    "recipients_without_other_awards",
+})
+DATASET_V1_RECIPIENT_KEYS: frozenset[str] = frozenset({
+    "award_unique_key",
+    "fain",
+    "uei",
+    "recipient_name",
+    "name_variants",
+    "parent",
+    "address",
+    "congressional_district",
+    "congressional_district_source",
+    "recipient_class",
+    "recipient_type",
+    "metro_status",
+    "business_types",
+    "project_title",
+    "abstract",
+    "cfda",
+    "funding_office",
+    "period_of_performance",
+    "totals",
+    "fiscal_years",
+    "usaspending_url",
+    "other_awards",
+    "subawards",
+})
+DATASET_V1_ADDRESS_KEYS: frozenset[str] = frozenset({
+    "line1",
+    "line2",
+    "city",
+    "state",
+    "zip",
+    "county",
+    "country",
+})
+DATASET_V1_TOTALS_KEYS: frozenset[str] = frozenset({
+    "account_obligation",
+    "award_obligation",
+    "taggs_amount",
+    "best_available",
+    "best_available_basis",
+})
+DATASET_V1_RECIPIENT_FY_KEYS: frozenset[str] = frozenset({
+    "fiscal_year",
+    "account_obligation",
+    "award_obligation",
+    "taggs_amount",
+})
+DATASET_V1_OTHER_AWARDS_KEYS: frozenset[str] = frozenset({"count", "total", "top10_total", "top"})
+DATASET_V1_OTHER_TOP_KEYS: frozenset[str] = frozenset({
+    "rank",
+    "award_number",
+    "amount",
+    "opdiv",
+    "aln",
+    "aln_title",
+    "fon",
+    "first_fiscal_year",
+    "last_fiscal_year",
+    "award_title",
+})
+DATASET_V1_RECIPIENT_SUBAWARDS_KEYS: frozenset[str] = frozenset({
+    "subawardee_count",
+    "action_count",
+    "reported_amount",
+})
+DATASET_V1_SUBAWARDS_KEYS: frozenset[str] = frozenset({
+    "summary",
+    "by_fiscal_year",
+    "by_state",
+    "subawardees",
+    "actions",
+})
+DATASET_V1_SUBAWARD_SUMMARY_KEYS: frozenset[str] = frozenset({
+    "distinct_subawardees",
+    "actions",
+    "raw_records",
+    "duplicates_removed",
+    "reported_amount",
+    "primes_with_subawards",
+})
+DATASET_V1_SUBAWARD_FY_KEYS: frozenset[str] = frozenset({
+    "fiscal_year",
+    "actions",
+    "subawardees",
+    "reported_amount",
+})
+DATASET_V1_SUBAWARD_STATE_KEYS: frozenset[str] = frozenset({"state", "subawardees"})
+DATASET_V1_SUBAWARDEE_KEYS: frozenset[str] = frozenset({
+    "uei",
+    "name",
+    "name_variants",
+    "dba_names",
+    "business_types",
+    "address",
+    "congressional_district",
+    "prime_fains",
+    "prime_recipients",
+    "action_count",
+    "reported_amount",
+    "first_action_date",
+    "last_action_date",
+    "fiscal_years",
+    "description_examples",
+})
+DATASET_V1_SUBAWARD_ACTION_KEYS: frozenset[str] = frozenset({
+    "prime_fain",
+    "prime_recipient",
+    "subaward_number",
+    "action_date",
+    "fiscal_year",
+    "amount",
+    "subawardee_uei",
+    "subawardee_name",
+    "description",
+    "sam_report_ids",
+    "usaspending_url",
+})
+COMPACT_RECIPIENT_REQUIRED_KEYS: frozenset[str] = frozenset({
+    "recipient_name",
+    "state",
+    "congressional_district",
+    "uei",
+    "fain",
+    "award_unique_key",
+    "best_available_total",
+    "other_award_count",
+})
+FORBIDDEN_COMBINED_SUBAWARD_KEY_RE = re.compile(
+    r"(combined_total|total_including_subaward|total_with_subaward|including_subaward|plus_subaward|prime_plus_subaward|prime_and_subaward)",
+    re.IGNORECASE,
 )
 
 RULE_6_TEXT = (
@@ -823,12 +1050,601 @@ def check_list_data_sources_notes(
     return failures
 
 
+def _normalize_recipient_sort_key(state: Any, name: Any) -> tuple[bool, str, str]:
+    """Return a locale-independent sort key matching Postgres ORDER BY state NULLS LAST, recipient_name."""
+    st = str(state).strip().upper() if isinstance(state, str) and state.strip() else None
+    nm = str(name or "")
+    alnum = re.sub(r"[^a-z0-9]+", "", nm.lower())
+    return (st is None, st or "", alnum)
+
+
+def check_funding_forbidden_words(payload: Any) -> list[str]:
+    """Check evaluative words in funding keys/warnings while allowing contract `best_available*` keys."""
+    failures: list[str] = []
+    for key_path, key_name in _collect_dict_keys(payload):
+        if key_name in FUNDING_ALLOWED_BEST_KEYS:
+            continue
+        tokens = [
+            t.lower()
+            for t in re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key_name).replace("-", "_").split("_")
+            if t
+        ]
+        bad_tokens = sorted(set(tokens) & FORBIDDEN_KEY_TOKENS)
+        if bad_tokens or FORBIDDEN_WORDS_RE.search(key_name):
+            failures.append(f"Forbidden word in funding key '{key_path}'")
+
+    if isinstance(payload, dict):
+        warnings = payload.get("warnings")
+        if isinstance(warnings, list):
+            for idx, w in enumerate(warnings):
+                if isinstance(w, str) and FORBIDDEN_WORDS_RE.search(w):
+                    failures.append(f"Forbidden word in warnings[{idx}]: {w!r}")
+    return failures
+
+
+def check_no_area_sources_in_funding(sources: Any) -> list[str]:
+    """Verify funding `sources` contains valid funding source records and zero area-product sources."""
+    failures: list[str] = []
+    if not isinstance(sources, list) or not sources:
+        return [f"Funding response must have non-empty sources list, got {sources!r}"]
+    seen_ids: set[str] = set()
+    for idx, src in enumerate(sources):
+        if not isinstance(src, dict):
+            failures.append(f"sources[{idx}] must be a dict, got {type(src).__name__}")
+            continue
+        if "dataset_id" in src or src.get("product") in AREA_SOURCE_PRODUCTS:
+            failures.append(f"Area-product source leaked into funding sources[{idx}]: {src!r}")
+            continue
+        missing = DATASET_V1_SOURCE_KEYS - set(src.keys())
+        if missing:
+            failures.append(f"Funding sources[{idx}] missing required keys: {sorted(missing)}")
+        sid = src.get("id")
+        if sid not in FUNDING_SOURCE_IDS:
+            failures.append(f"Funding sources[{idx}] has unknown funding source id {sid!r}")
+        else:
+            seen_ids.add(sid)
+        citation = src.get("citation")
+        if not isinstance(citation, str) or not citation.startswith("Source: "):
+            failures.append(f"Funding sources[{idx}] invalid citation: {citation!r}")
+    if not seen_ids:
+        failures.append("Funding sources contained no recognized funding source ids")
+    return failures
+
+
+def check_no_funding_sources_in_area(sources: Any, interpretation_rules: Any = None) -> list[str]:
+    """Verify area responses never contain funding sources or funding interpretation rules."""
+    failures: list[str] = []
+    if isinstance(sources, list):
+        for idx, src in enumerate(sources):
+            if not isinstance(src, dict):
+                continue
+            sid = src.get("id")
+            pub = str(src.get("publisher") or "").lower()
+            if sid in FUNDING_SOURCE_IDS or "usaspending" in pub or "taggs" in pub:
+                failures.append(f"Funding source leaked into area sources[{idx}]: {src!r}")
+    if isinstance(interpretation_rules, list):
+        norm_actual = {_norm_rule(r) for r in interpretation_rules if isinstance(r, str)}
+        for f_rule in FUNDING_INTERPRETATION_RULES:
+            if _norm_rule(f_rule) in norm_actual:
+                failures.append(f"Funding interpretation rule leaked into area response: {f_rule!r}")
+    return failures
+
+
+def check_funding_fiscal_years_ordered(fy_rows: Any, label: str = "fiscal_years") -> list[str]:
+    """Verify a fiscal_years list has strictly ascending, unique integer fiscal_year values."""
+    failures: list[str] = []
+    if not isinstance(fy_rows, list):
+        return [f"{label} must be a list, got {type(fy_rows).__name__}"]
+    prev_fy: int | None = None
+    for idx, item in enumerate(fy_rows):
+        if not isinstance(item, dict):
+            failures.append(f"{label}[{idx}] must be a dict")
+            continue
+        fy = item.get("fiscal_year")
+        if not isinstance(fy, int) or isinstance(fy, bool):
+            failures.append(f"{label}[{idx}].fiscal_year must be int, got {fy!r}")
+            continue
+        if prev_fy is not None and fy <= prev_fy:
+            failures.append(f"{label} not strictly ascending at index {idx}: {fy} <= {prev_fy}")
+            break
+        prev_fy = fy
+    return failures
+
+
+def check_funding_recipients_sorted(recipients: Any, label: str = "recipients") -> list[str]:
+    """Verify recipients (full profile or compact listing) are sorted by state (NULLS LAST), then name."""
+    failures: list[str] = []
+    if not isinstance(recipients, list):
+        return [f"{label} must be a list, got {type(recipients).__name__}"]
+    prev_key: tuple[bool, str, str] | None = None
+    prev_desc = ""
+    for idx, rec in enumerate(recipients):
+        if not isinstance(rec, dict):
+            failures.append(f"{label}[{idx}] must be a dict")
+            continue
+        if isinstance(rec.get("address"), dict):
+            state = rec["address"].get("state")
+        else:
+            state = rec.get("state")
+        name = rec.get("recipient_name")
+        cur_key = _normalize_recipient_sort_key(state, name)
+        cur_desc = f"({state!r}, {name!r})"
+        if prev_key is not None and cur_key < prev_key:
+            failures.append(f"{label} out of (state, name) order at index {idx}: {prev_desc} -> {cur_desc}")
+            break
+        prev_key = cur_key
+        prev_desc = cur_desc
+    return failures
+
+
+def check_funding_no_subawards_added(data: Any) -> list[str]:
+    """Verify prime obligations and sub-award amounts are never combined into one field."""
+    failures: list[str] = []
+    for key_path, key_name in _collect_dict_keys(data):
+        if FORBIDDEN_COMBINED_SUBAWARD_KEY_RE.search(key_name):
+            failures.append(f"Forbidden combined prime+subaward key '{key_path}'")
+    if isinstance(data, dict):
+        nofo = data.get("nofo")
+        sub = data.get("subawards")
+        if isinstance(nofo, dict) and isinstance(sub, dict):
+            summary = sub.get("summary") if isinstance(sub.get("summary"), dict) else sub
+            sub_amt = summary.get("reported_amount")
+            best_tot = nofo.get("best_available_total")
+            fys = nofo.get("fiscal_years")
+            if (
+                isinstance(sub_amt, (int, float))
+                and sub_amt > 0
+                and isinstance(best_tot, (int, float))
+                and isinstance(fys, list)
+            ):
+                acc_vals = [x.get("account_obligation") for x in fys if isinstance(x, dict) and isinstance(x.get("account_obligation"), (int, float))]
+                if acc_vals:
+                    prime_sum = round(sum(acc_vals), 2)
+                    if abs(best_tot - (prime_sum + sub_amt)) < 0.05 and abs(best_tot - prime_sum) > 0.05:
+                        failures.append(
+                            f"nofo.best_available_total ({best_tot}) appears to add subawards ({sub_amt}) to prime ({prime_sum})"
+                        )
+    return failures
+
+
+def _check_recipient_null_vs_zero(rec: dict[str, Any], label: str) -> list[str]:
+    """Verify null money fields in a recipient profile are never coerced to 0 when no source rows exist."""
+    failures: list[str] = []
+    totals = rec.get("totals")
+    fys = rec.get("fiscal_years")
+    if not isinstance(totals, dict) or not isinstance(fys, list):
+        return failures
+    for field in ("account_obligation", "award_obligation", "taggs_amount"):
+        non_null_vals = [
+            x.get(field) for x in fys if isinstance(x, dict) and x.get(field) is not None
+        ]
+        tot_val = totals.get(field)
+        if not non_null_vals:
+            if tot_val is not None:
+                failures.append(
+                    f"{label}.totals.{field} is {tot_val!r} despite all fiscal_years.{field} being null (null must not be written as 0)"
+                )
+        else:
+            if tot_val is None:
+                failures.append(
+                    f"{label}.totals.{field} is null despite non-null fiscal_years.{field} rows"
+                )
+            elif isinstance(tot_val, (int, float)) and not isinstance(tot_val, bool):
+                expected_sum = round(sum(float(v) for v in non_null_vals), 2)
+                if abs(float(tot_val) - expected_sum) > 0.02:
+                    failures.append(
+                        f"{label}.totals.{field}={tot_val} != sum of fiscal_years ({expected_sum})"
+                    )
+    return failures
+
+
+def check_funding_envelope(
+    payload: Any,
+    tool_name: str,
+    arguments: dict[str, Any] | None = None,
+) -> list[str]:
+    """Run global Amendment 3 / Plan checks on a funding MCP tool response."""
+    failures: list[str] = []
+    if not isinstance(payload, dict):
+        return [f"Response is not a dict: {type(payload).__name__}"]
+
+    for req_key in ("data", "sources", "interpretation_rules", "warnings"):
+        if req_key not in payload:
+            failures.append(f"Response envelope missing top-level key {req_key!r}")
+    if failures:
+        return failures
+
+    if not isinstance(payload["data"], dict):
+        failures.append("'data' must be a dict")
+    if not isinstance(payload["sources"], list):
+        failures.append("'sources' must be a list")
+    if not isinstance(payload["interpretation_rules"], list):
+        failures.append("'interpretation_rules' must be a list")
+    if not isinstance(payload["warnings"], list):
+        failures.append("'warnings' must be a list")
+    if failures:
+        return failures
+
+    failures.extend(check_no_ahrf(payload))
+    failures.extend(check_response_size(payload))
+    failures.extend(check_funding_forbidden_words(payload))
+    failures.extend(check_no_area_sources_in_funding(payload["sources"]))
+
+    norm_actual_rules = {_norm_rule(r) for r in payload["interpretation_rules"] if isinstance(r, str)}
+    for expected_rule in FUNDING_INTERPRETATION_RULES:
+        if _norm_rule(expected_rule) not in norm_actual_rules:
+            failures.append(f"Missing funding interpretation rule: {expected_rule!r}")
+    if len(payload["interpretation_rules"]) != len(FUNDING_INTERPRETATION_RULES):
+        failures.append(
+            f"Expected exactly {len(FUNDING_INTERPRETATION_RULES)} funding interpretation_rules, "
+            f"got {len(payload['interpretation_rules'])}"
+        )
+    for area_rule in GENERAL_INTERPRETATION_RULES:
+        if _norm_rule(area_rule) in norm_actual_rules:
+            failures.append(f"Area interpretation rule leaked into funding response: {area_rule!r}")
+
+    data = payload["data"]
+    args = arguments or {}
+
+    dataset_url = data.get("dataset_url")
+    if (
+        not isinstance(dataset_url, str)
+        or not (dataset_url.startswith("http://") or dataset_url.startswith("https://"))
+        or "/funding/nofo/" not in dataset_url
+        or ".json?subawards=" not in dataset_url
+    ):
+        failures.append(f"{tool_name} missing valid absolute data.dataset_url: {dataset_url!r}")
+
+    if tool_name == "get_nofo_overview":
+        for req_k in ("nofo", "aggregates", "subawards", "caveats", "dataset_url"):
+            if req_k not in data:
+                failures.append(f"get_nofo_overview data missing key {req_k!r}")
+        nofo = data.get("nofo")
+        if isinstance(nofo, dict):
+            missing_n = DATASET_V1_NOFO_KEYS - set(nofo.keys())
+            if missing_n:
+                failures.append(f"get_nofo_overview data.nofo missing keys: {sorted(missing_n)}")
+            failures.extend(check_funding_fiscal_years_ordered(nofo.get("fiscal_years"), "data.nofo.fiscal_years"))
+        agg = data.get("aggregates")
+        if isinstance(agg, dict):
+            missing_a = DATASET_V1_AGGREGATE_KEYS - set(agg.keys())
+            if missing_a:
+                failures.append(f"get_nofo_overview data.aggregates missing keys: {sorted(missing_a)}")
+        inc_sub = bool(args.get("include_subawards", False))
+        if inc_sub:
+            sub = data.get("subawards")
+            if not isinstance(sub, dict):
+                failures.append("get_nofo_overview with include_subawards=True must return dict data.subawards")
+            else:
+                missing_s = DATASET_V1_SUBAWARD_SUMMARY_KEYS - set(sub.keys())
+                if missing_s:
+                    failures.append(f"get_nofo_overview data.subawards missing keys: {sorted(missing_s)}")
+        else:
+            if data.get("subawards") is not None:
+                failures.append("get_nofo_overview with include_subawards=False must have data.subawards=None")
+        failures.extend(check_funding_no_subawards_added(data))
+
+    elif tool_name == "list_nofo_recipients":
+        for req_k in ("nofo_key", "fon_display", "total", "offset", "limit", "recipients", "dataset_url"):
+            if req_k not in data:
+                failures.append(f"list_nofo_recipients data missing key {req_k!r}")
+        recs = data.get("recipients")
+        if isinstance(recs, list):
+            failures.extend(check_funding_recipients_sorted(recs, "data.recipients"))
+            for idx, r in enumerate(recs):
+                if not isinstance(r, dict):
+                    failures.append(f"data.recipients[{idx}] must be a dict")
+                    continue
+                missing_r = COMPACT_RECIPIENT_REQUIRED_KEYS - set(r.keys())
+                if missing_r:
+                    failures.append(f"data.recipients[{idx}] missing keys: {sorted(missing_r)}")
+                    break
+
+    elif tool_name == "get_recipient_funding":
+        for req_k in ("nofo_key", "recipient", "dataset_url"):
+            if req_k not in data:
+                failures.append(f"get_recipient_funding data missing key {req_k!r}")
+        rec = data.get("recipient")
+        if isinstance(rec, dict):
+            missing_r = DATASET_V1_RECIPIENT_KEYS - set(rec.keys())
+            if missing_r:
+                failures.append(f"get_recipient_funding data.recipient missing keys: {sorted(missing_r)}")
+            failures.extend(check_funding_fiscal_years_ordered(rec.get("fiscal_years"), "data.recipient.fiscal_years"))
+            failures.extend(_check_recipient_null_vs_zero(rec, "data.recipient"))
+
+    return failures
+
+
+def check_nofo_dataset_v1(
+    dataset: Any,
+    *,
+    expect_subawards: bool = True,
+    expected_dataset: dict[str, Any] | None = None,
+) -> list[str]:
+    """Validate the full `chip.nofo_recipient_profile.v1` dataset contract."""
+    failures: list[str] = []
+    if not isinstance(dataset, dict):
+        return [f"Dataset must be a JSON object, got {type(dataset).__name__}"]
+
+    missing_top = DATASET_V1_TOP_KEYS - set(dataset.keys())
+    if missing_top:
+        failures.append(f"Dataset missing top-level keys: {sorted(missing_top)}")
+    if dataset.get("schema_version") != "chip.nofo_recipient_profile.v1":
+        failures.append(f"Unexpected schema_version: {dataset.get('schema_version')!r}")
+
+    build = dataset.get("build")
+    if not isinstance(build, dict):
+        failures.append("Dataset 'build' must be a dict")
+    else:
+        missing_b = DATASET_V1_BUILD_KEYS - set(build.keys())
+        if missing_b:
+            failures.append(f"Dataset 'build' missing keys: {sorted(missing_b)}")
+        if build.get("method_version") != "nofo-v1":
+            failures.append(f"Unexpected build.method_version: {build.get('method_version')!r}")
+
+    failures.extend(check_no_area_sources_in_funding(dataset.get("sources")))
+    failures.extend(check_no_ahrf(dataset))
+
+    nofo = dataset.get("nofo")
+    if not isinstance(nofo, dict):
+        failures.append("Dataset 'nofo' must be a dict")
+    else:
+        missing_n = DATASET_V1_NOFO_KEYS - set(nofo.keys())
+        if missing_n:
+            failures.append(f"Dataset 'nofo' missing keys: {sorted(missing_n)}")
+        pop = nofo.get("period_of_performance")
+        if not isinstance(pop, dict) or not {"start_min", "end_max"}.issubset(pop.keys()):
+            failures.append(f"Dataset nofo.period_of_performance missing start_min/end_max: {pop!r}")
+        for idx, cf in enumerate(nofo.get("cfda") or []):
+            if not isinstance(cf, dict) or not {"number", "title", "award_count"}.issubset(cf.keys()):
+                failures.append(f"Dataset nofo.cfda[{idx}] missing keys: {cf!r}")
+                break
+        nofo_fys = nofo.get("fiscal_years")
+        failures.extend(check_funding_fiscal_years_ordered(nofo_fys, "nofo.fiscal_years"))
+        if isinstance(nofo_fys, list):
+            for idx, fy_row in enumerate(nofo_fys):
+                if not isinstance(fy_row, dict):
+                    continue
+                missing_fy = DATASET_V1_NOFO_FY_KEYS - set(fy_row.keys())
+                if missing_fy:
+                    failures.append(f"nofo.fiscal_years[{idx}] missing keys: {sorted(missing_fy)}")
+                    break
+
+    agg = dataset.get("aggregates")
+    if not isinstance(agg, dict):
+        failures.append("Dataset 'aggregates' must be a dict")
+    else:
+        missing_a = DATASET_V1_AGGREGATE_KEYS - set(agg.keys())
+        if missing_a:
+            failures.append(f"Dataset 'aggregates' missing keys: {sorted(missing_a)}")
+        for lst_name, req_keys in (
+            ("by_state", {"state", "recipients", "nofo_total", "other_awards_top10_total"}),
+            ("by_recipient_class", {"value", "recipients", "nofo_total"}),
+            ("by_recipient_type", {"value", "recipients"}),
+            ("by_metro", {"value", "recipients"}),
+            ("other_awards_by_opdiv", {"opdiv", "awards", "total"}),
+            ("other_awards_by_aln", {"aln", "title", "awards", "total"}),
+            ("top_recipients_by_other_awards", {"award_unique_key", "recipient_name", "state", "other_award_count", "other_awards_top10_total"}),
+        ):
+            items = agg.get(lst_name)
+            if not isinstance(items, list):
+                failures.append(f"aggregates.{lst_name} must be a list")
+            elif items and isinstance(items[0], dict):
+                miss_i = req_keys - set(items[0].keys())
+                if miss_i:
+                    failures.append(f"aggregates.{lst_name}[0] missing keys: {sorted(miss_i)}")
+
+    recipients = dataset.get("recipients")
+    if not isinstance(recipients, list):
+        failures.append("Dataset 'recipients' must be a list")
+    else:
+        if isinstance(nofo, dict) and isinstance(nofo.get("award_count"), int):
+            if len(recipients) != nofo["award_count"]:
+                failures.append(f"len(recipients)={len(recipients)} != nofo.award_count={nofo['award_count']}")
+        failures.extend(check_funding_recipients_sorted(recipients, "recipients"))
+
+        # Track per-FY non-null recipient values to verify NOFO-level null-vs-0 consistency
+        rec_fy_nonnull: dict[tuple[int, str], list[float]] = {}
+        for idx, rec in enumerate(recipients):
+            if not isinstance(rec, dict):
+                failures.append(f"recipients[{idx}] must be a dict")
+                continue
+            missing_r = DATASET_V1_RECIPIENT_KEYS - set(rec.keys())
+            if missing_r:
+                failures.append(f"recipients[{idx}] missing keys: {sorted(missing_r)}")
+                break
+            parent = rec.get("parent")
+            if not isinstance(parent, dict) or not {"uei", "name"}.issubset(parent.keys()):
+                failures.append(f"recipients[{idx}].parent missing uei/name")
+                break
+            addr = rec.get("address")
+            if not isinstance(addr, dict) or not DATASET_V1_ADDRESS_KEYS.issubset(addr.keys()):
+                failures.append(f"recipients[{idx}].address missing keys")
+                break
+            cfda = rec.get("cfda")
+            if not isinstance(cfda, dict) or not {"number", "title"}.issubset(cfda.keys()):
+                failures.append(f"recipients[{idx}].cfda missing number/title")
+                break
+            rpop = rec.get("period_of_performance")
+            if not isinstance(rpop, dict) or not {"start", "end"}.issubset(rpop.keys()):
+                failures.append(f"recipients[{idx}].period_of_performance missing start/end")
+                break
+            totals = rec.get("totals")
+            if not isinstance(totals, dict) or not DATASET_V1_TOTALS_KEYS.issubset(totals.keys()):
+                failures.append(f"recipients[{idx}].totals missing keys")
+                break
+            other = rec.get("other_awards")
+            if not isinstance(other, dict) or not DATASET_V1_OTHER_AWARDS_KEYS.issubset(other.keys()):
+                failures.append(f"recipients[{idx}].other_awards missing keys")
+                break
+            for t_idx, top_item in enumerate(other.get("top") or []):
+                if not isinstance(top_item, dict) or not DATASET_V1_OTHER_TOP_KEYS.issubset(top_item.keys()):
+                    failures.append(f"recipients[{idx}].other_awards.top[{t_idx}] missing keys")
+                    break
+            r_sub = rec.get("subawards")
+            if expect_subawards:
+                if not isinstance(r_sub, dict) or not DATASET_V1_RECIPIENT_SUBAWARDS_KEYS.issubset(r_sub.keys()):
+                    failures.append(f"recipients[{idx}].subawards must be a dict with summary keys when subawards=1")
+                    break
+            else:
+                if r_sub is not None:
+                    failures.append(f"recipients[{idx}].subawards must be null when subawards=0")
+                    break
+
+            r_fys = rec.get("fiscal_years")
+            fy_errs = check_funding_fiscal_years_ordered(r_fys, f"recipients[{idx}].fiscal_years")
+            if fy_errs:
+                failures.extend(fy_errs)
+                break
+            if isinstance(r_fys, list):
+                for fy_row in r_fys:
+                    if not isinstance(fy_row, dict):
+                        continue
+                    missing_rfy = DATASET_V1_RECIPIENT_FY_KEYS - set(fy_row.keys())
+                    if missing_rfy:
+                        failures.append(f"recipients[{idx}].fiscal_years entry missing keys: {sorted(missing_rfy)}")
+                        break
+                    fy_num = fy_row.get("fiscal_year")
+                    if isinstance(fy_num, int):
+                        for mf in ("account_obligation", "award_obligation", "taggs_amount"):
+                            val = fy_row.get(mf)
+                            if val is not None:
+                                rec_fy_nonnull.setdefault((fy_num, mf), []).append(float(val))
+
+            nvz_errs = _check_recipient_null_vs_zero(rec, f"recipients[{idx}] ({rec.get('fain')})")
+            if nvz_errs:
+                failures.extend(nvz_errs)
+                if len(failures) > 20:
+                    break
+
+        # Cross-check NOFO-level fiscal_years null-vs-0 against recipient fiscal_years
+        if isinstance(nofo, dict) and isinstance(nofo.get("fiscal_years"), list):
+            for fy_row in nofo["fiscal_years"]:
+                if not isinstance(fy_row, dict) or not isinstance(fy_row.get("fiscal_year"), int):
+                    continue
+                fy_num = fy_row["fiscal_year"]
+                for mf in ("account_obligation", "award_obligation", "taggs_amount"):
+                    vals = rec_fy_nonnull.get((fy_num, mf), [])
+                    nofo_val = fy_row.get(mf)
+                    if not vals:
+                        if nofo_val is not None:
+                            failures.append(
+                                f"nofo.fiscal_years[{fy_num}].{mf} is {nofo_val!r} despite zero recipient source rows "
+                                "(null must never be written as 0)"
+                            )
+                    else:
+                        if nofo_val is None:
+                            failures.append(
+                                f"nofo.fiscal_years[{fy_num}].{mf} is null despite {len(vals)} non-null recipient rows"
+                            )
+                        elif isinstance(nofo_val, (int, float)) and not isinstance(nofo_val, bool):
+                            exp_sum = round(sum(vals), 2)
+                            if abs(float(nofo_val) - exp_sum) > 0.02:
+                                failures.append(
+                                    f"nofo.fiscal_years[{fy_num}].{mf}={nofo_val} != sum of recipients ({exp_sum})"
+                                )
+
+    sub = dataset.get("subawards")
+    if expect_subawards:
+        if not isinstance(sub, dict):
+            failures.append("Dataset 'subawards' must be a dict when subawards=1")
+        else:
+            missing_sub = DATASET_V1_SUBAWARDS_KEYS - set(sub.keys())
+            if missing_sub:
+                failures.append(f"Dataset 'subawards' missing keys: {sorted(missing_sub)}")
+            summary = sub.get("summary")
+            if not isinstance(summary, dict) or not DATASET_V1_SUBAWARD_SUMMARY_KEYS.issubset(summary.keys()):
+                failures.append(f"subawards.summary missing keys: {summary!r}")
+            failures.extend(check_funding_fiscal_years_ordered(sub.get("by_fiscal_year"), "subawards.by_fiscal_year"))
+            for idx, item in enumerate(sub.get("by_fiscal_year") or []):
+                if not isinstance(item, dict) or not DATASET_V1_SUBAWARD_FY_KEYS.issubset(item.keys()):
+                    failures.append(f"subawards.by_fiscal_year[{idx}] missing keys")
+                    break
+            for idx, item in enumerate(sub.get("by_state") or []):
+                if not isinstance(item, dict) or not DATASET_V1_SUBAWARD_STATE_KEYS.issubset(item.keys()):
+                    failures.append(f"subawards.by_state[{idx}] missing keys")
+                    break
+            for idx, sa in enumerate(sub.get("subawardees") or []):
+                if not isinstance(sa, dict) or not DATASET_V1_SUBAWARDEE_KEYS.issubset(sa.keys()):
+                    failures.append(f"subawards.subawardees[{idx}] missing keys")
+                    break
+                if not isinstance(sa.get("address"), dict) or not DATASET_V1_ADDRESS_KEYS.issubset(sa["address"].keys()):
+                    failures.append(f"subawards.subawardees[{idx}].address missing keys")
+                    break
+                sa_fy_errs = check_funding_fiscal_years_ordered(sa.get("fiscal_years"), f"subawards.subawardees[{idx}].fiscal_years")
+                if sa_fy_errs:
+                    failures.extend(sa_fy_errs)
+                    break
+            for idx, act in enumerate(sub.get("actions") or []):
+                if not isinstance(act, dict) or not DATASET_V1_SUBAWARD_ACTION_KEYS.issubset(act.keys()):
+                    failures.append(f"subawards.actions[{idx}] missing keys")
+                    break
+    else:
+        if sub is not None:
+            failures.append("Dataset 'subawards' must be null when subawards=0")
+
+    caveats = dataset.get("caveats")
+    if not isinstance(caveats, list) or not caveats or not all(isinstance(c, str) and c.strip() for c in caveats):
+        failures.append("Dataset 'caveats' must be a non-empty list of strings")
+    else:
+        caveat_text = " ".join(caveats).lower()
+        if "not additional federal funding" not in caveat_text:
+            failures.append("Dataset caveats missing sub-award non-addition warning")
+        if "taggs" not in caveat_text:
+            failures.append("Dataset caveats missing TAGGS scope caveat")
+
+    failures.extend(check_funding_no_subawards_added(dataset))
+
+    # Optional exact null-vs-0 & value parity check against lookup ground truth
+    if expected_dataset is not None and isinstance(nofo, dict) and isinstance(recipients, list):
+        exp_fys = {x["fiscal_year"]: x for x in expected_dataset.get("nofo", {}).get("fiscal_years", [])}
+        for fy_row in nofo.get("fiscal_years", []):
+            y = fy_row.get("fiscal_year")
+            if y not in exp_fys:
+                failures.append(f"Unexpected fiscal year {y} in nofo.fiscal_years")
+                continue
+            for mf in ("account_obligation", "award_obligation", "taggs_amount"):
+                if (fy_row.get(mf) is None) != (exp_fys[y].get(mf) is None):
+                    failures.append(
+                        f"nofo.fiscal_years[{y}].{mf} nullness mismatch: got {fy_row.get(mf)!r}, lookup has {exp_fys[y].get(mf)!r}"
+                    )
+        exp_by_auk = {r["award_unique_key"]: r for r in expected_dataset.get("recipients", [])}
+        for rec in recipients:
+            auk = rec.get("award_unique_key")
+            exp_rec = exp_by_auk.get(auk)
+            if exp_rec is None:
+                failures.append(f"Recipient {auk!r} not in lookup dataset")
+                continue
+            for mf in ("account_obligation", "award_obligation", "taggs_amount", "best_available"):
+                if (rec["totals"].get(mf) is None) != (exp_rec["totals"].get(mf) is None):
+                    failures.append(
+                        f"Recipient {auk} totals.{mf} nullness mismatch: got {rec['totals'].get(mf)!r}, lookup has {exp_rec['totals'].get(mf)!r}"
+                    )
+            exp_rfys = {x["fiscal_year"]: x for x in exp_rec.get("fiscal_years", [])}
+            for fy_row in rec.get("fiscal_years", []):
+                y = fy_row.get("fiscal_year")
+                exp_fy = exp_rfys.get(y)
+                if exp_fy is None:
+                    continue
+                for mf in ("account_obligation", "award_obligation", "taggs_amount"):
+                    if (fy_row.get(mf) is None) != (exp_fy.get(mf) is None):
+                        failures.append(
+                            f"Recipient {auk} FY{y}.{mf} nullness mismatch: got {fy_row.get(mf)!r}, lookup has {exp_fy.get(mf)!r}"
+                        )
+                        break
+
+    return failures
+
+
 def check_envelope(
     payload: Any,
     tool_name: str,
     arguments: dict[str, Any] | None = None,
 ) -> list[str]:
     """Run global contract checks on a structured tool response."""
+    if tool_name in FUNDING_TOOLS:
+        return check_funding_envelope(payload, tool_name, arguments)
+
     failures: list[str] = []
     if not isinstance(payload, dict):
         return [f"Response is not a dict: {type(payload).__name__}"]
@@ -852,7 +1668,7 @@ def check_envelope(
     if failures:
         return failures
 
-    # Global checks required by M3 / M3b / H6
+    # Global checks required by M3 / M3b / H6 / F4
     failures.extend(
         check_no_ahrf(
             payload,
@@ -862,6 +1678,7 @@ def check_envelope(
     )
     failures.extend(check_response_size(payload))
     failures.extend(check_forbidden_words(payload))
+    failures.extend(check_no_funding_sources_in_area(payload["sources"], payload["interpretation_rules"]))
 
     # General interpretation rules check (including Amendment 2 §1 Rule 6)
     norm_actual_rules = {_norm_rule(r) for r in payload["interpretation_rules"] if isinstance(r, str)}
@@ -1078,8 +1895,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
         return False, {}, ["Top-level YAML must be a mapping with a 'questions' list"]
 
     questions = raw["questions"]
-    if len(questions) < 45:
-        errors.append(f"Expected around 54 questions (>=45), found {len(questions)}")
+    if len(questions) < 66:
+        errors.append(f"Expected at least 66 questions (54 area + 12 funding), found {len(questions)}")
 
     reg_measures = load_registry_measures_offline()
     topics_data = json.loads(TOPICS_PATH.read_text(encoding="utf-8"))
@@ -1087,12 +1904,15 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
 
     seen_ids: set[str] = set()
     tool_counts: dict[str, int] = {t: 0 for t in ALL_TOOLS}
-    product_counts: dict[str, int] = {p: 0 for p in PUBLIC_PRODUCTS + FACILITY_BLOCKS + ("ahrf",)}
+    product_counts: dict[str, int] = {
+        p: 0 for p in PUBLIC_PRODUCTS + FACILITY_BLOCKS + ("ahrf",) + FUNDING_PRODUCTS
+    }
     level_counts: dict[str, int] = {lvl: 0 for lvl in ALL_LEVELS}
     trap_questions: list[dict[str, Any]] = []
     trap_kinds_seen: set[str] = set()
     geoids_seen: set[str] = set()
     within_seen: set[str] = set()
+    funding_questions_count = 0
 
     for idx, q in enumerate(questions):
         if not isinstance(q, dict):
@@ -1137,6 +1957,9 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
             else:
                 errors.append(f"{qid}: trap=true but missing 'trap_kind'")
 
+        if any(c.get("tool") in FUNDING_TOOLS for c in calls if isinstance(c, dict)):
+            funding_questions_count += 1
+
         for c_idx, call in enumerate(calls):
             if not isinstance(call, dict):
                 errors.append(f"{qid} call[{c_idx}]: must be a mapping")
@@ -1177,9 +2000,12 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
         if count == 0:
             errors.append(f"Tool {tool!r} has 0 calls across questions.yaml")
 
-    for prod in PUBLIC_PRODUCTS + FACILITY_BLOCKS:
+    for prod in PUBLIC_PRODUCTS + FACILITY_BLOCKS + FUNDING_PRODUCTS:
         if product_counts[prod] == 0:
             errors.append(f"Public product / facility block {prod!r} is not covered in questions.yaml")
+
+    if funding_questions_count < 12:
+        errors.append(f"At least 12 funding questions required (F4), found {funding_questions_count}")
 
     for lvl in ALL_LEVELS:
         if level_counts[lvl] == 0:
@@ -1194,8 +2020,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
     if "48" not in within_seen and "48" not in geoids_seen:
         errors.append("Texas ('48', 254 counties) is not covered in questions.yaml")
 
-    if len(trap_questions) < 14:
-        errors.append(f"At least 14 trap questions required (including H6 traps), found {len(trap_questions)}")
+    if len(trap_questions) < 17:
+        errors.append(f"At least 17 trap questions required (including H6 & F4 traps), found {len(trap_questions)}")
 
     missing_traps = set(REQUIRED_TRAP_KINDS) - trap_kinds_seen
     if missing_traps:
@@ -1203,6 +2029,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
 
     summary = {
         "total_questions": len(questions),
+        "area_questions": len(questions) - funding_questions_count,
+        "funding_questions": funding_questions_count,
         "regular_questions": len(questions) - len(trap_questions),
         "trap_questions": len(trap_questions),
         "trap_kinds": sorted(trap_kinds_seen),
@@ -1578,6 +2406,55 @@ def compute_expected_for_call(
             "expect_error": False,
             "arguments": arguments,
             "periods_by_key": periods_by_key,
+        }
+
+    elif tool == "get_nofo_overview":
+        nofo = arguments["nofo"]
+        include_subawards = bool(arguments.get("include_subawards", False))
+        try:
+            overview = funding_lookup.nofo_overview(db, nofo, include_subawards)
+        except funding_lookup.UnsupportedNOFOError as exc:
+            return {"expect_error": True, "error_kind": "unsupported_nofo", "reason": str(exc)}
+        except funding_lookup.FundingLookupError as exc:
+            return {"expect_error": True, "error_kind": "funding_lookup", "reason": str(exc)}
+        return {
+            "expect_error": False,
+            "overview": overview,
+            "expected_source_ids": [s["id"] for s in overview.get("sources", [])],
+        }
+
+    elif tool == "list_nofo_recipients":
+        nofo = arguments["nofo"]
+        offset = int(arguments.get("offset", 0))
+        limit = int(arguments.get("limit", 50))
+        try:
+            dataset = funding_lookup.nofo_dataset(db, nofo, False)
+            listing = funding_lookup.list_recipients(db, nofo, offset, limit)
+        except funding_lookup.UnsupportedNOFOError as exc:
+            return {"expect_error": True, "error_kind": "unsupported_nofo", "reason": str(exc)}
+        except funding_lookup.FundingLookupError as exc:
+            return {"expect_error": True, "error_kind": "funding_lookup", "reason": str(exc)}
+        return {
+            "expect_error": False,
+            "listing": listing,
+            "expected_source_ids": [s["id"] for s in dataset.get("sources", [])],
+        }
+
+    elif tool == "get_recipient_funding":
+        nofo = arguments["nofo"]
+        recipient = arguments["recipient"]
+        try:
+            profile = funding_lookup.recipient_profile(db, nofo, recipient)
+            dataset = funding_lookup.nofo_dataset(db, nofo, False)
+        except funding_lookup.UnsupportedNOFOError as exc:
+            return {"expect_error": True, "error_kind": "unsupported_nofo", "reason": str(exc)}
+        except funding_lookup.FundingLookupError as exc:
+            return {"expect_error": True, "error_kind": "funding_lookup", "reason": str(exc)}
+        return {
+            "expect_error": False,
+            "nofo_key": dataset["nofo"]["nofo_key"],
+            "recipient": profile,
+            "expected_source_ids": [s["id"] for s in dataset.get("sources", [])],
         }
 
     return {"expect_error": False}
@@ -1985,6 +2862,43 @@ def verify_call_against_lookup_and_checks(
                 )
             )
 
+        elif tool == "get_nofo_overview":
+            exp_ov = expected_lookup.get("overview") or {}
+            if data.get("nofo") != exp_ov.get("nofo"):
+                failures.append("get_nofo_overview data.nofo does not match funding_report.lookup")
+            if data.get("aggregates") != exp_ov.get("aggregates"):
+                failures.append("get_nofo_overview data.aggregates does not match funding_report.lookup")
+            if data.get("subawards") != exp_ov.get("subawards"):
+                failures.append("get_nofo_overview data.subawards does not match funding_report.lookup")
+            if data.get("caveats") != exp_ov.get("caveats"):
+                failures.append("get_nofo_overview data.caveats does not match funding_report.lookup")
+            exp_src_ids = expected_lookup.get("expected_source_ids") or []
+            act_src_ids = [s.get("id") for s in sources if isinstance(s, dict)]
+            if act_src_ids != exp_src_ids:
+                failures.append(f"get_nofo_overview source ids {act_src_ids!r} != lookup {exp_src_ids!r}")
+
+        elif tool == "list_nofo_recipients":
+            exp_list = expected_lookup.get("listing") or {}
+            for fld in ("nofo_key", "fon_display", "total", "offset", "limit", "recipients"):
+                if data.get(fld) != exp_list.get(fld):
+                    failures.append(f"list_nofo_recipients data.{fld} does not match funding_report.lookup")
+            exp_src_ids = expected_lookup.get("expected_source_ids") or []
+            act_src_ids = [s.get("id") for s in sources if isinstance(s, dict)]
+            if act_src_ids != exp_src_ids:
+                failures.append(f"list_nofo_recipients source ids {act_src_ids!r} != lookup {exp_src_ids!r}")
+
+        elif tool == "get_recipient_funding":
+            if data.get("nofo_key") != expected_lookup.get("nofo_key"):
+                failures.append(
+                    f"get_recipient_funding nofo_key={data.get('nofo_key')!r} != lookup {expected_lookup.get('nofo_key')!r}"
+                )
+            if data.get("recipient") != expected_lookup.get("recipient"):
+                failures.append("get_recipient_funding data.recipient does not match funding_report.lookup")
+            exp_src_ids = expected_lookup.get("expected_source_ids") or []
+            act_src_ids = [s.get("id") for s in sources if isinstance(s, dict)]
+            if act_src_ids != exp_src_ids:
+                failures.append(f"get_recipient_funding source ids {act_src_ids!r} != lookup {exp_src_ids!r}")
+
     # 5. Evaluate explicit call_checks from questions.yaml
     if "expect_match_geoid" in call_check_spec:
         target_geoid = call_check_spec["expect_match_geoid"]
@@ -2300,6 +3214,154 @@ def verify_call_against_lookup_and_checks(
             if sub not in pop:
                 failures.append(f"Row {r.get('measure_key')} population {pop!r} missing {sub!r}")
 
+    # Funding-specific call_checks (F4)
+    if "expect_dataset_url_suffix" in call_check_spec:
+        suf = str(call_check_spec["expect_dataset_url_suffix"])
+        ds_url = str(data.get("dataset_url") or "")
+        if not ds_url.endswith(suf):
+            failures.append(f"dataset_url {ds_url!r} does not end with {suf!r}")
+
+    if "expected_nofo_key" in call_check_spec:
+        act_nk = (data.get("nofo") or {}).get("nofo_key") if isinstance(data.get("nofo"), dict) else data.get("nofo_key")
+        if act_nk != call_check_spec["expected_nofo_key"]:
+            failures.append(f"nofo_key={act_nk!r}, expected {call_check_spec['expected_nofo_key']!r}")
+
+    if "expected_fon_display" in call_check_spec:
+        act_fon = (data.get("nofo") or {}).get("fon_display") if isinstance(data.get("nofo"), dict) else data.get("fon_display")
+        if act_fon != call_check_spec["expected_fon_display"]:
+            failures.append(f"fon_display={act_fon!r}, expected {call_check_spec['expected_fon_display']!r}")
+
+    if "expected_recipient_count" in call_check_spec:
+        act_rc = (data.get("nofo") or {}).get("recipient_count")
+        if act_rc != call_check_spec["expected_recipient_count"]:
+            failures.append(f"nofo.recipient_count={act_rc!r}, expected {call_check_spec['expected_recipient_count']!r}")
+
+    if "expected_award_count" in call_check_spec:
+        act_ac = (data.get("nofo") or {}).get("award_count")
+        if act_ac != call_check_spec["expected_award_count"]:
+            failures.append(f"nofo.award_count={act_ac!r}, expected {call_check_spec['expected_award_count']!r}")
+
+    if "expected_best_available_total" in call_check_spec:
+        act_tot = (data.get("nofo") or {}).get("best_available_total")
+        exp_tot = float(call_check_spec["expected_best_available_total"])
+        if not isinstance(act_tot, (int, float)) or abs(float(act_tot) - exp_tot) > 0.02:
+            failures.append(f"nofo.best_available_total={act_tot!r}, expected {exp_tot!r}")
+
+    if call_check_spec.get("expected_subawards_null") is True:
+        if data.get("subawards") is not None:
+            failures.append(f"Expected data.subawards=None, got {data.get('subawards')!r}")
+
+    if "expected_fiscal_year_accounts" in call_check_spec:
+        by_y = {
+            x.get("fiscal_year"): x
+            for x in (data.get("nofo") or {}).get("fiscal_years", [])
+            if isinstance(x, dict)
+        }
+        for y_key, exp_val in call_check_spec["expected_fiscal_year_accounts"].items():
+            y_int = int(y_key)
+            if y_int not in by_y:
+                failures.append(f"Fiscal year {y_int} missing from data.nofo.fiscal_years")
+                continue
+            act_val = by_y[y_int].get("account_obligation")
+            if not isinstance(act_val, (int, float)) or abs(float(act_val) - float(exp_val)) > 0.02:
+                failures.append(f"FY{y_int} account_obligation={act_val!r}, expected {exp_val!r}")
+
+    if "expect_null_fiscal_year_fields" in call_check_spec:
+        by_y = {
+            x.get("fiscal_year"): x
+            for x in (data.get("nofo") or {}).get("fiscal_years", [])
+            if isinstance(x, dict)
+        }
+        for spec_nf in call_check_spec["expect_null_fiscal_year_fields"]:
+            y_int = int(spec_nf["fiscal_year"])
+            fld = str(spec_nf["field"])
+            if y_int not in by_y:
+                failures.append(f"Fiscal year {y_int} missing for null field check {fld!r}")
+            elif by_y[y_int].get(fld) is not None:
+                failures.append(
+                    f"FY{y_int}.{fld} must be null (never 0 when no source rows), got {by_y[y_int].get(fld)!r}"
+                )
+
+    if "expected_subaward_summary" in call_check_spec:
+        sub = data.get("subawards")
+        if not isinstance(sub, dict):
+            failures.append(f"Expected dict data.subawards, got {sub!r}")
+        else:
+            for k, exp_v in call_check_spec["expected_subaward_summary"].items():
+                act_v = sub.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"subawards.{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"subawards.{k}={act_v!r}, expected {exp_v!r}")
+
+    if call_check_spec.get("expect_no_subawards_added_to_prime") is True:
+        failures.extend(check_funding_no_subawards_added(data))
+
+    if "expected_total_recipients" in call_check_spec:
+        if data.get("total") != call_check_spec["expected_total_recipients"]:
+            failures.append(f"total={data.get('total')!r}, expected {call_check_spec['expected_total_recipients']!r}")
+
+    if "expected_page_count" in call_check_spec:
+        act_pc = len(data.get("recipients") or [])
+        if act_pc != call_check_spec["expected_page_count"]:
+            failures.append(f"len(recipients)={act_pc}, expected {call_check_spec['expected_page_count']}")
+
+    if "expected_offset" in call_check_spec:
+        if data.get("offset") != call_check_spec["expected_offset"]:
+            failures.append(f"offset={data.get('offset')!r}, expected {call_check_spec['expected_offset']!r}")
+
+    if "expected_first_fain" in call_check_spec:
+        recs = data.get("recipients") or []
+        first_fain = recs[0].get("fain") if recs and isinstance(recs[0], dict) else None
+        if first_fain != call_check_spec["expected_first_fain"]:
+            failures.append(f"first recipient fain={first_fain!r}, expected {call_check_spec['expected_first_fain']!r}")
+
+    single_recipient_check_keys = {
+        "expected_recipient_uei",
+        "expected_recipient_fain",
+        "expected_recipient_name",
+        "expected_recipient_state",
+        "expected_recipient_best_available",
+        "expected_recipient_basis",
+        "expected_recipient_subaward_actions",
+        "expected_recipient_subaward_amount",
+    }
+    if single_recipient_check_keys & set(call_check_spec.keys()):
+        rec = data.get("recipient")
+        if not isinstance(rec, dict):
+            failures.append(f"Expected dict data.recipient, got {rec!r}")
+        else:
+            if "expected_recipient_uei" in call_check_spec and rec.get("uei") != call_check_spec["expected_recipient_uei"]:
+                failures.append(f"recipient.uei={rec.get('uei')!r}, expected {call_check_spec['expected_recipient_uei']!r}")
+            if "expected_recipient_fain" in call_check_spec and rec.get("fain") != call_check_spec["expected_recipient_fain"]:
+                failures.append(f"recipient.fain={rec.get('fain')!r}, expected {call_check_spec['expected_recipient_fain']!r}")
+            if "expected_recipient_name" in call_check_spec and rec.get("recipient_name") != call_check_spec["expected_recipient_name"]:
+                failures.append(f"recipient.recipient_name={rec.get('recipient_name')!r}, expected {call_check_spec['expected_recipient_name']!r}")
+            if "expected_recipient_state" in call_check_spec and (rec.get("address") or {}).get("state") != call_check_spec["expected_recipient_state"]:
+                failures.append(f"recipient.address.state={(rec.get('address') or {}).get('state')!r}, expected {call_check_spec['expected_recipient_state']!r}")
+            if "expected_recipient_best_available" in call_check_spec:
+                act_ba = (rec.get("totals") or {}).get("best_available")
+                exp_ba = float(call_check_spec["expected_recipient_best_available"])
+                if not isinstance(act_ba, (int, float)) or abs(float(act_ba) - exp_ba) > 0.02:
+                    failures.append(f"recipient.totals.best_available={act_ba!r}, expected {exp_ba!r}")
+            if "expected_recipient_basis" in call_check_spec and (rec.get("totals") or {}).get("best_available_basis") != call_check_spec["expected_recipient_basis"]:
+                failures.append(
+                    f"recipient.totals.best_available_basis={(rec.get('totals') or {}).get('best_available_basis')!r}, "
+                    f"expected {call_check_spec['expected_recipient_basis']!r}"
+                )
+            if "expected_recipient_subaward_actions" in call_check_spec:
+                act_sa = (rec.get("subawards") or {}).get("action_count")
+                if act_sa != call_check_spec["expected_recipient_subaward_actions"]:
+                    failures.append(
+                        f"recipient.subawards.action_count={act_sa!r}, expected {call_check_spec['expected_recipient_subaward_actions']!r}"
+                    )
+            if "expected_recipient_subaward_amount" in call_check_spec:
+                act_amt = (rec.get("subawards") or {}).get("reported_amount")
+                exp_amt = float(call_check_spec["expected_recipient_subaward_amount"])
+                if not isinstance(act_amt, (int, float)) or abs(float(act_amt) - exp_amt) > 0.02:
+                    failures.append(f"recipient.subawards.reported_amount={act_amt!r}, expected {exp_amt!r}")
+
     return failures
 
 
@@ -2425,6 +3487,7 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                 c["call_index"]: c for c in q.get("checks", {}).get("call_checks", [])
             }
             q_failures: list[str] = []
+            paging_keys: list[str] = []
             for idx, call in enumerate(calls):
                 tool = call["tool"]
                 args = call.get("arguments", {})
@@ -2433,11 +3496,22 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
 
                 if c_check.get("expect_error") is True:
                     if (
-                        tool in ("get_area_values", "get_measure_across_areas", "get_measure_over_time", "search_measures")
+                        tool in (
+                            "get_area_values",
+                            "get_measure_across_areas",
+                            "get_measure_over_time",
+                            "search_measures",
+                            *FUNDING_TOOLS,
+                        )
                         and not exp.get("expect_error")
                     ):
                         q_failures.append(
                             f"Call {idx} ({tool}) expected error in YAML, but lookup succeeded"
+                        )
+                    elif tool in FUNDING_TOOLS and exp.get("expect_error"):
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in verify_error_message_checks(str(exp.get("reason") or ""), c_check)
                         )
                 elif exp.get("expect_error"):
                     q_failures.append(
@@ -2484,6 +3558,123 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                                     q_failures.append(
                                         f"Call {idx} spot {lk} period={spot['period']!r} != lookup {row['period']!r}"
                                     )
+
+                    # Funding lookup ground-truth checks (--expected-only)
+                    if tool == "get_nofo_overview":
+                        ov = exp["overview"]
+                        nofo = ov["nofo"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_no_area_sources_in_funding(ov.get("sources"))
+                        )
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_funding_fiscal_years_ordered(nofo.get("fiscal_years"), "nofo.fiscal_years")
+                        )
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_funding_no_subawards_added(ov)
+                        )
+                        if "expected_nofo_key" in c_check and nofo["nofo_key"] != c_check["expected_nofo_key"]:
+                            q_failures.append(f"Call {idx} nofo_key={nofo['nofo_key']!r} != {c_check['expected_nofo_key']!r}")
+                        if "expected_fon_display" in c_check and nofo["fon_display"] != c_check["expected_fon_display"]:
+                            q_failures.append(f"Call {idx} fon_display={nofo['fon_display']!r} != {c_check['expected_fon_display']!r}")
+                        if "expected_recipient_count" in c_check and nofo["recipient_count"] != c_check["expected_recipient_count"]:
+                            q_failures.append(f"Call {idx} recipient_count={nofo['recipient_count']!r} != {c_check['expected_recipient_count']!r}")
+                        if "expected_award_count" in c_check and nofo["award_count"] != c_check["expected_award_count"]:
+                            q_failures.append(f"Call {idx} award_count={nofo['award_count']!r} != {c_check['expected_award_count']!r}")
+                        if "expected_best_available_total" in c_check:
+                            if abs(float(nofo["best_available_total"] or 0) - float(c_check["expected_best_available_total"])) > 0.02:
+                                q_failures.append(
+                                    f"Call {idx} best_available_total={nofo['best_available_total']} != {c_check['expected_best_available_total']}"
+                                )
+                        if c_check.get("expected_subawards_null") is True and ov.get("subawards") is not None:
+                            q_failures.append(f"Call {idx} expected subawards=None, got {ov.get('subawards')!r}")
+                        if "expected_fiscal_year_accounts" in c_check:
+                            by_y = {x["fiscal_year"]: x for x in nofo["fiscal_years"]}
+                            for y_k, exp_v in c_check["expected_fiscal_year_accounts"].items():
+                                y_i = int(y_k)
+                                if y_i not in by_y or abs(float(by_y[y_i]["account_obligation"] or 0) - float(exp_v)) > 0.02:
+                                    q_failures.append(f"Call {idx} FY{y_i} account_obligation={by_y.get(y_i, {}).get('account_obligation')} != {exp_v}")
+                        if "expect_null_fiscal_year_fields" in c_check:
+                            by_y = {x["fiscal_year"]: x for x in nofo["fiscal_years"]}
+                            for spec_nf in c_check["expect_null_fiscal_year_fields"]:
+                                y_i = int(spec_nf["fiscal_year"])
+                                fld = str(spec_nf["field"])
+                                if y_i not in by_y or by_y[y_i].get(fld) is not None:
+                                    q_failures.append(f"Call {idx} FY{y_i}.{fld} expected None, got {by_y.get(y_i, {}).get(fld)!r}")
+                        if "expected_subaward_summary" in c_check:
+                            sub = ov.get("subawards") or {}
+                            for k, exp_v in c_check["expected_subaward_summary"].items():
+                                act_v = sub.get(k)
+                                if isinstance(exp_v, float):
+                                    if not isinstance(act_v, (int, float)) or abs(float(act_v) - exp_v) > 0.02:
+                                        q_failures.append(f"Call {idx} subawards.{k}={act_v!r} != {exp_v!r}")
+                                elif act_v != exp_v:
+                                    q_failures.append(f"Call {idx} subawards.{k}={act_v!r} != {exp_v!r}")
+                        if "expect_warning_substring" in c_check:
+                            sub_txt = c_check["expect_warning_substring"]
+                            if not any(sub_txt in str(c) for c in ov.get("caveats", [])):
+                                q_failures.append(f"Call {idx} caveats missing {sub_txt!r}")
+
+                    elif tool == "list_nofo_recipients":
+                        listing = exp["listing"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_funding_recipients_sorted(listing.get("recipients"), "listing.recipients")
+                        )
+                        if "expected_nofo_key" in c_check and listing["nofo_key"] != c_check["expected_nofo_key"]:
+                            q_failures.append(f"Call {idx} nofo_key={listing['nofo_key']!r} != {c_check['expected_nofo_key']!r}")
+                        if "expected_total_recipients" in c_check and listing["total"] != c_check["expected_total_recipients"]:
+                            q_failures.append(f"Call {idx} total={listing['total']!r} != {c_check['expected_total_recipients']!r}")
+                        if "expected_page_count" in c_check and len(listing["recipients"]) != c_check["expected_page_count"]:
+                            q_failures.append(f"Call {idx} page count={len(listing['recipients'])} != {c_check['expected_page_count']}")
+                        if "expected_offset" in c_check and listing["offset"] != c_check["expected_offset"]:
+                            q_failures.append(f"Call {idx} offset={listing['offset']} != {c_check['expected_offset']}")
+                        if "expected_first_fain" in c_check:
+                            first_f = listing["recipients"][0]["fain"] if listing["recipients"] else None
+                            if first_f != c_check["expected_first_fain"]:
+                                q_failures.append(f"Call {idx} first fain={first_f!r} != {c_check['expected_first_fain']!r}")
+                        paging_keys.extend(r["award_unique_key"] for r in listing["recipients"])
+
+                    elif tool == "get_recipient_funding":
+                        rec = exp["recipient"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_funding_fiscal_years_ordered(rec.get("fiscal_years"), "recipient.fiscal_years")
+                        )
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in _check_recipient_null_vs_zero(rec, "recipient")
+                        )
+                        if "expected_nofo_key" in c_check and exp["nofo_key"] != c_check["expected_nofo_key"]:
+                            q_failures.append(f"Call {idx} nofo_key={exp['nofo_key']!r} != {c_check['expected_nofo_key']!r}")
+                        if "expected_recipient_uei" in c_check and rec.get("uei") != c_check["expected_recipient_uei"]:
+                            q_failures.append(f"Call {idx} recipient.uei={rec.get('uei')!r} != {c_check['expected_recipient_uei']!r}")
+                        if "expected_recipient_fain" in c_check and rec.get("fain") != c_check["expected_recipient_fain"]:
+                            q_failures.append(f"Call {idx} recipient.fain={rec.get('fain')!r} != {c_check['expected_recipient_fain']!r}")
+                        if "expected_recipient_name" in c_check and rec.get("recipient_name") != c_check["expected_recipient_name"]:
+                            q_failures.append(f"Call {idx} recipient.recipient_name={rec.get('recipient_name')!r} != {c_check['expected_recipient_name']!r}")
+                        if "expected_recipient_state" in c_check and (rec.get("address") or {}).get("state") != c_check["expected_recipient_state"]:
+                            q_failures.append(f"Call {idx} recipient.state={(rec.get('address') or {}).get('state')!r} != {c_check['expected_recipient_state']!r}")
+                        if "expected_recipient_best_available" in c_check:
+                            if abs(float(rec["totals"]["best_available"] or 0) - float(c_check["expected_recipient_best_available"])) > 0.02:
+                                q_failures.append(f"Call {idx} recipient best_available={rec['totals']['best_available']} != {c_check['expected_recipient_best_available']}")
+                        if "expected_recipient_basis" in c_check and rec["totals"].get("best_available_basis") != c_check["expected_recipient_basis"]:
+                            q_failures.append(f"Call {idx} recipient basis={rec['totals'].get('best_available_basis')!r} != {c_check['expected_recipient_basis']!r}")
+                        if "expected_recipient_subaward_actions" in c_check:
+                            if (rec.get("subawards") or {}).get("action_count") != c_check["expected_recipient_subaward_actions"]:
+                                q_failures.append(f"Call {idx} recipient subaward actions={(rec.get('subawards') or {}).get('action_count')!r} != {c_check['expected_recipient_subaward_actions']!r}")
+                        if "expected_recipient_subaward_amount" in c_check:
+                            if abs(float((rec.get("subawards") or {}).get("reported_amount") or 0) - float(c_check["expected_recipient_subaward_amount"])) > 0.02:
+                                q_failures.append(f"Call {idx} recipient subaward amount={(rec.get('subawards') or {}).get('reported_amount')!r} != {c_check['expected_recipient_subaward_amount']!r}")
+
+            if "expect_paging_union_total" in q.get("checks", {}):
+                exp_union = int(q["checks"]["expect_paging_union_total"])
+                if len(paging_keys) != len(set(paging_keys)):
+                    q_failures.append(f"Paging returned duplicate recipients across pages ({len(paging_keys)} total vs {len(set(paging_keys))} unique)")
+                if len(set(paging_keys)) != exp_union:
+                    q_failures.append(f"Paging union count {len(set(paging_keys))} != expected {exp_union}")
 
             passed = len(q_failures) == 0
             if not passed:
@@ -2554,6 +3745,7 @@ async def run_live_eval(
                 }
                 q_failures: list[str] = []
                 q_latencies: list[float] = []
+                paging_keys: list[str] = []
 
                 for idx, call in enumerate(calls):
                     tool = call["tool"]
@@ -2590,6 +3782,20 @@ async def run_live_eval(
                     )
                     for e in call_errs:
                         q_failures.append(f"Call {idx} ({tool}): {e}")
+                    if tool == "list_nofo_recipients" and not getattr(res, "is_error", False):
+                        sc = getattr(res, "structured_content", None) or {}
+                        for rec in (sc.get("data") or {}).get("recipients") or []:
+                            if isinstance(rec, dict) and rec.get("award_unique_key"):
+                                paging_keys.append(rec["award_unique_key"])
+
+                if "expect_paging_union_total" in q.get("checks", {}):
+                    exp_union = int(q["checks"]["expect_paging_union_total"])
+                    if len(paging_keys) != len(set(paging_keys)):
+                        q_failures.append(
+                            f"Paging returned duplicate recipients across pages ({len(paging_keys)} total vs {len(set(paging_keys))} unique)"
+                        )
+                    if len(set(paging_keys)) != exp_union:
+                        q_failures.append(f"Paging union count {len(set(paging_keys))} != expected {exp_union}")
 
                 passed = len(q_failures) == 0
                 if not passed:
@@ -2632,6 +3838,81 @@ async def run_live_eval(
     return 0 if all_passed else 1
 
 
+def _origin_from_url(url: str) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"Invalid server URL: {url!r}")
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def run_dataset_check(server_url: str, nofo_key: str = "PS212102") -> int:
+    """Fetch GET /funding/nofo/{nofo_key}.json?subawards=1 and validate the v1 contract."""
+    origin = _origin_from_url(server_url)
+    target_url = f"{origin}/funding/nofo/{nofo_key}.json?subawards=1"
+    req = urllib.request.Request(target_url, headers={"Accept-Encoding": "gzip"})
+    t0 = time.perf_counter()
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            status = resp.status
+            headers = {k.lower(): v for k, v in resp.headers.items()}
+            raw_bytes = resp.read()
+    except urllib.error.HTTPError as exc:
+        print(f"[FAIL] GET {target_url} returned HTTP {exc.code}: {exc.read().decode('utf-8', 'replace')}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"[FAIL] GET {target_url} failed: {exc}", file=sys.stderr)
+        return 1
+    dt_ms = (time.perf_counter() - t0) * 1000.0
+
+    failures: list[str] = []
+    if status != 200:
+        failures.append(f"Expected HTTP 200, got {status}")
+    if "etag" not in headers:
+        failures.append("Response missing ETag header")
+    if "max-age=3600" not in headers.get("cache-control", ""):
+        failures.append(f"Expected Cache-Control public, max-age=3600; got {headers.get('cache-control')!r}")
+
+    encoding = headers.get("content-encoding", "").lower()
+    if encoding == "gzip":
+        try:
+            raw_bytes = gzip.decompress(raw_bytes)
+        except Exception as exc:
+            failures.append(f"Failed to gunzip response body: {exc}")
+            raw_bytes = b""
+
+    try:
+        dataset = json.loads(raw_bytes.decode("utf-8"))
+    except Exception as exc:
+        print(f"[FAIL] Invalid JSON from {target_url}: {exc}", file=sys.stderr)
+        return 1
+
+    expected_ds: dict[str, Any] | None = None
+    try:
+        db = open_staging_db()
+        try:
+            expected_ds = funding_lookup.nofo_dataset(db, nofo_key, True)
+        finally:
+            db.close()
+    except Exception:
+        expected_ds = None
+
+    failures.extend(check_nofo_dataset_v1(dataset, expect_subawards=True, expected_dataset=expected_ds))
+
+    if failures:
+        print(f"[FAIL] Dataset check failed for {target_url} ({dt_ms:.1f} ms):", file=sys.stderr)
+        for err in failures:
+            print(f"  - {err}", file=sys.stderr)
+        return 1
+
+    print(
+        f"[PASS] Dataset check passed for {target_url} ({dt_ms:.1f} ms) | "
+        f"schema={dataset['schema_version']} | recipients={len(dataset['recipients'])} | "
+        f"fiscal_years={len(dataset['nofo']['fiscal_years'])} | "
+        f"subaward_actions={dataset['subawards']['summary']['actions']}"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="CHIP MCP Server deterministic evaluation runner")
     parser.add_argument(
@@ -2648,7 +3929,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--expected-only",
         action="store_true",
-        help="Compute and verify expected values from app.area_pilot.lookup without a server",
+        help="Compute and verify expected values from lookup layers without a server",
+    )
+    parser.add_argument(
+        "--dataset-check",
+        action="store_true",
+        help="Fetch GET /funding/nofo/PS212102.json?subawards=1 from --url (default http://127.0.0.1:8011) and validate v1 contract",
+    )
+    parser.add_argument(
+        "--nofo",
+        type=str,
+        default="PS212102",
+        help="NOFO key for --dataset-check (default: PS212102)",
     )
     parser.add_argument(
         "--url",
@@ -2690,7 +3982,7 @@ def main(argv: list[str] | None = None) -> int:
             ]
             write_eval_report(
                 args.report,
-                mode="validate-offline (awaiting H6 live server run)",
+                mode="validate-offline (awaiting F4 live server run)",
                 server_url=None,
                 question_results=q_results,
                 latencies_ms=[],
@@ -2701,11 +3993,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.expected_only:
         return run_expected_only(args.questions, report_path=args.report)
 
+    if args.dataset_check:
+        base = args.url or "http://127.0.0.1:8011"
+        return run_dataset_check(base, nofo_key=args.nofo)
+
     if args.url:
         report_path = args.report or DEFAULT_REPORT_PATH
         return asyncio.run(run_live_eval(args.url, args.questions, report_path))
 
-    parser.error("Provide one of --validate, --expected-only, or --url http://127.0.0.1:<port>/mcp")
+    parser.error("Provide one of --validate, --expected-only, --dataset-check, or --url http://127.0.0.1:<port>/mcp")
     return 2
 
 
