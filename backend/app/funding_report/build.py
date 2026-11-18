@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
 import json
+import re
 import time
 
 from sqlalchemy import create_engine, text
@@ -33,6 +34,11 @@ def date(value):
 
 def first(*values):
     return next((clean(v) for v in values if clean(v)), None)
+
+
+def longest(*values):
+    found = [clean(v) for v in values if clean(v)]
+    return max(found, key=len) if found else None
 
 
 def query(session, sql, params=None):
@@ -123,6 +129,13 @@ def stage(session):
       FROM taggs.raw_awards WHERE award_number IN (SELECT fain FROM fr_link)
       ORDER BY award_number, action_issue_date DESC NULLS LAST, id DESC""")
     query(session, 'CREATE INDEX ON fr_taggs_latest (fain)')
+    query(session, """CREATE TEMP TABLE fr_taggs_title ON COMMIT DROP AS
+      SELECT DISTINCT ON (award_number) award_number AS fain, trim(award_title) AS title
+      FROM taggs.raw_awards WHERE award_number IN (SELECT fain FROM fr_link)
+        AND nullif(trim(award_title),'') IS NOT NULL
+      GROUP BY award_number, trim(award_title)
+      ORDER BY award_number, count(*) DESC, trim(award_title)""")
+    query(session, 'CREATE INDEX ON fr_taggs_title (fain)')
 
 
 def sources(session):
@@ -132,7 +145,10 @@ def sources(session):
       completed_at FROM cdc_funding.cdc_funding_import_runs ORDER BY fiscal_year, id DESC""").mappings().all()
     prime_date = query(session, "SELECT max(r->>'action_date') FROM fr_prime").scalar()
     sub_date = query(session, "SELECT max(raw_record->>'subaward_action_date') FROM cdc_funding.raw_usaspending_assistance_subawards").scalar()
-    taggs_date = query(session, "SELECT max(action_issue_date) FROM taggs.raw_awards").scalar()
+    taggs_run = query(session, """SELECT finished_at FROM taggs.ingestion_runs
+      WHERE status='success' AND finished_at IS NOT NULL
+      ORDER BY finished_at DESC, id DESC LIMIT 1""").scalar()
+    taggs_years = query(session, "SELECT min(funding_fiscal_year),max(funding_fiscal_year) FROM taggs.raw_awards").one()
     periods = {str(r['fiscal_year']): {'period': max((x for x in (r['manifest'] or {}).get('periods', []) if x), default=None),
                 'is_complete': bool((r['manifest'] or {}).get('is_complete', False)),
                 'import_status': r['import_status']} for r in runs}
@@ -140,19 +156,23 @@ def sources(session):
         periods.setdefault(str(fy), {})['period'] = period
         periods[str(fy)]['is_complete'] = period is not None and period.endswith('P12') and periods[str(fy)].get('import_status') == 'completed'
     meta = {'account_fiscal_years': periods, 'prime_action_date': prime_date,
-            'subaward_action_date': sub_date, 'taggs_action_issue_date': date(taggs_date)}
+            'subaward_action_date': sub_date, 'taggs_loaded_at': date(taggs_run)}
     src = [
         {'id':'usaspending_account','publisher':'USAspending.gov','product':'Federal account award data (File C), CDC',
-         'coverage':f'FY{account[0]}–FY{account[1]}','data_through':account[2]},
+         'coverage':f'FY{account[0]}–FY{account[1]}','data_through':re.sub(r'(FY\d{4})P(\d+)',r'\1 P\2',account[2]) if account[2] else None},
         {'id':'usaspending_award','publisher':'USAspending.gov','product':'CDC assistance prime transactions',
          'coverage':'CDC assistance awards','data_through':prime_date},
         {'id':'taggs','publisher':'HHS TAGGS','product':'HHS award actions',
-         'coverage':'HHS award records','data_through':date(taggs_date)},
+         'coverage':f'FY{taggs_years[0]}–FY{taggs_years[1]} funding fiscal years','data_through':None,
+         'loaded_at':date(taggs_run)},
         {'id':'usaspending_subawards','publisher':'USAspending.gov','product':'Assistance sub-award reports',
          'coverage':'CDC prime-linked sub-awards','data_through':sub_date},
     ]
     for item in src:
-        item['citation'] = f"Source: {item['publisher']} · {item['product']} · data through {item['data_through'] or 'unknown'}"
+        citation_coverage = item['coverage'].removesuffix(' funding fiscal years')
+        item['citation'] = (f"Source: {item['publisher']} · {item['product']} · {citation_coverage} · "
+                            + (f"loaded {item['loaded_at']}" if item.get('loaded_at') else
+                               f"through {item['data_through']}" if item.get('data_through') else 'date not reported'))
     meta['sources'] = src
     return meta
 
@@ -176,6 +196,11 @@ def build_data(session, build_id, meta):
     taggs_names = {r['fain']: r['names'] or [] for r in query(session, """SELECT award_number AS fain,
       array_agg(DISTINCT NULLIF(legal_entity_name,'')) AS names FROM taggs.raw_awards
       WHERE award_number IN (SELECT fain FROM fr_link) GROUP BY award_number""").mappings()}
+    titles = {r['fain']:r['title'] for r in query(session, 'SELECT fain,title FROM fr_taggs_title').mappings()}
+    descriptions = {r['auk']:r['description'] for r in query(session, """SELECT DISTINCT ON (auk) auk,
+      nullif(trim(r->>'transaction_description'),'') AS description FROM fr_prime
+      WHERE auk IN (SELECT auk FROM fr_link) AND nullif(trim(r->>'transaction_description'),'') IS NOT NULL
+      ORDER BY auk,length(trim(r->>'transaction_description')) DESC,id DESC""").mappings()}
     links = query(session, """SELECT l.nofo_key,l.auk AS link_auk,l.fain,p.r AS prime,a.*,t.legal_entity_name,t.legal_entity_city,
       t.legal_entity_state,t.legal_entity_zip_code,t.legal_entity_county,t.legal_entity_country,
       t.legal_entity_congressional_district,t.uei AS taggs_uei,t.recipient_class,t.recipient_type,
@@ -220,8 +245,9 @@ def build_data(session, build_id, meta):
           'recipient_class':clean(row['recipient_class']),'recipient_type':clean(row['recipient_type']),
           'metro_status':clean(row['metro_non_metro']),
           'business_types':sorted(set(filter(None,[clean(r.get('business_types_description'))]))),
-          'project_title':first(r.get('prime_award_base_transaction_description'),row['award_title']),
-          'abstract':first(r.get('transaction_description'),row['prime_award_base_transaction_description'],row['award_description']),
+          'project_title':first(titles.get(fain), (first(r.get('prime_award_base_transaction_description'),
+                            descriptions.get(auk),row['award_description']) or '').split(' - ',1)[0][:200]),
+          'abstract':longest(descriptions.get(auk),r.get('transaction_description'),row['prime_award_base_transaction_description'],row['award_description']),
           'cfda':{'number':first(r.get('cfda_number'),row['cfda_number'],row['aln']),
                   'title':first(r.get('cfda_title'),row['cfda_title'],row['assistance_listing_title'])},
           'funding_office':first(r.get('funding_office_name'),row['funding_office_name'],row['program_office']),

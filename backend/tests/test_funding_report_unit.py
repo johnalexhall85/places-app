@@ -1,5 +1,6 @@
 from app.funding_report.keys import nofo_key
 from app.funding_report.method import best_available, caveats, dedupe_subawards, district
+from app.funding_report.build import longest
 
 
 def test_nofo_key():
@@ -39,3 +40,21 @@ def test_caveats_include_source_dates_and_incomplete_fy():
     assert any('not a complete federal portfolio' in x for x in rows)
     assert any('FY2026 P12' in x for x in rows)
     assert any('2027 is not complete' in x for x in rows)
+
+
+def test_f2b_source_caveats_and_longest_abstract():
+    sources=[
+        {'id':'usaspending_account','publisher':'USAspending.gov','product':'Federal account award data (File C)',
+         'data_through':'FY2026 P12'},
+        {'id':'usaspending_award','publisher':'USAspending.gov','product':'CDC assistance prime transactions',
+         'data_through':'2026-06-18'},
+        {'id':'taggs','publisher':'HHS TAGGS','product':'HHS award actions',
+         'coverage':'FY2021–FY2026 funding fiscal years','data_through':None,'loaded_at':'2026-11-18'},
+    ]
+    rows=caveats(sources)
+    assert 'FY2026 P12; FY2026 is complete' in ' '.join(rows)
+    assert any('awards first made after that date' in x for x in rows)
+    assert any('loaded 2026-11-18' in x for x in rows)
+    assert 'unknown' not in ' '.join(rows).lower()
+    assert not any('not complete' in x for x in rows)
+    assert longest('Short','A much longer abstract')=='A much longer abstract'

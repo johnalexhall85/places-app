@@ -1,5 +1,12 @@
 # Funding MCP status: codex
 
+## 2026-11-18T21:06:35+00:00 — F3 and F2b complete in worktree
+- F2b: TAGGS modal award title, longest abstract, source loaded date/coverage, spaced period labels, plain caveats with award-link lag, and threaded dataset route; staging `places_staging` build 5 is active (5,545 NOFOs, 13,626 awards).
+- Renderer and assets: template-based Word, eight-sheet Excel with optional sub-award sheets, chart, TOC, hyperlinks, formulas, branded tables, CLI, and clean zip packager; real PS21-2102 (97 recipients) and CE23-2301 (13) fixtures and reports rendered under `/tmp/chip-nofo-ps` and `/tmp/chip-nofo-ce`.
+- Verification: funding/MCP tests 33/33, area expected-only 54/54, renderer tests 2/2, 600-recipient render 14.68 s, `git diff --check`; Word headings/TOC/links/closing box and Excel sheet names/formulas inspected.
+- Visual check: LibreOffice/soffice is absent, so PDF conversion and page PNGs were skipped; no PNG paths. No app deploy, live database change, commit, push, merge, or sudo.
+- Open: Claude reviews the prior TAGGS reference-amount variance and the generated layouts in Word or LibreOffice, then commits, deploys staging, and proceeds through Gates A/B. Diary facts are here for Claude; handbook/diary are Claude-owned for this headless package.
+
 ## 2026-11-18T20:54:00+00:00 — F1+F2 complete in worktree; staging build active
 
 - **Work:** Added `app.funding_report` key normalization, set-based builder, active-build-only lookup, CDC NOFO dataset v1, and tests. Added three read-only MCP tools, funding build-aware cache keys, absolute dataset URL (`CHIP_MCP_PUBLIC_BASE_URL`), and a gzip/ETag dataset route. Area tools remain on their existing lookup and cache path. No migration, source table, live service, or deployment change; all code remains uncommitted in `codex/funding-report`.

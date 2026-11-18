@@ -1,0 +1,13 @@
+{
+  "deep_navy": "003F61",
+  "brand_blue": "0277BD",
+  "logo_blue": "3D75C9",
+  "light_background": "F4F7FB",
+  "body_text": "1A2F3F",
+  "muted_text": "546E7A",
+  "steel_grey": "CFD8DC",
+  "data_peach": "F0B97D",
+  "chart_series": ["0277BD", "F0B97D", "009688", "558B2F", "3D75C9", "003F61"],
+  "title_font": "Roboto Slab",
+  "body_font": "Arial"
+}

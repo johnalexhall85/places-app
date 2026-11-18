@@ -22,6 +22,12 @@ def test_ps21_2102_dataset(staging):
     assert [round(by_year[y]) for y in range(2021,2026)]==[42395995,49347654,52613214,42395995,42395995]
     assert abs(by_year[2026]-10166689)<2
     assert all(set(p)>= {'award_unique_key','fain','uei','recipient_name','address','totals','fiscal_years','other_awards','subawards'} for p in d['recipients'])
+    by_source={x['id']:x for x in d['sources']}
+    assert by_source['usaspending_account']['data_through']=='FY2026 P12'
+    assert by_source['taggs']['data_through'] is None
+    assert by_source['taggs']['loaded_at'] and 'loaded ' in by_source['taggs']['citation']
+    assert 'unknown' not in ' '.join(d['caveats']).lower()
+    assert any('awards first made after that date' in x for x in d['caveats'])
 
 
 def test_reference_diagnostics(staging):

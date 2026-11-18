@@ -51,3 +51,4 @@ frontend/public/reports/
 
 # History parser fixtures (small, real source excerpts)
 !backend/tests/fixtures/history/**/*.csv
+skills/*/tests/fixtures/

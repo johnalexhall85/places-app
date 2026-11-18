@@ -5,6 +5,7 @@ from mcp.server import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from starlette.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 from app import db as db_module
 from app.funding_report import lookup as funding_lookup
 from .config import allowed_hosts
@@ -50,15 +51,20 @@ async def nofo_download(request):
     flag = request.query_params.get('subawards', '0')
     if flag not in ('0', '1'):
         return JSONResponse({'error': 'subawards must be 0 or 1'}, status_code=422)
+    return await run_in_threadpool(_nofo_download_sync, request.path_params['nofo_key'], flag,
+                                   request.headers.get('if-none-match'))
+
+
+def _nofo_download_sync(nofo_key, flag, if_none_match):
     with db_module.SessionLocal() as session:
         try:
-            resolved = funding_lookup.resolve_nofo(session, request.path_params['nofo_key'])
+            resolved = funding_lookup.resolve_nofo(session, nofo_key)
             build = funding_lookup.active_build(session)
             key = resolved['nofo_key']
             cache_key = (build['build_id'], key, flag)
             etag = f'"{build["build_id"]}-{key}-{flag}"'
             headers = {'ETag': etag, 'Cache-Control': 'public, max-age=3600'}
-            if request.headers.get('if-none-match') == etag:
+            if if_none_match == etag:
                 return Response(status_code=304, headers=headers)
             body = _DATASET_CACHE.get(cache_key)
             if body is None:
