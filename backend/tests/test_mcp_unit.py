@@ -293,3 +293,37 @@ def test_long_series_stays_within_size_cap(stub):
     assert result.data['truncated'] is True
     assert len(result.data['series']) < len(rows)
     assert size_bytes(result) <= MAX_BYTES
+
+
+def test_funding_tools_envelope_cache_and_errors(stub):
+    monkeypatch, _ = stub
+    from app.mcp_server.tools import FUNDING_RULES
+    from app.funding_report.lookup import FundingLookupError, UnsupportedNOFOError
+    monkeypatch.setattr(tools.funding_lookup,'active_build',lambda db:{'build_id':7})
+    source={'id':'usaspending_account','publisher':'USAspending.gov','product':'File C',
+            'coverage':'FY2021–FY2026','data_through':'FY2026 P12','citation':'Source: USAspending.gov'}
+    overview={'nofo':{'nofo_key':'PS212102','fon_display':'CDC-RFA-PS21-2102'},
+              'aggregates':{},'subawards':None,'sources':[source],'caveats':['Source dates differ.']}
+    monkeypatch.setattr(tools.funding_lookup,'nofo_overview',lambda *args:dict(overview))
+    one=tools.get_nofo_overview('PS21-2102')
+    assert one.data['dataset_url'].endswith('/funding/nofo/PS212102.json?subawards=0')
+    assert one.sources==[source]
+    assert one.interpretation_rules==list(FUNDING_RULES)
+    assert one.data['caveats']==['Source dates differ.']
+    assert size_bytes(one)<=MAX_BYTES
+    monkeypatch.setattr(tools.funding_lookup,'nofo_dataset',lambda *args:{'sources':[source],
+        'caveats':['Source dates differ.'],'nofo':{'nofo_key':'PS212102'}})
+    monkeypatch.setattr(tools.funding_lookup,'list_recipients',lambda *args:{'nofo_key':'PS212102',
+        'recipients':[{'recipient_name':'x'*1000} for _ in range(100)]})
+    listed=tools.list_nofo_recipients('PS21-2102')
+    assert listed.data['truncated'] is True and len(listed.data['recipients'])<100
+    assert size_bytes(listed)<=MAX_BYTES
+    monkeypatch.setattr(tools.funding_lookup,'recipient_profile',lambda *args:{'recipient_name':'Example'})
+    assert tools.get_recipient_funding('PS21-2102','UEI').data['recipient']['recipient_name']=='Example'
+    monkeypatch.setattr(tools.funding_lookup,'recipient_profile',lambda *args:(_ for _ in ()).throw(FundingLookupError('Use list_nofo_recipients')))
+    cache._CACHE.clear()
+    with pytest.raises(ToolError,match='Use list_nofo_recipients'):
+        tools.get_recipient_funding('PS21-2102','missing')
+    monkeypatch.setattr(tools.funding_lookup,'nofo_overview',lambda *args:(_ for _ in ()).throw(UnsupportedNOFOError('HRSA; only CDC NOFOs are supported')))
+    with pytest.raises(ToolError,match='HRSA; only CDC'):
+        tools.get_nofo_overview('HRSA-NOFO')

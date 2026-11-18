@@ -1,4 +1,4 @@
-"""Eight read-only MCP operations; all database reads use the approved lookup layer."""
+"""Read-only MCP operations; database reads use approved lookup layers."""
 import json
 import logging
 import re
@@ -7,11 +7,20 @@ from datetime import datetime, timezone
 from mcp.server.mcpserver.exceptions import ToolError
 from app import db as db_module
 from app.area_pilot import lookup
+from app.funding_report import lookup as funding_lookup
 from . import cache, measures, places
-from .config import FACILITY_PRODUCTS, LEVELS, MAX_BYTES, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING
+from .config import FACILITY_PRODUCTS, LEVELS, MAX_BYTES, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING, public_base_url
 from .envelope import Envelope, build, compact_value_row, fit_rows, size_bytes, value_row, citation, source
 
 log = logging.getLogger(__name__)
+
+FUNDING_RULES = (
+    'Obligations are USAspending federal account (File C) obligations unless a row says otherwise; award-level and TAGGS amounts are shown for comparison and can differ.',
+    'Sub-award amounts are reported by prime recipients and are not additional federal funding; never add them to prime obligations.',
+    'Other federal awards are HHS awards recorded in TAGGS for the same UEI; they are not a complete federal funding portfolio.',
+    'State the data-through date of each source and say when a fiscal year is not complete.',
+    'Do not rank recipients by merit or describe funding as good or bad; report amounts, periods, and sources.',
+)
 
 FACILITY_PUBLISHERS = {
     'health_centers': 'Health Resources and Services Administration',
@@ -122,14 +131,14 @@ def _sources_for_visible_rows(response, collection):
     return response
 
 
-def _run(name, args, work):
+def _run(name, args, work, funding=False):
     start = time.monotonic()
     cached = False
     error = None
     rows = 0
     session = db_module.SessionLocal()
     try:
-        fingerprint = lookup.active_releases(session)
+        fingerprint = (funding_lookup.active_build(session) or {}).get('build_id') if funding else lookup.active_releases(session)
         key = cache.key(name, args, fingerprint)
         result = cache.get(key)
         if result is None:
@@ -140,9 +149,9 @@ def _run(name, args, work):
         data = result.data
         rows = sum(len(data[k]) for k in ('values', 'with_value', 'without_value', 'series', 'matches', 'measures') if isinstance(data.get(k), list))
         return result
-    except (ToolError, lookup.LookupError_) as exc:
+    except (ToolError, lookup.LookupError_, funding_lookup.FundingLookupError) as exc:
         error = type(exc).__name__
-        if isinstance(exc, lookup.LookupError_):
+        if isinstance(exc, (lookup.LookupError_, funding_lookup.FundingLookupError)):
             raise ToolError(str(exc)) from exc
         raise
     except Exception as exc:
@@ -480,6 +489,52 @@ def list_data_sources() -> Envelope:
         _facility_rules(response, blocks)
         return response
     return _run('list_data_sources', {}, work)
+
+
+def _funding_envelope(data, sources, caveats):
+    result = Envelope(data=data, sources=sources, interpretation_rules=list(FUNDING_RULES), warnings=list(caveats))
+    if size_bytes(result) > MAX_BYTES:
+        if isinstance(data.get('recipients'), list):
+            fit_rows(result, 'recipients')
+        else:
+            raise ToolError('Funding response exceeds the size limit; use the dataset_url from get_nofo_overview.')
+    return result
+
+
+def _dataset_url(key, include_subawards):
+    return f"{public_base_url()}/funding/nofo/{key}.json?subawards={int(include_subawards)}"
+
+
+def get_nofo_overview(nofo: str, include_subawards: bool = False) -> Envelope:
+    """CDC NOFO totals, recipient aggregates, source dates, and full dataset URL."""
+    def work(db):
+        overview = funding_lookup.nofo_overview(db, nofo, include_subawards)
+        overview['dataset_url'] = _dataset_url(overview['nofo']['nofo_key'], include_subawards)
+        sources = overview.pop('sources')
+        caveats = overview['caveats']
+        return _funding_envelope(overview, sources, caveats)
+    return _run('get_nofo_overview', locals_args(nofo=nofo, include_subawards=include_subawards), work, funding=True)
+
+
+def list_nofo_recipients(nofo: str, offset: int = 0, limit: int = 50) -> Envelope:
+    """Compact recipients for one CDC NOFO, ordered by state and name."""
+    def work(db):
+        dataset = funding_lookup.nofo_dataset(db, nofo, False)
+        result = funding_lookup.list_recipients(db, nofo, offset, limit)
+        result['dataset_url'] = _dataset_url(result['nofo_key'], False)
+        return _funding_envelope(result, dataset['sources'], dataset['caveats'])
+    return _run('list_nofo_recipients', locals_args(nofo=nofo, offset=offset, limit=limit), work, funding=True)
+
+
+def get_recipient_funding(nofo: str, recipient: str) -> Envelope:
+    """One full recipient profile by exact UEI, FAIN, award key, or unique name."""
+    def work(db):
+        profile = funding_lookup.recipient_profile(db, nofo, recipient)
+        dataset = funding_lookup.nofo_dataset(db, nofo, False)
+        return _funding_envelope({'recipient':profile,'nofo_key':dataset['nofo']['nofo_key'],
+                                   'dataset_url':_dataset_url(dataset['nofo']['nofo_key'], True)},
+                                  dataset['sources'], dataset['caveats'])
+    return _run('get_recipient_funding', locals_args(nofo=nofo, recipient=recipient), work, funding=True)
 
 
 def locals_args(**kwargs):

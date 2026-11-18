@@ -1,4 +1,4 @@
-"""Public MCP policy, shared by all eight tools."""
+"""Public MCP policy and connection settings."""
 import os
 
 PUBLIC_PRODUCTS = frozenset({'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea'})
@@ -22,3 +22,8 @@ MAX_ROWS = 400
 
 def allowed_hosts():
     return [item.strip() for item in os.getenv('CHIP_MCP_ALLOWED_HOSTS', '127.0.0.1:*,localhost:*').split(',') if item.strip()]
+
+
+def public_base_url():
+    """Absolute public origin for funding downloads (CHIP_MCP_PUBLIC_BASE_URL)."""
+    return os.getenv('CHIP_MCP_PUBLIC_BASE_URL', 'http://127.0.0.1:8011').rstrip('/')

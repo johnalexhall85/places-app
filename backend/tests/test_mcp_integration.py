@@ -156,7 +156,7 @@ def test_http_client(staging):
         async def call():
             async with Client(f'http://127.0.0.1:{port}/mcp') as client:
                 listed = await client.list_tools()
-                assert len(listed.tools) == 8
+                assert len(listed.tools) == 11
                 assert all(tool.output_schema and tool.annotations.read_only_hint is True
                            and tool.annotations.destructive_hint is False
                            and tool.annotations.idempotent_hint is True
@@ -190,3 +190,33 @@ def test_http_client(staging):
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+def test_funding_download_route(monkeypatch):
+    import gzip
+    from starlette.testclient import TestClient
+    from app.mcp_server import app as mcp_app
+    from app.funding_report.lookup import FundingLookupError, UnsupportedNOFOError
+    class Session:
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+    monkeypatch.setattr(mcp_app.db_module,'SessionLocal',lambda:Session())
+    def resolve(db,key):
+        if key=='unknown': raise FundingLookupError('Unknown CDC NOFO')
+        if key=='hrsa': raise UnsupportedNOFOError('HRSA; only CDC NOFOs are supported')
+        return {'nofo_key':'PS212102'}
+    monkeypatch.setattr(mcp_app.funding_lookup,'resolve_nofo',resolve)
+    monkeypatch.setattr(mcp_app.funding_lookup,'active_build',lambda db:{'build_id':9})
+    monkeypatch.setattr(mcp_app.funding_lookup,'nofo_dataset',lambda db,key,flag:{'schema_version':'chip.nofo_recipient_profile.v1','subawards':{} if flag else None})
+    mcp_app._DATASET_CACHE.clear()
+    with TestClient(mcp_app.app) as client:
+        result=client.get('/funding/nofo/PS21-2102.json?subawards=1')
+        assert result.status_code==200
+        assert result.headers['content-encoding']=='gzip'
+        assert result.headers['cache-control']=='public, max-age=3600'
+        assert result.headers['etag']=='"9-PS212102-1"'
+        assert result.json()['subawards']=={}
+        assert client.get('/funding/nofo/PS21-2102.json?subawards=1',headers={'If-None-Match':result.headers['etag']}).status_code==304
+        assert client.get('/funding/nofo/unknown.json').status_code==404
+        assert client.get('/funding/nofo/hrsa.json').status_code==422
+        assert client.get('/funding/nofo/PS21-2102.json?subawards=bad').status_code==422
