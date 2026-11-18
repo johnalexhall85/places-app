@@ -131,10 +131,22 @@ Funding interpretation rules (verbatim):
 
 | WP | Owner | Content | Status |
 |---|---|---|---|
-| FR | Claude | Refresh FY2026 award-level files (`backend/scripts/fetch_usaspending_cdc_award_files.py`) and ingest on staging | in progress |
+| FR | Claude | Refresh FY2026 award-level files (`backend/scripts/fetch_usaspending_cdc_award_files.py`) and ingest on staging | staging done for sub-awards; prime blocked upstream (see below) |
 | F0 | Claude | This plan, contract amendment, migration, role grants, task files | done |
 | F1+F2 | Codex | `backend/app/funding_report/` build and lookup; MCP tools and dataset route | |
 | F3 | Codex | Renderer, assets, zip script | |
 | F4 | Antigravity | Funding eval questions and the PS21-2102 / CE23-2301 fidelity report | |
 | F5 | Claude | Review, merge to `beta`, staging deploy; Gate A: John tries the skill in claude.ai | |
 | F6 | Claude | Gate B: live migration, build, nginx, restart, final zip | |
+
+## FR outcome (2026-11-18)
+
+- **Download:** on 2026-11-18, USAspending returned **no FY2026 HHS assistance prime transactions**. The CDC FY2026 grant transaction count was 0. HHS overall had 404. All agencies together had 374,987, and the Department of Education had 22,659. FY2025 CDC data is still present. The bulk download produced a header-only prime file. The July file in `data/usaspending/chipfunding/fy26/` (22,208 rows through 2026-06-18) remains the award-level source.
+- **Sub-awards were available:** 7,120 CDC FY2026 assistance sub-award rows, through 2026-09-30.
+  - Folder: `data/usaspending/chipfunding/fy26_candidate/`.
+  - Profile: `fy26_subaward_refresh_profile.json`. It keeps the July prime and contract files and swaps in only the new sub-award file.
+- **Staging:** `ingest_usaspending_funding.py --profile-path …/fy26_subaward_refresh_profile.json --fiscal-year 2026 --replace` against `places_staging` took 2 minutes. Results:
+  - FY2026 assistance sub-awards went from 3,373 to 7,120.
+  - Prime (22,208), contracts (1,886 / 109), and `fact_cdc_funding_prime_transaction` (24,094) are unchanged.
+- **Live:** not changed. Repeat the same command against `places` at Gate B.
+- **Consequence:** awards first made after 2026-06-18 still have no NOFO link. Account-level obligations through FY2026 P12 are unaffected. Retry the prime download later with `fetch_usaspending_cdc_award_files.py`.

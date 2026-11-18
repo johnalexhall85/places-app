@@ -6,6 +6,9 @@ assistance and contracts, prime transactions and subawards, awarding sub-agency 
 action dates within the federal fiscal year. Uses the public bulk download API
 (no key). Files are written to a new folder; nothing is ingested.
 
+    Check the prime-transaction CSV is not header-only before ingesting with --replace
+    (2026-11-18: USAspending served no FY2026 HHS assistance prime transactions).
+
     python scripts/fetch_usaspending_cdc_award_files.py --fiscal-year 2026 \
         --out ../data/usaspending/chipfunding/fy26_candidate
 """
@@ -29,7 +32,7 @@ AGENCY = {
     "name": "Centers for Disease Control and Prevention",
     "toptier_name": "Department of Health and Human Services",
 }
-ASSISTANCE_TYPES = ["02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "-1"]
+ASSISTANCE_TYPES = ["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]
 CONTRACT_TYPES = ["A", "B", "C", "D", "IDV_A", "IDV_B", "IDV_B_A", "IDV_B_B", "IDV_B_C", "IDV_C", "IDV_D", "IDV_E"]
 
 
