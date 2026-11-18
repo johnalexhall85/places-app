@@ -53,9 +53,9 @@ The [history plan](docs/history/PLAN.md) and [source specification](docs/history
 
 The [funding MCP plan](docs/funding-mcp/PLAN.md) and Amendment 3 of the [tool contract](docs/mcp/TOOL_CONTRACT.md) govern the NOFO recipient-profile work: the funding MCP tools and the claude.ai skill. Claude manages it as it does the MCP server work. It writes the task files in `docs/funding-mcp/tasks/`, dispatches the other agents with `chip-dispatch`, reviews their work, commits, merges to `beta`, and deploys. Read your task file and the files in [docs/funding-mcp/status](docs/funding-mcp/status/) first.
 
-- **Claude Code owns** `backend/alembic/**`, `infra/**`, `backend/scripts/fetch_usaspending_cdc_award_files.py`, `docs/funding-mcp/**` (except the other agents' status files), `skills/*/SKILL.md`, `skills/*/references/**`, and the handbook. Claude runs every ingest and every `funding_report` build on live data; Codex may run the build against `places_staging` while developing.
+- **Claude Code owns** `backend/alembic/**`, `infra/**`, `backend/scripts/fetch_usaspending_cdc_award_files.py`, `docs/funding-mcp/**` (except the other agents' status files), `skills/*/SKILL.md`, `skills/*/references/**`, `skills/build_skill_zip.sh`, and the handbook. Claude runs every ingest and every `funding_report` build on live data; Codex may run the build against `places_staging` while developing.
 - **Codex owns** `backend/app/funding_report/**`, `backend/app/mcp_server/**`, `backend/tests/test_funding_report_*`, `backend/tests/test_mcp_*`, `skills/*/scripts/**`, `skills/*/assets/**`, `skills/*/tests/**`, and `docs/funding-mcp/status/codex.md`. Codex works in `/home/john/chip-codex-funding`.
-- **Antigravity owns** the funding questions in `backend/tests/mcp_eval/**`, `deliverables/funding-mcp/**`, and `docs/funding-mcp/status/antigravity.md`.
+- **Antigravity** works in `/home/john/chip-agy-funding` and **owns** the funding questions in `backend/tests/mcp_eval/**`, `deliverables/funding-mcp/**`, and `docs/funding-mcp/status/antigravity.md`.
 - The `funding_report` builder reads the source tables and writes only to `funding_report`. The MCP server reads funding only through `app.funding_report.lookup`.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
 

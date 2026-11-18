@@ -51,4 +51,8 @@ frontend/public/reports/
 
 # History parser fixtures (small, real source excerpts)
 !backend/tests/fixtures/history/**/*.csv
+
+# Skill packaging outputs and test venv
+skills/dist/
+skills/.venv/
 skills/*/tests/fixtures/
