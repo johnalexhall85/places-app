@@ -1,6 +1,6 @@
 # CHIP project handbook
 
-**Profile charts and trends: on staging only, verified 2026-11-19T20:45Z (Claude; redesigned after John's first review; awaiting Gate A). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
+**Profile charts and trends: live since 2026-11-19T21:00Z (Claude; Gate A passed: John, "That looks great"; Gate B approved: "go ahead and push to live and git push"). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
 - **What:** each indicator card on the county, state, and district profiles carries one small chart (`frontend/src/community/charts/IndicatorChart.jsx`, hand-built SVG, 120 px tall). Each section heading carries a single legend.
   - **Lines:** area solid `#0277BD`, state dashed `#C77700`, U.S. dotted `#2BA48A`. This palette passes the dataviz skill's validator.
   - **Axes:** fitted to the data with 3 or 4 rounded ticks, never below 0 and never above 100% for percents.
@@ -29,8 +29,15 @@
   - Frontend: 181 tests passed.
   - The full `npm run test:beta` passes, including chart checks at 1365, 390, and 375 px (no overflow, no negative axis labels, no section bands).
   - Antigravity's independent audit (`tests/test_profile_charts_audit.py`) passes against staging port 8001.
-- **Live is unchanged:** no migration, no national release, no chart code.
-- **Promotion (Gate B) will need:** `alembic upgrade head`, then `national_cli build` and `publish` on `places`, then the usual `main` fast-forward, frontend build, and `places-backend` restart.
+- **Live** (`main` `122f692`, also pushed to `origin/main` and `origin/beta`):
+  - Alembic at `c6d0e4a8b2f7`.
+  - National release `4109ab71-92c6-4613-9ba8-5c7945a5f59e`, with the same semantic SHA-256 as staging (`f2822043…`, 78 rows).
+  - Bundle `index-DXVvK26B.js`, the same as staging.
+  - `places-backend` restarted; `chip-mcp` was not restarted, because the MCP server is untouched.
+  - Verified: profile `area_values` for six areas and `national_reference` are identical to the pre-promotion capture, the only pointer added is `chip_national_reference`, and anonymous requests to `/charts` return 401.
+- **Rollback:** the recovery set is `data/deploy-recovery/profile-viz-20261119/` (`commit-before.txt` `f16487f`, `alembic-before.txt`, `webroot-before/`, `profiles-before.json`).
+  - **Data:** `python -m app.area_pilot.national_cli deactivate`.
+  - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
 **CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): live since 2026-11-18T22:05Z (Claude; Gate A passed by John; Gate B approved: "push it all live"; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
 - **What:**

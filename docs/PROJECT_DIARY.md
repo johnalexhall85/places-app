@@ -2,6 +2,25 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-19T21:00:00+00:00 — Profile charts promoted to live (Claude)
+
+- **Approval:** after trying staging, John said "That looks great. We may come back later, but you can go ahead and push to live and git push as needed."
+- **Recovery set:** `data/deploy-recovery/profile-viz-20261119/`, containing the commit `f16487f`, the Alembic revision `b3f9d2a7c1e4`, a webroot copy, 21 live pointers, and profile values for 37145, 54039, 06019, 5401, 37, and 01055. No `area_pilot` dump was taken, because the change only adds a table and a pointer.
+- **Promotion steps on live:**
+  1. `main` fast-forwarded from `f16487f` to `122f692`.
+  2. `alembic upgrade head`, now at `c6d0e4a8b2f7`.
+  3. `national_cli build`: release `4109ab71…`, 78 rows, semantic SHA-256 equal to staging.
+  4. `national_cli publish`.
+  5. `VITE_API_BASE_URL=/api npm run build`, producing `index-DXVvK26B.js` (the same as staging), then `rsync --delete` to `/var/www/places`.
+  6. `systemctl restart places-backend`.
+- **Verification:**
+  - Health, `/`, and a profile route return 200. The anonymous catalog and `/charts` return 401. MCP `/healthz` returns 200.
+  - Profile values and `national_reference` are identical to the capture, and the only pointer added is `chip_national_reference`.
+  - The live chart builder returns Etowah County with county, state, and U.S. income series.
+- **Git:** pushed `origin/main` and `origin/beta` (`f16487f..122f692`). A scan of the new commits found no secrets.
+- **Not done:** no signed-in browser check on live by an agent, because there is no live access code on file. John viewed staging.
+- **Next:** none required. John may revisit charts and dashboards later.
+
 ## 2026-11-19T20:45:00+00:00 — Profile charts redesigned as small per-indicator charts (Claude, with Antigravity)
 
 - **John's review:** "too many visualizations and they are too complicated." He sent a reference of small county, state, and U.S. line panels. His direction: start with small individual indicator charts, no filters, county, state, and national together. Codex is low on credits, so Antigravity took Codex's frontend and community paths for this package (recorded in AGENTS.md and the plan).
