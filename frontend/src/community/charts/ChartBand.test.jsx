@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ChartBand, DotIntervalRow, TrendChart } from "./ChartBand";
-import { peerSubset } from "./scale";
+import { ChartBand, DotIntervalRow, PeerList, TrendChart } from "./ChartBand";
+import { extent, focusedExtent, formatTick, peerSubset, ticks } from "./scale";
 import { CommunityCounty } from "../CommunityPages";
 
 const row = {
@@ -50,7 +50,60 @@ describe("profile charts", () => {
     expect(screen.getAllByText("Suppressed by source").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Show as table" }));
     expect(screen.getByRole("table")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show as table" }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Hide table" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("uses rounded bounded ticks and short currency labels", () => {
+    const percent = extent([-3.87, 23.4, 50.77], { unit: "percent" });
+    expect(percent[0]).toBe(0);
+    expect(percent[1]).toBeLessThanOrEqual(100);
+    expect(ticks(percent).length).toBeGreaterThanOrEqual(3);
+    expect(ticks(percent).length).toBeLessThanOrEqual(5);
+    expect(extent([0.6, 1.2], { storage_scale: "proportion_0_1" })).toEqual([0, 1]);
+    const currency = { kind: "currency", unit: "USD" };
+    expect(formatTick(40000, currency)).toBe("$40k");
+    expect(formatTick(80000, currency)).toBe("$80k");
+    expect(focusedExtent([10.7, 29.8], { unit: "percent" })).toEqual([5, 35]);
+  });
+
+  it("places peer ticks and the area dot on the same scale", () => {
+    const withPeers = { ...row, peers: { values: [10, 20, 27.1, 40], count: 4,
+      level: "county", parent_geoid: "01", min: { name: "Low", value: 10 }, max: { name: "High", value: 40 } } };
+    const { container } = render(<DotIntervalRow row={withPeers} />);
+    const dots = container.querySelectorAll('[data-marker="area"]');
+    expect(dots).toHaveLength(2);
+    expect(dots[0].getAttribute("cx")).toBe(dots[1].getAttribute("cx"));
+    expect(container.querySelector('[data-testid="peer-strip"]')).toBeTruthy();
+  });
+
+  it("shows a peer interval chart with at most 18 default rows and fringe labels", async () => {
+    const values = Array.from({ length: 25 }, (_, index) => ({ geoid: String(index), name: `County ${index}`, value: index,
+      uncertainty: { low: index - 0.5, high: index + 0.5 } }));
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ values }) })));
+    const withPeers = { ...row, peers: { peers_url: "/community/county/12/peers", level: "county" } };
+    const { container } = render(<PeerList row={withPeers} areaGeoid="12" areaName="County 12" />);
+    fireEvent.click(screen.getByRole("button", { name: "Compare counties" }));
+    await waitFor(() => expect(container.querySelectorAll("[data-peer-row]")).toHaveLength(18));
+    expect(container.querySelector('[aria-label*="(lowest)"]')).toBeTruthy();
+    expect(container.querySelector('[aria-label*="(highest)"]')).toBeTruthy();
+    expect(container.querySelectorAll(".chart-peer-chart circle")).toHaveLength(18);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 25" }));
+    expect(container.querySelectorAll("[data-peer-row]")).toHaveLength(25);
+  });
+
+  it("connects a vintage-label change but breaks at a missing period", () => {
+    const lineRow = { ...row, trend: { ...row.trend, style: "line", series: [
+      { period: "2020", value: 10, boundary_vintage: "2010" },
+      { period: "2021", value: 12, boundary_vintage: "2020" },
+      { period: "2022", value: null, boundary_vintage: "2020", status_text: "Unavailable" },
+      { period: "2023", value: 13, boundary_vintage: "2020" },
+    ] } };
+    const { container } = render(<TrendChart row={lineRow} />);
+    const path = container.querySelector(".chart-trend-line").getAttribute("d");
+    expect((path.match(/L/g) || [])).toHaveLength(1);
+    expect((path.match(/M/g) || [])).toHaveLength(2);
+    expect(screen.queryByText(/Boundary changed; line breaks here/)).toBeNull();
+    expect(screen.getByText("About these years")).toBeTruthy();
   });
 
   it("keeps a county profile usable when charts fail", async () => {

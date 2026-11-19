@@ -4,34 +4,43 @@
 .chart-band h3, .chart-band h4 { margin: 0 0 .6rem; color: #003f61; }
 .chart-band h3 { font-size: 1.25rem; }
 .chart-band h4 { font-size: 1rem; }
-.chart-band-legend { display: flex; flex-wrap: wrap; gap: .55rem 1rem; font-size: .84rem; color: #284554; }
-.chart-band-legend span { display: inline-flex; align-items: center; gap: .4rem; }
-.chart-band-legend i { display: inline-block; width: 12px; height: 12px; flex: none; }
-.chart-band-legend .area-shape { background: #0277bd; border-radius: 50%; }
-.chart-band-legend .state-shape { background: #f0b97d; border: 1px solid #584022; transform: rotate(45deg); }
-.chart-band-legend .national-shape { background: #009688; }
+.chart-band-legend, .chart-trend-legend, .chart-peer-legend { display: flex; flex-wrap: wrap; gap: .35rem 1rem; font-size: .82rem; color: #284554; }
+.chart-band-legend span, .chart-trend-legend span, .chart-peer-legend span, .chart-comparisons span { display: inline-flex; align-items: center; gap: .4rem; }
+.chart-band i { display: inline-block; width: 12px; height: 12px; flex: none; }
+.chart-band .area-shape { background: #0277bd; border-radius: 50%; }
+.chart-band .state-shape { background: #f0b97d; border: 1px solid #584022; transform: rotate(45deg) scale(.75); }
+.chart-band .national-shape { background: #009688; }
+.chart-band .other-shape { background: #78909c; border-radius: 50%; }
+.chart-band .band-shape { width: 18px; background: #e7f2f8; border: 1px solid #8cb7cf; }
 .chart-group { border-top: 1px solid #dbe5e9; padding-top: .8rem; margin-top: .8rem; }
 .chart-row { min-width: 0; display: grid; grid-template-columns: minmax(150px, 28%) minmax(0, 1fr); gap: .8rem; padding: .55rem 0; border-top: 1px solid #e4ebee; }
 .chart-row-label { min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
-.chart-row-label span, .chart-sources, .chart-side-note, .chart-trend p, .chart-peer-strip p { color: #3e5662; font-size: .82rem; }
+.chart-row-label span, .chart-sources, .chart-side-note, .chart-trend p, .chart-peer-caption, .chart-comparisons { color: #3e5662; font-size: .82rem; }
 .chart-row-content { min-width: 0; }
 .chart-svg-wrap, .chart-peer-strip, .chart-trend { width: 100%; min-width: 0; }
 .chart-band svg { display: block; max-width: 100%; height: auto; overflow: visible; }
 .chart-band svg text { font: 12px Arial, sans-serif; fill: #284554; }
 .chart-band button { min-height: 44px; padding: .5rem .75rem; margin: .2rem .5rem .2rem 0; border: 1px solid #00679f; border-radius: 4px; background: white; color: #004f78; font: 700 .9rem Arial, sans-serif; cursor: pointer; }
+.chart-band .chart-text-button { border: 0; background: transparent; padding: .5rem .25rem; margin: 0; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
 .chart-band button:focus-visible { outline: 3px solid #0277bd; outline-offset: 2px; }
-.chart-peer-strip p, .chart-side-note, .chart-trend p { margin: .2rem 0 .5rem; }
-.chart-peer-list { min-width: 0; }
-.chart-peer-list ul { list-style: none; margin: .4rem 0; padding: 0; max-height: 21rem; overflow-y: auto; }
-.chart-peer-list li { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem .55rem; color: #455c68; border-bottom: 1px solid #d9e2e6; }
-.chart-peer-list li.overlaps { color: #004f78; background: #e8f3f8; }
-.chart-peer-list li.is-extreme { border-top: 1px dashed #738994; }
-.chart-peer-list li strong { white-space: nowrap; }
-.chart-peer-legend { font-size: .8rem; color: #284554; }
+.chart-peer-caption, .chart-side-note, .chart-trend p, .chart-comparisons { margin: .15rem 0 .35rem; }
+.chart-comparisons { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+.chart-row-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 .25rem; }
+.chart-peer-list { min-width: 0; flex: 1 1 auto; }
+.chart-peer-panel { min-width: 0; }
+.chart-peer-panel > p { font-size: .82rem; color: #3e5662; }
+.chart-peer-chart { margin: .25rem 0; }
+.chart-peer-area-name, .chart-value-label { font-weight: 700 !important; }
+.chart-peer-table, .chart-year-details { font-size: .82rem; color: #284554; }
+.chart-peer-table summary, .chart-year-details summary { cursor: pointer; padding: .35rem 0; }
+.chart-year-details ul { margin: .3rem 0; padding-left: 1.2rem; }
+.chart-sparkline-value { font-size: .85rem; font-weight: 700; color: #004f78; }
+.chart-axis-label { font-size: 11px !important; }
 .chart-table-wrap { min-width: 0; }
+.chart-table-scroll { overflow-x: auto; }
 .chart-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
 .chart-table th, .chart-table td { padding: .3rem; text-align: left; border-bottom: 1px solid #d8e2e6; overflow-wrap: anywhere; }
 .chart-missing { color: #3e5662; font-size: .85rem; }
 .chart-sources { border-top: 1px solid #dbe5e9; padding-top: .7rem; margin: 1rem 0 0; }
-@media (max-width: 640px) { .chart-band { padding: .7rem; } .chart-row { display: block; } .chart-row-label { margin-bottom: .4rem; } .chart-band svg text { font-size: 10px; } }
+@media (max-width: 640px) { .chart-band { padding: .7rem; } .chart-row { display: block; } .chart-row-label { margin-bottom: .4rem; } .chart-band svg text { font-size: 10px; } .chart-trend-extra-label { display: none; } }
 @media print { .chart-band { display: none !important; } }

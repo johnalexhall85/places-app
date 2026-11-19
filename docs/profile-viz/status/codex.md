@@ -2,8 +2,17 @@
 
 | Package | State | Branch | Notes |
 |---|---|---|---|
-| V3 | done, uncommitted | codex/profile-viz | Read-only `/charts` and `/peers` routes, chart groups, staging integration tests; original profile payloads byte-identical. |
-| V4 | done, uncommitted | codex/profile-viz | Responsive SVG bands, peers, trends, tables, tests and walkthrough coverage. Local browser checks passed; staging walkthrough awaits Claude's deploy. |
+| V3 | reviewed, committed by Claude | claude/profile-viz | Read-only `/charts` and `/peers` routes, chart groups, staging integration tests; original profile payloads byte-identical. |
+| V4 | reviewed, committed by Claude | claude/profile-viz | Responsive SVG bands, peers, trends, tables, tests and walkthrough coverage; deployed to staging by Claude. |
+| V4b | done, uncommitted | codex/profile-viz | Compact controls, rounded axes, value labels, shared dot/strip scale, peer interval chart, v1.1 trends, release labels, and walkthrough updates. Local checks passed; Claude review and staging deploy pending. |
+
+## V4b diary facts — 2026-11-19T19:50:40+00:00
+
+- **Objective and outcome:** Revised V3+V4 charts after John's staging review and the v1.1 contract. Read the review screenshots. Bands now have one group table toggle and compact row controls; dots have value labels, comparison text with shapes, rounded bounded axes, and a peer strip on the same scale. Peer comparisons are sorted SVG dot-and-interval charts with an area CI band, overlap colours, at most 18 default rows, labelled fringe extremes, accessible names and table, and a show-all option. Trends have value axes and labels, connect across vintage-label changes but break at missing periods, and put year detail in collapsed notes; sparklines label endpoints and latest value. Current release labels use the product name.
+- **Files:** Changed `backend/app/community/charts.py`, `backend/tests/test_community_charts_api.py`, `frontend/src/community/charts/{ChartBand.jsx,ChartBand.test.jsx,charts.css,scale.js}`, `frontend/scripts/beta-walkthrough.mjs`, and `frontend/vite.config.js`. The Vite proxy now mirrors staging's `/api/community` and `/api/area` routing for local walkthroughs. Existing profile routes, contract examples, data, migrations, and services were not changed. `.review-shots/` remains untracked.
+- **Verification:** Backend community tests 15 passed; frontend tests 178 passed; Vite build passed with its existing large-chunk advisory; `git diff --check` and byte-identity check of `docs/beta/contract-examples` passed. All five pre-V3 profile JSON payload SHA-256 hashes still match their saved baselines (catalog, counties 01055/01063, state 01, district 5401). The authenticated full `npm run test:beta` passed against local Vite + port 8002 backend, including chart checks at 1365, 390, and 375 px; an expanded 375 px peer chart had 17 rows, two row controls, and no document overflow. The local servers were stopped. Staging was not redeployed or retested with these changes.
+- **Failures resolved:** Initial local walkthrough failed because Vite did not strip `/api` for the community and area routes. Stale map heading, mobile drawer/HRSA panel, and duplicate tooltip assertions were corrected without removing their checks. Subsequent full local walkthrough passed.
+- **Status and next action:** No commit, push, merge, deployment, sudo, or database write. Claude should review this uncommitted diff, commit it, deploy to staging, rerun the authenticated walkthrough and visual review, and arrange Gate A. The diary and handbook were not edited here: Codex's headless task rules put these facts in this status file; Claude owns the handbook and adds the diary entry when committing.
 
 ## V3V4 diary facts — 2026-11-19T19:18:29+00:00
 

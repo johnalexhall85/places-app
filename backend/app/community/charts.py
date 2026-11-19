@@ -25,7 +25,7 @@ def _point(row: dict | None) -> dict | None:
     return {k: row.get(k) for k in ("geoid", "name", "value", "uncertainty", "period")}
 
 
-def _series_row(row: dict) -> dict:
+def _series_row(row: dict, product_name: str) -> dict:
     uncertainty = row.get("uncertainty") or {}
     value = row.get("value")
     moe = uncertainty.get("moe")
@@ -34,11 +34,12 @@ def _series_row(row: dict) -> dict:
             "high": uncertainty.get("high") if moe is None or value is None else value + moe,
             "status": row.get("status"), "status_text": row.get("status_text"),
             "note": row.get("note"), "boundary_vintage": row.get("boundary_vintage"),
-            "release_label": (row.get("note") or "").split(".")[0] if "release" in (row.get("note") or "").lower() else row.get("source_release_id"),
+            "release_label": product_name if row.get("current_period") else ((row.get("note") or "").split(".")[0] if "release" in (row.get("note") or "").lower() else row.get("source_release_id")),
             "current_period": row.get("current_period", False)}
 
 
-def _trend(raw: dict, rule: dict, level: str, state_raw: dict | None, national_raw: dict | None) -> dict | None:
+def _trend(raw: dict, rule: dict, level: str, state_raw: dict | None, national_raw: dict | None,
+           product_name: str) -> dict | None:
     if level == "cd" or level not in rule["trend_levels"]:
         return None
     series = raw.get("series", [])
@@ -49,9 +50,9 @@ def _trend(raw: dict, rule: dict, level: str, state_raw: dict | None, national_r
         style = "dots"
     notes = [row.get("note") for row in series if row.get("note")]
     return {"style": style, "note": rule.get("trend_note") or (notes[0] if notes else None),
-            "series": [_series_row(row) for row in series],
-            "state_series": [_series_row(row) for row in state_raw.get("series", [])] if state_raw else None,
-            "national_series": [_series_row(row) for row in national_raw.get("series", [])] if national_raw else None,
+            "series": [_series_row(row, product_name) for row in series],
+            "state_series": [_series_row(row, product_name) for row in state_raw.get("series", [])] if state_raw else None,
+            "national_series": [_series_row(row, product_name) for row in national_raw.get("series", [])] if national_raw else None,
             "unavailable_periods": raw.get("unavailable_periods", [])}
 
 
@@ -140,7 +141,7 @@ def build_charts(db, level: str, info: dict) -> dict:
                     "comparisons": {"state": _point(state), "national": _point(national_current),
                                     "side_note": _side_note(companions.get(measure_id), state_name) if level == "county" and companions.get(measure_id) else None},
                     "peers": _peers(db, level, geoid, row, rule),
-                    "trend": _trend(series[key], rule, level, state_series.get(key), national.get(key)),
+                    "trend": _trend(series[key], rule, level, state_series.get(key), national.get(key), item_meta["product_name"]),
                     "source": source, "citation": item_meta.get("landing_page") or ""})
             if rows:
                 units = {row["unit"] for row in rows}

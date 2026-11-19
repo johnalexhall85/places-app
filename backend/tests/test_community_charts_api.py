@@ -1,5 +1,6 @@
 """Staging checks for profile chart contract and published read parity."""
 import hashlib
+import re
 from pathlib import Path
 
 import pytest
@@ -98,6 +99,20 @@ def test_peers(client, payloads):
     assert len(values) == 67
     assert [row["geoid"] for row in values] == sorted(row["geoid"] for row in values)
     assert client.get("/community/county/01063/peers", params={"measure": "acs:B19013_001E"}).status_code == 400
+
+
+def test_current_release_labels_use_product_names(payloads):
+    checked = 0
+    for payload in payloads.values():
+        for row in all_rows(payload):
+            if not row["trend"]:
+                continue
+            for point in row["trend"]["series"]:
+                if point["current_period"]:
+                    checked += 1
+                    assert point["release_label"] == row["source"]["product_name"]
+                    assert not re.fullmatch(r"\d{4}-\d{2}-\d{2}", point["release_label"])
+    assert checked > 0
 
 
 def test_contract_snapshots_stay_byte_identical():

@@ -18,13 +18,25 @@ const proxiedBackendPaths = [
   "/profiles",
 ];
 
-const backendProxy = proxiedBackendPaths.reduce((acc, path) => {
+const backendProxy = {
+  "/api/community": {
+    target: backendTarget,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api(?=\/community)/, ""),
+  },
+  "/api/area": {
+    target: backendTarget,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api(?=\/area)/, ""),
+  },
+  ...proxiedBackendPaths.reduce((acc, path) => {
   acc[path] = {
     target: backendTarget,
     changeOrigin: true,
   };
   return acc;
-}, {});
+  }, {}),
+};
 
 export default defineConfig({
   plugins: [react()],

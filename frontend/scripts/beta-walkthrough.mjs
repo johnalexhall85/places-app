@@ -166,7 +166,8 @@ try {
     assert.equal(await page.locator('.chip-header, .chip-brand-line').count(), 0, `${path} has no legacy header`);
   }
   console.log('Shared header on explore map, area map, funding, and legacy profile pages: passed');
-  await visit('/explore/map', 'PLACES 2025 pilot');
+  await visit('/explore/map');
+  await page.getByRole('heading', { name: /^PLACES county and tract estimates(?:, \d{4})?$/ }).waitFor();
   const sourceOptions = await page.getByLabel('Data source').locator('option').allInnerTexts();
   assert.equal(sourceOptions.length, 9, 'nine published-release map sources');
   assert.ok(!sourceOptions.some((label) => /legacy|main/i.test(label)), 'no legacy entries in the Data source menu');
@@ -188,8 +189,9 @@ try {
   await screenshot('map-focused-county');
   await page.mouse.move(730, 395);
   await page.mouse.move(740, 400);   // open map inside the focused county, clear of the panels
-  await page.locator('.pdo-map-tooltip').waitFor();
-  assert.match(await page.locator('.pdo-map-tooltip').innerText(), /· County \d{5}\n.+\n.+ • 2023\nModeled adult prevalence estimate from CDC PLACES\./, 'legacy-format hover tooltip');
+  const countyTooltip = page.locator('.pdo-map-tooltip').filter({ hasText: 'Person · County 37145' });
+  await countyTooltip.waitFor();
+  assert.match(await countyTooltip.innerText(), /· County \d{5}\n.+\n.+ • 2023\nModeled adult prevalence estimate from CDC PLACES\./, 'legacy-format hover tooltip');
   assert.equal(await page.locator('.leaflet-popup').count(), 0, 'no click popup');
   await page.getByRole('button', { name: 'Clear Selection (Esc)' }).click();
   assert.equal(await selectedArea.count(), 0, 'clear selection');
@@ -236,8 +238,11 @@ try {
   for (const [width, height] of [[1365, 900], [390, 844]]) {
     await page.setViewportSize({ width, height });
     await visit('/area/usda-fea?lat=38.35&lon=-81.63&zoom=10');
+    if (width === 390 && await page.getByRole('button', { name: 'Panels', exact: true }).getAttribute('aria-expanded') === 'false') {
+      await page.getByRole('button', { name: 'Panels', exact: true }).click();
+    }
     await page.getByLabel('Show HRSA health center sites').check();
-    if (width === 390) await page.getByRole('button', { name: 'Show panel' }).click();
+    if (width === 390) await page.getByRole('button', { name: 'Show panel', exact: true }).click();
     const detail = page.getByRole('button', { name: /Details for/ }).first();
     await detail.waitFor();
     await detail.click();
@@ -253,6 +258,9 @@ try {
     if (path.startsWith('/community/')) await page.locator('[data-testid="profile-ready"]').waitFor();
     if (path === '/area/brfss') {
       // On a phone the table starts closed; opening it must still show every state.
+      if (await page.getByRole('button', { name: 'Panels', exact: true }).getAttribute('aria-expanded') === 'false') {
+        await page.getByRole('button', { name: 'Panels', exact: true }).click();
+      }
       await page.locator('.pilot-table-toggle').click();
       await page.locator('.pilot-table tbody tr').first().waitFor();
     }
@@ -271,6 +279,12 @@ try {
     ]) {
       await visit(path);
       await page.locator('.chart-band').first().waitFor();
+      const axisLabels = await page.locator('.chart-band .chart-axis-label').allInnerTexts();
+      assert.ok(axisLabels.every((label) => !/^-/.test(label)), `${path} nonnegative chart axes at ${width}px`);
+      const visibleLabels = await page.locator('.chart-band svg text').allInnerTexts();
+      assert.ok(visibleLabels.every((label) => !/\.\d{2,}/.test(label)), `${path} chart labels use at most one decimal at ${width}px`);
+      const controlCounts = await page.locator('.chart-row').evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll('.chart-row-actions button')].filter((button) => getComputedStyle(button).display !== 'none').length));
+      assert.ok(controlCounts.every((count) => count <= 2), `${path} has at most two row controls at ${width}px`);
       const trend = page.getByRole('button', { name: 'Over time' }).first();
       if (await trend.count()) {
         await trend.click();
@@ -279,7 +293,8 @@ try {
       const compare = page.getByRole('button', { name: /Compare counties|Compare states/ }).first();
       if (await compare.count()) {
         await compare.click();
-        await page.locator('.chart-peer-list li').first().waitFor();
+        await page.locator('[data-peer-row]').first().waitFor();
+        assert.ok(await page.locator('[data-peer-row]').count() <= 18, `${path} peer list default has at most 18 rows`);
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} chart overflow at ${width}px`);
       await screenshot(`${label}-charts-${width}`, true);
