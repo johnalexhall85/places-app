@@ -22,6 +22,7 @@ import { CommunityAbout, CommunityMethodology } from "./community/CommunityInfo"
 import CommunityAI from "./community/CommunityAI";
 import { CommunityDistrict, CommunityDistricts } from "./community/CommunityDistrict";
 import { resolveRoute } from "./utils/routeResolver";
+import { legacyStateFundingTarget } from "./utils/stateFundingRedirect";
 
 installDemoAccessFetchCredentials(API_BASE);
 
@@ -59,9 +60,8 @@ function Root() {
   }
   let routedPage = null;
   if (/^\/taggs\/funding-profile\/?$/i.test(pathname)) {
-    const params = new URLSearchParams(window.location.search);
-    routedPage = <CdcStateFundingProfile stateCode={params.get("state") ?? ""} />;
-    return <DemoAccessGate>{routedPage}</DemoAccessGate>;
+    window.location.replace(legacyStateFundingTarget(window.location.search));
+    return null;
   }
   const route = resolveRoute(window.location.pathname);
   if (route.type === "community-landing") {
