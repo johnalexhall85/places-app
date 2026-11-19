@@ -15,7 +15,10 @@ The return shapes are the contract in docs/beta/DATA_CONTRACT.md. Change them on
 """
 from __future__ import annotations
 
+import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Callable
@@ -801,3 +804,116 @@ def area_measure_series(db, level: str, geoid: str, product: str, measure_id: st
             unavailable.extend({'period': item['period'], 'reason': u['reason']} for u in result['unavailable'])
     return {'level': level, 'geoid': geoid, 'product': product, 'measure_id': measure_id,
             'series': series, 'unavailable_periods': unavailable}
+
+
+# --- profile charts (docs/profile-viz/CHART_CONTRACT.md) ----------------------------------------
+# Read by the profile /charts and /peers endpoints only. Existing profile payloads never call these.
+
+@lru_cache(maxsize=1)
+def _comparability() -> dict:
+    return json.loads((Path(__file__).with_name('registry') / 'comparability.json').read_text())
+
+
+def comparability(product: str, measure_id: str | None = None) -> dict:
+    """Which comparisons a product's values may be drawn with (state / national markers, peers, trend style).
+    With `measure_id`, count measures get no state or national markers, since their scales differ."""
+    registry = _comparability()
+    entry = registry['products'].get(product)
+    if entry is None:
+        raise LookupError_(f'{product!r} has no comparability rules')
+    entry = dict(entry)
+    if measure_id is not None and (product in registry['count_products'] or measure_id in registry['count_measures']):
+        entry |= {'state_marker_levels': [], 'national_marker_levels': [], 'count_measure': True}
+    return entry
+
+
+def area_series_many(db, level: str, geoid: str, measure_keys: list[tuple[str, str]]) -> dict:
+    """`area_measure_series` for several measures of one area, keyed 'product:measure_id'.
+    Same rows and order as calling `area_measure_series` per measure, with one history query per product."""
+    from app.area_pilot.history_api import active_release, periods_for
+    (geoid,) = _check(level, [geoid])
+    by_product: dict[str, list[str]] = {}
+    for product, measure_id in dict.fromkeys(tuple(k) for k in measure_keys):
+        by_product.setdefault(product, []).append(measure_id)
+    releases = active_releases(db)
+    out = {}
+    for product, measure_ids in by_product.items():
+        spec, current, hconfig, _ = _history(product)
+        measures = {m['measure_id']: m for m in current['measures']}
+        for measure_id in measure_ids:
+            if measure_id not in measures:
+                raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+        now = {v['measure_id']: v for v in area_values(db, level, [geoid], [product], measure_ids)['values']}
+        history = active_release(db, hconfig) if hconfig else None
+        stored = {}
+        if history:
+            stored = {(r['measure_id'], r['observation_period']): r for r in db.execute(text(f'''SELECT measure_id,
+                observation_period,value,status,low,high,moe FROM {S}.observation_history WHERE release_id=:release
+                AND level=:level AND geoid=:geoid AND measure_id = ANY(:measures)'''),
+                {'release': history['id'], 'level': level, 'geoid': geoid, 'measures': measure_ids}).mappings()}
+            hrel = {'release_id': str(history['id']), 'source_release_id': history['source_release_id']}
+        current_release = releases.get(current['dataset_id'])
+        for measure_id in measure_ids:
+            measure = measures[measure_id]
+            periods = periods_for(hconfig, measure, current_release['release_id'] if current_release else None, history)
+            series, unavailable = [], []
+            for item in sorted(periods, key=lambda p: p['period']):
+                period = item['period']
+                if not item['available']:
+                    unavailable.append({'period': period, 'reason': item['note'] or 'not published'})
+                elif measure['observation_period'] == period:
+                    if measure_id in now:
+                        series.append(now[measure_id] | {'current_period': True, 'note': None})
+                    else:
+                        unavailable.append({'period': period, 'reason': f'not published for {level}'})
+                else:
+                    hmeasure, pspec = hconfig['_index'][(measure_id, period)]
+                    meta = _measure_meta(spec, current, measure) | {
+                        'period': period, 'population': pspec.get('population', hmeasure['population']),
+                        'value_type': hmeasure['value_type'], 'levels': hmeasure.get('levels', hconfig['levels'])}
+                    if level not in meta['levels']:
+                        unavailable.append({'period': period, 'reason': f'not published for {level} in {period}'})
+                        continue
+                    series.append(_history_row(meta, level, geoid, hrel, hconfig, pspec,
+                                               stored.get((measure_id, period)), spec))
+            out[f'{product}:{measure_id}'] = {'level': level, 'geoid': geoid, 'product': product,
+                                              'measure_id': measure_id, 'series': series,
+                                              'unavailable_periods': unavailable}
+    return out
+
+
+NATIONAL_DATASET = 'chip_national_reference'
+
+
+def national_series(db, product: str, measure_id: str) -> dict:
+    """U.S. values that the source itself publishes for one measure, every period, oldest first.
+    ACS 5-year U.S. estimates and CMS OM GV national rows only; nothing is built from states or counties."""
+    from app.area_pilot.history_api import config_for
+    spec = next((s for s in SPECS if s.key == product), None)
+    if spec is None:
+        raise LookupError_(f'Unknown product {product!r}')
+    current = spec.load()
+    measure = next((m for m in current['measures'] if m['measure_id'] == measure_id), None)
+    if measure is None:
+        raise LookupError_(f'{product}:{measure_id} is not a CHIP measure')
+    meta = _measure_meta(spec, current, measure)
+    release = active_releases(db).get(NATIONAL_DATASET)
+    result = {'product': product, 'measure_id': measure_id, 'level': 'national', 'geoid': 'US',
+              'series': [], 'release': release}
+    if release is None:
+        return result
+    hconfig = config_for(current['dataset_id'])
+    notes = {p: entry[1]['note'] for (m, p), entry in (hconfig or {}).get('_index', {}).items() if m == measure_id}
+    for row in db.execute(text(f'''SELECT observation_period,population,value_type,value,status,moe
+        FROM {S}.observation_national WHERE release_id=:release AND product=:product AND measure_id=:measure
+        ORDER BY observation_period'''), {'release': release['release_id'], 'product': product,
+                                          'measure': measure_id}).mappings():
+        adapted = {'value': row['value'], 'status': row['status'], 'ci_low': None, 'ci_high': None, 'moe': row['moe'],
+                   'moe_confidence': 90 if spec.uncertainty == 'moe90' else None, 'moe_annotation': None} | {
+            n: None for n in spec.extra if n not in ('ci_low', 'ci_high', 'moe', 'moe_confidence', 'moe_annotation')}
+        period = row['observation_period']
+        item = _row(meta | {'period': period, 'population': row['population'], 'value_type': row['value_type']},
+                    'national', 'US', release, {}, adapted, spec)
+        result['series'].append(item | {'current_period': period == meta['period'],
+                                        'note': None if period == meta['period'] else notes.get(period)})
+    return result

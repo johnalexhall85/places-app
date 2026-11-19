@@ -1,0 +1,64 @@
+{
+  "version": "1",
+  "contract": "docs/profile-viz/CHART_CONTRACT.md",
+  "count_measures": ["total_population", "om_beneficiaries", "days_with_aqi", "good_days"],
+  "count_products": ["ahrf"],
+  "products": {
+    "acs": {
+      "state_marker_levels": ["county", "cd"],
+      "national_marker_levels": ["state", "county", "cd"],
+      "peers": null,
+      "trend_style": "line_band",
+      "trend_levels": ["state", "county"],
+      "trend_note": "Each 5-year window is inflation-adjusted to its own final year. Windows overlap, so neighbouring periods share survey years."
+    },
+    "acs_profile": {
+      "state_marker_levels": ["county", "cd"],
+      "national_marker_levels": ["state", "county", "cd"],
+      "peers": null,
+      "trend_style": "line_band",
+      "trend_levels": ["state", "county"],
+      "trend_note": "5-year windows overlap, so neighbouring periods share survey years."
+    },
+    "cms_gv": {
+      "state_marker_levels": ["county"],
+      "national_marker_levels": ["state", "county"],
+      "peers": null,
+      "trend_style": "line",
+      "trend_levels": ["state", "county"],
+      "trend_note": "2020 reflects the COVID-19 pandemic. Dollars are nominal."
+    },
+    "places": {
+      "state_marker_levels": [],
+      "national_marker_levels": [],
+      "peers": {"county": "state"},
+      "trend_style": "dots_ci",
+      "trend_levels": ["county"],
+      "trend_note": "Each year is a separate PLACES model run from a different release; CDC advises comparing across releases with caution."
+    },
+    "brfss": {
+      "state_marker_levels": [],
+      "national_marker_levels": [],
+      "peers": {"state": null},
+      "trend_style": "line_band",
+      "trend_levels": ["state"],
+      "trend_note": "Direct survey estimates; each year uses the same question wording as the current year."
+    },
+    "ahrf": {
+      "state_marker_levels": [], "national_marker_levels": [], "peers": null,
+      "trend_style": "line", "trend_levels": ["county"], "trend_note": null
+    },
+    "clh": {
+      "state_marker_levels": [], "national_marker_levels": [], "peers": null,
+      "trend_style": "line", "trend_levels": ["county"], "trend_note": null
+    },
+    "epa_aqi": {
+      "state_marker_levels": [], "national_marker_levels": [], "peers": null,
+      "trend_style": "line", "trend_levels": ["county"], "trend_note": null
+    },
+    "usda_fea": {
+      "state_marker_levels": [], "national_marker_levels": [], "peers": null,
+      "trend_style": "line", "trend_levels": ["county"], "trend_note": null
+    }
+  }
+}
