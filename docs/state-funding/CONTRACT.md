@@ -191,3 +191,21 @@ John asked for the page to show grants by CDC budget category, not by federal ac
 **Audit (§5).**
 - Invariant 3 uses `by_category` in place of `by_account`.
 - Add invariant 7: every `federal_account_symbol` in `obligation` has a crosswalk row, and each category's total equals the sum of its accounts.
+
+## Amendment 2 (2026-11-19): presentation rules after Claude's review of S2+S3
+
+- **Default award type is `grant`.**
+  - **Why:** John asked for "the amount of grant money the state receives". In File C, recipient state puts Vaccines for Children *contracts* in the vaccine manufacturers' states (FY2026: NJ $2.35B, NY $1.09B, NC $1.00B), and other contractors in VA, MD, and GA.
+  - **API:** `award_type` defaults to `grant` when omitted, and `all` remains available.
+  - **Page:** with `award_type=all` or `contract`, show this note: "Contracts are counted in the state where the contractor is located. Vaccines for Children purchases, for example, appear in the vaccine manufacturers' states."
+  - The page title becomes "CDC grants to recipients in {State}" when the filter is `grant`, and "CDC funding to recipients in {State}" otherwise.
+- **Amount format.**
+  - KPI tiles use compact dollars to one decimal place ("$269.4 million", "−$185.2 million"), with the exact value in a `title` tooltip and in the screen-reader text.
+  - Tables and bars use whole dollars ("$44,448,956").
+  - The CSV keeps cents.
+  - Negative values use "−" (U+2212). Positive values carry no "+".
+  - Amounts never wrap (`white-space: nowrap`).
+  - These rules override §4's "every amount shows its sign" wherever they differ.
+- **Eyebrow:** "CDC funding · State profile". Source jargon goes in the citation line only.
+- **Funding by budget category:** hide categories whose regular and supplemental amounts are both 0 under the current filters.
+- **Grants table:** the NOFO number does not wrap. Recipient names are shown as the source gives them.
