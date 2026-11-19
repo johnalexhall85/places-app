@@ -67,7 +67,17 @@ The [profile chart plan](docs/profile-viz/PLAN.md) and the [chart contract](docs
 - **Claude Code owns** `backend/app/area_pilot/**` (except the parser path below), `backend/alembic/**`, `infra/**`, `docs/profile-viz/**` (except the other agents' status files), and the handbook. Claude runs every ingest and publication.
 - **Codex owns** `backend/app/community/**`, `frontend/**`, `backend/tests/test_community_charts_*`, and `docs/profile-viz/status/codex.md`. Codex works in `/home/john/chip-codex-viz`.
 - **Antigravity owns** `backend/app/area_pilot/history/parsers/cms_gv.py`, `backend/tests/test_history_parsers_cms_gv*`, `backend/tests/test_profile_charts_audit.py`, `deliverables/profile-viz/**`, and `docs/profile-viz/status/antigravity.md`. It works in `/home/john/chip-agy-viz`.
-- **Reassigned 2026-11-19 by John** (Codex is low on usage credits): from task V7 on, Antigravity also owns `backend/app/community/**`, `frontend/**`, and `backend/tests/test_community_charts_*` for this package, in `/home/john/chip-agy-viz`. Codex does not edit them until Claude records the reassignment as ended.
+- **Reassigned 2026-11-19 by John** (Codex is low on usage credits): from task V7 on, Antigravity also owns `backend/app/community/**`, `frontend/**`, and `backend/tests/test_community_charts_*` for this package, in `/home/john/chip-agy-viz`. Codex does not edit them until Claude records the reassignment as ended. **Ended 2026-11-19 (Claude, at John's direction):** Codex is available again and owns these paths as before; the profile-viz package is complete.
 - This amends the historical-periods rule for profiles. Existing profile endpoints keep calling only the current-period lookup functions, and the `docs/beta/contract-examples` snapshots stay byte-identical. Profiles may read earlier periods and national values only through the new `/charts` and `/peers` endpoints.
 - Charts compute no ranks, changes, or composites, and put values on a shared axis only where the contract's comparability rules allow it. PLACES values are never placed on an axis with BRFSS values.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
+
+## CDC state funding profiles: three-agent ownership (from 2026-11-19)
+
+The [state funding plan](docs/state-funding/PLAN.md) and [contract](docs/state-funding/CONTRACT.md) govern the rebuilt page at `/cdc-funding/state/{code}` and its `state_funding` read model. Claude manages it as it does the MCP server work: task files in `docs/state-funding/tasks/`, dispatch with `chip-dispatch`, review, commit, merge to `beta`, and deploy. Read your task file and the files in [docs/state-funding/status](docs/state-funding/status/) first.
+
+- **Claude Code owns** `backend/alembic/**`, `infra/**`, `docs/state-funding/**` (except the other agents' status files), `backend/scripts/fetch_grants_gov_cdc_titles.py`, and the handbook. Claude runs every live build and the title load.
+- **Codex owns** `backend/app/state_funding/**`, `backend/tests/test_state_funding_*` (except the audit file), `frontend/**`, and `docs/state-funding/status/codex.md`. Codex works in `/home/john/chip-codex-state` and may run the builder against `places_staging` only.
+- **Antigravity owns** `backend/tests/test_state_funding_audit.py`, `deliverables/state-funding/**`, and `docs/state-funding/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
+- Supplemental means the File C Disaster Emergency Fund Code split of dollars, never an inferred label. Amounts are not allocated, rescaled, or summed with sub-awards.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
