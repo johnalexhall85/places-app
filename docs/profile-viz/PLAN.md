@@ -9,6 +9,7 @@ John approved this plan on 2026-11-19. Claude Code is project manager. The [char
 | PLACES across years | One dot with its 95% CI for each data year, labelled with its release. No connecting line and no computed change. A fixed note says the years are separate model runs. |
 | County PLACES comparison | Other counties in the same state (same model, same release). By default each measure gets a compact strip. A "Compare counties" toggle opens a sorted dot-and-interval list. The BRFSS state figure stays a separate labelled note and never shares the PLACES axis. |
 | U.S. values | Add ACS 5-year U.S. values for every window CHIP holds, and keep CMS national values for every year. There is no BRFSS national figure, because the median of states is not an estimate. |
+| Redesign after Gate A review (2026-11-19) | John: the section bands, peer lists and toggles are "too many visualizations and too complicated". Start with one small chart **inside each indicator card**: county, state and U.S. together over time, as in his Medicare example (small line panels with a shared legend and a source note). No filters and no peer lists for now. Codex is low on credits, so Antigravity takes Codex's paths (task V7). |
 | Autonomy | Act between gates. John approves Gate A (staging tryout) and Gate B (promotion to live). |
 
 ## Design
@@ -62,6 +63,7 @@ John approved this plan on 2026-11-19. Claude Code is project manager. The [char
 | V3 | Codex | `/charts` and `/peers` endpoints, `chart_groups.json`, tests, snapshot byte-identity test | V1, V2 | done |
 | V4 | Codex | Frontend charts, section bands, toggles, table fallbacks, vitest, overflow check in the walkthrough at 375 and 390 px | V3 | done (V4b revisions) |
 | V5 | Antigravity | Independent audit test of chart payloads and rules; user guide `reading-the-charts.md` | V3 | done |
+| V7 | Antigravity | Small per-indicator charts in each card; remove the section bands, peer UI and toggles | V6 review | open |
 | V6 | Claude | Review, merge to `beta`, staging deploy and walkthrough, Gate A, runbook, Gate B, handbook and diary | V2–V5 | staging deployed; Gate A pending |
 
 ## Verification
