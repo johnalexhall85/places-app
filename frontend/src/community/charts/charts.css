@@ -99,8 +99,12 @@
   color: #546e7a;
 }
 
+.indicator-chart { position: relative; }
 .indicator-chart .sr-only {
+  display: block;
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   padding: 0;
