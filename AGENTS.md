@@ -59,3 +59,14 @@ The [funding MCP plan](docs/funding-mcp/PLAN.md) and Amendment 3 of the [tool co
 - The `funding_report` builder reads the source tables and writes only to `funding_report`. The MCP server reads funding only through `app.funding_report.lookup`.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
 
+
+## Profile charts and trends: three-agent ownership (from 2026-11-19)
+
+The [profile chart plan](docs/profile-viz/PLAN.md) and the [chart contract](docs/profile-viz/CHART_CONTRACT.md) govern the charts and trends on county, state, and district profiles. Claude manages it as it does the MCP server work. It writes the task files in `docs/profile-viz/tasks/`, dispatches the other agents with `chip-dispatch`, reviews their work, commits, merges to `beta`, and deploys. Read your task file and the files in [docs/profile-viz/status](docs/profile-viz/status/) first.
+
+- **Claude Code owns** `backend/app/area_pilot/**` (except the parser path below), `backend/alembic/**`, `infra/**`, `docs/profile-viz/**` (except the other agents' status files), and the handbook. Claude runs every ingest and publication.
+- **Codex owns** `backend/app/community/**`, `frontend/**`, `backend/tests/test_community_charts_*`, and `docs/profile-viz/status/codex.md`. Codex works in `/home/john/chip-codex-viz`.
+- **Antigravity owns** `backend/app/area_pilot/history/parsers/cms_gv.py`, `backend/tests/test_history_parsers_cms_gv*`, `backend/tests/test_profile_charts_audit.py`, `deliverables/profile-viz/**`, and `docs/profile-viz/status/antigravity.md`. It works in `/home/john/chip-agy-viz`.
+- This amends the historical-periods rule for profiles. Existing profile endpoints keep calling only the current-period lookup functions, and the `docs/beta/contract-examples` snapshots stay byte-identical. Profiles may read earlier periods and national values only through the new `/charts` and `/peers` endpoints.
+- Charts compute no ranks, changes, or composites, and put values on a shared axis only where the contract's comparability rules allow it. PLACES values are never placed on an axis with BRFSS values.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
