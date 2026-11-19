@@ -4,11 +4,12 @@ from __future__ import annotations
 import csv
 import re
 from collections import Counter, defaultdict
+from decimal import Decimal
 from pathlib import Path
 from typing import Iterator
 
 from app.area_pilot.cms_gv import _exclusion_for, header_sha, load_registry, parse_value, range_problems
-from app.area_pilot.history.rows import LEVEL_LENGTH, HistoryRow, make_row, row_problems, to_decimal
+from app.area_pilot.history.rows import LEVEL_LENGTH, MAX_SCALE, HistoryRow, make_row, row_problems, to_decimal
 
 SCHEMA_VERSION = '1'
 EXPECTED_DIMENSIONS = ['YEAR', 'BENE_GEO_LVL', 'BENE_GEO_DESC', 'BENE_GEO_CD', 'BENE_AGE_LVL']
@@ -214,3 +215,113 @@ def parse(config: dict, files: dict[str, Path], evidence: dict) -> Iterator[tupl
 
     for year in sorted(rows_by_year):
         yield f'year_{year}', sorted(rows_by_year[year], key=lambda r: r.key)
+
+
+def parse_national(config: dict, files: dict[str, Path], evidence: dict) -> list[dict]:
+    """Parse archived CMS OM GV CSV National All-age rows for declared history years."""
+    if 'gv_csv' not in files:
+        raise ValueError("Missing required source file role 'gv_csv'")
+    csv_path = Path(files['gv_csv'])
+
+    _, declared_by_year = _validate_config(config)
+    selection = config['selection']
+    dimensions = selection['dimensions']
+    target_age = selection['age_level']
+    suppression_token = selection.get('suppression_token', '*')
+
+    national_rows: Counter[str] = Counter()
+    national_emitted: Counter[str] = Counter()
+    rows: list[dict] = []
+
+    total_rows = 0
+    with csv_path.open(newline='', encoding='utf-8-sig') as source:
+        reader = csv.reader(source)
+        header = next(reader, None)
+        if not header:
+            raise ValueError('CMS GV CSV header is missing')
+        if len(set(header)) != len(header):
+            raise ValueError('CMS GV CSV header contains duplicate column names')
+        if header[:len(dimensions)] != dimensions:
+            raise ValueError(
+                f'CMS GV CSV dimension columns {header[:len(dimensions)]!r} do not match registry {dimensions!r}'
+            )
+        missing_fields = [m['source_field'] for m in config['measures'] if m['source_field'] not in header]
+        if missing_fields:
+            raise ValueError(f'CMS GV CSV missing measure fields: {missing_fields}')
+
+        col_idx = {name: idx for idx, name in enumerate(header)}
+        idx_year = col_idx['YEAR']
+        idx_geo_lvl = col_idx['BENE_GEO_LVL']
+        idx_geo_cd = col_idx['BENE_GEO_CD']
+        idx_age_lvl = col_idx['BENE_AGE_LVL']
+
+        for values in reader:
+            total_rows += 1
+            if len(values) != len(header):
+                raise ValueError(f'CMS GV CSV row {total_rows} has {len(values)} columns; expected {len(header)}')
+
+            row_year = values[idx_year].strip()
+            if not re.fullmatch(r'[0-9]{4}', row_year):
+                raise ValueError(f'CMS GV CSV row {total_rows} has malformed YEAR: {row_year!r}')
+
+            source_level = values[idx_geo_lvl].strip()
+            code = values[idx_geo_cd].strip()
+            age = values[idx_age_lvl].strip()
+
+            if row_year not in declared_by_year:
+                continue
+            if age != target_age:
+                continue
+            if source_level != 'National':
+                continue
+            if code != '':
+                raise ValueError(f'CMS GV National row in {row_year} has unexpected code {code!r}')
+
+            national_rows[row_year] += 1
+            if national_rows[row_year] > 1:
+                raise ValueError(f'Duplicate CMS GV National row in {row_year}')
+
+            for measure, _spec, current_measure in declared_by_year[row_year]:
+                raw = values[col_idx[measure['source_field']]]
+                parsed_val, status = parse_value(raw, current_measure, suppression_token)
+                val = to_decimal(raw) if parsed_val is not None else None
+                if status not in config['statuses']:
+                    raise ValueError(
+                        f'CMS GV National status {status!r} for {measure["measure_id"]} ({row_year}) '
+                        f'is not in registry statuses'
+                    )
+                if (val is None) != (status in config['null_statuses']):
+                    raise ValueError(
+                        f'CMS GV National value/status mismatch for {measure["measure_id"]} ({row_year}): '
+                        f'value={val!r}, status={status!r}'
+                    )
+                if val is not None:
+                    probs = range_problems(val, current_measure)
+                    if probs:
+                        raise ValueError(
+                            f'CMS GV value {raw!r} for {measure["measure_id"]} '
+                            f'(national:US {row_year}) failed range check: {probs}'
+                        )
+                    if val.as_tuple().exponent < -MAX_SCALE or abs(val) >= Decimal('1e12'):
+                        raise ValueError(
+                            f'CMS GV value {raw!r} for {measure["measure_id"]} '
+                            f'(national:US {row_year}) failed precision check'
+                        )
+                rows.append({
+                    'measure_id': measure['measure_id'],
+                    'period': row_year,
+                    'level': 'national',
+                    'geoid': 'US',
+                    'value': val,
+                    'status': status,
+                    'source_value': raw,
+                })
+                national_emitted[row_year] += 1
+
+    missing_years = sorted(y for y in declared_by_year if national_rows[y] == 0)
+    if missing_years:
+        raise ValueError(f'CMS GV CSV has no National row for declared years: {missing_years}')
+
+    evidence['national_emitted'] = {y: national_emitted[y] for y in sorted(declared_by_year)}
+    rows.sort(key=lambda r: (r['period'], r['measure_id']))
+    return rows
