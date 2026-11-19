@@ -273,29 +273,16 @@ try {
   for (const width of [1365, 390, 375]) {
     await page.setViewportSize({ width, height: width === 1365 ? 900 : 844 });
     for (const [path, label] of [
-      ['/community/county/01063', 'greene-county'],
+      ['/community/county/01055', 'etowah-county'],
       ['/community/state/01', 'alabama-state'],
       ['/district/cd/5401', 'wv-district'],
     ]) {
       await visit(path);
-      await page.locator('.chart-band').first().waitFor();
-      const axisLabels = await page.locator('.chart-band .chart-axis-label').allInnerTexts();
-      assert.ok(axisLabels.every((label) => !/^-/.test(label)), `${path} nonnegative chart axes at ${width}px`);
-      const visibleLabels = await page.locator('.chart-band svg text').allInnerTexts();
-      assert.ok(visibleLabels.every((label) => !/\.\d{2,}/.test(label)), `${path} chart labels use at most one decimal at ${width}px`);
-      const controlCounts = await page.locator('.chart-row').evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll('.chart-row-actions button')].filter((button) => getComputedStyle(button).display !== 'none').length));
-      assert.ok(controlCounts.every((count) => count <= 2), `${path} has at most two row controls at ${width}px`);
-      const trend = page.getByRole('button', { name: 'Over time' }).first();
-      if (await trend.count()) {
-        await trend.click();
-        await page.locator('.chart-trend').first().waitFor();
-      }
-      const compare = page.getByRole('button', { name: /Compare counties|Compare states/ }).first();
-      if (await compare.count()) {
-        await compare.click();
-        await page.locator('[data-peer-row]').first().waitFor();
-        assert.ok(await page.locator('[data-peer-row]').count() <= 18, `${path} peer list default has at most 18 rows`);
-      }
+      await page.locator('.indicator-chart').first().waitFor();
+      assert.ok(await page.locator('.indicator-chart').count() >= 1, `${path} has at least one indicator chart at ${width}px`);
+      assert.equal(await page.locator('.chart-band').count(), 0, `${path} has no chart band at ${width}px`);
+      const axisLabels = await page.locator('.indicator-chart .indicator-chart-axis-label').allInnerTexts();
+      assert.ok(axisLabels.every((text) => !/^-/.test(text.trim())), `${path} nonnegative chart axes at ${width}px`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} chart overflow at ${width}px`);
       await screenshot(`${label}-charts-${width}`, true);
     }

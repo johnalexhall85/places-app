@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { getStateCodeForFips } from "../utils/stateFundingMap";
 import { CommunityShell, FacilityBlock, Indicator } from "./CommunityPages";
-import { ChartBand } from "./charts/ChartBand";
+import { SectionChartLegend } from "./charts/IndicatorChart";
+import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
 
 const PREVENTION = new Set([
@@ -46,6 +47,7 @@ export function CommunityState({ geoid }) {
     for (const row of profile?.values || []) groups[sectionFor(row)].push(row);
     return groups;
   }, [profile]);
+  const chartRows = useMemo(() => chartRowMap(charts), [charts]);
   const fundingCode = getStateCodeForFips(geoid);
   const counties = profile?.counties || [];
   const districts = profile?.districts || [];
@@ -70,11 +72,20 @@ export function CommunityState({ geoid }) {
         {SECTIONS.filter((section) => bySection[section.key].length).map((section) => <a href={`#${section.key}`} key={section.key}>{section.title}</a>)}
         <a href="#facilities">Facilities</a><a href="#places">Places in this state</a><a href="#limitations">What this data cannot tell you</a>
       </nav>
-      {SECTIONS.map((section) => bySection[section.key].length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
-        <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
-        {charts?.sections?.find((item) => item.key === section.key) && <ChartBand section={charts.sections.find((item) => item.key === section.key)} areaGeoid={geoid} areaName={profile.area.name} stateName={profile.area.name} />}
-        <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} />)}</div>
-      </section>)}
+      {SECTIONS.map((section) => {
+        if (!bySection[section.key].length) return null;
+        const sectionChartRows = bySection[section.key]
+          .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
+          .filter(Boolean);
+        return <section className="community-profile-section" id={section.key} key={section.key}>
+          <div className="community-section-heading">
+            <h2>{section.title}</h2>
+            <p>{section.intro}</p>
+            <SectionChartLegend rows={sectionChartRows} areaLabel={profile.area.name} stateLabel={profile.area.name} />
+          </div>
+          <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={profile.area.name} stateLabel={profile.area.name} />)}</div>
+        </section>;
+      })}
       <section className="community-profile-section" id="facilities">
         <div className="community-section-heading"><h2>Mapped facility locations</h2><p>Source-listed locations within the state boundary. Counts do not measure capacity, access, exposure, or quality.</p></div>
         <div className="community-facility-grid">

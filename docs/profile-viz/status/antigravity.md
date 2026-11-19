@@ -5,6 +5,25 @@
 | V2 | done | agy/profile-viz | Added `parse_national(config, files, evidence)` to `cms_gv.py` (leaving `parse()` untouched) and 8 tests in `test_history_parsers_cms_gv_national.py`; 14/14 CMS GV parser tests pass. |
 | V5 | done | agy/profile-viz | Independent HTTP + direct-lookup chart audit (`backend/tests/test_profile_charts_audit.py`, 5/5 passed across 18 areas / 646 rows / 50 sampled DB parity checks) and plain-language user guide (`deliverables/profile-viz/reading-the-charts.md`, 521 words). |
 | V5b | done | agy/profile-viz | Updated `deliverables/profile-viz/reading-the-charts.md` (568 words) to match chart contract v1.1 (missing-period line breaks, "About these years"/table boundary vintages, printed value labels, row text state/U.S. values, and sorted **Compare counties** dot-and-interval chart). |
+| V7 | done | agy/profile-viz | Replaced section `ChartBand` / peer / toggle UI with compact per-card `<IndicatorChart>` (120 px SVG line/dot-CI trends and 10 px horizontal comparison bars) and per-section inline `<SectionChartLegend>` on county, state, and district profiles; updated tests (181/181 frontend, 12 new) and `beta-walkthrough.mjs`; Vite build passed. |
+
+## V7 diary facts — 2026-11-19T20:28:17Z
+
+- **Objective and outcome:** Replaced the section-level `ChartBand`, peer strip/list, group table, and row toggle UI with small per-indicator charts (`IndicatorChart`) inside each `Indicator` card and one inline `SectionChartLegend` in each section heading across county, state, and district profiles. Backend `/charts` payload and `useCharts` hook remain unchanged; `Indicator` without a `chart` prop renders byte-identical markup.
+- **Files changed:**
+  - Added: `frontend/src/community/charts/IndicatorChart.jsx`, `frontend/src/community/charts/IndicatorChart.test.jsx`
+  - Modified: `frontend/src/community/charts/scale.js`, `frontend/src/community/charts/charts.css`, `frontend/src/community/CommunityPages.jsx`, `frontend/src/community/CommunityState.jsx`, `frontend/src/community/CommunityDistrict.jsx`, `frontend/src/community/community.css`, `frontend/scripts/beta-walkthrough.mjs`, `docs/profile-viz/status/antigravity.md`
+  - Deleted: `frontend/src/community/charts/ChartBand.jsx`, `frontend/src/community/charts/ChartBand.test.jsx`
+- **Design & contract highlights:** Palette pinned to Area `#0277BD` (solid 2 px, `r=4`), State `#C77700` (dashed `5 3`, 2 px, `r=3.5`), U.S. `#2BA48A` (dotted `1.5 3`, 2 px, `r=3.5`); PLACES (`dots_ci`) renders dots and vertical CI whiskers with no connecting line; `line_band`/`line` render plain lines without shaded bands and break at null or `unavailable_periods`; percent Y axes have 3–4 rounded non-negative ticks starting at 0 unless all values exceed 40 (with `storage_scale: "proportion_0_1"` scaled to percent); hover/tap/keyboard tooltip stays inside the card with card-formatted values; captions truncate at 140 chars with `…` while preserving full text in `title` and the `sr-only` `<table>`; no-trend comparison rows (districts) render up to 3 horizontal 10 px bars starting at 0; `IndicatorChart` and `SectionChartLegend` are hidden in `@media print`.
+- **Verification and test counts:**
+  - `cd frontend && npm test`: **24 test files passed, 181 tests passed** (including 12 tests in `IndicatorChart.test.jsx`).
+  - `cd frontend && npm run build`: **passed** (`✓ built in 2.32s`; existing >500 kB chunk advisory unchanged).
+  - `cd backend && PYTHONPATH=. python3 -m pytest -q tests/test_profile_charts_audit.py`: **5 skipped in 0.05s** (expected without live staging env vars; backend untouched).
+  - `node --check frontend/scripts/beta-walkthrough.mjs` and Python trailing-whitespace check across all modified/added files: **passed (0 issues)**.
+- **Could not verify in sandbox:**
+  - `frontend/scripts/beta-walkthrough.mjs` against staging (requires staging server/browser walkthrough run by Claude).
+  - `git diff --check` and `/home/john/chip-agy/backend/.venv-mcp/bin/python` (both point outside `/home/john/chip-agy-viz` worktree sandbox; verified via `python3` pytest and whitespace script instead).
+- **Scope and next action:** No commits, pushes, deploys, sudo, database writes, or network calls; `docs/PROJECT_HANDBOOK.md` and `docs/PROJECT_DIARY.md` were not edited (headless-agent rule). Claude should run `git diff --check`, review and commit the uncommitted changes, deploy to staging, and run `beta-walkthrough.mjs` at 1365, 390, and 375 px.
 
 ## V5b diary facts — 2026-11-19T19:55:24Z
 

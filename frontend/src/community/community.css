@@ -177,7 +177,7 @@
   line-height: 1.2;
 }
 
-.community-section-heading p:last-child {
+.community-section-heading p:not(.community-eyebrow) {
   margin: 8px 0 0;
   color: #546e7a;
 }

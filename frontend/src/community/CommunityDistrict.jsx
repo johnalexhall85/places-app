@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { CommunityShell, FacilityBlock, Indicator } from "./CommunityPages";
-import { ChartBand } from "./charts/ChartBand";
+import { SectionChartLegend } from "./charts/IndicatorChart";
+import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
 
 function useJson(path) {
@@ -48,6 +49,11 @@ export function CommunityDistricts() {
 export function CommunityDistrict({ geoid }) {
   const { data, error } = useJson(`/community/district/${geoid}`);
   const charts = useCharts("district", geoid, !!data);
+  const chartRows = useMemo(() => chartRowMap(charts), [charts]);
+  const districtChartRows = useMemo(
+    () => (data?.values || []).map((row) => chartRows.get(`${row.product}:${row.measure_id}`)).filter(Boolean),
+    [data, chartRows]
+  );
   useEffect(() => { document.title = `${data?.area?.name || "District"} | CHIP`; }, [data]);
   const counties = data?.counties?.counties || [];
   return <CommunityShell><div className="community-wrap community-profile community-district">
@@ -63,9 +69,12 @@ export function CommunityDistrict({ geoid }) {
           <a href={`/area/acs-community?measure_id=poverty_pct&geography=cd&focus=cd:${geoid}`}>Open district source map</a></div>
       </header>
       <section className="community-profile-section" aria-labelledby="district-estimates">
-        <div className="community-section-heading"><h2 id="district-estimates">District estimates (Census Bureau)</h2><p>ACS 2020–2024 five-year subject-table estimates for the 119th Congress district boundary. Each measure has its own population and 90% margin of error where published.</p></div>
-        {charts?.sections?.map((section) => <ChartBand key={section.key} section={section} areaGeoid={geoid} areaName={`${data.area.state_name} · ${data.area.name}`} stateName={data.area.state_name} />)}
-        {data.values.length ? <div className="community-indicator-grid">{data.values.map(row => <Indicator key={row.measure_id} row={row} />)}</div>
+        <div className="community-section-heading">
+          <h2 id="district-estimates">District estimates (Census Bureau)</h2>
+          <p>ACS 2020–2024 five-year subject-table estimates for the 119th Congress district boundary. Each measure has its own population and 90% margin of error where published.</p>
+          <SectionChartLegend rows={districtChartRows} areaLabel="This district" stateLabel={data.area.state_name} />
+        </div>
+        {data.values.length ? <div className="community-indicator-grid">{data.values.map(row => <Indicator key={`${row.product}:${row.measure_id}`} row={row} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel="This district" stateLabel={data.area.state_name} />)}</div>
           : <p>No district estimates are published for this boundary.</p>}
       </section>
       <section className="community-profile-section" aria-labelledby="district-facilities">

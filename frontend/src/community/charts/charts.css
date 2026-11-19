@@ -1,46 +1,140 @@
-.chart-band { min-width: 0; max-width: 100%; margin: 1rem 0 1.5rem; padding: 1rem; border: 1px solid #cbd9df; border-radius: 8px; background: #f8fbfc; overflow-wrap: anywhere; }
-.chart-band *, .chart-band *::before, .chart-band *::after { box-sizing: border-box; }
-.chart-band-head { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: .75rem; }
-.chart-band h3, .chart-band h4 { margin: 0 0 .6rem; color: #003f61; }
-.chart-band h3 { font-size: 1.25rem; }
-.chart-band h4 { font-size: 1rem; }
-.chart-band-legend, .chart-trend-legend, .chart-peer-legend { display: flex; flex-wrap: wrap; gap: .35rem 1rem; font-size: .82rem; color: #284554; }
-.chart-band-legend span, .chart-trend-legend span, .chart-peer-legend span, .chart-comparisons span { display: inline-flex; align-items: center; gap: .4rem; }
-.chart-band i { display: inline-block; width: 12px; height: 12px; flex: none; }
-.chart-band .area-shape { background: #0277bd; border-radius: 50%; }
-.chart-band .state-shape { background: #f0b97d; border: 1px solid #584022; transform: rotate(45deg) scale(.75); }
-.chart-band .national-shape { background: #009688; }
-.chart-band .other-shape { background: #78909c; border-radius: 50%; }
-.chart-band .band-shape { width: 18px; background: #e7f2f8; border: 1px solid #8cb7cf; }
-.chart-group { border-top: 1px solid #dbe5e9; padding-top: .8rem; margin-top: .8rem; }
-.chart-row { min-width: 0; display: grid; grid-template-columns: minmax(150px, 28%) minmax(0, 1fr); gap: .8rem; padding: .55rem 0; border-top: 1px solid #e4ebee; }
-.chart-row-label { min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
-.chart-row-label span, .chart-sources, .chart-side-note, .chart-trend p, .chart-peer-caption, .chart-comparisons { color: #3e5662; font-size: .82rem; }
-.chart-row-content { min-width: 0; }
-.chart-svg-wrap, .chart-peer-strip, .chart-trend { width: 100%; min-width: 0; }
-.chart-band svg { display: block; max-width: 100%; height: auto; overflow: visible; }
-.chart-band svg text { font: 12px Arial, sans-serif; fill: #284554; }
-.chart-band button { min-height: 44px; padding: .5rem .75rem; margin: .2rem .5rem .2rem 0; border: 1px solid #00679f; border-radius: 4px; background: white; color: #004f78; font: 700 .9rem Arial, sans-serif; cursor: pointer; }
-.chart-band .chart-text-button { border: 0; background: transparent; padding: .5rem .25rem; margin: 0; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
-.chart-band button:focus-visible { outline: 3px solid #0277bd; outline-offset: 2px; }
-.chart-peer-caption, .chart-side-note, .chart-trend p, .chart-comparisons { margin: .15rem 0 .35rem; }
-.chart-comparisons { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
-.chart-row-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 .25rem; }
-.chart-peer-list { min-width: 0; flex: 1 1 auto; }
-.chart-peer-panel { min-width: 0; }
-.chart-peer-panel > p { font-size: .82rem; color: #3e5662; }
-.chart-peer-chart { margin: .25rem 0; }
-.chart-peer-area-name, .chart-value-label { font-weight: 700 !important; }
-.chart-peer-table, .chart-year-details { font-size: .82rem; color: #284554; }
-.chart-peer-table summary, .chart-year-details summary { cursor: pointer; padding: .35rem 0; }
-.chart-year-details ul { margin: .3rem 0; padding-left: 1.2rem; }
-.chart-sparkline-value { font-size: .85rem; font-weight: 700; color: #004f78; }
-.chart-axis-label { font-size: 11px !important; }
-.chart-table-wrap { min-width: 0; }
-.chart-table-scroll { overflow-x: auto; }
-.chart-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
-.chart-table th, .chart-table td { padding: .3rem; text-align: left; border-bottom: 1px solid #d8e2e6; overflow-wrap: anywhere; }
-.chart-missing { color: #3e5662; font-size: .85rem; }
-.chart-sources { border-top: 1px solid #dbe5e9; padding-top: .7rem; margin: 1rem 0 0; }
-@media (max-width: 640px) { .chart-band { padding: .7rem; } .chart-row { display: block; } .chart-row-label { margin-bottom: .4rem; } .chart-band svg text { font-size: 10px; } .chart-trend-extra-label { display: none; } }
-@media print { .chart-band { display: none !important; } }
+.indicator-chart {
+  min-width: 0;
+  max-width: 100%;
+  margin: 10px 0 8px;
+  box-sizing: border-box;
+}
+
+.indicator-chart *,
+.indicator-chart *::before,
+.indicator-chart *::after {
+  box-sizing: border-box;
+}
+
+.indicator-chart-stage {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  outline: none;
+}
+
+.indicator-chart-stage:focus-visible {
+  outline: 2px solid #0277bd;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.indicator-chart svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.indicator-chart-axis-label {
+  font: 10px Arial, sans-serif;
+  fill: #546e7a;
+}
+
+.indicator-chart-bar-label {
+  font: 11px Arial, sans-serif;
+  fill: #284554;
+}
+
+.indicator-chart-bar-value {
+  font: 700 11px Arial, sans-serif;
+  fill: #003f61;
+}
+
+.indicator-chart-tooltip {
+  position: absolute;
+  top: 2px;
+  z-index: 4;
+  max-width: calc(100% - 8px);
+  padding: 4px 8px;
+  border: 1px solid #b0bec5;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 8px rgba(0, 37, 60, 0.14);
+  font: 11px/1.35 Arial, sans-serif;
+  color: #1a2f3f;
+  pointer-events: none;
+}
+
+.indicator-chart-tooltip.is-left {
+  left: 4px;
+}
+
+.indicator-chart-tooltip.is-right {
+  right: 4px;
+}
+
+.indicator-chart-tooltip strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #003f61;
+}
+
+.indicator-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.indicator-chart-tooltip-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.indicator-chart-caption {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #546e7a;
+}
+
+.indicator-chart .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.section-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font: 13px/1.3 Arial, sans-serif;
+  color: #284554;
+}
+
+.section-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-chart-legend svg {
+  display: block;
+  flex: none;
+}
+
+@media print {
+  .indicator-chart,
+  .section-chart-legend {
+    display: none !important;
+  }
+}

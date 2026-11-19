@@ -4,7 +4,8 @@ import SiteHeader from "../components/SiteHeader";
 import PlaceSearch from "../components/PlaceSearch";
 import Footer from "../components/Footer";
 import TractPatternMap from "./TractPatternMap";
-import { ChartBand } from "./charts/ChartBand";
+import { IndicatorChart, SectionChartLegend } from "./charts/IndicatorChart";
+import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
 import "./community.css";
 
@@ -135,13 +136,14 @@ export function mapFocus(level, geoid) {
   return level && geoid ? `&focus=${level}:${geoid}` : "";
 }
 
-export function Indicator({ row, stateRow, surveyCompanion }) {
+export function Indicator({ row, stateRow, surveyCompanion, chart, areaLabel, stateLabel }) {
   const hasValue = row.value != null;
   const mapUrl = MAP_ROUTES[row.product] ? `${MAP_ROUTES[row.product]}?measure_id=${encodeURIComponent(row.measure_id)}${row.level === "cd" ? "&geography=cd" : ""}${mapFocus(row.level, row.geoid)}` : null;
   return <article className={`community-indicator ${hasValue ? "" : "is-missing"}`}>
     <h3>{row.label}</h3>
     <p className="community-value">{formatIndicatorValue(row)}</p>
     {hasValue && unitText(row) && <p className="community-unit">{unitText(row)}</p>}
+    {chart && <IndicatorChart row={chart} areaLabel={areaLabel} stateLabel={stateLabel} />}
     {row.status === "true_zero" && <p className="community-indicator-note">Published zero</p>}
     <p className="community-indicator-note">{uncertaintyText(row)}</p>
     {stateRow && <p className="community-state-value">State estimate: {formatIndicatorValue(stateRow)} <span>({stateRow.period}; {stateRow.population}; {stateRow.source?.publisher}; release {stateRow.source_release_id})</span></p>}
@@ -211,6 +213,8 @@ export function CommunityCounty({ geoid }) {
     return groups;
   }, [profile]);
   const stateValues = useMemo(() => new Map((profile?.state_values || []).map((row) => [`${row.product}:${row.measure_id}`, row])), [profile]);
+  const chartRows = useMemo(() => chartRowMap(charts), [charts]);
+  const countyLabel = profile ? (/County|Parish|Borough|Planning Region|Municipality|Census Area|City$/i.test(profile.area.name) ? profile.area.name : `${profile.area.name} County`) : "";
   const tractMeasures = useMemo(() => {
     const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published)
       .map((measure) => `${measure.product}:${measure.measure_id}`));
@@ -241,11 +245,20 @@ export function CommunityCounty({ geoid }) {
           {tractMeasures.length > 0 && <a href="#tract-patterns">Tract patterns</a>}
           <a href="#facilities">Facilities</a><a href="#limitations">What this data cannot tell you</a>
         </nav>
-        {SECTIONS.map((section) => bySection[section.key]?.length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
-          <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
-          {charts?.sections?.find((item) => item.key === section.key) && <ChartBand section={charts.sections.find((item) => item.key === section.key)} areaGeoid={geoid} areaName={`${profile.area.name} County, ${profile.area.state_name}`} stateName={profile.area.state_name} />}
-          <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} />)}</div>
-        </section>)}
+        {SECTIONS.map((section) => {
+          if (!bySection[section.key]?.length) return null;
+          const sectionChartRows = bySection[section.key]
+            .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
+            .filter(Boolean);
+          return <section className="community-profile-section" id={section.key} key={section.key}>
+            <div className="community-section-heading">
+              <h2>{section.title}</h2>
+              <p>{section.intro}</p>
+              <SectionChartLegend rows={sectionChartRows} areaLabel={countyLabel} stateLabel={profile.area.state_name} />
+            </div>
+            <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={countyLabel} stateLabel={profile.area.state_name} />)}</div>
+          </section>;
+        })}
         {selectedTractRow && <section className="community-profile-section" id="tract-patterns">
           <div className="community-section-heading"><h2>Within-county tract patterns</h2><p>Each shape is a source-published tract estimate. Darker blues show higher values for the selected measure within this county.</p></div>
           <div className="community-tract-controls">
