@@ -2,6 +2,7 @@
 
 | Task | State | Notes |
 |---|---|---|
+| S2d | done 2026-11-19T23:05:47+00:00 | Updated NC walkthrough heading for default grants and added award_type=all heading and contractor-note checks; node --check passed. Walkthrough not run; uncommitted and undeployed. + budget-category heading |
 | S2c | done 2026-11-19T22:54:18+00:00 | Frontend chart, KPI, and table polish verified locally; ready for Claude review. Uncommitted and undeployed. |
 | S2b | done 2026-11-19T22:47:08+00:00 | Amendments 1–2, S2+S3 review fixes, and staging build 7 complete; ready for Claude review. Uncommitted and undeployed. |
 | S2+S3 | done 2026-11-19T22:30:18+00:00 | Read model, API, rebuilt page, tests, and staging build 6 complete; ready for Claude review. No commit or deployment. |
