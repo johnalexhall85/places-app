@@ -63,7 +63,7 @@ John approved this plan on 2026-11-19. Claude Code is project manager. The [char
 | V3 | Codex | `/charts` and `/peers` endpoints, `chart_groups.json`, tests, snapshot byte-identity test | V1, V2 | done |
 | V4 | Codex | Frontend charts, section bands, toggles, table fallbacks, vitest, overflow check in the walkthrough at 375 and 390 px | V3 | done (V4b revisions) |
 | V5 | Antigravity | Independent audit test of chart payloads and rules; user guide `reading-the-charts.md` | V3 | done |
-| V7 | Antigravity | Small per-indicator charts in each card; remove the section bands, peer UI and toggles | V6 review | open |
+| V7 | Antigravity | Small per-indicator charts in each card; remove the section bands, peer UI and toggles | V6 review | done (staging) |
 | V6 | Claude | Review, merge to `beta`, staging deploy and walkthrough, Gate A, runbook, Gate B, handbook and diary | V2–V5 | staging deployed; Gate A pending |
 
 ## Verification

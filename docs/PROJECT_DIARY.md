@@ -2,6 +2,26 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-19T20:45:00+00:00 — Profile charts redesigned as small per-indicator charts (Claude, with Antigravity)
+
+- **John's review:** "too many visualizations and they are too complicated." He sent a reference of small county, state, and U.S. line panels. His direction: start with small individual indicator charts, no filters, county, state, and national together. Codex is low on credits, so Antigravity took Codex's frontend and community paths for this package (recorded in AGENTS.md and the plan).
+- **Palette:** Claude loaded the dataviz skill and ran its validator.
+  - Brand grey and teal against blue failed the normal-vision floor.
+  - `#0277BD` / `#C77700` / `#2BA48A` passes every check on white.
+- **Antigravity, V7:** `IndicatorChart` in each card, section legends, bands and peer UI removed. 181 vitest tests pass.
+- **Claude fixes after viewing staging screenshots:**
+  - The hidden screen-reader table made county pages scroll sideways on phones; it is now absolutely positioned inside the chart.
+  - The walkthrough read SVG text with `innerText`; it now uses `allTextContents`.
+  - Line axes are fitted to the data instead of starting at 0, which had flattened the CMS lines.
+  - "Dollars are nominal" now appears only on CMS currency measures, through a new `currency_note` in `comparability.json` and a matching audit allowance.
+- **Process error:** one deploy (`7b10962`) went to staging with 2 failing vitest tests, because the command did not stop on failure. The proportion-axis expectation was corrected; the Places2025Pilot timing test passes alone and in the rerun. All 181 now pass.
+- **Verification:**
+  - Full `npm run test:beta` passes.
+  - The audit passes 5 of 5 against staging port 8001.
+  - Backend tests: 24 passed.
+- **Deployed:** staging only (`beta` deployed at `d376b93`). Live is unchanged.
+- **Next:** Gate A by John.
+
 ## 2026-11-19T20:10:00+00:00 — Profile charts and trends on staging (Claude, with Codex and Antigravity)
 
 - **Request and decisions:** John asked for dashboards and trends on county, state, and district profiles that don't overwhelm the reader, with state comparisons only where values are directly comparable and no sideways scrolling on phones. His decisions:

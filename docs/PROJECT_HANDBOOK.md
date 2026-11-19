@@ -1,11 +1,14 @@
 # CHIP project handbook
 
-**Profile charts and trends: on staging only, verified 2026-11-19T20:10Z (Claude; awaiting Gate A by John). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
-- **What:** county, state, and district profiles each open their sections with a chart band built from hand-made SVG (`frontend/src/community/charts/`), above the unchanged indicator cards.
-  - Each row shows the area's value and interval. State and U.S. markers appear only where the comparability rules allow them.
-  - PLACES rows get a strip of the other counties in the state, plus a "Compare counties" dot-and-interval chart. BRFSS rows on the state profile compare states the same way.
-  - "Over time" opens a trend chart. PLACES years are dots with intervals and no line. District profiles have no trends.
-  - Bands are hidden in print, so PDFs are unchanged.
+**Profile charts and trends: on staging only, verified 2026-11-19T20:45Z (Claude; redesigned after John's first review; awaiting Gate A). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
+- **What:** each indicator card on the county, state, and district profiles carries one small chart (`frontend/src/community/charts/IndicatorChart.jsx`, hand-built SVG, 120 px tall). Each section heading carries a single legend.
+  - **Lines:** area solid `#0277BD`, state dashed `#C77700`, U.S. dotted `#2BA48A`. This palette passes the dataviz skill's validator.
+  - **Axes:** fitted to the data with 3 or 4 rounded ticks, never below 0 and never above 100% for percents.
+  - **PLACES:** dots with 95% CI whiskers, no line, and no state or U.S. series.
+  - **Districts:** no history, so the card shows three bars (district, state, U.S.).
+  - **Interaction:** tap or hover shows the values for a year. A hidden table carries every value for screen readers.
+  - **Print:** hidden.
+- **Removed on John's feedback** ("too many visualizations, too complicated"): the section bands, peer strips and lists, and per-row toggles of V3–V4b. The `/peers` endpoint remains, unused by the pages.
 - **Comparability:** `backend/app/area_pilot/registry/comparability.json`, read through `lookup.comparability`.
   - PLACES and BRFSS never share an axis.
   - Count measures (population, beneficiaries, all AHRF measures, AQI days) carry no state or U.S. markers.
@@ -21,10 +24,10 @@
   - **Contents:** ACS 5-year U.S. rows (`for=us:1`) for B19013 and the seven community measures, covering 2015–2019 to 2020–2024. CMS OM GV national rows for 2019–2024: earlier years from the archived history file through `parsers.cms_gv.parse_national`, and 2024 from the active CMS release.
   - **Commands:** build with `python -m app.area_pilot.national_cli build`, then `publish <id> <semantic_sha256>`. Raw responses are archived under `data/ingest/national/<release>/`.
   - **Staging release:** `3ace77af-8232-4d3d-9d97-2c545a0d0838` (78 rows).
-- **Verification on staging:** `beta` is at `03a11d1`.
+- **Verification on staging:** `beta` is at `cce5e00`, deployed at `d376b93`; the later commit changes only a test.
   - Backend: community and lookup tests, 24 passed.
-  - Frontend: 178 tests passed.
-  - The full `npm run test:beta` passes, including chart checks at 1365, 390, and 375 px (no overflow, no negative axis labels, at most 18 default peer rows).
+  - Frontend: 181 tests passed.
+  - The full `npm run test:beta` passes, including chart checks at 1365, 390, and 375 px (no overflow, no negative axis labels, no section bands).
   - Antigravity's independent audit (`tests/test_profile_charts_audit.py`) passes against staging port 8001.
 - **Live is unchanged:** no migration, no national release, no chart code.
 - **Promotion (Gate B) will need:** `alembic upgrade head`, then `national_cli build` and `publish` on `places`, then the usual `main` fast-forward, frontend build, and `places-backend` restart.
