@@ -44,7 +44,11 @@ def test_legacy_taggs_profile_route_aliases_to_unified_cdc_profile() -> None:
 
     assert "^\\/taggs\\/funding-profile\\/?$" in content
     assert "CdcStateFundingProfile" in content
-    assert "new URLSearchParams(window.location.search)" in content
+    # Since the 2026-11-19 state funding rebuild, the legacy URL redirects to /cdc-funding/state/{code}.
+    assert "legacyStateFundingTarget(window.location.search)" in content
+    redirect = (PROJECT_ROOT / "frontend" / "src" / "utils" / "stateFundingRedirect.js").read_text(encoding="utf-8")
+    assert "new URLSearchParams(search)" in redirect
+    assert "/cdc-funding/state/" in redirect
 
 
 def test_cdc_funding_map_copy_describes_taggs_as_enrichment_not_a_separate_map() -> None:
