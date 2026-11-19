@@ -1,4 +1,4 @@
-# Profile chart contract (v1, 2026-11-19)
+# Profile chart contract (v1.1, 2026-11-19)
 
 This contract governs the profile chart work in [PLAN.md](PLAN.md). Claude owns this file. Codex and Antigravity record any change they need in their status files.
 
@@ -21,7 +21,8 @@ Rules that apply everywhere:
 - No ranks, change values, percentage change, composites, or averages.
 - A peer list may be sorted by value and may label its lowest and highest rows. It may not show rank numbers.
 - "Interval overlaps this area's" is a display aid. The UI must say that overlap is not a significance test.
-- When `boundary_vintage` changes between neighbouring periods, the line breaks there and the period's note is shown.
+- *Amended 2026-11-19 (v1.1).* A line connects neighbouring published periods and breaks only at a missing or unavailable period. A change in the `boundary_vintage` label alone does not break it. The only counties whose boundaries changed in CHIP's periods are Connecticut's, and those counties never share a GEOID across vintages, so their series already show a gap. Boundary vintages and period notes appear in the table view and in an "About these years" note, not as captions on the chart.
+- *v1.1.* For the current period, the `release_label` is the product name (for example "PLACES 2025 release"), never a raw release date.
 - A missing value shows its `status_text`. It never becomes zero and is never interpolated.
 
 ## 2. Endpoints
