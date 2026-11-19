@@ -60,7 +60,7 @@
 
 .sf-kpi > span { overflow-wrap: anywhere; }
 .sf-kpi strong {
-  font-size: clamp(1.3rem, 2.2vw, 2rem);
+  font-size: clamp(1.375rem, 2.2vw, 2rem);
   white-space: nowrap;
 }
 
@@ -146,9 +146,11 @@
   margin: 16px 0 0;
 }
 
-.sf-bars { display: grid; gap: 20px; }
-.sf-category h3 { font-size: 1rem; margin: 0 0 8px; }
+.sf-bars { display: grid; gap: 12px; }
+.sf-category { line-height: 1.2; }
+.sf-category h3 { font-size: 1rem; margin: 0 0 2px; }
 .sf-category > small { color: var(--pdo-text-muted); }
+.sf-single-account { display: block; font-size: .75rem; margin-bottom: 2px; }
 .sf-category-details { margin-top: 8px; }
 .sf-category-details summary { cursor: pointer; color: var(--pdo-primary); }
 .sf-category-details table { margin-top: 8px; }
@@ -206,7 +208,7 @@
   .sf-hero, .sf-panel { padding: 16px; }
   .sf-bar-row { grid-template-columns: 78px minmax(40px, 1fr); font-size: .75rem; }
   .sf-bar-row strong { grid-column: 2; }
-  .sf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-kpis { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .sf-kpi { padding: 12px; }
-  .sf-kpi strong { font-size: clamp(.9rem, 3.7vw, 1.25rem); }
+  .sf-kpi strong { font-size: 1.375rem; }
 }

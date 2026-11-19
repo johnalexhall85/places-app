@@ -48,10 +48,16 @@ function FundingBars({ categories, maxAbs }) {
   return <div className="sf-bars">
     {categories.map((category) => <div className="sf-category" key={category.code}>
       <h3>{category.name}</h3>
+      {category.accounts.length === 1 && <small className="sf-single-account"
+        title={category.accounts[0].name}>
+        Federal account {category.accounts[0].symbol}
+      </small>}
       {category.basis === "outside_operating_plan" &&
         <small>Outside CDC&apos;s operating plan</small>}
       {[["Regular", category.regular, "regular"],
-        ["Supplemental", category.supplemental, "supplemental"]].map(([label, value, kind]) =>
+        ["Supplemental", category.supplemental, "supplemental"]]
+        .filter(([, value]) => Number(value) !== 0)
+        .map(([label, value, kind]) =>
         <div className="sf-bar-row" key={kind}>
           <span>{label}</span>
           <div className="sf-track" aria-hidden="true">
@@ -61,7 +67,7 @@ function FundingBars({ categories, maxAbs }) {
           </div>
           <strong><Dollars value={value} /></strong>
         </div>)}
-      <details className="sf-category-details">
+      {category.accounts.length >= 2 && <details className="sf-category-details">
         <summary>Federal accounts ({category.accounts.length})</summary>
         <div className="sf-scroll">
           <table>
@@ -74,7 +80,7 @@ function FundingBars({ categories, maxAbs }) {
             </tr>)}</tbody>
           </table>
         </div>
-      </details>
+      </details>}
     </div>)}
   </div>;
 }
@@ -250,7 +256,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
         <section className="sf-kpis" aria-label="Funding totals">
           {[["Total obligations", summary.totals.total, true],
             ["Regular", summary.totals.regular, true],
-            ["Supplemental/emergency", summary.totals.supplemental, true],
+            ["Supplemental (emergency)", summary.totals.supplemental, true],
             ["Grants", summary.totals.grant_count ?? summary.totals.award_count, false],
             ["Recipients", summary.totals.recipient_count, false]].map(([label, value, currency]) =>
             <div className="sf-kpi" key={label}>

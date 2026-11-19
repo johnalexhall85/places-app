@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CdcStateFundingProfile from "./CdcStateFundingProfile";
 
@@ -35,9 +35,33 @@ describe("CDC state funding profile", () => {
     expect(await screen.findByText("CDC grants to recipients in Alabama")).toBeTruthy();
     expect(screen.getAllByText("−$20").length).toBeGreaterThan(0);
     expect(screen.getByText("Funding by budget category")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Funding totals" }))
+      .getByText("Supplemental (emergency)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Public health grant" }));
     expect(screen.getByText("Full award description")).toBeTruthy();
     expect(screen.getByText("View on USAspending")).toBeTruthy();
+  });
+  it("shows only funded bar rows and expands only categories with multiple accounts", async () => {
+    api.stateSummary.mockResolvedValue({ ...summary, by_category: [
+      { ...summary.by_category[0], regular: 120, supplemental: 0 },
+      { code: "OTHER", name: "Other programs", regular: 0, supplemental: -20,
+        accounts: [
+          { symbol: "075-0100", name: "First account", regular: 0, supplemental: -10 },
+          { symbol: "075-0200", name: "Second account", regular: 0, supplemental: -10 },
+        ] },
+      { code: "ZERO", name: "Zero category", regular: 0, supplemental: 0, accounts: [] },
+    ] });
+    render(<CdcStateFundingProfile stateCode="AL" />);
+    const single = (await screen.findByRole("heading", { name: "HIV prevention" })).closest(".sf-category");
+    expect(within(single).getByText("Federal account 075-0950").getAttribute("title")).toBe("Account");
+    expect(Array.from(single.querySelectorAll(".sf-bar-row"), (row) =>
+      row.querySelector("span").textContent)).toEqual(["Regular"]);
+    expect(within(single).queryByText("Federal accounts (1)")).toBeNull();
+    const multiple = screen.getByRole("heading", { name: "Other programs" }).closest(".sf-category");
+    expect(Array.from(multiple.querySelectorAll(".sf-bar-row"), (row) =>
+      row.querySelector("span").textContent)).toEqual(["Supplemental"]);
+    expect(within(multiple).getByText("Federal accounts (2)")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Zero category" })).toBeNull();
   });
   it("updates filters and the shareable URL", async () => {
     render(<CdcStateFundingProfile stateCode="AL" />);

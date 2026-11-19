@@ -2,8 +2,16 @@
 
 | Task | State | Notes |
 |---|---|---|
+| S2c | done 2026-11-19T22:54:18+00:00 | Frontend chart, KPI, and table polish verified locally; ready for Claude review. Uncommitted and undeployed. |
 | S2b | done 2026-11-19T22:47:08+00:00 | Amendments 1–2, S2+S3 review fixes, and staging build 7 complete; ready for Claude review. Uncommitted and undeployed. |
 | S2+S3 | done 2026-11-19T22:30:18+00:00 | Read model, API, rebuilt page, tests, and staging build 6 complete; ready for Claude review. No commit or deployment. |
+
+## S2c diary facts — 2026-11-19T22:54:18+00:00
+
+- **Request and outcome:** Shortened the budget-category chart: omit zero-dollar regular or supplemental rows, show a muted account symbol with the full account name as a tooltip for single-account categories, and keep the account expander for multiple accounts. Single-row desktop category measured about 54 px. Renamed the KPI to “Supplemental (emergency)” and kept phone KPI numbers at 22 px Roboto Slab; the grants amount and NOFO cells do not wrap at 1280 px.
+- **Files changed:** `frontend/src/pages/CdcStateFundingProfile.{jsx,css,test.jsx}` and this status file. No API, builder, contract, data, or application deployment changes.
+- **Verification:** `npm test`: 172 passed. `npm run build`: passed with the existing large-chunk warning. A first test run failed because its new text query also matched the collapsed account table; the assertion now targets chart rows and the full rerun passes. Mocked-data Chromium checks at 1280 and 375 px found a 53.9 px single-row category, 22 px Roboto Slab phone numbers, no page overflow at 375 px, and grants-table overflow confined to its scroll container. `git diff --check` passed. No staging browser, backend, or database checks were run for this frontend-only task.
+- **Publication and next action:** Changes are uncommitted and undeployed. Claude reviews the diff and staging screenshots, then handles the project diary, handbook, commit, and deployment under the ownership rules.
 
 ## S2b diary facts — 2026-11-19T22:47:08+00:00
 
