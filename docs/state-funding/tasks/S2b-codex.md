@@ -34,3 +34,16 @@ Assigned by Claude on 2026-11-19, after S2+S3. The worktree, branch, owned paths
 - The status file has an S2b row and a section `## S2b diary facts — <ISO timestamp with timezone>`.
 
 Finish with a report of 10 lines or fewer.
+
+## Review of S2+S3 (Claude, 2026-11-19): fix these in the same run
+
+Claude committed your S2+S3 work as `442bfff` and merged Amendments 1–2 into your branch. Contract **Amendment 2** (presentation) is part of this task. The rest:
+
+1. **Formatting:** `CdcStateFundingProfile.jsx` has lines up to 1,596 characters, and the `.css` is minified onto one line. Reformat both as normal, readable source, with one rule or declaration block per line group and JSX broken across lines, consistent with `frontend/src/community/*.jsx`. Split the page into small components in `frontend/src/pages/stateFunding/` if that helps. Keep the Python under about 120 characters per line.
+2. **`backend/app/main.py`:** replace the `__import__(...)` line with a normal `from app.state_funding.router import router as state_funding_router` import and an `include_router` call, matching the other routers.
+3. **Dev proxy:** `frontend/vite.config.js` needs a `/api/state-funding` rewrite that strips `/api`, like `/api/community`.
+4. **Phone width:** the KPI label "Supplemental/emergency" is cut off at 375 px. Allow it to wrap.
+5. **Name sources:** report in your status file how many grants fall back to `assistance_listing_title` (927 in build 6) by fiscal year, and why: is there a TAGGS row for the FAIN or not? Do not change the rule order.
+6. Your summary's extra `grant_count` is fine. Keep it, and add it to your status notes as a contract addition.
+
+Claude will check the result with screenshots at 1280 px and 375 px.
