@@ -24,6 +24,7 @@ Filters match the `/cdc-funding` Filters panel. A history page for each grant co
 | Old page | Replaced in place at the same URL. Old query parameters are ignored, and the old code stays in git. |
 | Agents | Codex builds `app/state_funding` and the page. Antigravity writes the reconciliation audit and the walkthrough. Claude writes the plan, contract, migration, and title ingest, then reviews, merges, deploys, and runs every live build. |
 | Autonomy | Act between gates. John approves Gate A (staging tryout) and Gate B (live). |
+| Grouping (amended 2026-11-19) | John: show grants by **CDC budget category**, not by federal account. Exact account-to-category crosswalk to the FY 2026 Operating Plan's top-level lines (contract Amendment 1, migration `f7c3a1d9e5b2`). Sub-lines such as Tobacco or Diabetes are not used: File C program activity only repeats the account name, so a finer split would need inference. |
 | Profile-viz reassignment | Ended 2026-11-19. Codex owns `frontend/**` again. |
 
 ## Facts checked on `places_staging` (Claude, 2026-11-19)
@@ -43,11 +44,12 @@ Filters match the `/cdc-funding` Filters panel. A history page for each grant co
 | S1 | Claude | Grants.gov title extract archived and loaded into `state_funding.nofo_title` on staging, with CDC Funding Profiles titles; coverage report | S0 | |
 | S2 | Codex | `app/state_funding` builder, lookup, router, tests | S0 (titles optional at build) | |
 | S3 | Codex | New page, tests, removal of the old page | S2 | |
+| S2b | Codex | Amendment 1: budget categories in build, lookup, API, page, and tests | S2, S3 | |
 | S4 | Antigravity | Reconciliation audit test and walkthrough checklist | S2 | |
 | S5 | Claude | Review, commit, PR to `beta`, staging build and deploy, audit and walkthrough; **Gate A** | S3, S4 | |
 | S6 | Claude | **Gate B**: rollback pair, live migration, title load, `build --allow-live`, deploy, verify, handbook, diary | Gate A | |
 
-Deferred: a grant-history page per award or NOFO; MCP tools for state funding; an operating-plan crosswalk.
+Deferred: a grant-history page per award or NOFO; MCP tools for state funding.
 
 ## Ownership
 

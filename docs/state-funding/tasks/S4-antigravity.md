@@ -11,7 +11,7 @@ Do not commit, deploy, or use sudo. Make no network calls. Write no database row
 
 ## Read first
 
-1. [PLAN.md](../PLAN.md) and the whole of [CONTRACT.md](../CONTRACT.md), especially §1 and §5.
+1. [PLAN.md](../PLAN.md) and the whole of [CONTRACT.md](../CONTRACT.md), especially §1 and §5. **Amendment 1** at the end of the contract overrides earlier sections: audit `by_category` (not `by_account`) and add invariant 7 (crosswalk coverage and category = sum of its accounts). In the walkthrough, list the top three **budget categories**.
 2. `backend/app/state_funding/lookup.py` and `router.py` (Codex's code).
 3. `backend/app/cdc_funding_api/service.py` (`get_overview`), the source of the national `/cdc-funding` totals.
 
@@ -26,7 +26,7 @@ Do not commit, deploy, or use sudo. Make no network calls. Write no database row
 2. Run it and record the pass/fail per invariant, with numbers, in your status file. If something fails, give the smallest reproduction (SQL) and stop. Do not loosen tolerances to make it pass.
 3. `deliverables/state-funding/walkthrough.md`: a checklist Claude and John can follow on staging for CA, TX, WY, DC, and PR. For each state, for FY2026:
    - the expected total, regular, and supplemental amounts and the award count, taken from your SQL, so the page can be checked against them;
-   - the top three federal accounts;
+   - the top three budget categories;
    - one grant to search for by FAIN, and one by NOFO number;
    - the expected first row when sorted by amount;
    - what to check with Recipient type = State government.

@@ -151,3 +151,43 @@ For 10 sampled states × every fiscal year:
 Across the whole build:
 5. Every `award` row has a non-empty `grant_name` and a valid `name_source`.
 6. No `award` row is orphaned or missing relative to `obligation`.
+
+## Amendment 1 (2026-11-19): budget categories replace federal accounts as the grouping
+
+John asked for the page to show grants by CDC budget category, not by federal account. This amendment overrides §1–§5 where they differ.
+
+**Crosswalk.** Migration `f7c3a1d9e5b2` adds `state_funding.budget_category` (`federal_account_symbol` PK, `category_code`, `category_name`, `category_order`, `basis`, `source`). Claude owns it; changes come only by migration.
+- **Exact, not apportioned:** each account belongs to exactly one category.
+- **CDC appropriation accounts** map to the matching top-level line of the CDC FY 2026 Operating Plan (`basis = cdc_operating_plan`).
+- **Other accounts:** ATSDR is `atsdr_operating_plan`. Every other account is `outside_operating_plan`, with its own label: Vaccines for Children, WTC, PHSSEF, IDRRF, NEF, other CDC accounts, other HHS accounts.
+- **Coverage:** 45 accounts in 22 categories cover every account in `cdc_funding_awards` from FY2021 on (checked 2026-11-19).
+
+**Build.**
+- `obligation` keeps `federal_account_symbol`; categories are joined through the crosswalk at read time.
+- The build **fails**, naming the symbols, if any source account in FY2021+ has no crosswalk row.
+- `build_run.sources` records the crosswalk `source` string and its row count.
+
+**Filters.** `account` is replaced by `category=<category_code>`. A request with `account=` returns 422 with a message that names `category`.
+
+**`/summary`.**
+- `by_account` is replaced by `by_category`: `[{ "code", "name", "basis", "regular", "supplemental", "total", "award_count", "accounts": [{ "symbol", "name", "regular", "supplemental", "total" }] }]`, sorted by `abs(total)` descending.
+- `accounts_available` is replaced by `categories_available`: `[{ "code", "name", "basis" }]`, sorted by `category_order`.
+
+**`/grants`.**
+- Each row adds `categories: [{ "code", "name", "regular", "supplemental" }]` and keeps `accounts[]` as detail.
+- Sorting adds `category`, ordered by the row's largest category by `abs` amount and then by `category_order`.
+- `q` also matches category names.
+
+**CSV.** Adds a `categories` column (names joined by `; `). `accounts` stays.
+
+**Page (§4).**
+- "Funding by federal account" becomes **"Funding by budget category"**: the same diverging regular and supplemental bars.
+- Each category can be expanded to show its federal accounts and their amounts.
+- Categories with `basis = outside_operating_plan` carry a small "Outside CDC's operating plan" label.
+- The Filters panel's "Federal account" becomes "Budget category".
+- The grants table's "Federal account(s)" column becomes "Budget category". Federal accounts move into the expanded row.
+- The method notes add: "Budget categories follow the top-level lines of CDC's FY 2026 Operating Plan. Each federal account belongs to one category; amounts are not split. Some money, such as Vaccines for Children (paid from Medicaid) and HHS emergency funds, is outside CDC's operating plan and is labelled that way."
+
+**Audit (§5).**
+- Invariant 3 uses `by_category` in place of `by_account`.
+- Add invariant 7: every `federal_account_symbol` in `obligation` has a crosswalk row, and each category's total equals the sum of its accounts.
