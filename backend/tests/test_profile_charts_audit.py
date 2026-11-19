@@ -340,7 +340,10 @@ def test_contract_section_1_and_2_rules_for_all_rows(audit_context):
                         f"GEOID={geoid} measure={mkey} field=trend.style "
                         f"expected={expected_style} actual={trend.get('style')}"
                     )
-                if reg["trend_note"] is not None and trend.get("note") != reg["trend_note"]:
+                allowed_notes = {reg["trend_note"]}
+                if reg.get("currency_note") and row.get("kind") == "currency":
+                    allowed_notes = {f'{reg["trend_note"]} {reg["currency_note"]}'}
+                if reg["trend_note"] is not None and trend.get("note") not in allowed_notes:
                     failures.append(
                         f"GEOID={geoid} measure={mkey} field=trend.note "
                         f"expected={reg['trend_note']!r} actual={trend.get('note')!r}"
