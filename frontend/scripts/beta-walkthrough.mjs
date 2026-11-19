@@ -281,7 +281,7 @@ try {
       await page.locator('.indicator-chart').first().waitFor();
       assert.ok(await page.locator('.indicator-chart').count() >= 1, `${path} has at least one indicator chart at ${width}px`);
       assert.equal(await page.locator('.chart-band').count(), 0, `${path} has no chart band at ${width}px`);
-      const axisLabels = await page.locator('.indicator-chart .indicator-chart-axis-label').allInnerTexts();
+      const axisLabels = await page.locator('.indicator-chart .indicator-chart-axis-label').allTextContents();
       assert.ok(axisLabels.every((text) => !/^-/.test(text.trim())), `${path} nonnegative chart axes at ${width}px`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} chart overflow at ${width}px`);
       await screenshot(`${label}-charts-${width}`, true);

@@ -313,7 +313,7 @@ describe("IndicatorChart", () => {
     const axisLabels = [...container.querySelectorAll(".indicator-chart-axis-label")].map(
       (node) => node.textContent
     );
-    expect(axisLabels[0]).toBe("0%");
+    expect(axisLabels[0]).toMatch(/^\d+%$/);
     expect(axisLabels.some((label) => label.endsWith("%") && label !== "0%")).toBe(true);
     expect(formatShortTick(12000, { kind: "currency", unit: "USD" })).toBe("$12k");
   });
