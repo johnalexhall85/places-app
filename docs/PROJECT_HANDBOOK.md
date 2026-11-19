@@ -39,6 +39,25 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
+**CDC state funding profiles, rebuilt: on staging since 2026-11-19T23:30Z, not live (Claude; Gate A pending; plan [docs/state-funding/PLAN.md](state-funding/PLAN.md), [contract](state-funding/CONTRACT.md) with Amendments 1–2):**
+- **What:** `/cdc-funding/state/{code}` was rebuilt in the PDO brand. It shows one fiscal year (FY2021–FY2026):
+  - KPI tiles: total, regular, supplemental (emergency), grants, and recipients;
+  - filters: Funding type, Award type (**default Grants**), Budget category, and Recipient type;
+  - "Funding by budget category" as diverging regular/supplemental bars;
+  - a searchable, sortable, paged grant list with CSV download.
+  `/taggs/funding-profile?state=XX` redirects to it. The old page, its six funding modes, and `utils/cdcFundingProfileTarget.js` are removed from the frontend. The old `/api/cdc/funding/profile/*` routes remain unused.
+- **Method (`state-funding-v1`):**
+  - **Amounts:** net obligations from `cdc_funding.cdc_funding_awards` (File C), with the state taken from `recipient_state`.
+  - **Supplemental:** dollars split by the source DEFC `emergency` flag (Q or blank is regular); no inferred labels. Supplemental is net negative in FY2024–FY2026 because COVID money is being deobligated, and some states' FY2026 grant totals are negative (WY −$2.7M).
+  - **Budget categories:** an exact crosswalk of 45 federal accounts to 22 categories, the CDC FY 2026 Operating Plan top-level lines plus labelled categories outside the plan (migration `f7c3a1d9e5b2`).
+  - **Grant names:** the Grants.gov NOFO title by exact opportunity number, then CDC Funding Profiles, then the TAGGS project title, then the assistance listing. Contracts use their description.
+  - **Grants default:** Vaccines for Children money is recorded as manufacturer contracts (FY2026 NJ $2.35B), so the page opens on grants and notes contractor attribution.
+- **Read model:** schema `state_funding` (migrations `e4b8c2f6a9d1` and `f7c3a1d9e5b2`) with `nofo_title`, `budget_category`, `build_run`, `active_build`, `award`, and `obligation`. Code is in `backend/app/state_funding/`; the API is `/api/state-funding/v1/{fiscal-years, states/{code}/summary, /grants, /grants.csv}` behind the demo gate (generic Nginx `/api/` block, no Nginx change).
+- **Rebuild:** `cd backend && python -m app.state_funding.build [--allow-live]`. It takes about 47 s, keeps two builds, reconciles each fiscal year to File C before activating, and refuses non-staging databases without `--allow-live`. **Rebuild after every CDC USAspending (File C) or TAGGS ingest.** It fails if a new federal account has no crosswalk row; add the row by migration.
+- **Titles:** `cd backend && python scripts/fetch_grants_gov_cdc_titles.py --zip ../data/grantsgov/20261119/GrantsDBExtract20261119v2.zip --apply` (SHA-256 `38e820b5…37f0e2`, archived in `/home/john/chip-claude/data/grantsgov/`; copy it to the live checkout before Gate B). It loads 23,927 HHS Grants.gov titles and 569 CDC Funding Profiles titles.
+- **Staging state:** `beta` at `60071e0` or a descendant; build 7 on `places_staging` (25,918 awards, 96,715 obligation rows). The audit `backend/tests/test_state_funding_audit.py` passes 7/7 with a $0.00 maximum difference. The walkthrough checklist is in `deliverables/state-funding/walkthrough.md`.
+- **Live:** unchanged. The live database has neither migration nor the `state_funding` schema.
+
 **CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): live since 2026-11-18T22:05Z (Claude; Gate A passed by John; Gate B approved: "push it all live"; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
 - **What:**
   - **MCP tools:** three read-only tools (`get_nofo_overview`, `list_nofo_recipients`, `get_recipient_funding`), for 11 tools in total.
