@@ -46,8 +46,8 @@ Filters match the `/cdc-funding` Filters panel. A history page for each grant co
 | S3 | Codex | New page, tests, removal of the old page | S2 | done (+ S2c–S2f polish and walkthrough) |
 | S2b | Codex | Amendment 1: budget categories in build, lookup, API, page, and tests | S2, S3 | done |
 | S4 | Antigravity | Reconciliation audit test and walkthrough checklist | S2 | done, 7/7 |
-| S5 | Claude | Review, commit, PR to `beta`, staging build and deploy, audit and walkthrough; **Gate A** | S3, S4 | staging deployed; Gate A pending |
-| S6 | Claude | **Gate B**: rollback pair, live migration, title load, `build --allow-live`, deploy, verify, handbook, diary | Gate A | |
+| S5 | Claude | Review, commit, PR to `beta`, staging build and deploy, audit and walkthrough; **Gate A** | S3, S4 | done; Gate A passed 2026-11-19 |
+| S6 | Claude | **Gate B**: rollback pair, live migration, title load, `build --allow-live`, deploy, verify, handbook, diary | Gate A | done, live 2026-11-19T23:20Z |
 
 Deferred: a grant-history page per award or NOFO; MCP tools for state funding.
 

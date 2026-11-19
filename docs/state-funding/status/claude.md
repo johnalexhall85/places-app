@@ -21,11 +21,15 @@
   | FY2026 | 94.7% | 99.0% |
 - **Grants still unmatched** fall back to TAGGS titles. They are mostly CDC-internal numbers with no public opportunity (`NH28CE4`, `TO-NB01TO-23-001`, `OT-NB01OT-22-001`).
 - **Title differences:** CDC Funding Profiles titles are sometimes component-specific (PS21-2102 gives "Transgender Status-Neutral…", where Grants.gov gives "Comprehensive High-Impact HIV Prevention Programs for Community-Based Organizations"). Grants.gov therefore ranks first.
+
+| Task | State | Notes |
+|---|---|---|
 | Amendment 1 | done 2026-11-19 | John asked for budget categories. Crosswalk migration `f7c3a1d9e5b2` (45 accounts in 22 categories) applied on `places_staging`. |
 | S2+S3 review | done 2026-11-19 | Committed Codex's work as `442bfff`. Staging build 6 reconciles; CA FY2026 total equals File C ($269,431,206.59). Amendment 2 (presentation) and review notes sent with S2b. |
 | S2b–S2f | done | Reviewed with screenshots; committed. |
 | S4 | done | Antigravity audit 7/7; walkthrough checklist. |
 | S5 | staging deployed 2026-11-19 | `beta` on staging; full signed-in walkthrough passes; awaiting Gate A. |
+| S6 | done 2026-11-19 | Live: `main` `42d56be`+, Alembic `f7c3a1d9e5b2`, live build 1, bundle `index-DuruGl8E.js`; audit 7/7 on live. Rollback pair `data/deploy-recovery/state-funding-20261119/`. |
 
 ## Review facts — 2026-11-19 (UTC)
 - **VFC attribution:** in File C, Vaccines for Children money is contracts with vaccine manufacturers. By recipient state that puts FY2026 $2.35B in NJ, $1.09B in NY, $1.00B in NC, and $0.73B in PA. The page therefore defaults to grants (Amendment 2).

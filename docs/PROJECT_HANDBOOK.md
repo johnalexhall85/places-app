@@ -39,7 +39,7 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
-**CDC state funding profiles, rebuilt: on staging since 2026-11-19T23:30Z, not live (Claude; Gate A pending; plan [docs/state-funding/PLAN.md](state-funding/PLAN.md), [contract](state-funding/CONTRACT.md) with Amendments 1–2):**
+**CDC state funding profiles, rebuilt: live since 2026-11-19T23:20Z (Claude; Gate A passed and Gate B approved by John: "It looks great. I approve."; plan [docs/state-funding/PLAN.md](state-funding/PLAN.md), [contract](state-funding/CONTRACT.md) with Amendments 1–2):**
 - **What:** `/cdc-funding/state/{code}` was rebuilt in the PDO brand. It shows one fiscal year (FY2021–FY2026):
   - KPI tiles: total, regular, supplemental (emergency), grants, and recipients;
   - filters: Funding type, Award type (**default Grants**), Budget category, and Recipient type;
@@ -56,7 +56,13 @@
 - **Rebuild:** `cd backend && python -m app.state_funding.build [--allow-live]`. It takes about 47 s, keeps two builds, reconciles each fiscal year to File C before activating, and refuses non-staging databases without `--allow-live`. **Rebuild after every CDC USAspending (File C) or TAGGS ingest.** It fails if a new federal account has no crosswalk row; add the row by migration.
 - **Titles:** `cd backend && python scripts/fetch_grants_gov_cdc_titles.py --zip ../data/grantsgov/20261119/GrantsDBExtract20261119v2.zip --apply` (SHA-256 `38e820b5…37f0e2`, archived in `/home/john/chip-claude/data/grantsgov/`; copy it to the live checkout before Gate B). It loads 23,927 HHS Grants.gov titles and 569 CDC Funding Profiles titles.
 - **Staging state:** `beta` at `60071e0` or a descendant; build 7 on `places_staging` (25,918 awards, 96,715 obligation rows). The audit `backend/tests/test_state_funding_audit.py` passes 7/7 with a $0.00 maximum difference. The walkthrough checklist is in `deliverables/state-funding/walkthrough.md`.
-- **Live:** unchanged. The live database has neither migration nor the `state_funding` schema.
+- **Live state:**
+  - `main` is at `42d56be` or a documentation-only descendant. Alembic is at `f7c3a1d9e5b2`, and the title load and live build 1 are done (identical counts to staging build 7).
+  - The bundle is `index-DuruGl8E.js`, the same as staging.
+  - The audit passes 7 of 7 on the live database.
+- **Rollback:** `data/deploy-recovery/state-funding-20261119/` holds `commit-before.txt` (`9becd94`), `alembic-before.txt` (`c6d0e4a8b2f7`), `webroot-before/`, and `bundle-before.txt`.
+  - **Code:** `git reset --hard 9becd94` in `/home/john/places-app`, `sudo rsync -a --delete webroot-before/ /var/www/places/`, `alembic downgrade c6d0e4a8b2f7` (drops the `state_funding` schema), then `sudo systemctl restart places-backend`.
+  - **Data:** nothing else changed; the `cdc_funding` and `taggs` tables are untouched.
 
 **CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): live since 2026-11-18T22:05Z (Claude; Gate A passed by John; Gate B approved: "push it all live"; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
 - **What:**

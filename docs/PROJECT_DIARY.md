@@ -2,6 +2,25 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-19T23:25:00+00:00 — CDC state funding profiles promoted to live (Claude)
+
+- **Approval:** after trying staging, John said "It looks great. I approve."
+- **Recovery set:** `data/deploy-recovery/state-funding-20261119/`, containing the commit `9becd94`, Alembic `c6d0e4a8b2f7`, `webroot-before/`, and the bundle names (`index-DXVvK26B.js`).
+- **Promotion steps on live:**
+  1. Copied the Grants.gov extract to `/home/john/places-app/data/grantsgov/20261119/`; `sha256sum -c` passed.
+  2. Fast-forwarded `main` from `9becd94` to `42d56be`.
+  3. `alembic upgrade head`: `e4b8c2f6a9d1`, then `f7c3a1d9e5b2`.
+  4. `fetch_grants_gov_cdc_titles.py --apply --allow-live`: 24,496 title rows. Coverage is identical to staging.
+  5. `python -m app.state_funding.build --allow-live`: build 1 in 45.2 s, with 25,918 awards and 96,715 obligation rows. The name-source counts and unattributed dollars equal staging build 7.
+  6. `npm run build`, giving `index-DuruGl8E.js` (the same as staging), then `rsync --delete` to `/var/www/places`.
+  7. `systemctl restart places-backend`. `chip-mcp` was not restarted, because the MCP server is untouched.
+- **Verification:**
+  - **The audit on the live database** (`test_state_funding_audit.py`) passes 7 of 7. The 3 skips are staging-only integration tests.
+  - **Live port 80:** `/api/health`, `/cdc-funding/state/CA`, and the legacy `/taggs/funding-profile?state=CA` return 200. The state-funding API returns 401 to anonymous requests. MCP `/healthz` returns 200.
+  - **In-process API on the live database:** FY2026 totals equal staging to the cent: CA grants $275,957,458.00, CA all awards $269,431,206.59, WY −$2,722,018.25, TX $103,855,574.34, DC $157,384,112.69, PR $23,371,719.64.
+- **Not done:** no signed-in browser check on live by an agent, because there is no live access code on file. John viewed staging.
+- **Next:** none required. Deferred: the per-grant history page and MCP tools for state funding. Rebuild `state_funding` after every File C or TAGGS ingest.
+
 ## 2026-11-19T23:30:00+00:00 — CDC state funding profiles rebuilt; on staging for Gate A (Claude, with Codex and Antigravity)
 
 - **Request:** John asked to redo the state funding profiles in the PDO/CHIP brand, with:
