@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.area_pilot import lookup
+from app.community import charts
 from app.db import get_db
 from app.routers.search import search_counties
 from app.demo_access.settings import get_demo_access_settings
@@ -102,6 +103,46 @@ def area_outline(level: str, geoid: str, db: Session = Depends(get_db)):
 @router.get("/catalog")
 def community_catalog(db: Session = Depends(get_db)):
     return lookup.catalog(db)
+
+
+@router.get("/county/{geoid}/charts")
+def county_charts(geoid: str, db: Session = Depends(get_db)):
+    try:
+        return charts.build_charts(db, "county", _county_info(db, geoid))
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/state/{geoid}/charts")
+def state_charts(geoid: str, db: Session = Depends(get_db)):
+    try:
+        return charts.build_charts(db, "state", _state_info(db, geoid))
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/district/{geoid}/charts")
+def district_charts(geoid: str, db: Session = Depends(get_db)):
+    try:
+        return charts.build_charts(db, "cd", _district_info(db, geoid))
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/county/{geoid}/peers")
+def county_peers(geoid: str, measure: str = Query(...), db: Session = Depends(get_db)):
+    try:
+        return charts.build_peers(db, "county", _county_info(db, geoid), measure)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/state/{geoid}/peers")
+def state_peers(geoid: str, measure: str = Query(...), db: Session = Depends(get_db)):
+    try:
+        return charts.build_peers(db, "state", _state_info(db, geoid), measure)
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
 
 
 @router.get("/states")

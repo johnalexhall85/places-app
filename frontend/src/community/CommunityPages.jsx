@@ -4,6 +4,8 @@ import SiteHeader from "../components/SiteHeader";
 import PlaceSearch from "../components/PlaceSearch";
 import Footer from "../components/Footer";
 import TractPatternMap from "./TractPatternMap";
+import { ChartBand } from "./charts/ChartBand";
+import { useCharts } from "./charts/useCharts";
 import "./community.css";
 
 const SHOWCASE = [
@@ -180,6 +182,7 @@ export function CommunityCounty({ geoid }) {
   const [catalog, setCatalog] = useState(null);
   const [selectedTractKey, setSelectedTractKey] = useState("acs:B19013_001E");
   const [error, setError] = useState("");
+  const charts = useCharts("county", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -240,6 +243,7 @@ export function CommunityCounty({ geoid }) {
         </nav>
         {SECTIONS.map((section) => bySection[section.key]?.length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
           <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
+          {charts?.sections?.find((item) => item.key === section.key) && <ChartBand section={charts.sections.find((item) => item.key === section.key)} areaGeoid={geoid} areaName={`${profile.area.name} County, ${profile.area.state_name}`} stateName={profile.area.state_name} />}
           <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} />)}</div>
         </section>)}
         {selectedTractRow && <section className="community-profile-section" id="tract-patterns">

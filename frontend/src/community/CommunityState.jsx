@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { getStateCodeForFips } from "../utils/stateFundingMap";
 import { CommunityShell, FacilityBlock, Indicator } from "./CommunityPages";
+import { ChartBand } from "./charts/ChartBand";
+import { useCharts } from "./charts/useCharts";
 
 const PREVENTION = new Set([
   "current_smoking", "routine_checkup", "uninsured_18_64", "dental_visit",
@@ -24,6 +26,7 @@ function sectionFor(row) {
 export function CommunityState({ geoid }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
+  const charts = useCharts("state", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -69,6 +72,7 @@ export function CommunityState({ geoid }) {
       </nav>
       {SECTIONS.map((section) => bySection[section.key].length > 0 && <section className="community-profile-section" id={section.key} key={section.key}>
         <div className="community-section-heading"><h2>{section.title}</h2><p>{section.intro}</p></div>
+        {charts?.sections?.find((item) => item.key === section.key) && <ChartBand section={charts.sections.find((item) => item.key === section.key)} areaGeoid={geoid} areaName={profile.area.name} stateName={profile.area.name} />}
         <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} />)}</div>
       </section>)}
       <section className="community-profile-section" id="facilities">

@@ -1,0 +1,20 @@
+[
+  {"section":"people","key":"income","title":"Income","county":["acs:B19013_001E"],"state":["acs:B19013_001E"],"cd":[]},
+  {"section":"people","key":"age","title":"Age","all":["acs_profile:age_under_18_pct","acs_profile:age_65_plus_pct"]},
+  {"section":"people","key":"community","title":"Poverty, disability, coverage, language","all":["acs_profile:poverty_pct","acs_profile:disability_pct","acs_profile:uninsured_pct","acs_profile:limited_english_pct"]},
+  {"section":"people","key":"population","title":"Population","all":["acs_profile:total_population"]},
+  {"section":"health","key":"chronic_conditions","title":"Chronic conditions","county":["places:diabetes_crudeprev","places:bphigh_crudeprev","places:obesity_crudeprev","places:chd_crudeprev","places:stroke_crudeprev","places:copd_crudeprev","places:casthma_crudeprev"],"state":["brfss:diabetes","brfss:high_blood_pressure","brfss:obesity","brfss:coronary_heart_disease","brfss:stroke","brfss:copd","brfss:current_asthma"]},
+  {"section":"health","key":"mental_health","title":"Mental health","county":["places:depression_crudeprev","places:mhlth_crudeprev"],"state":["brfss:depression","brfss:frequent_mental_distress"]},
+  {"section":"health","key":"health_status","title":"Health status","state":["brfss:fair_or_poor_health","brfss:frequent_physical_distress","brfss:arthritis","brfss:kidney_disease"]},
+  {"section":"prevention","key":"prevention_coverage","title":"Prevention and coverage","county":["places:checkup_crudeprev","places:dental_crudeprev","places:access2_crudeprev"],"state":["brfss:routine_checkup","brfss:dental_visit","brfss:uninsured_18_64","brfss:cost_barrier_to_care"]},
+  {"section":"prevention","key":"health_behaviors","title":"Health behaviors","county":["places:csmoking_crudeprev"],"state":["brfss:current_smoking","brfss:binge_drinking","brfss:no_leisure_physical_activity"]},
+  {"section":"care","key":"workforce","title":"Health workforce","county":["ahrf:phys_nf_prim_care_pc_exc_rsdt_23","ahrf:dent_nf_fed_proflly_activ_23","ahrf:md_nf_psych_all_pc_23"]},
+  {"section":"care","key":"hospitals","title":"Hospitals","county":["ahrf:hosp_23","ahrf:hosp_beds_23"]},
+  {"section":"conditions","key":"housing_transport_broadband","title":"Housing, transport, broadband","county":["clh:ACS_PCT_HH_BROADBAND_ANY","clh:ACS_PCT_HU_NO_VEH","clh:ACS_PCT_RENTER_HU_COST_30PCT"]},
+  {"section":"conditions","key":"recreation","title":"Recreation","county":["clh:CCBP_FCRSC_RATE"]},
+  {"section":"food","key":"food_access","title":"Food access","county":["usda_fea:low_income_low_access_pct","usda_fea:no_car_low_access_households_pct"]},
+  {"section":"food","key":"food_retailers","title":"Food retailers per 1,000","county":["usda_fea:snap_stores_per_1000","usda_fea:wic_stores_per_1000","usda_fea:farmers_markets_per_1000","clh:CCBP_SOGS_RATE"]},
+  {"section":"environment","key":"air_quality","title":"Air quality index","county":["epa_aqi:median_aqi","epa_aqi:p90_aqi","epa_aqi:max_aqi"]},
+  {"section":"environment","key":"aqi_days","title":"AQI days","county":["epa_aqi:days_with_aqi","epa_aqi:good_days"]},
+  {"section":"medicare","key":"medicare_use_spending","title":"Medicare use and spending","county":["cms_gv:std_payment_per_capita","cms_gv:ip_stays_per_1000","cms_gv:er_visits_per_1000","cms_gv:readmission_rate","cms_gv:om_beneficiaries"],"state":["cms_gv:std_payment_per_capita","cms_gv:ip_stays_per_1000","cms_gv:er_visits_per_1000","cms_gv:readmission_rate","cms_gv:om_beneficiaries"]}
+]

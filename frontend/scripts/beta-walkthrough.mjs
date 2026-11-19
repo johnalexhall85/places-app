@@ -262,6 +262,30 @@ try {
     if (path === '/community/state/37') await screenshot('north-carolina-state-profile-mobile');
   }
   console.log('Mobile layout: no document overflow on eight key routes');
+  for (const width of [1365, 390, 375]) {
+    await page.setViewportSize({ width, height: width === 1365 ? 900 : 844 });
+    for (const [path, label] of [
+      ['/community/county/01063', 'greene-county'],
+      ['/community/state/01', 'alabama-state'],
+      ['/district/cd/5401', 'wv-district'],
+    ]) {
+      await visit(path);
+      await page.locator('.chart-band').first().waitFor();
+      const trend = page.getByRole('button', { name: 'Over time' }).first();
+      if (await trend.count()) {
+        await trend.click();
+        await page.locator('.chart-trend').first().waitFor();
+      }
+      const compare = page.getByRole('button', { name: /Compare counties|Compare states/ }).first();
+      if (await compare.count()) {
+        await compare.click();
+        await page.locator('.chart-peer-list li').first().waitFor();
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} chart overflow at ${width}px`);
+      await screenshot(`${label}-charts-${width}`, true);
+    }
+  }
+  console.log('Profile charts: desktop, 390px, and 375px layouts passed');
   await visit(`/district/cd/${districtGeoid}`);
   await page.locator('[data-testid="district-ready"]').waitFor();
   assert.equal(await page.locator('.community-indicator').count(), 7, `${districtGeoid} mobile district estimates`);
