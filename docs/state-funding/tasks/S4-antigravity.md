@@ -11,7 +11,7 @@ Do not commit, deploy, or use sudo. Make no network calls. Write no database row
 
 ## Read first
 
-1. [PLAN.md](../PLAN.md) and the whole of [CONTRACT.md](../CONTRACT.md), especially §1 and §5. **Amendment 1** at the end of the contract overrides earlier sections: audit `by_category` (not `by_account`) and add invariant 7 (crosswalk coverage and category = sum of its accounts). In the walkthrough, list the top three **budget categories**.
+1. [PLAN.md](../PLAN.md) and the whole of [CONTRACT.md](../CONTRACT.md), especially §1 and §5. **Amendment 1** at the end of the contract overrides earlier sections: audit `by_category` (not `by_account`) and add invariant 7 (crosswalk coverage and category = sum of its accounts). In the walkthrough, list the top three **budget categories**. **Amendment 2** makes `award_type=grant` the API and page default: give the walkthrough figures for the default (grants), and the total for `award_type=all` as a second line. Invariants 1–2 cover every `award_type`, including `all`, so pass it explicitly.
 2. `backend/app/state_funding/lookup.py` and `router.py` (Codex's code).
 3. `backend/app/cdc_funding_api/service.py` (`get_overview`), the source of the national `/cdc-funding` totals.
 
