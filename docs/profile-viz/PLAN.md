@@ -59,10 +59,10 @@ John approved this plan on 2026-11-19. Claude Code is project manager. The [char
 | V0 | Claude | Plan, contract, AGENTS.md section, task files, status files | none | done |
 | V1 | Claude | `comparability.json`; `lookup.area_series_many`, `lookup.comparability`, `lookup.national_series`; `observation_national` migration and builder; ACS U.S. ingest into staging | V0 | done (staging) |
 | V2 | Antigravity | CMS parser `parse_national()` for national rows 2019–2023, with tests | V0 | done |
-| V3 | Codex | `/charts` and `/peers` endpoints, `chart_groups.json`, tests, snapshot byte-identity test | V1, V2 | open |
-| V4 | Codex | Frontend charts, section bands, toggles, table fallbacks, vitest, overflow check in the walkthrough at 375 and 390 px | V3 | open |
-| V5 | Antigravity | Independent audit test of chart payloads and rules; user guide `reading-the-charts.md` | V3 | open |
-| V6 | Claude | Review, merge to `beta`, staging deploy and walkthrough, Gate A, runbook, Gate B, handbook and diary | V2–V5 | open |
+| V3 | Codex | `/charts` and `/peers` endpoints, `chart_groups.json`, tests, snapshot byte-identity test | V1, V2 | done |
+| V4 | Codex | Frontend charts, section bands, toggles, table fallbacks, vitest, overflow check in the walkthrough at 375 and 390 px | V3 | done (V4b revisions) |
+| V5 | Antigravity | Independent audit test of chart payloads and rules; user guide `reading-the-charts.md` | V3 | done |
+| V6 | Claude | Review, merge to `beta`, staging deploy and walkthrough, Gate A, runbook, Gate B, handbook and diary | V2–V5 | staging deployed; Gate A pending |
 
 ## Verification
 

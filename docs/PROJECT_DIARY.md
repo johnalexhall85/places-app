@@ -2,6 +2,42 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-19T20:10:00+00:00 — Profile charts and trends on staging (Claude, with Codex and Antigravity)
+
+- **Request and decisions:** John asked for dashboards and trends on county, state, and district profiles that don't overwhelm the reader, with state comparisons only where values are directly comparable and no sideways scrolling on phones. His decisions:
+  - PLACES years as dots with CI and no line;
+  - PLACES compared only with counties in the same state, as a strip plus an expandable dot-and-interval list;
+  - add ACS U.S. and CMS national values.
+
+  Plan: `docs/profile-viz/PLAN.md`.
+- **Claude, V0–V1:**
+  - Wrote the plan, the contract, and a new AGENTS.md ownership section.
+  - Added `comparability.json`, `lookup.area_series_many` (tested equal to `area_measure_series`), `national_series`, `comparability`, migration `c6d0e4a8b2f7` (`observation_national`), and `app/area_pilot/national.py` and `national_cli.py`.
+  - Design change from the approved plan: national values sit in their own table instead of a `us` level in the ACS registries, so current releases and the history CHECK constraint are untouched.
+  - **State-changing commands on `places_staging`:**
+    - `alembic upgrade head`
+    - `national_cli build`: release `3ace77af…`, 78 rows, all checks passed. Spot checks: U.S. median household income $78,538 (2019–2023) and $75,149 (2018–2022); CMS 2024 readmission 0.1807, equal to the current release.
+    - `national_cli publish`
+- **Antigravity:**
+  - V2: `parse_national`, 14 parser tests.
+  - V5: an independent audit of 646 rows across 18 areas plus 50 exact lookup matches, 0 failures; the reader guide `deliverables/profile-viz/reading-the-charts.md`.
+  - Correction: the V5 task listed retired CT county 09003, so the audit used 09110 and asserts that 09003 returns 404.
+- **Codex:**
+  - V3+V4: `/charts` and `/peers`, `chart_groups.json`, SVG bands. Existing payload hashes are identical before and after.
+  - Claude's review of staging screenshots found the charts busy and misleading in places: buttons under every row, axes from -3.87%, a peer strip on a different scale from the dot, the peer list drawn as a table, and false "boundary changed" breaks.
+  - Contract v1.1: a line breaks only at a missing period, and a release label is never a date.
+  - V4b fixed all of these. It also fixed walkthrough steps that had gone stale with the map heading changes from the history work.
+- **Deployed:** staging only, via `infra/staging/deploy-staging.sh claude/profile-viz` (twice; `beta` is now `03a11d1`).
+- **Verification:**
+  - The full `npm run test:beta` passes, including charts at 1365, 390, and 375 px.
+  - The audit passes against port 8001.
+  - Backend tests 24 passed and frontend tests 178 passed.
+- **Live is unchanged.**
+- **Next:**
+  - Gate A: John tries staging.
+  - Then Gate B: live migration, national build and publish on `places`, and promotion.
+  - Open item: the cosmetic placement of the separator dot between row controls.
+
 ## 2026-11-18T22:10:00+00:00 — CDC NOFO recipient profiles live; FY2026 award-level data through 2026-09-30 (Claude, with Codex)
 
 - **Approval:** after Gate A, John said "Everything works perfectly. now Let's update the USA spending award data all the way through the end of FY26. Then we can push it all live."

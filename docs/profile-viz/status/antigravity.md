@@ -4,6 +4,13 @@
 |---|---|---|---|
 | V2 | done | agy/profile-viz | Added `parse_national(config, files, evidence)` to `cms_gv.py` (leaving `parse()` untouched) and 8 tests in `test_history_parsers_cms_gv_national.py`; 14/14 CMS GV parser tests pass. |
 | V5 | done | agy/profile-viz | Independent HTTP + direct-lookup chart audit (`backend/tests/test_profile_charts_audit.py`, 5/5 passed across 18 areas / 646 rows / 50 sampled DB parity checks) and plain-language user guide (`deliverables/profile-viz/reading-the-charts.md`, 521 words). |
+| V5b | done | agy/profile-viz | Updated `deliverables/profile-viz/reading-the-charts.md` (568 words) to match chart contract v1.1 (missing-period line breaks, "About these years"/table boundary vintages, printed value labels, row text state/U.S. values, and sorted **Compare counties** dot-and-interval chart). |
+
+## V5b diary facts — 2026-11-19T19:55:24Z
+
+- **Objective and outcome:** Updated `deliverables/profile-viz/reading-the-charts.md` for chart contract v1.1 (`docs/profile-viz/CHART_CONTRACT.md` §1) and V4b UI revisions: replaced the "Boundary breaks" bullet with "Missing periods and boundary vintages" (lines connect neighbouring published periods and break only at missing/unavailable periods; boundary vintages and period notes appear in the **About these years** note and table view), noted printed value labels and state/U.S. values listed as text under each row, and noted that **Compare counties** opens a sorted dot-and-interval chart.
+- **Verification:** `wc -w deliverables/profile-viz/reading-the-charts.md` returned `568` words (under the 600-word limit), with no trailing whitespace and no rankings, better/worse judgements, or trend claims. Only `deliverables/profile-viz/reading-the-charts.md` and `docs/profile-viz/status/antigravity.md` were edited.
+- **Scope and next action:** No commits, pushes, deploys, sudo, database writes, or network calls; `docs/PROJECT_HANDBOOK.md` and `docs/PROJECT_DIARY.md` were not edited (headless-agent rule). Claude should review and commit these two updated files alongside V5/V4b.
 
 ## V5 diary facts — 2026-11-19T19:31:36Z
 

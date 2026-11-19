@@ -1,5 +1,34 @@
 # CHIP project handbook
 
+**Profile charts and trends: on staging only, verified 2026-11-19T20:10Z (Claude; awaiting Gate A by John). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
+- **What:** county, state, and district profiles each open their sections with a chart band built from hand-made SVG (`frontend/src/community/charts/`), above the unchanged indicator cards.
+  - Each row shows the area's value and interval. State and U.S. markers appear only where the comparability rules allow them.
+  - PLACES rows get a strip of the other counties in the state, plus a "Compare counties" dot-and-interval chart. BRFSS rows on the state profile compare states the same way.
+  - "Over time" opens a trend chart. PLACES years are dots with intervals and no line. District profiles have no trends.
+  - Bands are hidden in print, so PDFs are unchanged.
+- **Comparability:** `backend/app/area_pilot/registry/comparability.json`, read through `lookup.comparability`.
+  - PLACES and BRFSS never share an axis.
+  - Count measures (population, beneficiaries, all AHRF measures, AQI days) carry no state or U.S. markers.
+  - No ranks or computed change anywhere.
+- **New endpoints** (behind demo access):
+  - `GET /community/{county|state|district}/{geoid}/charts`
+  - `GET /community/{county|state}/{geoid}/peers?measure=product:id`
+
+  Both are built in `backend/app/community/charts.py` with `chart_groups.json`. The existing profile endpoints are byte-identical (hashes in `docs/profile-viz/status/codex.md`), and `docs/beta/contract-examples` is unchanged. This amends the history rule: profiles read earlier periods only through these endpoints.
+- **Lookup functions:** `area_series_many` (a batched `area_measure_series`), `national_series`, `comparability`.
+- **National values:**
+  - **Table and pointer:** `area_pilot.observation_national`, from migration `c6d0e4a8b2f7` (head after `b3f9d2a7c1e4`), under pointer `chip_national_reference`.
+  - **Contents:** ACS 5-year U.S. rows (`for=us:1`) for B19013 and the seven community measures, covering 2015–2019 to 2020–2024. CMS OM GV national rows for 2019–2024: earlier years from the archived history file through `parsers.cms_gv.parse_national`, and 2024 from the active CMS release.
+  - **Commands:** build with `python -m app.area_pilot.national_cli build`, then `publish <id> <semantic_sha256>`. Raw responses are archived under `data/ingest/national/<release>/`.
+  - **Staging release:** `3ace77af-8232-4d3d-9d97-2c545a0d0838` (78 rows).
+- **Verification on staging:** `beta` is at `03a11d1`.
+  - Backend: community and lookup tests, 24 passed.
+  - Frontend: 178 tests passed.
+  - The full `npm run test:beta` passes, including chart checks at 1365, 390, and 375 px (no overflow, no negative axis labels, at most 18 default peer rows).
+  - Antigravity's independent audit (`tests/test_profile_charts_audit.py`) passes against staging port 8001.
+- **Live is unchanged:** no migration, no national release, no chart code.
+- **Promotion (Gate B) will need:** `alembic upgrade head`, then `national_cli build` and `publish` on `places`, then the usual `main` fast-forward, frontend build, and `places-backend` restart.
+
 **CDC NOFO recipient profiles (funding MCP tools + claude.ai skill): live since 2026-11-18T22:05Z (Claude; Gate A passed by John; Gate B approved: "push it all live"; plan [docs/funding-mcp/PLAN.md](funding-mcp/PLAN.md), contract Amendment 3):**
 - **What:**
   - **MCP tools:** three read-only tools (`get_nofo_overview`, `list_nofo_recipients`, `get_recipient_funding`), for 11 tools in total.
