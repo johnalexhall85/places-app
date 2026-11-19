@@ -166,10 +166,13 @@ try {
     assert.equal(await page.locator('.chip-header, .chip-brand-line').count(), 0, `${path} has no legacy header`);
   }
   await visit('/cdc-funding/state/NC');
-  await page.getByRole('heading', { name: /CDC funding to recipients in North Carolina/ }).waitFor();
-  await page.getByRole('heading', { name: 'Funding by federal account' }).waitFor();
+  await page.getByRole('heading', { name: /CDC grants to recipients in North Carolina/ }).waitFor();
+  await page.getByRole('heading', { name: 'Funding by budget category' }).waitFor();
   await page.getByRole('heading', { name: 'Grants' }).waitFor();
   await page.getByLabel('Funding type').waitFor();
+  await visit('/cdc-funding/state/NC?award_type=all');
+  await page.getByRole('heading', { name: /CDC funding to recipients in North Carolina/ }).waitFor();
+  await page.getByText(/Contracts are counted in the state where the contractor is located\.\s+Vaccines for Children purchases, for example, appear in the vaccine manufacturers' states\./).waitFor();
   console.log('Rebuilt state funding profile: loaded');
   console.log('Shared header on explore map, area map, funding, and legacy profile pages: passed');
   await visit('/explore/map');
