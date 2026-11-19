@@ -29,6 +29,11 @@ const backendProxy = {
     changeOrigin: true,
     rewrite: (path) => path.replace(/^\/api(?=\/area)/, ""),
   },
+  "/api/state-funding": {
+    target: backendTarget,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api(?=\/state-funding)/, ""),
+  },
   ...proxiedBackendPaths.reduce((acc, path) => {
   acc[path] = {
     target: backendTarget,

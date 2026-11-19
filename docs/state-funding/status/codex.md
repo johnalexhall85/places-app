@@ -2,7 +2,17 @@
 
 | Task | State | Notes |
 |---|---|---|
+| S2b | done 2026-11-19T22:47:08+00:00 | Amendments 1–2, S2+S3 review fixes, and staging build 7 complete; ready for Claude review. Uncommitted and undeployed. |
 | S2+S3 | done 2026-11-19T22:30:18+00:00 | Read model, API, rebuilt page, tests, and staging build 6 complete; ready for Claude review. No commit or deployment. |
+
+## S2b diary facts — 2026-11-19T22:47:08+00:00
+
+- **Request and outcome:** Implemented budget-category crosswalk validation, category summary/filter/search/sort/CSV, nested federal accounts, and Amendment 2 page presentation. Applied S2+S3 review fixes: readable JSX/CSS and Python, normal router import, Vite `/api/state-funding` rewrite, and phone KPI label wrapping. Name rule order is unchanged. `summary.totals.grant_count` remains an S2+S3 contract addition for the Grants KPI.
+- **Files changed:** `backend/app/state_funding/{build,lookup,router}.py`, `backend/app/main.py`, `backend/tests/test_state_funding_{build,api}.py`, `frontend/src/pages/CdcStateFundingProfile.{jsx,css,test.jsx}`, `frontend/vite.config.js`, `frontend/src/viteProxy.test.js`, and this status file. No migrations, source data, community code, or contract examples changed.
+- **Staging data:** `python -m app.state_funding.build` activated build **7** on `places_staging` in **47.6 s**: 25,918 awards and 96,715 obligations. `build_run.sources.budget_category_crosswalk` records the CDC FY 2026 Operating Plan crosswalk source and 45 rows. Name-source counts match build 6: Grants.gov 9,812; CDC Funding Profiles 310; TAGGS 126; assistance listing 927; description/fallback 14,743. The six annual unattributed dollar totals are unchanged from build 6.
+- **Assistance-listing fallback review:** The 927 distinct awards appear in FY2021–FY2026 as 455, 421, 189, 55, 50, and 86 award-year pairs. All 927 are grants. For every pair, the selected File C FAIN (`award_id`) has **no row** in `taggs.raw_awards`; none has a TAGGS title. The per-year counts overlap because awards recur in more than one fiscal year.
+- **Verification:** The build reconciled each FY to File C before activation. Independent SQL found **zero** FY × supplemental × grant/contract dollar mismatches and zero active obligations without a crosswalk row. Alabama FY2026 grant summary and grant list each total $52,339,133.27; sampled category totals equal their account sums. Category sorting and a category filter returned 200. Backend state-funding tests: **9 passed**; frontend: **171 passed**; `npm run build`: passed with the pre-existing large-chunk warning; `git diff --check` and Python syntax/line-length checks passed. An initial frontend proxy test attempted to import Vite in jsdom and failed; the test now checks the configured rewrite without that import, and the full rerun passes. A first fallback audit query was stopped for slowness; the set-based rerun succeeded.
+- **Publication and next action:** Build 7 is active on staging; code remains uncommitted and undeployed. Claude owns the handbook and formal project diary update when reviewing and committing this handoff. Claude will inspect 1280 px and 375 px screenshots, run the independent audit and staging deployment checks, then request Gate A review.
 
 ## S2+S3 diary facts — 2026-11-19T22:30:18+00:00
 
