@@ -23,4 +23,13 @@ describe("vite proxy wiring", () => {
     expect(nginxConfigSource).toContain("location /api/cdc/funding/");
     expect(nginxConfigSource).toContain("proxy_pass http://127.0.0.1:8000;");
   });
+
+  it("strips /api for the state funding dev and preview proxy", () => {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const configSource = readFileSync(resolve(currentDir, "../vite.config.js"), "utf8");
+    const stateProxy = configSource.split('"/api/state-funding": {')[1].split("...proxiedBackendPaths")[0];
+    expect(stateProxy).toContain('rewrite: (path) => path.replace(/^\\/api(?=\\/state-funding)/, ""),');
+    expect(configSource).toContain("server: {\n    proxy: backendProxy");
+    expect(configSource).toContain("preview: {\n    proxy: backendProxy");
+  });
 });
