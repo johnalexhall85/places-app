@@ -167,8 +167,8 @@ try {
   }
   await visit('/cdc-funding/state/NC');
   await page.getByRole('heading', { name: /CDC grants to recipients in North Carolina/ }).waitFor();
-  await page.getByRole('heading', { name: 'Funding by budget category' }).waitFor();
-  await page.getByRole('heading', { name: 'Grants' }).waitFor();
+  await page.getByRole('heading', { name: 'Funding by budget category', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Grants', exact: true }).waitFor();
   await page.getByLabel('Funding type').waitFor();
   await visit('/cdc-funding/state/NC?award_type=all');
   await page.getByRole('heading', { name: /CDC funding to recipients in North Carolina/ }).waitFor();
