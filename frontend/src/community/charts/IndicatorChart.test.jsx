@@ -274,9 +274,12 @@ describe("IndicatorChart", () => {
     );
   });
 
-  it("starts percent y-ticks at 0 unless every value is above 40, and scales proportion_0_1", () => {
+  it("fits rounded percent y-ticks to the data within 0-100, and scales proportion_0_1", () => {
     const lowPercent = computeYAxis([12.5, 19.2, 21.0], { unit: "percent" });
-    expect(lowPercent.ticks[0]).toBe(0);
+    expect(lowPercent.ticks[0]).toBeGreaterThanOrEqual(0);
+    expect(lowPercent.ticks[0]).toBeLessThanOrEqual(12.5);
+    expect(lowPercent.ticks.at(-1)).toBeGreaterThanOrEqual(21);
+    expect(computeYAxis([0.5, 1.2], { unit: "percent" }).ticks[0]).toBe(0);
     expect(lowPercent.ticks.length).toBeGreaterThanOrEqual(3);
     expect(lowPercent.ticks.length).toBeLessThanOrEqual(4);
 

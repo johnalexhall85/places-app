@@ -86,6 +86,8 @@ function buildTicks(min, step, intervals) {
   return list;
 }
 
+// Line charts fit the axis to the data (as in John's reference panels); bars keep a zero baseline
+// in their own component. Ticks are rounded: 3 or 4 labels, never below 0, never above 100 for percents.
 export function computeYAxis(displayValues, row = {}) {
   const found = displayValues
     .filter((value) => value != null && Number.isFinite(value))
@@ -95,56 +97,30 @@ export function computeYAxis(displayValues, row = {}) {
     const step = percent ? 10 : 1;
     return { domain: [0, step * 2], ticks: [0, step, step * 2] };
   }
-
   const low = Math.min(...found);
   const high = Math.max(...found);
   const ceiling = percent && high <= 100 ? 100 : Infinity;
-
-  if (percent && low > 40) {
-    const candidateSteps = [1, 2, 2.5, 5, 10, 20, 25, 50];
-    for (const step of candidateSteps) {
-      let min = Math.max(0, Math.floor((low - 1e-9) / step) * step);
-      let max = Math.ceil(high / step) * step;
-      if (max > ceiling) continue;
-      let intervals = Math.round((max - min) / step);
-      while (intervals < 2 && max + step <= ceiling) {
-        max += step;
-        intervals += 1;
-      }
-      while (intervals < 2 && min - step >= 0) {
-        min -= step;
-        intervals += 1;
-      }
-      if (intervals >= 2 && intervals <= 3 && min >= 0 && max <= ceiling) {
-        const minClean = Number(min.toPrecision(10));
-        const maxClean = Number(max.toPrecision(10));
-        return { domain: [minClean, maxClean], ticks: buildTicks(minClean, step, intervals) };
-      }
-    }
-    return { domain: [0, 100], ticks: [0, 50, 100] };
-  }
-
-  if (high <= 0) {
-    const step = percent ? 10 : 1;
-    return { domain: [0, step * 2], ticks: [0, step, step * 2] };
-  }
-
-  const startPower = Math.floor(Math.log10(high / 3)) - 1;
+  const span = high - low || Math.abs(high) * 0.1 || 1;
   const factors = [1, 2, 2.5, 5];
-  for (let power = startPower; power <= startPower + 4; power += 1) {
-    const scale = 10 ** power;
+  const startPower = Math.floor(Math.log10(span / 3)) - 1;
+  for (let power = startPower; power <= startPower + 5; power += 1) {
     for (const factor of factors) {
-      const step = Number((factor * scale).toPrecision(10));
-      const intervals = Math.max(2, Math.ceil(high / step));
-      const max = Number((intervals * step).toPrecision(10));
-      if (intervals <= 3 && max <= ceiling) {
-        return { domain: [0, max], ticks: buildTicks(0, step, intervals) };
+      const step = Number((factor * 10 ** power).toPrecision(10));
+      let min = Math.max(0, Math.floor((low - 1e-9) / step) * step);
+      let max = Math.min(ceiling, Math.ceil((high + 1e-9) / step) * step);
+      if (max <= min) max = Math.min(ceiling, min + step);
+      let intervals = Math.round((max - min) / step);
+      while (intervals < 2) {
+        if (max + step <= ceiling) max += step; else if (min - step >= 0) min -= step; else break;
+        intervals += 1;
+      }
+      if (intervals >= 2 && intervals <= 3) {
+        const minClean = Number(min.toPrecision(10));
+        return { domain: [minClean, Number(max.toPrecision(10))], ticks: buildTicks(minClean, step, intervals) };
       }
     }
   }
-
-  const fallbackMax = ceiling !== Infinity ? ceiling : high;
-  return { domain: [0, fallbackMax], ticks: [0, fallbackMax / 2, fallbackMax] };
+  return { domain: [Math.max(0, low), high], ticks: [Math.max(0, low), high] };
 }
 
 export function position(value, domain, start, end) {

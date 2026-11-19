@@ -49,7 +49,10 @@ def _trend(raw: dict, rule: dict, level: str, state_raw: dict | None, national_r
     if style == "line" and sum(_published(row) for row in series) <= 2:
         style = "dots"
     notes = [row.get("note") for row in series if row.get("note")]
-    return {"style": style, "note": rule.get("trend_note") or (notes[0] if notes else None),
+    note = rule.get("trend_note") or (notes[0] if notes else None)
+    if rule.get("currency_note") and series and series[-1].get("kind") == "currency":
+        note = f'{note} {rule["currency_note"]}' if note else rule["currency_note"]
+    return {"style": style, "note": note,
             "series": [_series_row(row, product_name) for row in series],
             "state_series": [_series_row(row, product_name) for row in state_raw.get("series", [])] if state_raw else None,
             "national_series": [_series_row(row, product_name) for row in national_raw.get("series", [])] if national_raw else None,

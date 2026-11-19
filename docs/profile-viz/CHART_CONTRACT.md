@@ -10,7 +10,7 @@ The registry `backend/app/area_pilot/registry/comparability.json` holds these ru
 |---|---|---|---|---|---|
 | `acs` | county, cd | state, county, cd | none | `line_band` | "Each 5-year window is inflation-adjusted to its own final year. Windows overlap, so neighbouring periods share survey years." |
 | `acs_profile` | county, cd | state, county, cd | none | `line_band` (none for cd) | "5-year windows overlap, so neighbouring periods share survey years." |
-| `cms_gv` | county | state, county | none | `line` | "2020 reflects the COVID-19 pandemic. Dollars are nominal." |
+| `cms_gv` | county | state, county | none | `line` | "2020 reflects the COVID-19 pandemic." Currency measures add "Dollars are nominal." |
 | `places` | never | never | county in same state, same period | `dots_ci` | "Each year is a separate PLACES model run from a different release; CDC advises comparing across releases with caution." |
 | `brfss` | n/a | never | state (all states and DC), same period | `line_band` | "Direct survey estimates; each year uses the same question wording as the current year." |
 | `ahrf`, `clh`, `epa_aqi`, `usda_fea` | none | none | none | `line`, or `dots` when there are 2 or fewer points | the history `note` of each period |
