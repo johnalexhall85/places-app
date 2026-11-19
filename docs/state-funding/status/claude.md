@@ -23,8 +23,9 @@
 - **Title differences:** CDC Funding Profiles titles are sometimes component-specific (PS21-2102 gives "Transgender Status-Neutral…", where Grants.gov gives "Comprehensive High-Impact HIV Prevention Programs for Community-Based Organizations"). Grants.gov therefore ranks first.
 | Amendment 1 | done 2026-11-19 | John asked for budget categories. Crosswalk migration `f7c3a1d9e5b2` (45 accounts in 22 categories) applied on `places_staging`. |
 | S2+S3 review | done 2026-11-19 | Committed Codex's work as `442bfff`. Staging build 6 reconciles; CA FY2026 total equals File C ($269,431,206.59). Amendment 2 (presentation) and review notes sent with S2b. |
-| S2b | dispatched | Codex: categories, grants default, formatting, dev proxy. |
-| S4 | waiting | Dispatch to Antigravity after S2b is reviewed. |
+| S2b–S2f | done | Reviewed with screenshots; committed. |
+| S4 | done | Antigravity audit 7/7; walkthrough checklist. |
+| S5 | staging deployed 2026-11-19 | `beta` on staging; full signed-in walkthrough passes; awaiting Gate A. |
 
 ## Review facts — 2026-11-19 (UTC)
 - **VFC attribution:** in File C, Vaccines for Children money is contracts with vaccine manufacturers. By recipient state that puts FY2026 $2.35B in NJ, $1.09B in NY, $1.00B in NC, and $0.73B in PA. The page therefore defaults to grants (Amendment 2).

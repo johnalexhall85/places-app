@@ -41,12 +41,12 @@ Filters match the `/cdc-funding` Filters panel. A history page for each grant co
 | WP | Owner | Content | Depends on | Status |
 |---|---|---|---|---|
 | S0 | Claude | Plan, contract, task files, AGENTS.md section, worktrees; migration `e4b8c2f6a9d1` (applied on staging) | none | done |
-| S1 | Claude | Grants.gov title extract archived and loaded into `state_funding.nofo_title` on staging, with CDC Funding Profiles titles; coverage report | S0 | |
-| S2 | Codex | `app/state_funding` builder, lookup, router, tests | S0 (titles optional at build) | |
-| S3 | Codex | New page, tests, removal of the old page | S2 | |
-| S2b | Codex | Amendment 1: budget categories in build, lookup, API, page, and tests | S2, S3 | |
-| S4 | Antigravity | Reconciliation audit test and walkthrough checklist | S2 | |
-| S5 | Claude | Review, commit, PR to `beta`, staging build and deploy, audit and walkthrough; **Gate A** | S3, S4 | |
+| S1 | Claude | Grants.gov title extract archived and loaded into `state_funding.nofo_title` on staging, with CDC Funding Profiles titles; coverage report | S0 | done |
+| S2 | Codex | `app/state_funding` builder, lookup, router, tests | S0 (titles optional at build) | done |
+| S3 | Codex | New page, tests, removal of the old page | S2 | done (+ S2c–S2f polish and walkthrough) |
+| S2b | Codex | Amendment 1: budget categories in build, lookup, API, page, and tests | S2, S3 | done |
+| S4 | Antigravity | Reconciliation audit test and walkthrough checklist | S2 | done, 7/7 |
+| S5 | Claude | Review, commit, PR to `beta`, staging build and deploy, audit and walkthrough; **Gate A** | S3, S4 | staging deployed; Gate A pending |
 | S6 | Claude | **Gate B**: rollback pair, live migration, title load, `build --allow-live`, deploy, verify, handbook, diary | Gate A | |
 
 Deferred: a grant-history page per award or NOFO; MCP tools for state funding.

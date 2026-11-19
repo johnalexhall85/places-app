@@ -2,6 +2,43 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-19T23:30:00+00:00 — CDC state funding profiles rebuilt; on staging for Gate A (Claude, with Codex and Antigravity)
+
+- **Request:** John asked to redo the state funding profiles in the PDO/CHIP brand, with:
+  - the grant money a state receives;
+  - a visualization like `/cdc-funding` with its Filters panel;
+  - a searchable grant list (name, description, amount);
+  - a supplemental vs non-supplemental split without inference.
+  He later asked for **CDC budget categories instead of federal accounts**. The decisions are recorded in [PLAN.md](state-funding/PLAN.md).
+- **Method findings (Claude, read-only on `places_staging`):**
+  - File C award sums equal the `/cdc-funding` account totals to the cent.
+  - The DEFC `emergency` flag splits dollars exactly. No source labels award *actions* as supplements: TAGGS has no action type, and USAspending's C "Revision" is mixed.
+  - Emergency dollars are net negative nationally in FY2024 to FY2026.
+  - Vaccines for Children money is recorded as manufacturer contracts (FY2026: NJ $2.35B), so the page defaults to grants (Amendment 2).
+  - CDC appropriation accounts correspond 1:1 to the FY 2026 Operating Plan's top-level lines. Regular 0943 ≈ $640M a year, which matches Cross-Cutting ($646M).
+- **Claude changes:**
+  - Migrations `e4b8c2f6a9d1` (`state_funding` schema) and `f7c3a1d9e5b2` (budget-category crosswalk: 45 accounts in 22 categories), applied on staging only.
+  - `backend/scripts/fetch_grants_gov_cdc_titles.py`, which loaded 23,927 Grants.gov titles (HHS agency codes; CDC funds under NIH parent announcements) and 569 CDC Funding Profiles titles. NOFO-title coverage of in-state grants is 90.8% to 99.1% per fiscal year.
+  - Contract with Amendments 1–2, task files, and the AGENTS.md section (which also ends the profile-viz reassignment to Antigravity).
+  - The legacy TAGGS route test now follows the new redirect file.
+  - Handbook section.
+- **Codex (S2, S3, S2b–S2f):**
+  - `backend/app/state_funding/` builder, lookup, and API.
+  - The rebuilt `CdcStateFundingProfile` page.
+  - Formatting and presentation fixes after Claude's screenshot reviews (the first version was minified).
+  - Walkthrough updates.
+  - Codex edited the project diary in one headless run; Claude discarded that edit (headless facts go in status files).
+- **Antigravity (S4):** `backend/tests/test_state_funding_audit.py` passes 7 of 7 invariants with a $0.00 maximum difference (54 File C combinations, 36 overview combinations, 360 state × FY × filter checks). It also wrote `deliverables/state-funding/walkthrough.md`.
+- **Staging deploys:** `infra/staging/deploy-staging.sh claude/state-funding` brought `beta` to `60071e0`, then `e7ae289`, then the commit that carries this entry. Build 7 is active on `places_staging`.
+- **Verification:**
+  - **Backend:** 819 passed. 3 failures are the same as on `beta` (FY2023 acceptance, outlay backfill, and legacy `App.jsx` copy). The two MCP test files need the MCP venv.
+  - **Frontend:** vitest 172 passed; `npm run build` passes.
+  - **Contract snapshots:** `docs/beta/contract-examples` and `backend/app/community` are unchanged.
+  - **Through Nginx 8080:** an anonymous request returns 401. Signed in, CA, TX, WY, DC, and PR totals for grants and for all awards match the audit figures to the cent. The CSV has the right filename, citation, and rows. An unknown state returns 404, and `account=` returns 422.
+  - **Walkthrough:** the full signed-in `beta-walkthrough.mjs` passes.
+- **Not done:** live is untouched (no migration, title load, or build). Nothing has been pushed to `origin`.
+- **Next:** Gate A, John tries staging. At Gate B: the rollback pair, copying the Grants.gov extract to the live checkout, the live migration, the title load, `build --allow-live`, deploy, verify, and push.
+
 ## 2026-11-19T21:00:00+00:00 — Profile charts promoted to live (Claude)
 
 - **Approval:** after trying staging, John said "That looks great. We may come back later, but you can go ahead and push to live and git push as needed."
