@@ -57,8 +57,8 @@ John approved this plan on 2026-11-19. Claude Code is project manager. The [char
 | WP | Owner | Content | Depends on | Status |
 |---|---|---|---|---|
 | V0 | Claude | Plan, contract, AGENTS.md section, task files, status files | none | done |
-| V1 | Claude | `comparability.json`; `lookup.area_series_many`, `lookup.comparability`, `lookup.national_series`; `observation_national` migration and builder; ACS U.S. ingest into staging | V0 | open |
-| V2 | Antigravity | CMS parser `parse_national()` for national rows 2019–2023, with tests | V0 | open |
+| V1 | Claude | `comparability.json`; `lookup.area_series_many`, `lookup.comparability`, `lookup.national_series`; `observation_national` migration and builder; ACS U.S. ingest into staging | V0 | done (staging) |
+| V2 | Antigravity | CMS parser `parse_national()` for national rows 2019–2023, with tests | V0 | done |
 | V3 | Codex | `/charts` and `/peers` endpoints, `chart_groups.json`, tests, snapshot byte-identity test | V1, V2 | open |
 | V4 | Codex | Frontend charts, section bands, toggles, table fallbacks, vitest, overflow check in the walkthrough at 375 and 390 px | V3 | open |
 | V5 | Antigravity | Independent audit test of chart payloads and rules; user guide `reading-the-charts.md` | V3 | open |
