@@ -70,3 +70,27 @@ For every fiscal year × funding type, with no category, and for 3 categories in
 3. `regular + supplemental = total` for every state row.
 4. Every code with `has_shape = false` is GU, VI, AS, or MP, and every code with `has_shape = true` is in `/map/shapes`.
 5. No state row has `award_count = 0`.
+
+## Amendment 1 (2026-11-20): "Exclude deobligations" check box
+
+John asked for a check box that removes deobligations from the map.
+
+**Definition.** A deobligation is an `obligation` row whose `amount < 0`: a net reduction for one award, in one state, fiscal year, federal account, and funding type. With the box checked, those rows are left out and only rows with `amount > 0` are summed. No amount is changed or split.
+- Checked on `places_staging` (FY2026 grants): source File C rows have −$2,624,456,825 in negative rows; read-model rows have −$2,617,059,680. The $7.4M gap is reductions netted inside an award's year. The read-model grain is used so that no migration or rebuild is needed.
+- Rows of exactly 0 are dropped in this mode too.
+
+**Lookup.** Add `deobligations` (`include|exclude`, default `include`) to the filters in `where()`. `exclude` adds `o.amount > 0`. With `exclude`, `award_count` and `recipient_count` count only awards with a kept row. Default behavior of every existing function is unchanged.
+
+**API.**
+- `GET /map` accepts `deobligations`, echoes it in `filters`, and with `exclude` adds a note: "Deobligations (net reductions for an award in this year) are left out, so totals show new and added obligations only."
+- `GET /states/{code}/summary` accepts the same optional parameter so the panel's categories agree with the map. Its default response is unchanged, and the state page does not use the parameter.
+- `unattributed` and `national` follow the same filter.
+
+**Page.**
+- A check box after the dropdowns: "Exclude deobligations", kept in the query string as `deobligations=exclude`. Unchecked by default.
+- When checked, the subtitle adds "· Deobligations excluded", and the panel gets a line under the links: "The state funding profile shows net amounts, including deobligations." The state funding profile link does not carry the parameter.
+- With nothing negative left, the legend shows no "Net reduction" classes.
+
+**Tests and audit.**
+- Backend and vitest cover the parameter, the note, the query string, the subtitle, and the panel line.
+- Audit invariants 1–3 and 5 also run with `deobligations=exclude` for every fiscal year × funding type. With `exclude`, invariant 1 compares against `sum(amount) filter (where amount > 0)`, and no state row has a negative `total`, `regular`, or `supplemental`.

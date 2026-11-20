@@ -34,7 +34,7 @@ A national map of CDC **grant** money to recipients in each state, at `/cdc-fund
 | WP | Owner | Content | Depends on | Status |
 |---|---|---|---|---|
 | M0 | Claude | Plan, contract, AGENTS.md section, task files, branches | none | done |
-| M1 | Codex | Map API, page, links, tests, walkthrough step | M0 | dispatched |
+| M1 | Codex | Map API, page, links, tests, walkthrough step; M1b: "Exclude deobligations" check box (Amendment 1) | M0 | dispatched |
 | M2 | Antigravity | Reconciliation audit and walkthrough checklist | M1 API | dispatched after M1 |
 | M3 | Claude | Review, screenshots at 1280 and 375 px, commit, PR to `beta`, staging deploy; **Gate A** | M1, M2 | |
 | M4 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend`, verify, handbook, diary, push | Gate A | |
