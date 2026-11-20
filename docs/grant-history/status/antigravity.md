@@ -3,6 +3,22 @@
 | Task | State | Notes |
 |---|---|---|
 | G3 | completed, uncommitted 2026-11-20 | All 7 Contract §7 audit invariants pass on `places_staging` (build 7); 6 MCP eval questions (Q67–Q72) and staging walkthrough checklist written. See runner follow-up note below. |
+| G6 | completed, uncommitted 2026-11-20 | Added `get_state_funding`, `list_state_grants`, and `get_grant_history` to `run_eval.py` (`ALL_TOOLS`, envelope, lookup, and Q67–Q72 check handlers); updated `test_checks.py` to 72 questions + state funding check tests. All `.venv-mcp` checks pass. |
+
+## G6 diary facts — 2026-11-20T01:01:30+00:00
+
+- **Objective:** Update the MCP eval runner (`backend/tests/mcp_eval/run_eval.py`) and offline unit tests (`backend/tests/mcp_eval/test_checks.py`) to support the three Amendment 4 tools (`get_state_funding`, `list_state_grants`, `get_grant_history`) and Q67–Q72 before Gate A. No commits, no network calls, no database writes; handbook and diary untouched.
+- **Files edited (strictly within G6 owned paths):**
+  - `backend/tests/mcp_eval/run_eval.py`: added `STATE_FUNDING_TOOLS` (`get_state_funding`, `list_state_grants`, `get_grant_history`) to `ALL_TOOLS` and `ALL_FUNDING_TOOLS`; added `STATE_FUNDING_INTERPRETATION_RULES`, `check_state_funding_sources`, `check_state_funding_envelope`, `check_state_funding_call_checks`; updated `validate_questions_yaml` (72 total / 18 funding minimum), `compute_expected_for_call`, `verify_call_against_lookup_and_checks`, and `run_expected_only` for the 3 new tools and Q67–Q72 checks.
+  - `backend/tests/mcp_eval/test_checks.py`: updated `test_questions_yaml_validates_offline` expectations (`total_questions == 72`, `area_questions == 54`, `funding_questions == 18`, `regular_questions == 53`, `trap_questions == 19`); added `test_state_funding_envelope_and_call_checks`.
+  - `docs/grant-history/status/antigravity.md`: added G6 row and diary facts section.
+- **Verification commands run (under `/home/john/chip-claude/backend/.venv-mcp/bin/python`):**
+  - `PYTHONPATH=backend /home/john/chip-claude/backend/.venv-mcp/bin/python backend/tests/mcp_eval/run_eval.py --validate` → **Validation PASSED** (`72` total: `54` area, `18` funding, `53` regular, `19` trap; all `14` tools covered: `get_state_funding: 2`, `list_state_grants: 2`, `get_grant_history: 3`).
+  - `PYTHONPATH=backend /home/john/chip-claude/backend/.venv-mcp/bin/python -m pytest -v backend/tests/mcp_eval/test_checks.py` → **14 passed** in 0.59 s.
+  - `PYTHONPATH=backend /home/john/chip-claude/backend/.venv-mcp/bin/python backend/tests/mcp_eval/run_eval.py --expected-only` → **72/72 questions verified against lookup** (`places_staging` active build 7; `Q67`–`Q72` all `[OK]`).
+  - In-process `.venv-mcp` verification invoking `app.mcp_server.tools.{get_state_funding,list_state_grants,get_grant_history}` for `Q67`–`Q72` through `run_eval.verify_call_against_lookup_and_checks` (Amendment 4 envelope, lookup parity, and explicit `call_checks`) → **6/6 PASS** (`Q67`–`Q72`).
+  - `git diff --check` → clean (0 issues).
+- **Status and next action:** Uncommitted in `/home/john/chip-agy-state`; staging and live unchanged. Ready for Claude review before Gate A.
 
 ## G3 diary facts — 2026-11-20T00:56:00+00:00
 
