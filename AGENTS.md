@@ -115,5 +115,7 @@ The [vulnerability plan](docs/vulnerability/PLAN.md) and [contract](docs/vulnera
   - `docs/vulnerability/status/antigravity.md`
 - **Reassigned 2026-11-20 by John** (Codex is low on weekly usage): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live.
 - **Codex** may review this package read-only. It edits nothing here.
-- Profiles must not change: `backend/app/community/**` is not edited, and the `docs/beta/contract-examples` snapshots stay byte-identical.
+- **Amended 2026-11-20 (John asked for profile sections):** for this package, Antigravity also owns additions to `backend/app/community/**` and `backend/tests/test_community_hazards*`.
+  - Existing profile endpoints and the `docs/beta/contract-examples` snapshots stay byte-identical.
+  - Profiles get hazard data only through the new `/hazards` endpoints in contract §4.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
