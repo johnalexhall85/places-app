@@ -2,6 +2,23 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-20T16:30:00+00:00 — CDC state funding map promoted to live (Claude)
+
+- **Approval:** John said "Yes, approved. Push this live and do git pushes." He did not answer the per-person question; it stays open.
+- **Recovery set:** `data/deploy-recovery/state-map-20261120/`, containing the commit `81965f4`, Alembic `f7c3a1d9e5b2`, the bundle `index-BwGczOic.js`, and `webroot-before/`.
+- **Promotion steps on live:**
+  1. Fast-forwarded `main` from `81965f4` to `ffeef4d`.
+  2. `npm ci` (which adds `d3-geo`), then `VITE_API_BASE_URL=/api npm run build`, giving `index-CvzazMSa.js` (the same as staging), then `rsync --delete` to `/var/www/places`.
+  3. `systemctl restart places-backend`.
+
+  No migration and no data change. `chip-mcp` was not restarted.
+- **Verification:**
+  - **Routes:** `/api/health`, `/cdc-funding/map`, `/cdc-funding`, and `/cdc-funding/state/CA` return 200. The anonymous `/api/state-funding/v1/map` returns 401.
+  - **Audit:** `test_state_map_audit.py` on the live database passes 6/6.
+  - **Live figures:** FY2026 national grants are $2,903,439,520.38 (5,963 grants) with deobligations and $5,520,499,200.60 (4,261) without them, both equal to staging.
+- **Not done:** no signed-in browser check on live by an agent, because there is no live access code on file. John tried staging.
+- **Next:** none required. Deferred: source-exact deobligations, and a possible per-person view.
+
 ## 2026-11-20T16:00:00+00:00 — CDC state funding map on staging for Gate A (Claude, with Codex and Antigravity)
 
 - **Request:** John asked for a national CDC grant map by state with these features:

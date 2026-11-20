@@ -39,7 +39,7 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
-**CDC state funding map: on staging for Gate A since 2026-11-20; not live (Claude, with Codex and Antigravity; plan [docs/state-map/PLAN.md](state-map/PLAN.md), [contract](state-map/CONTRACT.md) with Amendments 1–2):**
+**CDC state funding map: live since 2026-11-20 (Claude, with Codex and Antigravity; Gate A passed and Gate B approved by John: "Yes, approved. Push this live and do git pushes"; plan [docs/state-map/PLAN.md](state-map/PLAN.md), [contract](state-map/CONTRACT.md) with Amendments 1–2):**
 - **Page:** `/cdc-funding/map`, a national choropleth of CDC **grants** by recipient state (inline SVG with `d3-geo`, `geoAlbersUsa`, plus a Puerto Rico inset). Linked from `/cdc-funding` and `/cdc-funding/state/{code}`.
   - **Controls:** fiscal year, budget category, funding type (all, regular, supplemental), and an "Exclude deobligations" check box. They are kept in the query string with `state` for the open panel.
   - **Tooltip:** amount and number of grants.
@@ -53,6 +53,8 @@
   - **Tests:** backend 37 passed; vitest 187 passed.
   - **Walkthrough:** the full signed-in walkthrough passes.
   - **Access:** the anonymous `/map` returns 401.
+- **Live** (`main` `ffeef4d` plus this documentation commit): bundle `index-CvzazMSa.js`, the same as staging. `places-backend` was restarted; there was no migration and no `chip-mcp` change. The audit on the live database passes 6/6, and the FY2026 national totals equal staging.
+- **Rollback:** use `data/deploy-recovery/state-map-20261120/` (commit `81965f4`, bundle `index-BwGczOic.js`, `webroot-before/`). Run `git reset --hard 81965f4`, restore `webroot-before/`, then restart `places-backend`.
 
 **CDC grant history pages and state funding MCP tools: live since 2026-11-20 (Claude, with Codex and Antigravity; Gate A passed and Gate B approved by John: "Everything works, let's go live."; plan [docs/grant-history/PLAN.md](grant-history/PLAN.md), [contract](grant-history/CONTRACT.md), tool contract Amendment 4):**
 - **Page:** `/cdc-funding/grant/{nofo}` (any NOFO form; the URL is replaced with the FON display). It shows:

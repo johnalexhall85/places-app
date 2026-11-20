@@ -36,8 +36,8 @@ A national map of CDC **grant** money to recipients in each state, at `/cdc-fund
 | M0 | Claude | Plan, contract, AGENTS.md section, task files, branches | none | done |
 | M1 | Codex | Map API, page, links, tests, walkthrough step; M1b: "Exclude deobligations" check box (Amendment 1) | M0 | done (+ M1c Puerto Rico inset, M1d tiles and legend) |
 | M2 | Antigravity | Reconciliation audit and walkthrough checklist | M1 API | done, 6/6 (+ M2b) |
-| M3 | Claude | Review, screenshots at 1280 and 375 px, commit, PR to `beta`, staging deploy; **Gate A** | M1, M2 | deployed; awaiting Gate A |
-| M4 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend`, verify, handbook, diary, push | Gate A | |
+| M3 | Claude | Review, screenshots at 1280 and 375 px, commit, PR to `beta`, staging deploy; **Gate A** | M1, M2 | done; Gate A passed 2026-11-20 |
+| M4 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend`, verify, handbook, diary, push | Gate A | done, live 2026-11-20 |
 
 Deferred (John, 2026-11-20): source-exact deobligations. Amendment 1 drops negative read-model rows, which differs from summing negative File C rows by $7.4M of $2.62B in FY2026 (0.3%). John accepted this for now. Matching the source exactly needs a positive-amount column in `state_funding.obligation` (a migration and a rebuild).
 
