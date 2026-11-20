@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, sviNumber, sviValueText, sviColor, sviBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -40,7 +40,8 @@ describe("PLACES 2025 county pilot selection", () => {
     render(<Places2025Pilot />);
     const menu = await screen.findByLabelText("Data source");
     const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
-    expect(options).toHaveLength(9);
+    expect(options).toHaveLength(10);
+    expect(options).toContain("CDC Social Vulnerability Index");
     expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
     expect(screen.queryByRole("link", { name: /legacy map/i })).not.toBeInTheDocument();
   });
@@ -886,5 +887,77 @@ describe("historical area map years", () => {
     expect(await screen.findByTestId("selected-area")).toHaveTextContent("Person · County 37145");
     expect(await screen.findByText("This area has no shape on this year's boundary, so no value is shown or inferred.")).toBeInTheDocument();
     expect(screen.getByLabelText("Geography")).toHaveValue("cd");
+  });
+});
+
+describe("CDC Social Vulnerability Index (SVI 2022)", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; });
+  const population = "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)";
+  const measures = [
+    { measure_id: "rpl_themes", source_field: "RPL_THEMES", label: "Overall social vulnerability (percentile rank)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population,
+      official_definition: "CDC/ATSDR SVI 2022 overall summary ranking across all four themes (RPL_THEMES).",
+      interpretation: "Percentile rank (0–1); higher values indicate greater vulnerability.",
+      legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
+    { measure_id: "rpl_theme1", source_field: "RPL_THEME1", label: "Socioeconomic status (percentile rank)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population,
+      official_definition: "CDC/ATSDR SVI 2022 Theme 1 socioeconomic status percentile rank (RPL_THEME1).",
+      interpretation: "Percentile rank (0–1); higher values indicate greater vulnerability.",
+      legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
+  ];
+  const catalog = {
+    dataset_id: SVI_DATASET_ID, active_release_id: "svi-release", value_type: "percentile_rank",
+    unit: "percentile rank (0–1)", geographies: ["county", "tract"],
+    population_by_level: { county: "Rank among all U.S. counties", tract: "Rank among all U.S. census tracts" },
+    boundary_vintage: { county: "TIGER/Line 2024 county equivalents", tract: "TIGER/Line 2024 census tracts" },
+    source_url: "https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html",
+    measures,
+    limitations: [
+      "These are CDC/ATSDR's percentile ranks among all U.S. counties, or among all U.S. tracts. They are not rates, and they do not measure risk for any one person.",
+    ],
+  };
+
+  it("formats percentile ranks, quartile bins, -999 not_available, and tooltip explanation", () => {
+    expect(resolveRoute("/area/svi")).toEqual({ type: "svi-area" });
+    expect(sviNumber(0)).toBe("0.00");
+    expect(sviNumber(0.6421)).toBe("0.6421");
+    expect(sviBinLabels([0.25, 0.5, 0.75])).toEqual(["Under 0.25", "0.25 to under 0.50", "0.50 to under 0.75", "0.75 to 1.00"]);
+    expect(sviValueText({ value: null, status: "not_available" })).toBe(SVI_STATUS_TEXT.not_available);
+    expect(sviColor(null, "not_available")).not.toBe(sviColor(null, "not_in_release"));
+    expect(sviColor(0, "true_zero")).not.toBe(sviColor(null, "not_available"));
+    const details = areaFeatureDetails("svi", { name: "Capitol Planning Region", geography_id: "09110", value: 0.4215,
+      source_value: "0.4215", status: "available" }, measures[0], { geography: "county", catalog });
+    expect(details.explanation).toMatch(/percentile rank/i);
+    expect(details.explanation).toMatch(/not a rate/i);
+    expect(details.lines.join(" | ")).toContain("Rank among all U.S. counties");
+  });
+
+  it("loads county ranks by default, switches to tracts on zoom, and keeps -999 distinct", async () => {
+    const urls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url); urls.push(path);
+      if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      const geography = path.includes("geography=tract") ? "tract" : "county";
+      const rows = geography === "county"
+        ? [{ geography_id: "09110", name: "Capitol Planning Region", value: 0.4215, source_value: "0.4215", status: "available" }]
+        : [{ geography_id: "09110500100", name: "Census Tract 5001", value: 0, source_value: "0.0", status: "true_zero" },
+           { geography_id: "09110980000", name: "Census Tract 9800", value: null, source_value: "-999.0", status: "not_available",
+             status_text: SVI_STATUS_TEXT.not_available }];
+      const payload = path.includes("/map?") ? { features: [], legend_breaks: [0.25, 0.5, 0.75] }
+        : path.includes("/legend?") ? { legend_breaks: [0.25, 0.5, 0.75], statuses: rows.map((r) => ({ status: r.status, n: 1, status_text: r.status_text })) }
+        : { total: rows.length, rows };
+      return { ok: true, json: async () => ({ ...payload, release_id: "svi-release", geography }) };
+    }));
+    render(<Places2025Pilot dataset="svi" />);
+    expect(await screen.findByText("09110")).toBeInTheDocument();
+    expect(screen.getAllByText(/percentile ranks, not rates/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("columnheader", { name: "CDC SVI source value" })).toBeInTheDocument();
+    mapHarness.zoom = PILOT_TRACT_ZOOM;
+    act(() => mapHarness.handlers.zoomend());
+    expect(await screen.findByText("09110980000")).toBeInTheDocument();
+    expect(screen.getAllByText(SVI_STATUS_TEXT.not_available).length).toBeGreaterThan(0);
+    const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
+    expect(data.some((url) => url.includes(`dataset_id=${SVI_DATASET_ID}`) && url.includes("measure_id=rpl_themes") && url.includes("geography=county"))).toBe(true);
+    expect(data.some((url) => url.includes(`dataset_id=${SVI_DATASET_ID}`) && url.includes("measure_id=rpl_themes") && url.includes("geography=tract"))).toBe(true);
   });
 });

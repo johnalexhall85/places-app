@@ -1,7 +1,7 @@
 """Public MCP policy and connection settings."""
 import os
 
-PUBLIC_PRODUCTS = frozenset({'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea'})
+PUBLIC_PRODUCTS = frozenset({'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea', 'cdc_svi'})
 FACILITY_PRODUCTS = ('health_centers', 'nursing_homes', 'tri_facilities')
 LEVELS = {'state': 2, 'county': 5, 'tract': 11, 'cd': 4}
 RULES = (
@@ -11,6 +11,7 @@ RULES = (
     'Medicare (cms_gv) measures describe Original Medicare beneficiaries, not all residents.',
     "TRI facilities are facilities that report to EPA's Toxics Release Inventory; reporting does not mean a release, a violation, or a health risk.",
     'Many measures also have earlier published periods. Each value carries its own period, release, and boundary vintage, and an earlier period can differ in method or boundaries (read its `note`). Present values from different periods side by side as published; CHIP does not compute changes or trends.',
+    'SVI values are CDC/ATSDR percentile ranks (0–1) among all U.S. counties or all U.S. tracts; do not average, combine, or compare them across years or levels.',
 )
 ORDER_WARNING = ('Order is by point estimate. Where uncertainty ranges overlap, the difference may not be meaningful. '
                  'This is a list of one published measure, not a ranking of overall health.')

@@ -127,6 +127,15 @@
         "county"
       ],
       "trend_note": null
+    },
+    "cdc_svi": {
+      "state_marker_levels": [],
+      "national_marker_levels": [],
+      "peers": null,
+      "trend_style": null,
+      "trend_levels": [],
+      "trend_note": "SVI ranks may share an axis only with other SVI ranks at the same level from the same release. They never share an axis with any other product.",
+      "shared_axis_rule": "same_product_level_and_release_only"
     }
   }
 }

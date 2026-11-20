@@ -64,6 +64,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/cms-gv\/?$/i.test(normalizedPath)) {
     return { type: "cms-gv-area" };
   }
+  if (/^\/area\/svi\/?$/i.test(normalizedPath)) {
+    return { type: "svi-area" };
+  }
   if (/^\/area\/usda-fea\/?$/i.test(normalizedPath)) {
     return { type: "usda-fea-area" };
   }

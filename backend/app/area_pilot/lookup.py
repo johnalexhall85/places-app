@@ -26,7 +26,7 @@ from typing import Any, Callable
 from sqlalchemy import text
 
 from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
-                            hrsa_sites_api, tri_api, usda_fea_api)
+                            hrsa_sites_api, svi_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
@@ -103,6 +103,9 @@ SPECS: tuple[Spec, ...] = (
          ('days_with_aqi', 'value_note'), 'none', epa_aqi_api),
     Spec('usda_fea', usda_fea_api.load_registry, {'county': ('observation_usda_fea', 'geoid', None)},
          ('source_value', 'value_note'), 'none', usda_fea_api),
+    Spec('cdc_svi', svi_api.load_registry,
+         {lvl: ('observation_cdc_svi', 'geoid', 'geo_level') for lvl in ('county', 'tract')},
+         ('source_value',), 'none', svi_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
@@ -110,6 +113,7 @@ MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     'cms_gv': lambda geoid, level: cms_gv_api.NOT_PUBLISHED,
     'epa_aqi': lambda geoid, level: epa_aqi_api.NO_VALUE,
     'usda_fea': _fea_missing,
+    'cdc_svi': lambda geoid, level: NOT_IN_RELEASE,
 }
 
 

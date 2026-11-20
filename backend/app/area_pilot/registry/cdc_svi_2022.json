@@ -1,0 +1,171 @@
+{
+  "dataset_id": "cdc_svi_2022",
+  "name": "CDC/ATSDR Social Vulnerability Index (SVI) 2022",
+  "short_name": "CDC Social Vulnerability Index",
+  "publisher": "Centers for Disease Control and Prevention / Agency for Toxic Substances and Disease Registry (CDC/ATSDR)",
+  "landing_page": "https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html",
+  "source_release_id": "CDC/ATSDR SVI 2022 (US counties and census tracts, ACS 2018-2022)",
+  "observation_year": 2022,
+  "observation_period": "2018–2022",
+  "source_urls": {
+    "county": "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI_2022_US_county.csv",
+    "tract": "https://svi.cdc.gov/Documents/Data/2022/csv/states/SVI_2022_US.csv"
+  },
+  "source_filenames": {
+    "county": "SVI_2022_US_county.csv",
+    "tract": "SVI_2022_US.csv"
+  },
+  "expected_column_count": 158,
+  "expected_header_sha256": "8ab51e06f28d86566d6ca83030ef42f1bd53ba0eb33b8df3c8425736dcfc0a16",
+  "expected_source_rows": {
+    "county": 3144,
+    "tract": 84120
+  },
+  "missing_token": "-999",
+  "geography_rules": {
+    "county": "Five-digit FIPS joined exactly to TIGER/Line 2024 county-equivalent GEOID. Connecticut appears as planning regions (09110-09190). Unmatched rows are staged as source_only and not published.",
+    "tract": "Eleven-digit FIPS joined exactly to TIGER/Line 2024 census tract GEOID. Connecticut appears as planning-region tracts. Unmatched rows are staged as source_only and not published."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 counties and census tracts (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "boundary_vintage": {
+    "county": "TIGER/Line 2024 county equivalents (Connecticut planning regions)",
+    "tract": "TIGER/Line 2024 census tracts (Connecticut planning regions)"
+  },
+  "geographies": ["county", "tract"],
+  "aggregation_method": "none",
+  "value_type": "percentile_rank",
+  "unit": "percentile rank (0–1)",
+  "population_by_level": {
+    "county": "Rank among all U.S. counties",
+    "tract": "Rank among all U.S. census tracts"
+  },
+  "population_note": "Each is based on ACS 2018–2022 estimates for all residents.",
+  "limitations": [
+    "These are CDC/ATSDR's percentile ranks among all U.S. counties, or among all U.S. tracts. They are not rates, and they do not measure risk for any one person.",
+    "The ranks compare areas within one SVI release. Do not compare them with ranks from other SVI years, or with state-ranked SVI files.",
+    "CHIP publishes CDC's ranks as released. It does not re-rank, average, or combine themes.",
+    "The ranks are built on ACS 2018–2022 estimates, which have margins of error. CDC publishes no uncertainty for the ranks.",
+    "A county rank and a tract rank come from separate rankings, so they are not comparable."
+  ],
+  "refresh_policy": {
+    "schedule": "manual_full_content",
+    "auto_publish": false,
+    "same_label_revision": "hold_for_review",
+    "new_release": "hold_for_review"
+  },
+  "measures": [
+    {
+      "measure_id": "rpl_themes",
+      "source_field": "RPL_THEMES",
+      "label": "Overall social vulnerability (percentile rank)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among all U.S. counties",
+        "tract": "Rank among all U.S. census tracts"
+      },
+      "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
+      "official_definition": "CDC/ATSDR SVI 2022 overall summary ranking across all four themes (RPL_THEMES), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme1",
+      "source_field": "RPL_THEME1",
+      "label": "Socioeconomic status (percentile rank)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among all U.S. counties",
+        "tract": "Rank among all U.S. census tracts"
+      },
+      "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 1 socioeconomic status percentile rank (RPL_THEME1), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme2",
+      "source_field": "RPL_THEME2",
+      "label": "Household characteristics (percentile rank)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among all U.S. counties",
+        "tract": "Rank among all U.S. census tracts"
+      },
+      "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 2 household characteristics percentile rank (RPL_THEME2), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme3",
+      "source_field": "RPL_THEME3",
+      "label": "Racial and ethnic minority status (percentile rank)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among all U.S. counties",
+        "tract": "Rank among all U.S. census tracts"
+      },
+      "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 3 racial and ethnic minority status percentile rank (RPL_THEME3), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme4",
+      "source_field": "RPL_THEME4",
+      "label": "Housing type and transportation (percentile rank)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among all U.S. counties",
+        "tract": "Rank among all U.S. census tracts"
+      },
+      "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 4 housing type and transportation percentile rank (RPL_THEME4), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    }
+  ]
+}
