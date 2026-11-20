@@ -58,6 +58,36 @@ def _rows(session, key):
       {'id':build['build_id'],'key':key})
 
 
+def award_profiles(session, key):
+    """Profiles keyed by the File C award key, in one read."""
+    build = active_build(session)
+    if not build:
+        return {}
+    rows = _all(session, """SELECT award_unique_key, profile FROM funding_report.nofo_award
+        WHERE build_id=:id AND nofo_key=:key""", {'id': build['build_id'], 'key': key})
+    return {row['award_unique_key']: row['profile'] for row in rows}
+
+
+def award_subaward_summaries(session, key):
+    """Use the stored deduplicated actions and the same prime matching as _subaward_block."""
+    build = active_build(session)
+    if not build:
+        return {}
+    rows = _all(session, """SELECT p.award_unique_key, s.action FROM funding_report.nofo_award p
+        JOIN funding_report.nofo_subaward s ON s.build_id=p.build_id AND s.nofo_key=p.nofo_key
+          AND s.prime_fain IN (p.fain,p.award_unique_key)
+        WHERE p.build_id=:id AND p.nofo_key=:key""",
+        {'id': build['build_id'], 'key': key})
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[row['award_unique_key']].append(row['action'])
+    return {key: {
+        'subawardee_count': len({a.get('subawardee_uei') or a.get('subawardee_name') for a in actions}),
+        'action_count': len(actions),
+        'reported_amount': round(sum(a.get('amount') or 0 for a in actions), 2),
+    } for key, actions in grouped.items()}
+
+
 def list_recipients(session, key, offset=0, limit=50):
     if not isinstance(offset,int) or offset<0 or not isinstance(limit,int) or not 1<=limit<=100:
         raise FundingLookupError('Use offset 0 or greater and limit between 1 and 100.')

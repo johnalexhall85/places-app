@@ -8,6 +8,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 from app import db as db_module
 from app.area_pilot import lookup
 from app.funding_report import lookup as funding_lookup
+from app.state_funding import lookup as state_funding_lookup
+from app.state_funding.grant_history import GrantNotFound
 from . import cache, measures, places
 from .config import FACILITY_PRODUCTS, LEVELS, MAX_BYTES, MAX_ROWS, ORDER_WARNING, PUBLIC_PRODUCTS, WITHHELD_TOPIC_WARNING, public_base_url
 from .envelope import Envelope, build, compact_value_row, fit_rows, size_bytes, value_row, citation, source
@@ -131,14 +133,17 @@ def _sources_for_visible_rows(response, collection):
     return response
 
 
-def _run(name, args, work, funding=False):
+def _run(name, args, work, funding=False, state_funding=False):
     start = time.monotonic()
     cached = False
     error = None
     rows = 0
     session = db_module.SessionLocal()
     try:
-        fingerprint = (funding_lookup.active_build(session) or {}).get('build_id') if funding else lookup.active_releases(session)
+        if state_funding:
+            fingerprint = state_funding_lookup.build_fingerprint(session, include_profiles=funding)
+        else:
+            fingerprint = (funding_lookup.active_build(session) or {}).get('build_id') if funding else lookup.active_releases(session)
         key = cache.key(name, args, fingerprint)
         result = cache.get(key)
         if result is None:
@@ -149,9 +154,9 @@ def _run(name, args, work, funding=False):
         data = result.data
         rows = sum(len(data[k]) for k in ('values', 'with_value', 'without_value', 'series', 'matches', 'measures') if isinstance(data.get(k), list))
         return result
-    except (ToolError, lookup.LookupError_, funding_lookup.FundingLookupError) as exc:
+    except (ToolError, lookup.LookupError_, funding_lookup.FundingLookupError, GrantNotFound) as exc:
         error = type(exc).__name__
-        if isinstance(exc, (lookup.LookupError_, funding_lookup.FundingLookupError)):
+        if isinstance(exc, (lookup.LookupError_, funding_lookup.FundingLookupError, GrantNotFound)):
             raise ToolError(str(exc)) from exc
         raise
     except Exception as exc:
@@ -535,6 +540,162 @@ def get_recipient_funding(nofo: str, recipient: str) -> Envelope:
                                    'dataset_url':_dataset_url(dataset['nofo']['nofo_key'], True)},
                                   dataset['sources'], dataset['caveats'])
     return _run('get_recipient_funding', locals_args(nofo=nofo, recipient=recipient), work, funding=True)
+
+
+STATE_FUNDING_RULES = [FUNDING_RULES[i] for i in (0, 1, 3, 4)] + [
+    "A recipient's state is the state USAspending records for the recipient, not where services are delivered.",
+    "Supplemental means dollars with a non-regular Disaster Emergency Fund Code; it can be negative "
+    "when earlier emergency money was reduced. Award actions are not labelled supplemental.",
+    "Contracts are counted in the contractor's state; the default is grants only.",
+    "Budget categories follow the top-level lines of CDC's FY 2026 Operating Plan; "
+    "amounts are not split between categories.",
+]
+
+
+def _state_context(db, state, fiscal_year, funding_type, award_type, category, recipient_type):
+    try:
+        code = state_funding_lookup.resolve_state(state)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    for label, value, choices in (
+        ('funding_type', funding_type, ('all', 'regular', 'supplemental')),
+        ('award_type', award_type, ('all', 'grant', 'contract')),
+        ('recipient_type', recipient_type, ('all', 'state_government')),
+    ):
+        if value not in choices:
+            raise ToolError(f"Unknown {label}; use {', '.join(choices)}.")
+    build_info = state_funding_lookup.build_info(db)
+    if not build_info or not state_funding_lookup.state_exists(db, code, build_info['build_id']):
+        raise ToolError('Unknown state in the active build; use a state with CDC funding rows.')
+    years = state_funding_lookup.fiscal_years(db)
+    fy = fiscal_year if fiscal_year is not None else years['default']
+    if fy not in years['fiscal_years']:
+        raise ToolError(f"Unknown fiscal year; use {', '.join(map(str, years['fiscal_years']))}.")
+    filters = {'funding_type': funding_type, 'award_type': award_type,
+               'category': category, 'recipient_type': recipient_type}
+    if category:
+        base_filters = filters | {'category': None}
+        available = state_funding_lookup.summary(db, code, fy, base_filters, build_info)['categories_available']
+        if category not in {row['code'] for row in available}:
+            raise ToolError('Unknown category for this state and year; use ' +
+                            ', '.join(row['code'] for row in available) + '.')
+    return code, fy, filters, build_info, years
+
+
+def _state_sources(build_info, period, grant=False):
+    sources = [
+        {'publisher': 'USAspending', 'dataset': 'Award financial (File C), CDC',
+         'period': period, 'citation': f'Source: USAspending · Award financial (File C), CDC · {period}'},
+        {'publisher': 'Grants.gov', 'dataset': 'NOFO titles',
+         'citation': 'Source: Grants.gov · funding opportunity titles'},
+    ]
+    if grant:
+        sources.append({'publisher': 'HHS TAGGS', 'dataset': 'award recipient profiles',
+                        'citation': 'Source: HHS TAGGS · CDC award recipient profiles'})
+    return sources
+
+
+def _state_envelope(data, build_info, period, grant=False):
+    response = Envelope(data=data, sources=_state_sources(build_info, period, grant),
+                        interpretation_rules=STATE_FUNDING_RULES)
+    if size_bytes(response) > MAX_BYTES:
+        if 'awards' in data:
+            # Keep the per-award history, then remove optional identity fields if needed.
+            for award in data['awards']:
+                for field in ('subawards', 'city', 'project_title', 'usaspending_url', 'recipient_uei',
+                              'recipient_type_source', 'is_state_government', 'all_years_total', 'first_fy',
+                              'award_id', 'split_state', 'last_fy'):
+                    award.pop(field, None)
+            if size_bytes(response) > MAX_BYTES:
+                fit_rows(response, 'awards', 'Size cap reached; continue at next_offset or filter by state.')
+                response.data['next_offset'] = response.data['offset'] + len(response.data['awards'])
+        else:
+            fit_rows(response, 'rows', 'Size cap reached; continue at next_offset or narrow filters.')
+            response.data['next_offset'] = response.data['offset'] + len(response.data['rows'])
+        while size_bytes(response) > MAX_BYTES and (response.data.get('awards') or response.data.get('rows')):
+            collection = 'awards' if 'awards' in response.data else 'rows'
+            response.data[collection].pop()
+            response.data['next_offset'] -= 1
+    return response
+
+
+def get_state_funding(state: str, fiscal_year: int | None = None, funding_type: str = 'all',
+                      award_type: str = 'grant', category: str | None = None,
+                      recipient_type: str = 'all') -> Envelope:
+    """CDC state funding summary by exact budget category, with a File C citation."""
+    args = locals_args(state=state, fiscal_year=fiscal_year, funding_type=funding_type,
+                      award_type=award_type, category=category, recipient_type=recipient_type)
+    def work(db):
+        code, fy, filters, build_info, years = _state_context(db, **args)
+        data = state_funding_lookup.summary(db, code, fy, filters, build_info)
+        data['fiscal_years_available'] = years['fiscal_years']
+        return _state_envelope(data, build_info, data['period'])
+    return _run('get_state_funding', args, work, state_funding=True)
+
+
+def list_state_grants(state: str, fiscal_year: int | None = None, query: str | None = None,
+                      funding_type: str = 'all', award_type: str = 'grant', category: str | None = None,
+                      recipient_type: str = 'all', sort: str = 'amount', direction: str = 'desc',
+                      offset: int = 0, limit: int = 25) -> Envelope:
+    """A page of CDC awards to recipients in a state, with all-match totals."""
+    if sort not in ('amount', 'name', 'recipient', 'category'):
+        raise ToolError('Unknown sort; use amount, name, recipient, or category.')
+    if direction not in ('asc', 'desc'):
+        raise ToolError('Unknown direction; use asc or desc.')
+    if not isinstance(offset, int) or offset < 0 or not isinstance(limit, int) or not 1 <= limit <= 100:
+        raise ToolError('Use offset 0 or greater and limit between 1 and 100.')
+    args = locals_args(state=state, fiscal_year=fiscal_year, query=query, funding_type=funding_type,
+                      award_type=award_type, category=category, recipient_type=recipient_type,
+                      sort=sort, direction=direction, offset=offset, limit=limit)
+    def work(db):
+        code, fy, filters, build_info, years = _state_context(
+            db, state, fiscal_year, funding_type, award_type, category, recipient_type)
+        data = state_funding_lookup.grants(db, code, fy, filters, build_info, q=query or '',
+            sort=sort, direction=direction, page_size=limit, offset=offset)
+        fields = ('award_unique_key', 'award_id', 'grant_name', 'name_source', 'fon', 'recipient_name',
+                  'is_state_government', 'categories', 'regular', 'supplemental', 'total',
+                  'description', 'usaspending_url')
+        data['rows'] = [{key: row[key] for key in fields} for row in data['rows']]
+        for row in data['rows']:
+            row['categories'] = [c['name'] for c in row['categories']]
+            description = row.get('description') or ''
+            if len(description) > 300:
+                row['description'] = description[:301].rsplit(' ', 1)[0] or description[:300]
+        data['offset'] = offset
+        data['limit'] = limit
+        data['state'] = {'code': code, 'name': state_funding_lookup.state_name(code)}
+        data['fiscal_years_available'] = years['fiscal_years']
+        period = (build_info['sources'] or {}).get('periods', {}).get(str(fy), f'FY{fy}')
+        data['period'] = period
+        return _state_envelope(data, build_info, period)
+    return _run('list_state_grants', args, work, state_funding=True)
+
+
+def get_grant_history(nofo: str, state: str | None = None, include_past: bool = True,
+                      offset: int = 0, limit: int = 50) -> Envelope:
+    """One CDC NOFO's funded fiscal years, state totals, and a page of award histories."""
+    if not isinstance(offset, int) or offset < 0 or not isinstance(limit, int) or not 1 <= limit <= 100:
+        raise ToolError('Use offset 0 or greater and limit between 1 and 100.')
+    args = locals_args(nofo=nofo, state=state, include_past=include_past, offset=offset, limit=limit)
+    def work(db):
+        data = state_funding_lookup.grant_history(db, nofo)
+        code = None
+        if state is not None:
+            try:
+                code = state_funding_lookup.resolve_state(state)
+            except ValueError as exc:
+                raise ToolError(str(exc)) from exc
+        awards = [a for a in data['awards'] if (code is None or a['state'] == code)
+                  and (include_past or a['is_current'])]
+        response_data = {key: data[key] for key in ('nofo', 'latest_fy', 'latest_fy_period',
+            'totals', 'by_fiscal_year', 'by_state', 'citation', 'build')}
+        response_data['awards'] = awards[offset:offset + limit]
+        response_data['total_rows'] = len(awards)
+        response_data['offset'] = offset
+        response_data['limit'] = limit
+        response_data['recipient_profile_tool'] = 'get_recipient_funding(nofo, recipient)'
+        return _state_envelope(response_data, state_funding_lookup.build_info(db), data['latest_fy_period'], True)
+    return _run('get_grant_history', args, work, funding=True, state_funding=True)
 
 
 def locals_args(**kwargs):

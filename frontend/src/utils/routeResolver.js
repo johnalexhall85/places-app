@@ -77,6 +77,10 @@ export function resolveRoute(pathname) {
   if (cdcFundingProfileMatch) {
     return { type: "cdc-state-funding-profile", id: cdcFundingProfileMatch[1] };
   }
+  const cdcGrantMatch = normalizedPath.match(/^\/cdc-funding\/grant\/([^/]+)\/?$/i);
+  if (cdcGrantMatch) {
+    return { type: "cdc-grant-history", id: decodeURIComponent(cdcGrantMatch[1]) };
+  }
   const countyMatch = normalizedPath.match(/^\/profile\/county\/([^/]+)\/?$/i);
   if (countyMatch) {
     return { type: "profile-county", id: countyMatch[1] };

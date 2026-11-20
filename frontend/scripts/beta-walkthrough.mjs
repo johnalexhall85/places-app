@@ -174,6 +174,16 @@ try {
   await page.getByRole('heading', { name: /CDC funding to recipients in North Carolina/ }).waitFor();
   await page.getByText(/Contracts are counted in the state where the contractor is located\.\s+Vaccines for Children purchases, for example, appear in the vaccine manufacturers' states\./).waitFor();
   console.log('Rebuilt state funding profile: loaded');
+  await visit('/cdc-funding/grant/CDC-RFA-PS21-2102');
+  await page.locator('.gh-page h1').waitFor();
+  assert.ok(await page.locator('.gh-group').count() > 0, 'grant history has a state group');
+  await page.locator('.gh-group .sf-expand').first().click();
+  await page.locator('.gh-detail h4').first().waitFor();
+  await page.setViewportSize({ width: 375, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    'grant history has no overflow at 375px');
+  await page.setViewportSize({ width: 1365, height: 900 });
+  console.log('Grant history: heading, state group, expansion, and 375px layout passed');
   console.log('Shared header on explore map, area map, funding, and legacy profile pages: passed');
   await visit('/explore/map');
   await page.getByRole('heading', { name: /^PLACES county and tract estimates(?:, \d{4})?$/ }).waitFor();

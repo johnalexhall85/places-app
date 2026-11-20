@@ -1,0 +1,48 @@
+.gh-page .sf-main { overflow-wrap: anywhere; }
+.gh-page .sf-hero p { line-height: 1.5; }
+.gh-page .sf-kpis { margin-top: 24px; }
+.gh-page .sf-kpi strong { font-size: clamp(1.2rem, 2vw, 1.8rem); }
+.gh-bars { display: grid; gap: 10px; }
+.gh-bar-row {
+  display: grid;
+  grid-template-columns: 110px minmax(40px, 1fr) 130px;
+  align-items: center;
+  gap: 8px;
+  font-size: .88rem;
+}
+.gh-bar-row strong { text-align: right; white-space: nowrap; }
+.gh-track { position: relative; height: 16px; }
+.gh-zero { position: absolute; left: 50%; height: 100%; border-left: 1px solid var(--chip-navy); }
+.gh-bar { position: absolute; left: 50%; top: 2px; height: 12px; background: var(--pdo-primary); }
+.gh-bar.negative { left: auto; right: 50%; background: var(--pdo-accent); border: 1px solid var(--chip-navy); }
+.gh-states { display: grid; gap: 6px; }
+.gh-states > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 90px 130px 90px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--pdo-border);
+  padding: 8px 0;
+}
+.gh-state-link { font-size: .8rem; }
+.gh-states strong { text-align: right; white-space: nowrap; }
+.gh-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
+.gh-controls label { display: grid; gap: 6px; font-weight: 700; }
+.gh-controls label:has([type="checkbox"]) { display: flex; align-items: center; }
+.gh-group { margin-top: 24px; scroll-margin-top: 80px; }
+.gh-group h3 { color: var(--chip-navy); }
+.gh-group h3 small { display: block; color: var(--pdo-text-muted); font-weight: 400; }
+.gh-page table { min-width: 680px; }
+.gh-detail { margin-top: 12px; padding: 16px; border: 1px solid var(--pdo-border); border-radius: 8px; min-width: 300px; }
+.gh-detail h4 { color: var(--chip-navy); margin: 16px 0 8px; }
+.gh-detail p { line-height: 1.5; }
+.gh-detail .gh-bar-row { grid-template-columns: 80px minmax(30px, 1fr) 110px; }
+.gh-detail .sf-scroll { max-width: 100%; }
+.gh-detail table { min-width: 500px; }
+@media (max-width: 600px) {
+  .gh-bar-row { grid-template-columns: 82px minmax(20px, 1fr); }
+  .gh-bar-row strong { grid-column: 2; }
+  .gh-states > div { grid-template-columns: minmax(0, 1fr) 90px; }
+  .gh-states > div strong { text-align: left; }
+  .gh-detail { min-width: 0; width: min(75vw, 340px); }
+}

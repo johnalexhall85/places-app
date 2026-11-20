@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 from app.taggs.redo_ingest import STATE_CODE_TO_NAME
+from app.funding.state_lookup import BY_CODE, BY_FIPS
 
 NEGATIVE_NOTE = (
     "Supplemental amounts are negative when earlier emergency (for example COVID-19) "
@@ -31,6 +32,15 @@ def build_info(db):
         .first()
     )
     return dict(row) if row else None
+
+
+def build_fingerprint(db, *, include_profiles=False):
+    """Cache key for reads that also use the recipient profile build."""
+    state_id = (build_info(db) or {}).get('build_id')
+    if not include_profiles:
+        return (state_id, None)
+    from app.funding_report import lookup as funding_lookup
+    return (state_id, (funding_lookup.active_build(db) or {}).get('build_id'))
 
 
 def fiscal_years(db):
@@ -67,6 +77,19 @@ def state_exists(db, code, build_id):
 
 def state_name(code):
     return STATE_CODE_TO_NAME.get(code, code).title().replace(" Of ", " of ")
+
+
+def resolve_state(value):
+    """Accept a postal code, state name, or two-digit FIPS for read-only tools."""
+    token = str(value or '').strip().upper()
+    if token in STATE_CODE_TO_NAME:
+        return token
+    if token in BY_FIPS:
+        return BY_FIPS[token].state_code
+    for code, name in STATE_CODE_TO_NAME.items():
+        if token == name or token == state_name(code).upper():
+            return code
+    raise ValueError('Unknown state; use a two-letter code, state name, or two-digit FIPS code.')
 
 
 def citation(fy, period, build_id):
@@ -198,7 +221,8 @@ def summary(db, code, fy, filters, build):
 
 
 def grants(
-    db, code, fy, filters, build, *, q="", sort="amount", direction="desc", page=1, page_size=25, all_rows=False
+    db, code, fy, filters, build, *, q="", sort="amount", direction="desc", page=1, page_size=25,
+    all_rows=False, offset=None
 ):
     p = params(code, fy, filters, build["build_id"])
     terms = [x.lower() for x in q.split()]
@@ -231,7 +255,7 @@ def grants(
             ORDER BY abs(sum(o2.amount)) DESC,c2.category_order LIMIT 1)"""
     direction_sql = "ASC" if direction == "asc" else "DESC"
     limit = "" if all_rows else " LIMIT :page_size OFFSET :offset"
-    p.update(page_size=page_size, offset=(page - 1) * page_size)
+    p.update(page_size=page_size, offset=(page - 1) * page_size if offset is None else offset)
     base = f"""FROM state_funding.obligation o JOIN state_funding.award a USING(build_id,award_unique_key)
        JOIN state_funding.budget_category c USING(federal_account_symbol)
        WHERE {where(filters)}{search}"""
@@ -325,3 +349,13 @@ def grants(
         "sum_total": money(totals["sum_total"]),
         "citation": citation(fy, period, build["build_id"]),
     }
+
+
+def grant_history(db, nofo):
+    from .grant_history import grant_history as read_history
+    return read_history(db, nofo)
+
+
+def grant_award(db, nofo, award_unique_key):
+    from .grant_history import grant_award as read_award
+    return read_award(db, nofo, award_unique_key)

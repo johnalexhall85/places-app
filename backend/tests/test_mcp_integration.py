@@ -156,7 +156,7 @@ def test_http_client(staging):
         async def call():
             async with Client(f'http://127.0.0.1:{port}/mcp') as client:
                 listed = await client.list_tools()
-                assert len(listed.tools) == 11
+                assert len(listed.tools) == 14
                 assert all(tool.output_schema and tool.annotations.read_only_hint is True
                            and tool.annotations.destructive_hint is False
                            and tool.annotations.idempotent_hint is True

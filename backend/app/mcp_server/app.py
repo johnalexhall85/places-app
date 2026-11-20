@@ -22,6 +22,8 @@ INSTRUCTIONS = ("CHIP (Community Health Intelligence Platform, Public Data Obser
     "or rank values into composite scores, and say when periods or populations differ. "
     "For CDC NOFO recipient funding, call get_nofo_overview, list_nofo_recipients, or get_recipient_funding; "
     "download the dataset_url from the overview for a full report.")
+INSTRUCTIONS += (" For CDC money to recipients in a state, call get_state_funding and list_state_grants; "
+                 "for one CDC grant's recipients and history by state, call get_grant_history.")
 
 server = MCPServer(name='CHIP Public Health Data', instructions=INSTRUCTIONS)
 annotations = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -37,6 +39,9 @@ server.tool(description='List public datasets, active releases, geographic level
 server.tool(description='Get a CDC funding opportunity overview, recipient aggregates, source dates, caveats, and an absolute dataset_url for full reports. Amounts carry their sources. Only CDC NOFOs are supported; include_subawards adds a sub-award summary.', annotations=annotations)(tools.get_nofo_overview)
 server.tool(description='List compact recipients for one CDC NOFO, in state and name order. Use get_nofo_overview for the dataset_url and source dates when building a full report. Amounts carry their sources; only CDC NOFOs are supported.', annotations=annotations)(tools.list_nofo_recipients)
 server.tool(description='Get one CDC NOFO recipient funding profile by UEI, FAIN, award key, or unique name substring. Amounts carry their sources. Get the dataset_url from get_nofo_overview to build a full report.', annotations=annotations)(tools.get_recipient_funding)
+server.tool(description='Get CDC state funding totals and budget categories for a fiscal year. Accepts state code, name, or FIPS. Defaults to grants only.', annotations=annotations)(tools.get_state_funding)
+server.tool(description='List CDC grant awards in a state with paging, search, and totals over every match. Defaults to grants only.', annotations=annotations)(tools.list_state_grants)
+server.tool(description='Get one CDC grant history by fiscal year and state, with paged award histories. Use get_recipient_funding for one full recipient profile.', annotations=annotations)(tools.get_grant_history)
 
 @server.custom_route('/healthz', methods=['GET'])
 async def healthz(request):

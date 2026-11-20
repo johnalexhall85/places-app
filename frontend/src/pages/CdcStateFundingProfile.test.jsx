@@ -37,7 +37,7 @@ describe("CDC state funding profile", () => {
     expect(screen.getByText("Funding by budget category")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Funding totals" }))
       .getByText("Supplemental (emergency)")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Public health grant" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand details for Public health grant" }));
     expect(screen.getByText("Full award description")).toBeTruthy();
     expect(screen.getByText("View on USAspending")).toBeTruthy();
   });
@@ -88,5 +88,14 @@ describe("CDC state funding profile", () => {
     await screen.findByText("CDC grants to recipients in Alabama");
     fireEvent.change(screen.getByLabelText("Award type"), { target: { value: "all" } });
     expect(await screen.findByText(/Contracts are counted in the state/)).toBeTruthy();
+  });
+  it("links a grant name and its expanded row to grant history", async () => {
+    render(<CdcStateFundingProfile stateCode="AL" />);
+    await screen.findByText("CDC grants to recipients in Alabama");
+    expect(screen.getByRole("link", { name: "Public health grant" }).getAttribute("href"))
+      .toBe("/cdc-funding/grant/CDC-RFA-X");
+    fireEvent.click(screen.getByRole("button", { name: "Expand details for Public health grant" }));
+    expect(screen.getByRole("link", { name: "Grant history" }).getAttribute("href"))
+      .toBe("/cdc-funding/grant/CDC-RFA-X");
   });
 });

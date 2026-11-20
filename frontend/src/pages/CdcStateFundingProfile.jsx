@@ -119,16 +119,21 @@ function GrantsTable({ rows, expanded, setExpanded, sort }) {
     <tbody>{rows.map((row) => <tr key={row.award_unique_key}
       id={`award-${row.award_unique_key}`} data-award-key={row.award_unique_key}>
       <td>
-        <button className="sf-expand" aria-expanded={!!expanded[row.award_unique_key]}
+        <button className="sf-expand" aria-label={`Expand details for ${row.grant_name}`}
+          aria-expanded={!!expanded[row.award_unique_key]}
           onClick={() => setExpanded((current) => ({
             ...current, [row.award_unique_key]: !current[row.award_unique_key],
-          }))}>{row.grant_name}</button>
+          }))}>{row.fon ? "▸" : row.grant_name}</button>
+        {row.fon && <a className="sf-grant-link" href={`/cdc-funding/grant/${encodeURIComponent(row.fon)}`}>
+          {row.grant_name}</a>}
         <small>{NAME_SOURCES[row.name_source] || row.name_source}</small>
         {row.project_title && row.project_title !== row.grant_name && <small>{row.project_title}</small>}
         {expanded[row.award_unique_key] && <div className="sf-details">
           <p>{row.description || "No description available."}</p>
           <p>Assistance listing: {row.cfda_number || "—"} {row.cfda_title || ""}</p>
           <p>Award ID: {row.award_id}</p>
+          {row.fon && <p><a href={`/cdc-funding/grant/${encodeURIComponent(row.fon)}`}>
+            Grant history</a></p>}
           <p>Federal accounts: {row.accounts.map((account) =>
             `${account.symbol} · ${account.name}`).join("; ") || "—"}</p>
           {row.usaspending_url && <a href={row.usaspending_url}

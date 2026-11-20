@@ -15,6 +15,21 @@ async function get(path, params = {}, signal) {
 export const fiscalYears = (signal) => get("/fiscal-years", {}, signal);
 export const stateSummary = (code, params, signal) => get(`/states/${encodeURIComponent(code)}/summary`, params, signal);
 export const stateGrants = (code, params, signal) => get(`/states/${encodeURIComponent(code)}/grants`, params, signal);
+export async function grantHistory(nofo, signal) {
+  const response = await fetch(new URL(`${root}/grants/${encodeURIComponent(nofo)}`), { signal });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const error = new Error(payload.detail || "Grant history is unavailable right now.");
+    error.suggestions = payload.suggestions || [];
+    throw error;
+  }
+  return response.json();
+}
+export const grantAward = (nofo, key, signal) => get(
+  `/grants/${encodeURIComponent(nofo)}/awards/${encodeURIComponent(key)}`, {}, signal,
+);
+export const grantHistoryCsvUrl = (nofo) =>
+  new URL(`${root}/grants/${encodeURIComponent(nofo)}.csv`).toString();
 export function grantsCsvUrl(code, params) {
   const url = new URL(`${root}/states/${encodeURIComponent(code)}/grants.csv`);
   Object.entries(params).forEach(([key, value]) => {

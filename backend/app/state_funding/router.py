@@ -5,12 +5,58 @@ import io
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from app.db import get_db
 from . import lookup
+from .grant_history import GrantNotFound
 
 router = APIRouter(prefix="/state-funding/v1", tags=["state-funding"])
+
+
+@router.get("/grants/{nofo}.csv")
+def grant_history_csv(nofo: str, db: Session = Depends(get_db)):
+    try:
+        data = lookup.grant_history(db, nofo)
+    except GrantNotFound as exc:
+        return JSONResponse({"detail": str(exc), "suggestions": exc.suggestions}, status_code=404)
+    output = io.StringIO()
+    output.write("# " + data["citation"] + "\n")
+    latest = data['latest_fy']
+    fields = (['state', 'split_state', 'is_current', 'recipient_name', 'recipient_uei', 'city',
+               'recipient_type', 'recipient_type_source', 'project_title', 'award_id',
+               f'FY{latest}_regular', f'FY{latest}_supplemental', f'FY{latest}_total']
+              + [f'FY{year}_total' for year in range(2021, 2027)]
+              + ['all_years_total', 'subawardee_count', 'subaward_reported_amount', 'usaspending_url'])
+    writer = csv.DictWriter(output, fieldnames=fields)
+    writer.writeheader()
+    for award in data['awards']:
+        amount = award['latest_fy_amount'] or {}
+        history = {r['fiscal_year']: r['total'] for r in award['history']}
+        writer.writerow({**{key: award.get(key) for key in fields},
+                         **{f'FY{latest}_{key}': amount.get(key) for key in ('regular', 'supplemental', 'total')},
+                         **{f'FY{year}_total': history.get(year, 0) for year in range(2021, 2027)},
+                         'subawardee_count': (award['subawards'] or {}).get('subawardee_count'),
+                         'subaward_reported_amount': (award['subawards'] or {}).get('reported_amount')})
+    filename = f"chip-cdc-grant-{data['nofo']['fon_display']}.csv"
+    return Response(output.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/grants/{nofo}/awards/{award_unique_key}")
+def grant_award(nofo: str, award_unique_key: str, db: Session = Depends(get_db)):
+    try:
+        return lookup.grant_award(db, nofo, award_unique_key)
+    except GrantNotFound as exc:
+        return JSONResponse({"detail": str(exc), "suggestions": exc.suggestions}, status_code=404)
+
+
+@router.get("/grants/{nofo}")
+def grant_history(nofo: str, db: Session = Depends(get_db)):
+    try:
+        return lookup.grant_history(db, nofo)
+    except GrantNotFound as exc:
+        return JSONResponse({"detail": str(exc), "suggestions": exc.suggestions}, status_code=404)
 
 
 def context(db, code, fy, funding_type, award_type, category, recipient_type, account):

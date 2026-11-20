@@ -35,6 +35,12 @@ describe("routeResolver", () => {
     });
   });
 
+  it("matches the CDC grant history route", () => {
+    expect(resolveRoute("/cdc-funding/grant/CDC-RFA-PS21-2102")).toEqual({
+      type: "cdc-grant-history", id: "CDC-RFA-PS21-2102",
+    });
+  });
+
   it("keeps existing county and tract profile routes intact", () => {
     expect(resolveRoute("/taggs/funding-profile")).toEqual({ type: "map" });
     expect(resolveRoute("/profile/county/01001")).toEqual({ type: "profile-county", id: "01001" });

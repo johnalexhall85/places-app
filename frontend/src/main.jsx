@@ -7,6 +7,7 @@ import DemoAccessGate from "./demoAccess/DemoAccessGate";
 import { installDemoAccessFetchCredentials } from "./demoAccess/api";
 import CdcFundingOverview from "./pages/CdcFundingOverview";
 import CdcStateFundingProfile from "./pages/CdcStateFundingProfile";
+import CdcGrantHistory from "./pages/CdcGrantHistory";
 import DemoAccessAdmin from "./pages/DemoAccessAdmin";
 import FundingModelBuilder from "./pages/FundingModelBuilder";
 import ProfileCounty from "./pages/ProfileCounty";
@@ -88,6 +89,8 @@ function Root() {
     routedPage = <CommunityMethodology />;
   } else if (route.type === "cdc-state-funding-profile") {
     routedPage = <CdcStateFundingProfile stateCode={route.id} />;
+  } else if (route.type === "cdc-grant-history") {
+    routedPage = <CdcGrantHistory nofo={route.id} />;
   } else if (route.type === "cdc-funding-overview") {
     routedPage = <CdcFundingOverview />;
   } else if (route.type === "funding-model-builder") {
