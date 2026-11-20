@@ -8,10 +8,43 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from app.db import get_db
-from . import lookup
+from . import lookup, state_map as map_lookup
 from .grant_history import GrantNotFound
 
 router = APIRouter(prefix="/state-funding/v1", tags=["state-funding"])
+
+
+@router.get("/map/shapes")
+def map_shapes(db: Session = Depends(get_db)):
+    return JSONResponse(
+        {"states": map_lookup.state_shapes(db), "boundary_vintage": "TIGER/Line 2024"},
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router.get("/map")
+def state_map(
+    fy: int | None = Query(None, ge=2021, le=2026),
+    funding_type: str = Query("all", pattern="^(all|regular|supplemental)$"),
+    deobligations: str = Query("include", pattern="^(include|exclude)$"),
+    category: str | None = None,
+    award_type: str | None = None,
+    account: str | None = None,
+    recipient_type: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if any(value is not None for value in (award_type, account, recipient_type)):
+        raise HTTPException(422, "The map accepts only fy, funding_type, category, and deobligations")
+    years = lookup.fiscal_years(db)
+    selected_fy = fy if fy is not None else years["default"]
+    if selected_fy not in years["fiscal_years"]:
+        raise HTTPException(422, "Fiscal year is not in this build")
+    build = lookup.build_info(db)
+    filters = {"funding_type": funding_type, "category": category or None, "deobligations": deobligations}
+    result = map_lookup.state_map(db, selected_fy, filters, build)
+    if category and not any(item["code"] == category for item in result["categories_available"]):
+        raise HTTPException(422, "Budget category is not available for grants in this fiscal year")
+    return result
 
 
 @router.get("/grants/{nofo}.csv")
@@ -106,6 +139,7 @@ def summary(
     code: str,
     fy: int | None = Query(None, ge=2021, le=2026),
     funding_type: str = Query("all", pattern="^(all|regular|supplemental)$"),
+    deobligations: str = Query("include", pattern="^(include|exclude)$"),
     award_type: str = Query("grant", pattern="^(all|grant|contract)$"),
     category: str | None = None,
     account: str | None = None,
@@ -113,6 +147,8 @@ def summary(
     db: Session = Depends(get_db),
 ):
     code, fy, filters, build = context(db, code, fy, funding_type, award_type, category, recipient_type, account)
+    if deobligations == "exclude":
+        filters["deobligations"] = deobligations
     return lookup.summary(db, code, fy, filters, build)
 
 

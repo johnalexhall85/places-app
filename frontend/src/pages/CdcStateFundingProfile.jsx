@@ -243,6 +243,7 @@ export default function CdcStateFundingProfile({ stateCode }) {
     <SiteHeader />
     <main id="main" className="sf-main">
       <a href="/cdc-funding">← CDC funding overview</a>
+      <a href="/cdc-funding/map">National map</a>
       <header className="sf-hero">
         <p className="sf-eyebrow">CDC funding · State profile</p>
         <h1>{title}</h1>

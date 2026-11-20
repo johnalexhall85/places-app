@@ -73,6 +73,9 @@ export function resolveRoute(pathname) {
   if (/^\/cdc-funding\/?$/i.test(normalizedPath)) {
     return { type: "cdc-funding-overview" };
   }
+  if (/^\/cdc-funding\/map\/?$/i.test(normalizedPath)) {
+    return { type: "cdc-funding-map" };
+  }
   const cdcFundingProfileMatch = normalizedPath.match(/^\/cdc-funding\/state\/([^/]+)\/?$/i);
   if (cdcFundingProfileMatch) {
     return { type: "cdc-state-funding-profile", id: cdcFundingProfileMatch[1] };

@@ -174,6 +174,31 @@ try {
   await page.getByRole('heading', { name: /CDC funding to recipients in North Carolina/ }).waitFor();
   await page.getByText(/Contracts are counted in the state where the contractor is located\.\s+Vaccines for Children purchases, for example, appear in the vaccine manufacturers' states\./).waitFor();
   console.log('Rebuilt state funding profile: loaded');
+  await visit('/cdc-funding/map', 'CDC grants to recipients by state');
+  await page.getByLabel('Fiscal year').selectOption('2025');
+  await page.getByLabel('Fiscal year').selectOption('2026');
+  const mapCategory = page.getByLabel('Budget category');
+  const firstCategory = await mapCategory.locator('option').nth(1).getAttribute('value');
+  await mapCategory.selectOption(firstCategory);
+  await mapCategory.selectOption('');
+  await page.getByLabel('Funding type').selectOption('supplemental');
+  await page.getByLabel('Funding type').selectOption('all');
+  await page.getByRole('checkbox', { name: 'Exclude deobligations' }).check();
+  await page.getByText(/FY2026.*Deobligations excluded/).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get('deobligations'), 'exclude');
+  await page.locator('.cfm-state[aria-label^="California:"]').click();
+  const statePanel = page.getByRole('complementary', { name: 'Selected state' });
+  await statePanel.waitFor();
+  assert.equal(await statePanel.getByRole('link', { name: 'State indicators' }).getAttribute('href'),
+    '/community/state/06');
+  assert.match(await statePanel.getByRole('link', { name: 'State funding profile' }).getAttribute('href'),
+    /^\/cdc-funding\/state\/CA\?fy=2026&funding_type=all&category=&award_type=grant$/);
+  await statePanel.getByText('The state funding profile shows net amounts, including deobligations.').waitFor();
+  await page.setViewportSize({ width: 375, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    'state funding map has no overflow at 375px');
+  await page.setViewportSize({ width: 1365, height: 900 });
+  console.log('State funding map: filters, California links, and 375px layout passed');
   await visit('/cdc-funding/grant/CDC-RFA-PS21-2102');
   await page.locator('.gh-page h1').waitFor();
   assert.ok(await page.locator('.gh-group').count() > 0, 'grant history has a state group');

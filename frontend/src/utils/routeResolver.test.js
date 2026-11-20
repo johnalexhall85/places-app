@@ -26,6 +26,7 @@ describe("routeResolver", () => {
   it("matches the CDC funding overview route without shadowing state profiles", () => {
     expect(resolveRoute("/cdc-funding")).toEqual({ type: "cdc-funding-overview" });
     expect(resolveRoute("/cdc-funding/")).toEqual({ type: "cdc-funding-overview" });
+    expect(resolveRoute("/cdc-funding/map")).toEqual({ type: "cdc-funding-map" });
   });
 
   it("matches the CDC state funding profile route", () => {

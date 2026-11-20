@@ -98,6 +98,8 @@ def citation(fy, period, build_id):
 
 def where(filters, *, include_category=True):
     sql = "o.build_id=:build_id AND o.state=:code AND o.fiscal_year=:fy"
+    if filters.get("deobligations") == "exclude":
+        sql += " AND o.amount > 0"
     if filters["funding_type"] != "all":
         sql += " AND o.is_supplemental=:supplemental"
     if filters["award_type"] != "all":

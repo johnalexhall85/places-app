@@ -1,0 +1,386 @@
+.cfm-page {
+  min-height: 100vh;
+  background: var(--pdo-background);
+  color: var(--pdo-text);
+  font-family: Arial, sans-serif;
+}
+
+.cfm-main {
+  width: min(1200px, calc(100% - 32px));
+  margin: 24px auto 64px;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.cfm-main a,
+.cfm-main button {
+  color: var(--pdo-primary);
+}
+
+.cfm-card,
+.cfm-hero {
+  background: white;
+  border: 1px solid var(--pdo-border);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 0;
+}
+
+.cfm-hero {
+  border-top: 6px solid var(--chip-navy);
+}
+
+.cfm-eyebrow {
+  color: var(--pdo-primary);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.cfm-hero h1,
+.cfm-kpi strong {
+  font-family: var(--headline-font);
+  color: var(--chip-navy);
+}
+
+.cfm-hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  margin: 8px 0;
+}
+
+.cfm-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 16px;
+}
+
+.cfm-controls label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.cfm-controls select {
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 6px;
+  background: white;
+}
+
+.cfm-controls .cfm-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.cfm-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.cfm-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 310px);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cfm-content:not(:has(.cfm-detail)) {
+  grid-template-columns: 1fr;
+}
+
+.cfm-map-section {
+  display: grid;
+  gap: 16px;
+}
+
+.cfm-map-frame {
+  position: relative;
+  min-width: 0;
+}
+
+.cfm-map-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cfm-state {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.cfm-state:focus {
+  outline: none;
+}
+
+.cfm-state:hover,
+.cfm-state:focus-visible {
+  stroke: var(--chip-navy);
+  stroke-width: 3;
+}
+
+.cfm-inset-label {
+  fill: var(--chip-navy);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.cfm-inset-frame {
+  fill: white;
+  stroke: var(--pdo-border);
+  stroke-width: 1;
+}
+
+.cfm-tooltip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -100%);
+  display: grid;
+  gap: 3px;
+  padding: 8px 12px;
+  background: var(--chip-navy);
+  color: white;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px #0004;
+}
+
+.cfm-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cfm-tile {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  text-align: left;
+  background: white;
+  border: 3px solid;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cfm-tile span {
+  font-size: .75rem;
+  overflow-wrap: anywhere;
+}
+
+.cfm-tile span:last-child {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cfm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  font-size: .76rem;
+}
+
+.cfm-legend span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.cfm-legend i {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #999;
+}
+
+.cfm-legend-title {
+  font-weight: 700;
+}
+
+.cfm-detail {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.cfm-detail h2 {
+  color: var(--chip-navy);
+  margin: 0;
+}
+
+.cfm-detail > p {
+  color: var(--pdo-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.cfm-close {
+  float: right;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 6px;
+  background: white;
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.cfm-detail dl {
+  display: grid;
+  gap: 8px;
+}
+
+.cfm-detail dl div,
+.cfm-detail li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--pdo-border);
+  padding: 6px 0;
+}
+
+.cfm-detail dd {
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cfm-detail ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.cfm-detail li {
+  font-size: .85rem;
+}
+
+.cfm-detail li strong {
+  white-space: nowrap;
+}
+
+.cfm-detail-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cfm-kpi {
+  display: grid;
+  gap: 5px;
+}
+
+.cfm-kpi strong {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  white-space: nowrap;
+}
+
+.cfm-source {
+  color: var(--pdo-text-muted);
+  font-size: .8rem;
+}
+
+.cfm-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.cfm-table-section summary {
+  cursor: pointer;
+  color: var(--chip-navy);
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.cfm-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cfm-table-section table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.cfm-table-section th,
+.cfm-table-section td {
+  padding: 8px;
+  border-bottom: 1px solid var(--pdo-border);
+  text-align: left;
+}
+
+.cfm-table-section td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.cfm-table-section button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .cfm-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .cfm-content {
+    display: block;
+  }
+
+  .cfm-detail {
+    position: fixed;
+    z-index: 10;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 72vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 24px #0004;
+  }
+
+  .cfm-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
+  .cfm-main {
+    width: min(100% - 24px, 1200px);
+  }
+
+  .cfm-card,
+  .cfm-hero {
+    padding: 16px;
+  }
+
+  .cfm-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cfm-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

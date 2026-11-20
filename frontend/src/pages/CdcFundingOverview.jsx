@@ -2124,6 +2124,7 @@ export default function CdcFundingOverview() {
       <Header />
       <main className="cdc-funding-main">
         <CdcFundingHeader />
+        <a href="/cdc-funding/map">National map</a>
 
         {yearsLoading ? <Skeleton /> : null}
         {hasEmptyYears ? (

@@ -13,6 +13,8 @@ async function get(path, params = {}, signal) {
 }
 
 export const fiscalYears = (signal) => get("/fiscal-years", {}, signal);
+export const fundingMap = (params, signal) => get("/map", params, signal);
+export const fundingMapShapes = (signal) => get("/map/shapes", {}, signal);
 export const stateSummary = (code, params, signal) => get(`/states/${encodeURIComponent(code)}/summary`, params, signal);
 export const stateGrants = (code, params, signal) => get(`/states/${encodeURIComponent(code)}/grants`, params, signal);
 export async function grantHistory(nofo, signal) {
