@@ -39,6 +39,8 @@ A national map of CDC **grant** money to recipients in each state, at `/cdc-fund
 | M3 | Claude | Review, screenshots at 1280 and 375 px, commit, PR to `beta`, staging deploy; **Gate A** | M1, M2 | |
 | M4 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend`, verify, handbook, diary, push | Gate A | |
 
+Deferred (John, 2026-11-20): source-exact deobligations. Amendment 1 drops negative read-model rows, which differs from summing negative File C rows by $7.4M of $2.62B in FY2026 (0.3%). John accepted this for now. Matching the source exactly needs a positive-amount column in `state_funding.obligation` (a migration and a rebuild).
+
 ## Ownership
 
 - **Claude:** `docs/state-map/**` (except the other agents' status files), `backend/alembic/**`, `infra/**`, and the handbook. Claude does every deploy.
