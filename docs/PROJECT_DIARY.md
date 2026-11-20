@@ -2,6 +2,23 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-20T02:00:00+00:00 — CDC grant history pages and state funding MCP tools promoted to live (Claude)
+
+- **Approval:** after trying staging, John said "Everything works, let's go live."
+- **Recovery set:** `data/deploy-recovery/grant-history-20261120/`, containing the commit `b300a56`, Alembic `f7c3a1d9e5b2`, the bundle `index-DuruGl8E.js`, and `webroot-before/`.
+- **Promotion steps on live:**
+  1. Fast-forwarded `main` from `b300a56` to `697c49e`.
+  2. `VITE_API_BASE_URL=/api npm run build`, giving `index-BwGczOic.js` (the same as staging), then `rsync --delete` to `/var/www/places`.
+  3. `systemctl restart places-backend chip-mcp`.
+
+  No migration and no data change.
+- **Verification:**
+  - **Routes:** `/api/health`, `/cdc-funding/grant/CDC-RFA-PS21-2102`, and `/cdc-funding/state/CA` return 200. The anonymous grant API returns 401. MCP `/healthz` returns 200, and the live server lists 14 tools.
+  - **Audit:** `test_grant_history_audit.py` on the live database passes 7/7.
+  - **Live figures:** PS21-2102 shows FY2026 $10,166,689, 96 recipients, 34 states, and TX $1,214,576 first, all equal to staging.
+- **Not done:** no signed-in browser check on live by an agent, because there is no live access code on file. John tried staging.
+- **Next:** none required. Deferred: a sub-awardee list per award (contract §6).
+
 ## 2026-11-20T01:30:00+00:00 — CDC grant history pages and state funding MCP tools on staging for Gate A (Claude, with Codex and Antigravity)
 
 - **Request:** John asked for a per-grant history page and for state funding tools in the MCP server.

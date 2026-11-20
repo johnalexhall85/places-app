@@ -39,7 +39,7 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
-**CDC grant history pages and state funding MCP tools: on staging for Gate A since 2026-11-20 (Claude, with Codex and Antigravity; plan [docs/grant-history/PLAN.md](grant-history/PLAN.md), [contract](grant-history/CONTRACT.md), tool contract Amendment 4). Not on live.**
+**CDC grant history pages and state funding MCP tools: live since 2026-11-20 (Claude, with Codex and Antigravity; Gate A passed and Gate B approved by John: "Everything works, let's go live."; plan [docs/grant-history/PLAN.md](grant-history/PLAN.md), [contract](grant-history/CONTRACT.md), tool contract Amendment 4):**
 - **Page:** `/cdc-funding/grant/{nofo}` (any NOFO form; the URL is replaced with the FON display). It shows:
   - a summary;
   - FY bars;
@@ -58,7 +58,8 @@
   - MCP eval Q67–Q72 were added; `--validate` passes for 72 questions.
   - The signed-in walkthrough passes. Anonymous API requests return 401.
   - The checklist is in `deliverables/grant-history/walkthrough.md`.
-- **Gate B needs:** fast-forward `main`, `npm run build` plus `rsync` to `/var/www/places`, and a restart of `places-backend` and `chip-mcp`. There is no migration and no data step.
+- **Live:** `main` `697c49e` or a documentation-only descendant; bundle `index-BwGczOic.js` (the same as staging); `places-backend` and `chip-mcp` restarted; the live MCP server lists 14 tools. The audit passes 7/7 on the live database. There was no migration and no data step.
+- **Rollback:** `data/deploy-recovery/grant-history-20261120/` holds `commit-before.txt` (`b300a56`), `alembic-before.txt` (`f7c3a1d9e5b2`, unchanged), `bundle-before.txt`, and `webroot-before/`. To roll back: `git reset --hard b300a56` in `/home/john/places-app`, `sudo rsync -a --delete webroot-before/ /var/www/places/`, then `sudo systemctl restart places-backend chip-mcp`.
 
 **CDC state funding profiles, rebuilt: live since 2026-11-19T23:20Z (Claude; Gate A passed and Gate B approved by John: "It looks great. I approve."; plan [docs/state-funding/PLAN.md](state-funding/PLAN.md), [contract](state-funding/CONTRACT.md) with Amendments 1–2):**
 - **What:** `/cdc-funding/state/{code}` was rebuilt in the PDO brand. It shows one fiscal year (FY2021–FY2026):

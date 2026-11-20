@@ -43,8 +43,8 @@ Approved by John on 2026-11-20. The contract is [CONTRACT.md](CONTRACT.md); task
 | G1 | Codex | Grant history lookup, API, page, state-page links, tests | G0 | done (+ G1b, G6 fixes) |
 | G2 | Codex | MCP tools `get_state_funding`, `list_state_grants`, `get_grant_history`, tests | G1 lookup | done |
 | G3 | Antigravity | Reconciliation audit, MCP eval questions, walkthrough checklist | G1, G2 | done, 7/7 (+ G6 eval runner) |
-| G4 | Claude | Review, commit, PR to `beta`, staging deploy (backend and `chip-mcp-staging`), walkthrough; **Gate A** | G1–G3 | staging deployed 2026-11-20; awaiting Gate A |
-| G5 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend` and `chip-mcp`, verify, handbook, diary, push | Gate A | |
+| G4 | Claude | Review, commit, PR to `beta`, staging deploy (backend and `chip-mcp-staging`), walkthrough; **Gate A** | G1–G3 | done; Gate A passed 2026-11-20 |
+| G5 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend` and `chip-mcp`, verify, handbook, diary, push | Gate A | done, live 2026-11-20 |
 
 Deferred: a sub-awardee list per award (contract §6).
 
