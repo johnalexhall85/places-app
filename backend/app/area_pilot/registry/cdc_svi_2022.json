@@ -4,7 +4,7 @@
   "short_name": "CDC Social Vulnerability Index",
   "publisher": "Centers for Disease Control and Prevention / Agency for Toxic Substances and Disease Registry (CDC/ATSDR)",
   "landing_page": "https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html",
-  "source_release_id": "CDC/ATSDR SVI 2022 (US counties and census tracts, ACS 2018-2022)",
+  "source_release_id": "CDC/ATSDR SVI 2022 (US and state-ranked counties and census tracts, ACS 2018-2022)",
   "observation_year": 2022,
   "observation_period": "2018–2022",
   "source_urls": {
@@ -15,11 +15,75 @@
     "county": "SVI_2022_US_county.csv",
     "tract": "SVI_2022_US.csv"
   },
+  "state_source_url_templates": {
+    "county": "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/{state_name}_county.csv",
+    "tract": "https://svi.cdc.gov/Documents/Data/2022/csv/states/{state_name}.csv"
+  },
+  "state_subdir": "state",
+  "state_files": [
+    {"name": "Alabama", "fips": "01", "abbr": "AL"},
+    {"name": "Alaska", "fips": "02", "abbr": "AK"},
+    {"name": "Arizona", "fips": "04", "abbr": "AZ"},
+    {"name": "Arkansas", "fips": "05", "abbr": "AR"},
+    {"name": "California", "fips": "06", "abbr": "CA"},
+    {"name": "Colorado", "fips": "08", "abbr": "CO"},
+    {"name": "Connecticut", "fips": "09", "abbr": "CT"},
+    {"name": "Delaware", "fips": "10", "abbr": "DE"},
+    {"name": "DistrictofColumbia", "fips": "11", "abbr": "DC"},
+    {"name": "Florida", "fips": "12", "abbr": "FL"},
+    {"name": "Georgia", "fips": "13", "abbr": "GA"},
+    {"name": "Hawaii", "fips": "15", "abbr": "HI"},
+    {"name": "Idaho", "fips": "16", "abbr": "ID"},
+    {"name": "Illinois", "fips": "17", "abbr": "IL"},
+    {"name": "Indiana", "fips": "18", "abbr": "IN"},
+    {"name": "Iowa", "fips": "19", "abbr": "IA"},
+    {"name": "Kansas", "fips": "20", "abbr": "KS"},
+    {"name": "Kentucky", "fips": "21", "abbr": "KY"},
+    {"name": "Louisiana", "fips": "22", "abbr": "LA"},
+    {"name": "Maine", "fips": "23", "abbr": "ME"},
+    {"name": "Maryland", "fips": "24", "abbr": "MD"},
+    {"name": "Massachusetts", "fips": "25", "abbr": "MA"},
+    {"name": "Michigan", "fips": "26", "abbr": "MI"},
+    {"name": "Minnesota", "fips": "27", "abbr": "MN"},
+    {"name": "Mississippi", "fips": "28", "abbr": "MS"},
+    {"name": "Missouri", "fips": "29", "abbr": "MO"},
+    {"name": "Montana", "fips": "30", "abbr": "MT"},
+    {"name": "Nebraska", "fips": "31", "abbr": "NE"},
+    {"name": "Nevada", "fips": "32", "abbr": "NV"},
+    {"name": "NewHampshire", "fips": "33", "abbr": "NH"},
+    {"name": "NewJersey", "fips": "34", "abbr": "NJ"},
+    {"name": "NewMexico", "fips": "35", "abbr": "NM"},
+    {"name": "NewYork", "fips": "36", "abbr": "NY"},
+    {"name": "NorthCarolina", "fips": "37", "abbr": "NC"},
+    {"name": "NorthDakota", "fips": "38", "abbr": "ND"},
+    {"name": "Ohio", "fips": "39", "abbr": "OH"},
+    {"name": "Oklahoma", "fips": "40", "abbr": "OK"},
+    {"name": "Oregon", "fips": "41", "abbr": "OR"},
+    {"name": "Pennsylvania", "fips": "42", "abbr": "PA"},
+    {"name": "RhodeIsland", "fips": "44", "abbr": "RI"},
+    {"name": "SouthCarolina", "fips": "45", "abbr": "SC"},
+    {"name": "SouthDakota", "fips": "46", "abbr": "SD"},
+    {"name": "Tennessee", "fips": "47", "abbr": "TN"},
+    {"name": "Texas", "fips": "48", "abbr": "TX"},
+    {"name": "Utah", "fips": "49", "abbr": "UT"},
+    {"name": "Vermont", "fips": "50", "abbr": "VT"},
+    {"name": "Virginia", "fips": "51", "abbr": "VA"},
+    {"name": "Washington", "fips": "53", "abbr": "WA"},
+    {"name": "WestVirginia", "fips": "54", "abbr": "WV"},
+    {"name": "Wisconsin", "fips": "55", "abbr": "WI"},
+    {"name": "Wyoming", "fips": "56", "abbr": "WY"}
+  ],
   "expected_column_count": 158,
   "expected_header_sha256": "8ab51e06f28d86566d6ca83030ef42f1bd53ba0eb33b8df3c8425736dcfc0a16",
   "expected_source_rows": {
-    "county": 3144,
-    "tract": 84120
+    "us": {
+      "county": 3144,
+      "tract": 84120
+    },
+    "state": {
+      "county": 3144,
+      "tract": 84120
+    }
   },
   "missing_token": "-999",
   "geography_rules": {
@@ -48,7 +112,9 @@
     "The ranks compare areas within one SVI release. Do not compare them with ranks from other SVI years, or with state-ranked SVI files.",
     "CHIP publishes CDC's ranks as released. It does not re-rank, average, or combine themes.",
     "The ranks are built on ACS 2018–2022 estimates, which have margins of error. CDC publishes no uncertainty for the ranks.",
-    "A county rank and a tract rank come from separate rankings, so they are not comparable."
+    "A county rank and a tract rank come from separate rankings, so they are not comparable.",
+    "A within-state rank compares an area only with others in the same state. Colors on a national map mean different things in different states.",
+    "DC has one county, so its within-DC county rank is 0."
   ],
   "refresh_policy": {
     "schedule": "manual_full_content",
@@ -59,6 +125,7 @@
   "measures": [
     {
       "measure_id": "rpl_themes",
+      "source_scope": "us",
       "source_field": "RPL_THEMES",
       "label": "Overall social vulnerability (percentile rank)",
       "kind": "percentile_rank",
@@ -81,6 +148,7 @@
     },
     {
       "measure_id": "rpl_theme1",
+      "source_scope": "us",
       "source_field": "RPL_THEME1",
       "label": "Socioeconomic status (percentile rank)",
       "kind": "percentile_rank",
@@ -103,6 +171,7 @@
     },
     {
       "measure_id": "rpl_theme2",
+      "source_scope": "us",
       "source_field": "RPL_THEME2",
       "label": "Household characteristics (percentile rank)",
       "kind": "percentile_rank",
@@ -125,6 +194,7 @@
     },
     {
       "measure_id": "rpl_theme3",
+      "source_scope": "us",
       "source_field": "RPL_THEME3",
       "label": "Racial and ethnic minority status (percentile rank)",
       "kind": "percentile_rank",
@@ -147,6 +217,7 @@
     },
     {
       "measure_id": "rpl_theme4",
+      "source_scope": "us",
       "source_field": "RPL_THEME4",
       "label": "Housing type and transportation (percentile rank)",
       "kind": "percentile_rank",
@@ -161,6 +232,121 @@
       "denominator": "US-wide percentile rank (0–1); higher values indicate greater vulnerability.",
       "official_definition": "CDC/ATSDR SVI 2022 Theme 4 housing type and transportation percentile rank (RPL_THEME4), built on ACS 2018–2022 5-year estimates.",
       "interpretation": "Percentile rank (0–1) among all U.S. counties or all U.S. census tracts; higher values indicate greater social vulnerability. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_themes_state",
+      "source_scope": "state",
+      "source_field": "RPL_THEMES",
+      "label": "Overall social vulnerability (percentile rank) (rank within state)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among counties in the same state",
+        "tract": "Rank among census tracts in the same state"
+      },
+      "denominator": "Within-state percentile rank (0–1); higher values indicate greater vulnerability within the same state.",
+      "official_definition": "CDC/ATSDR SVI 2022 overall summary ranking across all four themes within each state (RPL_THEMES), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among counties or census tracts in the same state; higher values indicate greater social vulnerability. Colors compare areas only within their own state. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme1_state",
+      "source_scope": "state",
+      "source_field": "RPL_THEME1",
+      "label": "Socioeconomic status (percentile rank) (rank within state)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among counties in the same state",
+        "tract": "Rank among census tracts in the same state"
+      },
+      "denominator": "Within-state percentile rank (0–1); higher values indicate greater vulnerability within the same state.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 1 socioeconomic status within-state percentile rank (RPL_THEME1), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among counties or census tracts in the same state; higher values indicate greater social vulnerability. Colors compare areas only within their own state. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme2_state",
+      "source_scope": "state",
+      "source_field": "RPL_THEME2",
+      "label": "Household characteristics (percentile rank) (rank within state)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among counties in the same state",
+        "tract": "Rank among census tracts in the same state"
+      },
+      "denominator": "Within-state percentile rank (0–1); higher values indicate greater vulnerability within the same state.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 2 household characteristics within-state percentile rank (RPL_THEME2), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among counties or census tracts in the same state; higher values indicate greater social vulnerability. Colors compare areas only within their own state. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme3_state",
+      "source_scope": "state",
+      "source_field": "RPL_THEME3",
+      "label": "Racial and ethnic minority status (percentile rank) (rank within state)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among counties in the same state",
+        "tract": "Rank among census tracts in the same state"
+      },
+      "denominator": "Within-state percentile rank (0–1); higher values indicate greater vulnerability within the same state.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 3 racial and ethnic minority status within-state percentile rank (RPL_THEME3), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among counties or census tracts in the same state; higher values indicate greater social vulnerability. Colors compare areas only within their own state. Not a rate and not a measure of risk for any one person.",
+      "legend_breaks": {
+        "county": [0.25, 0.5, 0.75],
+        "tract": [0.25, 0.5, 0.75]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "rpl_theme4_state",
+      "source_scope": "state",
+      "source_field": "RPL_THEME4",
+      "label": "Housing type and transportation (percentile rank) (rank within state)",
+      "kind": "percentile_rank",
+      "unit": "percentile rank (0–1)",
+      "storage_scale": "percentile_rank_0_1",
+      "observation_period": "2018–2022",
+      "population": "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)",
+      "population_by_level": {
+        "county": "Rank among counties in the same state",
+        "tract": "Rank among census tracts in the same state"
+      },
+      "denominator": "Within-state percentile rank (0–1); higher values indicate greater vulnerability within the same state.",
+      "official_definition": "CDC/ATSDR SVI 2022 Theme 4 housing type and transportation within-state percentile rank (RPL_THEME4), built on ACS 2018–2022 5-year estimates.",
+      "interpretation": "Percentile rank (0–1) among counties or census tracts in the same state; higher values indicate greater social vulnerability. Colors compare areas only within their own state. Not a rate and not a measure of risk for any one person.",
       "legend_breaks": {
         "county": [0.25, 0.5, 0.75],
         "tract": [0.25, 0.5, 0.75]

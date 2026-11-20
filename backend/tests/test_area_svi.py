@@ -1,4 +1,4 @@
-"""Unit tests for CDC/ATSDR SVI 2022 parsing, boundary classification, lifecycle guards, and API."""
+"""Unit tests for CDC/ATSDR SVI 2022 parsing (US + state-ranked), classification, lifecycle, and API."""
 import copy
 from decimal import Decimal
 from types import SimpleNamespace
@@ -6,16 +6,26 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from app.area_pilot import lookup, svi_api, svi_cli
+from app.area_pilot import lookup, svi, svi_api, svi_cli
 from app.area_pilot.source import same_label_revision
 from app.area_pilot.svi import (boundary_without_source, classify, load_registry, observation_values,
-                                parse_csv, parse_value, range_problems, retrieve, semantic_sha)
+                                parse_csv, parse_state_csvs, parse_value, range_problems, retrieve,
+                                semantic_sha, state_file_map, state_file_url)
 from app.demo_access.middleware import _is_public_path
 
 CONFIG = load_registry()
-FIELDS = [m['source_field'] for m in CONFIG['measures']]
-HEADER = ['ST', 'STATE', 'ST_ABBR', 'STCNTY', 'COUNTY', 'FIPS', 'LOCATION'] + FIELDS
-TEST = copy.deepcopy(CONFIG) | {'expected_column_count': len(HEADER), 'expected_header_sha256': ''}
+US_FIELDS = ['RPL_THEMES', 'RPL_THEME1', 'RPL_THEME2', 'RPL_THEME3', 'RPL_THEME4']
+HEADER = ['ST', 'STATE', 'ST_ABBR', 'STCNTY', 'COUNTY', 'FIPS', 'LOCATION'] + US_FIELDS
+TEST_STATES = [
+    {'name': 'Alabama', 'fips': '01', 'abbr': 'AL'},
+    {'name': 'Connecticut', 'fips': '09', 'abbr': 'CT'},
+    {'name': 'NorthCarolina', 'fips': '37', 'abbr': 'NC'},
+]
+TEST = copy.deepcopy(CONFIG) | {
+    'expected_column_count': len(HEADER),
+    'expected_header_sha256': '',
+    'state_files': TEST_STATES,
+}
 
 
 def row(fips='01001', values=('0.5432', '0.4100', '0.6200', '0.3300', '0.7800'),
@@ -24,14 +34,16 @@ def row(fips='01001', values=('0.5432', '0.4100', '0.6200', '0.3300', '0.7800'),
 
 
 def write_csv(path, rows, header=HEADER, bom=True):
+    path.parent.mkdir(parents=True, exist_ok=True)
     encoding = 'utf-8-sig' if bom else 'utf-8'
     lines = [','.join(header), *(','.join(f'"{c}"' if ',' in c else c for c in r) for r in rows)]
     path.write_text('\n'.join(lines) + '\n', encoding=encoding)
     return path
 
 
-def record(fips='01001', values=('0.5432', '0.4100', '0.6200', '0.3300', '0.7800')):
-    return dict(zip(HEADER, row(fips=fips, values=values)))
+def record(fips='01001', values=('0.5432', '0.4100', '0.6200', '0.3300', '0.7800'),
+           st='01', state='Alabama', abbr='AL'):
+    return dict(zip(HEADER, row(fips=fips, values=values, st=st, state=state, abbr=abbr)))
 
 
 # ---------------------------------------------------------------- registry & contract
@@ -43,12 +55,38 @@ def test_registry_matches_svi_2022_contract():
     assert CONFIG['observation_period'] == '2018–2022'
     assert not CONFIG['refresh_policy']['auto_publish'] and CONFIG['aggregation_method'] == 'none'
     assert [m['measure_id'] for m in CONFIG['measures']] == [
-        'rpl_themes', 'rpl_theme1', 'rpl_theme2', 'rpl_theme3', 'rpl_theme4']
-    assert FIELDS == ['RPL_THEMES', 'RPL_THEME1', 'RPL_THEME2', 'RPL_THEME3', 'RPL_THEME4']
+        'rpl_themes', 'rpl_theme1', 'rpl_theme2', 'rpl_theme3', 'rpl_theme4',
+        'rpl_themes_state', 'rpl_theme1_state', 'rpl_theme2_state', 'rpl_theme3_state', 'rpl_theme4_state',
+    ]
+    assert CONFIG['expected_source_rows'] == {
+        'us': {'county': 3144, 'tract': 84120},
+        'state': {'county': 3144, 'tract': 84120},
+    }
+    by_name = state_file_map(CONFIG)
+    assert len(by_name) == 51
+    assert by_name['NorthCarolina'] == {'name': 'NorthCarolina', 'fips': '37', 'abbr': 'NC'}
+    assert by_name['DistrictofColumbia'] == {'name': 'DistrictofColumbia', 'fips': '11', 'abbr': 'DC'}
+    assert state_file_url(CONFIG, 'NorthCarolina', 'county') == (
+        'https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/NorthCarolina_county.csv')
+    assert state_file_url(CONFIG, 'DistrictofColumbia', 'tract') == (
+        'https://svi.cdc.gov/Documents/Data/2022/csv/states/DistrictofColumbia.csv')
     for measure in CONFIG['measures']:
         assert measure['legend_breaks'] == {'county': [0.25, 0.5, 0.75], 'tract': [0.25, 0.5, 0.75]}
         assert measure['observation_period'] == '2018–2022'
-    assert len(CONFIG['limitations']) == 5
+        if measure['measure_id'].endswith('_state'):
+            assert measure['source_scope'] == 'state'
+            assert '(rank within state)' in measure['label']
+            assert measure['population_by_level'] == {
+                'county': 'Rank among counties in the same state',
+                'tract': 'Rank among census tracts in the same state',
+            }
+        else:
+            assert measure['source_scope'] == 'us'
+            assert measure['population_by_level'] == {
+                'county': 'Rank among all U.S. counties',
+                'tract': 'Rank among all U.S. census tracts',
+            }
+    assert len(CONFIG['limitations']) == 7
     assert svi_api.LIMITATIONS == CONFIG['limitations']
     assert svi_api.STATUS_TEXT['not_available'] == 'Not ranked by CDC (−999 in the source file)'
     comp = lookup.comparability('cdc_svi')
@@ -86,8 +124,9 @@ def test_parse_csv_utf8_sig_minus999_zero_ct_planning_region_and_errors(tmp_path
     ]
     records, stats = parse_csv(write_csv(tmp_path / 'county.csv', rows, bom=True), 'county', TEST)
     assert stats['row_count'] == 2
-    assert set(records) == {('county', '09110'), ('county', '01001')}
-    obs_zero = {v['measure']['measure_id']: v for v in observation_values(records[('county', '01001')], TEST)}
+    assert set(records) == {('us', 'county', '09110'), ('us', 'county', '01001')}
+    obs_zero = {v['measure']['measure_id']: v for v in observation_values(records[('us', 'county', '01001')], TEST, 'us')}
+    assert set(obs_zero) == {'rpl_themes', 'rpl_theme1', 'rpl_theme2', 'rpl_theme3', 'rpl_theme4'}
     assert obs_zero['rpl_themes']['status'] == 'true_zero' and obs_zero['rpl_themes']['value'] == Decimal(0)
     assert obs_zero['rpl_theme1']['status'] == 'true_zero' and obs_zero['rpl_theme1']['value'] == Decimal(0)
     assert obs_zero['rpl_theme4']['status'] == 'available' and obs_zero['rpl_theme4']['value'] == Decimal('1.0')
@@ -98,7 +137,7 @@ def test_parse_csv_utf8_sig_minus999_zero_ct_planning_region_and_errors(tmp_path
             location='Census Tract 5001; Capitol Planning Region; Connecticut'),
     ]
     t_records, _ = parse_csv(write_csv(tmp_path / 'tract.csv', tract_rows, bom=True), 'tract', TEST)
-    obs_tract = {v['measure']['measure_id']: v for v in observation_values(t_records[('tract', '09110500100')], TEST)}
+    obs_tract = {v['measure']['measure_id']: v for v in observation_values(t_records[('us', 'tract', '09110500100')], TEST, 'us')}
     assert obs_tract['rpl_themes']['status'] == 'not_available' and obs_tract['rpl_themes']['value'] is None
     assert obs_tract['rpl_themes']['source_value'] == '-999.0'
     assert obs_tract['rpl_theme1']['status'] == 'not_available' and obs_tract['rpl_theme1']['value'] is None
@@ -115,39 +154,113 @@ def test_parse_csv_utf8_sig_minus999_zero_ct_planning_region_and_errors(tmp_path
         parse_csv(write_csv(tmp_path / 'cols.csv', [row()], HEADER + ['EXTRA']), 'county', TEST)
 
 
-def test_retrieve_skip_fetch_uses_archived_files_with_sha256_evidence(tmp_path):
-    c_path = write_csv(tmp_path / TEST['source_filenames']['county'], [row(fips='09110')])
-    t_path = write_csv(tmp_path / TEST['source_filenames']['tract'], [row(fips='09110500100')])
+def test_parse_state_csvs_validates_st_abbr_and_rejects_cross_file_duplicate_fips(tmp_path):
+    state_dir = tmp_path / 'state'
+    write_csv(state_dir / 'Alabama_county.csv', [row(fips='01001', st='01', state='Alabama', abbr='AL')])
+    write_csv(state_dir / 'Connecticut_county.csv', [
+        row(fips='09110', st='09', state='Connecticut', abbr='CT', county='Capitol Planning Region')])
+    write_csv(state_dir / 'NorthCarolina_county.csv', [
+        row(fips='37063', values=('0.5960', '0.5000', '0.4000', '0.6000', '0.7000'),
+            st='37', state='North Carolina', abbr='NC', county='Durham County')])
+
+    records, stats = parse_state_csvs(tmp_path, 'county', TEST)
+    assert stats['row_count'] == 3
+    assert set(records) == {('state', 'county', '01001'), ('state', 'county', '09110'), ('state', 'county', '37063')}
+    obs_state = {v['measure']['measure_id']: v for v in observation_values(records[('state', 'county', '37063')], TEST, 'state')}
+    assert set(obs_state) == {
+        'rpl_themes_state', 'rpl_theme1_state', 'rpl_theme2_state', 'rpl_theme3_state', 'rpl_theme4_state'}
+    assert obs_state['rpl_themes_state']['value'] == Decimal('0.5960')
+
+    # Wrong ST_ABBR inside a state file stops parsing.
+    write_csv(state_dir / 'NorthCarolina_county.csv', [
+        row(fips='37063', st='37', state='North Carolina', abbr='SC', county='Durham County')])
+    with pytest.raises(ValueError, match='ST_ABBR'):
+        parse_state_csvs(tmp_path, 'county', TEST)
+
+    # Duplicate FIPS across two state files fails even if state codes were spoofed to match.
+    dup_cfg = copy.deepcopy(TEST) | {
+        'state_files': [
+            {'name': 'Alabama', 'fips': '01', 'abbr': 'AL'},
+            {'name': 'AlabamaCopy', 'fips': '01', 'abbr': 'AL'},
+        ]
+    }
+    write_csv(state_dir / 'AlabamaCopy_county.csv', [row(fips='01001', st='01', state='Alabama', abbr='AL')])
+    with pytest.raises(ValueError, match='multiple state'):
+        parse_state_csvs(tmp_path, 'county', dup_cfg)
+
+
+def test_retrieve_skip_fetch_and_fetch_urls_cover_us_and_state_files(tmp_path, monkeypatch):
+    write_csv(tmp_path / TEST['source_filenames']['county'], [
+        row(fips='01001', st='01', state='Alabama', abbr='AL'),
+        row(fips='09110', st='09', state='Connecticut', abbr='CT'),
+        row(fips='37063', values=('0.6860', '0.5', '0.5', '0.5', '0.5'), st='37', state='North Carolina', abbr='NC'),
+    ])
+    write_csv(tmp_path / TEST['source_filenames']['tract'], [
+        row(fips='01001020100', st='01', state='Alabama', abbr='AL'),
+        row(fips='09110500100', st='09', state='Connecticut', abbr='CT'),
+        row(fips='37063000101', st='37', state='North Carolina', abbr='NC'),
+    ])
+    for entry, cfips, tfips in (
+        (TEST_STATES[0], '01001', '01001020100'),
+        (TEST_STATES[1], '09110', '09110500100'),
+        (TEST_STATES[2], '37063', '37063000101'),
+    ):
+        write_csv(tmp_path / 'state' / f'{entry["name"]}_county.csv',
+                  [row(fips=cfips, st=entry['fips'], state=entry['name'], abbr=entry['abbr'])])
+        write_csv(tmp_path / 'state' / f'{entry["name"]}.csv',
+                  [row(fips=tfips, st=entry['fips'], state=entry['name'], abbr=entry['abbr'])])
+
     records, stats, files, prov = retrieve(TEST, tmp_path, skip_fetch=True)
-    assert set(records) == {('county', '09110'), ('tract', '09110500100')}
-    assert stats['row_counts'] == {'county': 1, 'tract': 1}
-    assert {f['role'] for f in files} == {'svi_county_csv', 'svi_tract_csv'}
+    assert stats['row_counts'] == {'us': {'county': 3, 'tract': 3}, 'state': {'county': 3, 'tract': 3}}
+    assert len(records) == 12
+    assert len(files) == 2 + 2 * len(TEST_STATES)
+    assert {f['role'] for f in files} == svi.required_roles(TEST)
     assert all(len(f['sha256']) == 64 and f['byte_count'] > 0 for f in files)
     assert prov['skip_fetch'] is True
-    assert c_path.is_file() and t_path.is_file()
+
+    # Verify fetch() hits both US and state URL patterns (mocked, no network calls).
+    fetched_urls = []
+    def fake_get(url, target, limit):
+        fetched_urls.append((url, target.name))
+        target.write_text('stub', encoding='utf-8')
+        return {'content-length': '4'}
+    monkeypatch.setattr(svi, '_bounded_get', fake_get)
+    monkeypatch.setattr('app.area_pilot.operations.disk_guard', lambda *_a, **_k: None)
+    f_files, _ = svi.fetch(TEST, tmp_path / 'dl')
+    assert len(f_files) == 2 + 2 * len(TEST_STATES)
+    assert ('https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/NorthCarolina_county.csv',
+            'NorthCarolina_county.csv') in fetched_urls
+    assert ('https://svi.cdc.gov/Documents/Data/2022/csv/states/NorthCarolina.csv',
+            'NorthCarolina.csv') in fetched_urls
 
 
 # ---------------------------------------------------------------- geography classification
 
-def test_classify_matches_2024_boundaries_including_ct_planning_regions_and_marks_source_only():
+def test_classify_matches_2024_boundaries_both_scopes_and_marks_source_only():
     records = {
-        ('county', '01001'): record('01001'),
-        ('county', '09110'): record('09110'),
-        ('county', '09001'): record('09001'),
-        ('tract', '09110500100'): record('09110500100'),
-        ('tract', '99999999999'): record('99999999999'),
+        ('us', 'county', '01001'): record('01001'),
+        ('state', 'county', '01001'): record('01001', values=('0.2200', '0.1', '0.2', '0.3', '0.4')),
+        ('us', 'county', '09110'): record('09110', st='09', state='Connecticut', abbr='CT'),
+        ('state', 'county', '09110'): record('09110', st='09', state='Connecticut', abbr='CT'),
+        ('us', 'county', '09001'): record('09001', st='09', state='Connecticut', abbr='CT'),
+        ('us', 'tract', '09110500100'): record('09110500100', st='09', state='Connecticut', abbr='CT'),
+        ('state', 'tract', '09110500100'): record('09110500100', st='09', state='Connecticut', abbr='CT'),
+        ('us', 'tract', '99999999999'): record('99999999999'),
     }
     classified, issues = classify(records, {'01001', '09110', '72001'}, {'09110500100', '72001956300'}, TEST)
     assert issues['duplicate_geoids'] == []
-    assert classified[('county', '01001')]['boundary_status'] == 'matched'
-    assert classified[('county', '09110')]['boundary_status'] == 'matched'
-    assert classified[('county', '09110')]['geoid'] == '09110'
-    assert classified[('tract', '09110500100')]['boundary_status'] == 'matched'
-    assert classified[('county', '09001')]['boundary_status'] == 'source_only'
-    assert classified[('county', '09001')]['exclusion_reason'] == 'legacy_connecticut_county_code'
-    assert classified[('county', '09001')]['geoid'] is None
-    assert classified[('tract', '99999999999')]['boundary_status'] == 'source_only'
-    assert classified[('tract', '99999999999')]['exclusion_reason'] == 'no_matching_2024_boundary'
+    assert classified[('us', 'county', '01001')]['boundary_status'] == 'matched'
+    assert classified[('state', 'county', '01001')]['boundary_status'] == 'matched'
+    assert classified[('us', 'county', '09001')]['boundary_status'] == 'source_only'
+    assert classified[('us', 'county', '09001')]['exclusion_reason'] == 'legacy_connecticut_county_code'
+    assert classified[('us', 'tract', '99999999999')]['boundary_status'] == 'source_only'
+    assert classified[('us', 'tract', '99999999999')]['exclusion_reason'] == 'no_matching_2024_boundary'
+
+    expected = svi_cli.expected_observations(records, classified, TEST)
+    # 2 matched counties * 10 measures + 1 matched tract * 10 measures = 30
+    assert len(expected) == 30
+    assert expected[('county', '01001', 'rpl_themes')][0] == Decimal('0.5432')
+    assert expected[('county', '01001', 'rpl_themes_state')][0] == Decimal('0.2200')
 
     uncovered, coverage = boundary_without_source(classified, {'01001', '09110', '72001'}, {'09110500100', '72001956300'}, TEST)
     assert uncovered == {
@@ -163,10 +276,10 @@ def test_classify_matches_2024_boundaries_including_ct_planning_regions_and_mark
 # ---------------------------------------------------------------- lifecycle guards
 
 def test_semantic_sha_is_order_independent_and_detects_revisions():
-    a = {('county', '01001'): record('01001'), ('county', '09110'): record('09110')}
+    a = {('us', 'county', '01001'): record('01001'), ('state', 'county', '01001'): record('01001')}
     b = dict(reversed(list(a.items())))
     assert semantic_sha(a) == semantic_sha(b)
-    revised = dict(a) | {('county', '09110'): record('09110') | {'RPL_THEMES': '0.9999'}}
+    revised = dict(a) | {('state', 'county', '01001'): record('01001') | {'RPL_THEMES': '0.9999'}}
     assert semantic_sha(revised) != semantic_sha(a)
     assert same_label_revision({'source_release_id': CONFIG['source_release_id'], 'semantic_sha256': semantic_sha(a)},
                                CONFIG['source_release_id'], semantic_sha(revised))
@@ -217,12 +330,14 @@ class PublishedDB:
         return SimpleNamespace(scalar_one_or_none=lambda: 'published')
 
 
-def test_selection_supports_county_and_tract_and_rejects_state():
+def test_selection_supports_us_and_state_measures_and_rejects_state_geography():
+    for idx in (0, 5):
+        measure = CONFIG['measures'][idx]
+        for geography in ('county', 'tract'):
+            assert svi_api.selection(PublishedDB(), CONFIG['dataset_id'], 'r', measure['measure_id'],
+                                     measure['observation_period'], measure['population'],
+                                     CONFIG['value_type'], geography)[1] == measure
     measure = CONFIG['measures'][0]
-    for geography in ('county', 'tract'):
-        assert svi_api.selection(PublishedDB(), CONFIG['dataset_id'], 'r', measure['measure_id'],
-                                 measure['observation_period'], measure['population'],
-                                 CONFIG['value_type'], geography)[1] == measure
     with pytest.raises(HTTPException) as error:
         svi_api.selection(PublishedDB(), CONFIG['dataset_id'], 'r', measure['measure_id'],
                           measure['observation_period'], measure['population'], CONFIG['value_type'], 'state')
@@ -278,13 +393,16 @@ def test_api_metadata_map_legend_table_parity_and_lookup_spec():
             return Result(out)
 
     measure = CONFIG['measures'][0]
+    state_measure = CONFIG['measures'][5]
     base = svi_api.metadata(CONFIG, measure, 'rel-svi', 'tract', '-73,41,-72,42')
     assert base['legend_breaks'] == [0.25, 0.5, 0.75]
     assert base['population_label'] == 'Rank among all U.S. census tracts'
-    assert base['uncertainty'] == 'not published'
-    assert base['storage_scale'] == 'percentile_rank_0_1'
-    county_meta = svi_api.metadata(CONFIG, measure, 'rel-svi', 'county', '-73,41,-72,42')
-    assert county_meta['population_label'] == 'Rank among all U.S. counties'
+    assert base['source_scope'] == 'us'
+    state_county_meta = svi_api.metadata(CONFIG, state_measure, 'rel-svi', 'county', '-73,41,-72,42')
+    assert state_county_meta['population_label'] == 'Rank among counties in the same state'
+    assert state_county_meta['source_scope'] == 'state'
+    state_tract_meta = svi_api.metadata(CONFIG, state_measure, 'rel-svi', 'tract', '-73,41,-72,42')
+    assert state_tract_meta['population_label'] == 'Rank among census tracts in the same state'
 
     mapped = svi_api.map_data(DB(), {'level': 'tract'}, 4, base, 0.01)
     table = svi_api.table(DB(), {'level': 'tract'}, base, 4, 100, 0)

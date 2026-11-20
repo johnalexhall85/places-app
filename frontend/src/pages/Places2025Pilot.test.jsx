@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, sviNumber, sviValueText, sviColor, sviBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, sviNumber, sviValueText, sviColor, sviBinLabels, swapSviMeasureScope, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -40,8 +40,9 @@ describe("PLACES 2025 county pilot selection", () => {
     render(<Places2025Pilot />);
     const menu = await screen.findByLabelText("Data source");
     const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
-    expect(options).toHaveLength(10);
+    expect(options).toHaveLength(11);
     expect(options).toContain("CDC Social Vulnerability Index");
+    expect(options).toContain("FEMA National Risk Index");
     expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
     expect(screen.queryByRole("link", { name: /legacy map/i })).not.toBeInTheDocument();
   });
@@ -892,17 +893,32 @@ describe("historical area map years", () => {
 
 describe("CDC Social Vulnerability Index (SVI 2022)", () => {
   afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; });
-  const population = "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)";
+  const usPop = "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)";
+  const statePop = "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)";
   const measures = [
-    { measure_id: "rpl_themes", source_field: "RPL_THEMES", label: "Overall social vulnerability (percentile rank)",
-      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population,
+    { measure_id: "rpl_themes", source_scope: "us", source_field: "RPL_THEMES", label: "Overall social vulnerability (percentile rank)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population: usPop,
+      population_by_level: { county: "Rank among all U.S. counties", tract: "Rank among all U.S. census tracts" },
       official_definition: "CDC/ATSDR SVI 2022 overall summary ranking across all four themes (RPL_THEMES).",
       interpretation: "Percentile rank (0–1); higher values indicate greater vulnerability.",
       legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
-    { measure_id: "rpl_theme1", source_field: "RPL_THEME1", label: "Socioeconomic status (percentile rank)",
-      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population,
+    { measure_id: "rpl_theme1", source_scope: "us", source_field: "RPL_THEME1", label: "Socioeconomic status (percentile rank)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population: usPop,
+      population_by_level: { county: "Rank among all U.S. counties", tract: "Rank among all U.S. census tracts" },
       official_definition: "CDC/ATSDR SVI 2022 Theme 1 socioeconomic status percentile rank (RPL_THEME1).",
       interpretation: "Percentile rank (0–1); higher values indicate greater vulnerability.",
+      legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
+    { measure_id: "rpl_themes_state", source_scope: "state", source_field: "RPL_THEMES", label: "Overall social vulnerability (percentile rank) (rank within state)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population: statePop,
+      population_by_level: { county: "Rank among counties in the same state", tract: "Rank among census tracts in the same state" },
+      official_definition: "CDC/ATSDR SVI 2022 overall within-state summary ranking (RPL_THEMES).",
+      interpretation: "Within-state percentile rank (0–1); higher values indicate greater vulnerability.",
+      legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
+    { measure_id: "rpl_theme1_state", source_scope: "state", source_field: "RPL_THEME1", label: "Socioeconomic status (percentile rank) (rank within state)",
+      kind: "percentile_rank", unit: "percentile rank (0–1)", observation_period: "2018–2022", population: statePop,
+      population_by_level: { county: "Rank among counties in the same state", tract: "Rank among census tracts in the same state" },
+      official_definition: "CDC/ATSDR SVI 2022 Theme 1 within-state percentile rank (RPL_THEME1).",
+      interpretation: "Within-state percentile rank (0–1); higher values indicate greater vulnerability.",
       legend_breaks: { county: [0.25, 0.5, 0.75], tract: [0.25, 0.5, 0.75] }, geographies: ["county", "tract"] },
   ];
   const catalog = {
@@ -917,29 +933,36 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
     ],
   };
 
-  it("formats percentile ranks, quartile bins, -999 not_available, and tooltip explanation", () => {
+  it("formats percentile ranks, quartile bins, -999 not_available, and US vs state tooltip explanations", () => {
     expect(resolveRoute("/area/svi")).toEqual({ type: "svi-area" });
     expect(sviNumber(0)).toBe("0.00");
     expect(sviNumber(0.6421)).toBe("0.6421");
     expect(sviBinLabels([0.25, 0.5, 0.75])).toEqual(["Under 0.25", "0.25 to under 0.50", "0.50 to under 0.75", "0.75 to 1.00"]);
+    expect(swapSviMeasureScope("rpl_theme1", "state")).toBe("rpl_theme1_state");
+    expect(swapSviMeasureScope("rpl_theme1_state", "us")).toBe("rpl_theme1");
     expect(sviValueText({ value: null, status: "not_available" })).toBe(SVI_STATUS_TEXT.not_available);
     expect(sviColor(null, "not_available")).not.toBe(sviColor(null, "not_in_release"));
     expect(sviColor(0, "true_zero")).not.toBe(sviColor(null, "not_available"));
-    const details = areaFeatureDetails("svi", { name: "Capitol Planning Region", geography_id: "09110", value: 0.4215,
-      source_value: "0.4215", status: "available" }, measures[0], { geography: "county", catalog });
-    expect(details.explanation).toMatch(/percentile rank/i);
-    expect(details.explanation).toMatch(/not a rate/i);
-    expect(details.lines.join(" | ")).toContain("Rank among all U.S. counties");
+    const usDetails = areaFeatureDetails("svi", { name: "Durham County", geography_id: "37063", value: 0.686,
+      source_value: "0.6860", status: "available" }, measures[0], { geography: "county", catalog });
+    expect(usDetails.explanation).toMatch(/U\.S\.-wide percentile rank/i);
+    expect(usDetails.lines.join(" | ")).toContain("Rank among all U.S. counties");
+    const stateDetails = areaFeatureDetails("svi", { name: "Durham County", geography_id: "37063", value: 0.596,
+      source_value: "0.5960", status: "available" }, measures[2], { geography: "county", catalog });
+    expect(stateDetails.explanation).toMatch(/within-state percentile rank/i);
+    expect(stateDetails.lines.join(" | ")).toContain("Rank among counties in the same state");
   });
 
-  it("loads county ranks by default, switches to tracts on zoom, and keeps -999 distinct", async () => {
+  it("defaults to U.S. ranks, swaps theme to within-state with map switch, and switches to tracts on zoom", async () => {
     const urls = [];
     vi.stubGlobal("fetch", vi.fn(async (url) => {
       const path = String(url); urls.push(path);
       if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
       const geography = path.includes("geography=tract") ? "tract" : "county";
+      const isStateMeasure = path.includes("_state");
       const rows = geography === "county"
-        ? [{ geography_id: "09110", name: "Capitol Planning Region", value: 0.4215, source_value: "0.4215", status: "available" }]
+        ? [{ geography_id: "37063", name: "Durham County", value: isStateMeasure ? 0.596 : 0.686,
+             source_value: isStateMeasure ? "0.5960" : "0.6860", status: "available" }]
         : [{ geography_id: "09110500100", name: "Census Tract 5001", value: 0, source_value: "0.0", status: "true_zero" },
            { geography_id: "09110980000", name: "Census Tract 9800", value: null, source_value: "-999.0", status: "not_available",
              status_text: SVI_STATUS_TEXT.not_available }];
@@ -949,15 +972,138 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
       return { ok: true, json: async () => ({ ...payload, release_id: "svi-release", geography }) };
     }));
     render(<Places2025Pilot dataset="svi" />);
-    expect(await screen.findByText("09110")).toBeInTheDocument();
-    expect(screen.getAllByText(/percentile ranks, not rates/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("columnheader", { name: "CDC SVI source value" })).toBeInTheDocument();
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getByLabelText("All U.S. areas")).toBeChecked();
+    expect(screen.queryByText("Colors compare areas only within their own state.")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/U\.S\.-wide percentile ranks/i).length).toBeGreaterThan(0);
+
+    // Select Theme 1, then switch to "Areas in the same state": keeps Theme 1 and swaps to rpl_theme1_state!
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "rpl_theme1" } });
+    await screen.findByText("0.6860");
+    fireEvent.click(screen.getByLabelText("Areas in the same state"));
+    expect(await screen.findByText("0.5960")).toBeInTheDocument();
+    expect(screen.getByLabelText("Areas in the same state")).toBeChecked();
+    expect(screen.getByLabelText("Measure")).toHaveValue("rpl_theme1_state");
+    expect(screen.getAllByText(/Colors compare areas only within their own state\./).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/within-state percentile ranks/i).length).toBeGreaterThan(0);
+
+    // Zoom to tracts.
     mapHarness.zoom = PILOT_TRACT_ZOOM;
     act(() => mapHarness.handlers.zoomend());
     expect(await screen.findByText("09110980000")).toBeInTheDocument();
     expect(screen.getAllByText(SVI_STATUS_TEXT.not_available).length).toBeGreaterThan(0);
     const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
-    expect(data.some((url) => url.includes(`dataset_id=${SVI_DATASET_ID}`) && url.includes("measure_id=rpl_themes") && url.includes("geography=county"))).toBe(true);
-    expect(data.some((url) => url.includes(`dataset_id=${SVI_DATASET_ID}`) && url.includes("measure_id=rpl_themes") && url.includes("geography=tract"))).toBe(true);
+    expect(data.some((url) => url.includes("measure_id=rpl_themes") && url.includes("geography=county"))).toBe(true);
+    expect(data.some((url) => url.includes("measure_id=rpl_theme1_state") && url.includes("geography=county"))).toBe(true);
+    expect(data.some((url) => url.includes("measure_id=rpl_theme1_state") && url.includes("geography=tract"))).toBe(true);
+  });
+});
+
+describe("FEMA National Risk Index (NRI v1.20)", () => {
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; });
+  const measures = [
+    { measure_id: "eal_score", source_field: "EAL_SCORE", rating_field: "EAL_RATNG",
+      label: "Expected annual loss score", kind: "score", unit: "score (0–100)",
+      observation_period: "NRI v1.20 (December 2025)", population: "All U.S. states, counties, or census tracts in FEMA NRI v1.20",
+      official_definition: "FEMA Expected Annual Loss composite score.", interpretation: "Higher values indicate greater modeled loss.",
+      direction: "higher_worse", direction_note: "Higher values indicate greater modeled expected annual loss.",
+      legend_breaks: { state: [20, 40, 60, 80], county: [20, 40, 60, 80], tract: [20, 40, 60, 80] },
+      geographies: ["state", "county", "tract"] },
+    { measure_id: "risk_score", source_field: "RISK_SCORE", rating_field: "RISK_RATNG",
+      label: "National Risk Index score", kind: "score", unit: "score (0–100)",
+      observation_period: "NRI v1.20 (December 2025)", population: "All U.S. counties or census tracts in FEMA NRI v1.20",
+      official_definition: "FEMA National Risk Index composite score.", interpretation: "Higher values indicate greater risk.",
+      direction: "higher_worse", direction_note: "Higher values indicate greater modeled natural-hazard risk.",
+      legend_breaks: { county: [20, 40, 60, 80], tract: [20, 40, 60, 80] },
+      geographies: ["county", "tract"] },
+    { measure_id: "resl_score", source_field: "RESL_SCORE", rating_field: "RESL_RATNG",
+      label: "Community resilience score", kind: "score", unit: "score (0–100)",
+      observation_period: "NRI v1.20 (December 2025)", population: "All U.S. counties or census tracts in FEMA NRI v1.20",
+      official_definition: "Community resilience component score.", interpretation: "Higher values are better.",
+      direction: "higher_better", direction_note: "Higher values are better: a higher score indicates greater community resilience.",
+      legend_breaks: { county: [20, 40, 60, 80], tract: [20, 40, 60, 80] },
+      geographies: ["county", "tract"] },
+    { measure_id: "eal_valt", source_field: "EAL_VALT",
+      label: "Expected annual loss, total ($ per year)", kind: "currency", unit: "US dollars per year",
+      observation_period: "NRI v1.20 (December 2025)", population: "All U.S. states, counties, or census tracts in FEMA NRI v1.20",
+      official_definition: "FEMA Expected Annual Loss total dollars per year.", interpretation: "Modeled average dollars per year.",
+      direction: "higher_worse", direction_note: "Higher values indicate greater modeled average annual loss in dollars.",
+      legend_breaks: { state: [500000000, 1500000000, 2500000000, 4000000000], county: [5000000, 12000000, 25000000, 50000000], tract: [750000, 1250000, 1750000, 2500000] },
+      geographies: ["state", "county", "tract"] },
+  ];
+  const catalog = {
+    dataset_id: NRI_DATASET_ID, active_release_id: "nri-release", value_type: "fema_nri_published",
+    geographies: ["state", "county", "tract"],
+    boundary_vintage: { state: "TIGER/Line 2024 states", county: "TIGER/Line 2024 county equivalents", tract: "TIGER/Line 2024 census tracts" },
+    source_url: "https://www.fema.gov/about/openfema/data-sets/national-risk-index-data",
+    measures,
+    limitations: ["These are FEMA's scores, percentiles, and dollar estimates for natural-hazard risk."],
+  };
+
+  it("formats NRI values, ratings in tooltips, resilience reversed wording, and routes /area/fema-nri", () => {
+    expect(resolveRoute("/area/fema-nri")).toEqual({ type: "fema-nri-area" });
+    expect(nriNumber(62.5, "score")).toBe("62.5");
+    expect(nriNumber(19756570, "currency")).toBe("$19,756,570");
+    expect(nriNumber(1.038, "factor")).toBe("1.038");
+    expect(nriBinLabels([20, 40, 60, 80], "score")).toEqual(["Under 20.0", "20.0 to under 40.0", "40.0 to under 60.0", "60.0 to under 80.0", "80.0 to 100"]);
+    expect(nriValueText({ value: null, status: "not_available", rating: "Insufficient Data" }, measures[1])).toBe("Not published by FEMA for this area (Insufficient Data)");
+    expect(nriColor(null, "not_available")).not.toBe(nriColor(null, "not_in_release"));
+    const tooltip = areaTooltip("nri", { name: "Autauga", geography_id: "01001", value: 57.57, rating: "Relatively Low", status: "available" }, measures[1], { geography: "county", catalog });
+    expect(tooltip).toContain("57.57 (Relatively Low)");
+    const reslDetails = areaFeatureDetails("nri", { name: "Autauga", geography_id: "01001", value: 55.12, rating: "Relatively Moderate", status: "available" }, measures[2], { geography: "county", catalog });
+    expect(reslDetails.explanation).toMatch(/higher values are better/i);
+    expect(reslDetails.lines.join(" | ")).toContain("FEMA rating: Relatively Moderate");
+  });
+
+  it("opens on states for eal_score, switches to counties/tracts by zoom, and falls back to counties for county-only measures", async () => {
+    const urls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url); urls.push(path);
+      if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      const params = new URLSearchParams(path.split("?")[1]);
+      const geography = params.get("geography");
+      const mid = params.get("measure_id");
+      const m = measures.find((item) => item.measure_id === mid) || measures[0];
+      const rows = geography === "state"
+        ? [{ geography_id: "01", name: "Alabama", value: 62.5, source_value: "62.5", status: "available", rating: "Relatively Moderate" }]
+        : geography === "county"
+          ? [{ geography_id: "01001", name: "Autauga", value: 57.57, source_value: "57.57", status: "available", rating: "Relatively Low" }]
+          : [{ geography_id: "01001020100", name: "Tract 201", value: 16.49, source_value: "16.49", status: "available", rating: "Very Low" }];
+      const payload = path.includes("/map?") ? { features: [], legend_breaks: m.legend_breaks[geography] }
+        : path.includes("/legend?") ? { legend_breaks: m.legend_breaks[geography], statuses: [{ status: "available", n: 1 }] }
+        : { total: 1, rows };
+      return { ok: true, json: async () => ({ ...payload, release_id: "nri-release", geography }) };
+    }));
+    render(<Places2025Pilot dataset="nri" />);
+    // Default measure is eal_score at zoom 4 -> state level!
+    expect(await screen.findByText("01")).toBeInTheDocument();
+    expect(screen.getByLabelText("Measure")).toHaveValue("eal_score");
+    expect(screen.getByRole("columnheader", { name: "FEMA rating" })).toBeInTheDocument();
+    expect(screen.getByText("Relatively Moderate")).toBeInTheDocument();
+    // SVI rank switch must NOT appear for NRI.
+    expect(screen.queryByText("Rank among")).not.toBeInTheDocument();
+
+    // Switch to risk_score (no state value) while still at zoom 4 -> shows counties!
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "risk_score" } });
+    expect(await screen.findByText("01001")).toBeInTheDocument();
+    expect(screen.getByText(/FEMA publishes no state value for this measure/)).toBeInTheDocument();
+
+    // Switch to resl_score -> reversed wording in legend!
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "resl_score" } });
+    expect(await screen.findByText(/Higher values are better/i)).toBeInTheDocument();
+
+    // Zoom to 10 -> tracts!
+    mapHarness.zoom = ACS_TRACT_ZOOM;
+    act(() => mapHarness.handlers.zoomend());
+    expect(await screen.findByText("01001020100")).toBeInTheDocument();
+
+    const mapCalls = urls.filter((u) => u.includes("/map?")).map((u) => {
+      const p = new URLSearchParams(u.split("?")[1]);
+      return [p.get("measure_id"), p.get("geography")];
+    });
+    expect(mapCalls[0]).toEqual(["eal_score", "state"]);
+    expect(mapCalls).toContainEqual(["risk_score", "county"]);
+    expect(mapCalls).toContainEqual(["resl_score", "tract"]);
+    expect(mapCalls.some(([m, g]) => m === "risk_score" && g === "state")).toBe(false);
   });
 });

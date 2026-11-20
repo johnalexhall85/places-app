@@ -26,7 +26,7 @@ from typing import Any, Callable
 from sqlalchemy import text
 
 from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
-                            hrsa_sites_api, svi_api, tri_api, usda_fea_api)
+                            fema_nri_area_api, hrsa_sites_api, svi_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
@@ -106,6 +106,9 @@ SPECS: tuple[Spec, ...] = (
     Spec('cdc_svi', svi_api.load_registry,
          {lvl: ('observation_cdc_svi', 'geoid', 'geo_level') for lvl in ('county', 'tract')},
          ('source_value',), 'none', svi_api),
+    Spec('fema_nri', fema_nri_area_api.load_registry,
+         {lvl: ('observation_fema_nri', 'geoid', 'geo_level') for lvl in ('state', 'county', 'tract')},
+         ('source_value', 'rating'), 'none', fema_nri_area_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
@@ -114,6 +117,7 @@ MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     'epa_aqi': lambda geoid, level: epa_aqi_api.NO_VALUE,
     'usda_fea': _fea_missing,
     'cdc_svi': lambda geoid, level: NOT_IN_RELEASE,
+    'fema_nri': lambda geoid, level: NOT_IN_RELEASE,
 }
 
 
@@ -286,10 +290,13 @@ def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, s
         uncertainty |= {'label': 'No uncertainty published'}
     notes = {name: _num(row[name]) for name in spec.extra
              if stored and name not in ('ci_low', 'ci_high', 'moe', 'moe_confidence') and row[name] is not None}
+    status_text = (getattr(spec.api, 'STATUS_TEXT', None) or {}).get(status) or STATUS_TEXT.get(status, status)
+    if spec.key == 'fema_nri' and status == 'not_available' and notes.get('rating'):
+        status_text = f'{status_text} ({notes["rating"]})'
     return {k: meta[k] for k in ('product', 'dataset_id', 'measure_id', 'label', 'unit', 'kind', 'storage_scale',
                                  'period', 'population', 'value_type', 'source_credit')} | {
         'level': level, 'geoid': geoid, 'value': value, 'status': status,
-        'status_text': (getattr(spec.api, 'STATUS_TEXT', None) or {}).get(status) or STATUS_TEXT.get(status, status),
+        'status_text': status_text,
         'stored': stored,
         'uncertainty': uncertainty, 'notes': notes,
         'release_id': release['release_id'], 'source_release_id': release['source_release_id'],

@@ -14,27 +14,30 @@ from sqlalchemy import create_engine, text
 
 from app.area_pilot.acs_cli import file_rows
 from app.area_pilot.source import digest, same_label_revision
-from app.area_pilot.svi import (ROOT, boundary_without_source, classify, file_evidence, load_registry,
-                                observation_values, range_problems, retrieve, semantic_sha)
+from app.area_pilot.svi import (ROOT, SCOPES, boundary_without_source, classify, file_evidence, load_registry,
+                                measures_for_scope, observation_values, range_problems, required_roles, retrieve,
+                                semantic_sha)
 from app.db import DATABASE_URL
 
 S = 'area_pilot'
-REQUIRED_ROLES = {'svi_county_csv', 'svi_tract_csv'}
 
 
 def schema_payload(config, header_shas):
     return {'header_sha256': header_shas, 'missing_token': config['missing_token'],
             'value_type': config['value_type'],
-            'measures': [{k: m[k] for k in ('measure_id', 'source_field', 'kind', 'unit', 'storage_scale',
-                                            'observation_period', 'population', 'denominator', 'official_definition')}
+            'measures': [{k: m[k] for k in ('measure_id', 'source_scope', 'source_field', 'kind', 'unit',
+                                            'storage_scale', 'observation_period', 'population', 'denominator',
+                                            'official_definition')}
                          for m in config['measures']]}
 
 
 def metadata_payload(config, classified, uncovered, header_shas):
-    mapping = [[i['source_level'], i['source_fips'], i['geoid'], i['boundary_status'], i['exclusion_reason']]
-               for _, i in sorted(classified.items())]
+    mapping = [[i['source_scope'], i['source_level'], i['source_fips'], i['geoid'], i['boundary_status'],
+                i['exclusion_reason']] for _, i in sorted(classified.items())]
     return {'source_release_id': config['source_release_id'], 'observation_year': config['observation_year'],
             'observation_period': config['observation_period'], 'source_urls': config['source_urls'],
+            'state_source_url_templates': config['state_source_url_templates'],
+            'state_files': config['state_files'],
             'boundary': config['boundary'], 'boundary_vintage': config['boundary_vintage'],
             'geography_rules': config['geography_rules'], 'mapping_sha256': digest(mapping),
             'boundary_without_source_sha256': digest(sorted(uncovered.items())),
@@ -44,7 +47,8 @@ def metadata_payload(config, classified, uncovered, header_shas):
 
 
 def keyset_sha(classified):
-    return digest([[i['source_level'], i['source_fips'], i['geoid']] for _, i in sorted(classified.items())])
+    return digest([[i['source_scope'], i['source_level'], i['source_fips'], i['geoid']]
+                   for _, i in sorted(classified.items())])
 
 
 def expected_observations(records, classified, config):
@@ -53,7 +57,7 @@ def expected_observations(records, classified, config):
     for key, item in classified.items():
         if item['boundary_status'] != 'matched':
             continue
-        for value in observation_values(records[key], config):
+        for value in observation_values(records[key], config, item['source_scope']):
             measure = value['measure']
             result[(item['level'], item['geoid'], measure['measure_id'])] = (
                 value['value'], value['source_value'], value['status'], measure['observation_period'],
@@ -66,7 +70,7 @@ def summarize(records, classified, config):
     for key, item in classified.items():
         if item['boundary_status'] != 'matched':
             continue
-        for value in observation_values(records[key], config):
+        for value in observation_values(records[key], config, item['source_scope']):
             mid = value['measure']['measure_id']
             bucket = counts.setdefault(item['level'], {}).setdefault(mid, {})
             bucket[value['status']] = bucket.get(value['status'], 0) + 1
@@ -84,7 +88,7 @@ def _files_on_failure(directory):
     if not directory.is_dir():
         return []
     return [file_evidence(path, 'retained-on-failure', f'partial:{path.name}')
-            for path in sorted(directory.iterdir()) if path.is_file() and not path.name.endswith('.part')]
+            for path in sorted(directory.rglob('*')) if path.is_file() and not path.name.endswith('.part')]
 
 
 def _hold(engine, config, run_id, candidate_id, reason, files):
@@ -133,15 +137,22 @@ def fetch_stage(engine, config, directory=ROOT, retrieved=None, boundaries=None,
         schema, metadata, keyset = digest(meta['schema']), digest(meta), keyset_sha(classified)
         counts, problems, ranges = summarize(records, classified, config)
         matched = [i for i in classified.values() if i['boundary_status'] == 'matched']
+        matched_by_scope = {s: [i for i in matched if i['source_scope'] == s] for s in SCOPES}
         expected = expected_observations(records, classified, config)
+        expected_obs_count = sum(len(matched_by_scope[s]) * len(measures_for_scope(config, s)) for s in SCOPES)
         expected_sha = config.get('expected_header_sha256')
         checks = {
             'schema_and_definitions': (not expected_sha or all(v == expected_sha for v in stats['header_sha256'].values())),
             'row_counts_by_level': stats['row_counts'] == config['expected_source_rows'],
             'unique_geography_keys': not issues['duplicate_geoids'],
             'numeric_ranges': not problems,
-            'matched_geographies_present': all(any(i['level'] == lvl for i in matched) for lvl in ('county', 'tract')),
-            'observation_count': len(expected) == len(matched) * len(config['measures']),
+            'matched_geographies_present': all(
+                any(i['level'] == lvl for i in matched_by_scope[s]) for s in SCOPES for lvl in ('county', 'tract')),
+            'matched_scopes_align': (
+                {(i['level'], i['geoid']) for i in matched_by_scope['us']} ==
+                {(i['level'], i['geoid']) for i in matched_by_scope['state']}
+            ),
+            'observation_count': len(expected) == expected_obs_count,
         }
         existing = conn.execute(text(f'''SELECT id,status FROM {S}.release WHERE dataset_id=:dataset
             AND semantic_sha256=:semantic AND schema_sha256=:schema AND metadata_sha256=:metadata
@@ -166,11 +177,12 @@ def fetch_stage(engine, config, directory=ROOT, retrieved=None, boundaries=None,
         status = 'ready' if all(checks.values()) and not revision_hold else 'held'
         hold_reason = ('validation_failed' if not all(checks.values()) else
                        'same_label_semantic_revision' if revision_hold else None)
-        exclusions = {f"{i['source_level']}|{i['source_fips']}": i['exclusion_reason']
+        exclusions = {f"{i['source_scope']}|{i['source_level']}|{i['source_fips']}": i['exclusion_reason']
                       for i in classified.values() if i['boundary_status'] == 'source_only'}
         report = {'checks': checks, 'hold_reason': hold_reason, 'selected_rows': len(records),
                   'row_counts': stats['row_counts'],
-                  'matched': {lvl: sum(1 for i in matched if i['level'] == lvl) for lvl in ('county', 'tract')},
+                  'matched': {s: {lvl: sum(1 for i in matched_by_scope[s] if i['level'] == lvl)
+                                  for lvl in ('county', 'tract')} for s in SCOPES},
                   'source_only_counts': issues['source_only_counts'],
                   'source_rows_without_compatible_boundary': exclusions,
                   'boundary_without_source_observation': coverage['counts'],
@@ -187,7 +199,9 @@ def fetch_stage(engine, config, directory=ROOT, retrieved=None, boundaries=None,
             {'id': candidate_id, 'dataset': config['dataset_id'], 'source': config['source_release_id'],
              'status': status, 'semantic': semantic, 'schema': schema, 'metadata': metadata, 'keyset': keyset,
              'before': json.dumps(prior and dict(prior) or {}),
-             'after': json.dumps({'source_urls': config['source_urls'], 'row_counts': stats['row_counts']}, default=str),
+             'after': json.dumps({'source_urls': config['source_urls'],
+                                  'state_source_url_templates': config['state_source_url_templates'],
+                                  'row_counts': stats['row_counts']}, default=str),
              'report': json.dumps(report, default=str)})
         conn.execute(text(f'''INSERT INTO {S}.run (id,release_id,action,status,detail)
             VALUES (:run,:id,'fetch-stage-validate',:status,CAST(:detail AS jsonb))'''),
@@ -197,15 +211,16 @@ def fetch_stage(engine, config, directory=ROOT, retrieved=None, boundaries=None,
             conn.execute(text(f'''INSERT INTO {S}.validation (release_id,check_name,passed,detail)
                 VALUES (:id,:name,:passed,CAST(:detail AS jsonb))'''),
                 {'id': candidate_id, 'name': name, 'passed': passed, 'detail': json.dumps({})})
-        staged_rows = [{'release': candidate_id, 'level': i['source_level'], 'fips': i['source_fips'],
+        staged_rows = [{'release': candidate_id, 'scope': i['source_scope'], 'level': i['source_level'],
+                        'fips': i['source_fips'],
                         'record': json.dumps(records[key], separators=(',', ':')), 'geo_level': i['level'],
                         'geoid': i['geoid'] if i['boundary_status'] == 'matched' else None,
                         'status': i['boundary_status'], 'reason': i['exclusion_reason']}
                        for key, i in sorted(classified.items())]
         for start in range(0, len(staged_rows), 2000):
             conn.execute(text(f'''INSERT INTO {S}.stage_cdc_svi
-                (release_id,source_level,source_fips,record,geo_level,geoid,boundary_status,exclusion_reason)
-                VALUES (:release,:level,:fips,CAST(:record AS jsonb),:geo_level,:geoid,:status,:reason)'''),
+                (release_id,source_scope,source_level,source_fips,record,geo_level,geoid,boundary_status,exclusion_reason)
+                VALUES (:release,:scope,:level,:fips,CAST(:record AS jsonb),:geo_level,:geoid,:status,:reason)'''),
                 staged_rows[start:start + 2000])
         observations = [{'release': candidate_id, 'level': level, 'geoid': geoid, 'measure': mid, 'value': v[0],
                          'source': v[1], 'status': v[2], 'period': v[3], 'population': v[4], 'type': v[5]}
@@ -230,17 +245,17 @@ def review(engine, candidate_id, config, connection=None, verify_files=True):
         files = conn.execute(text(f'SELECT role,path,sha256 FROM {S}.source_file WHERE release_id=:id'),
                              {'id': candidate_id}).mappings().all()
         if verify_files:
-            if not REQUIRED_ROLES <= {item['role'] for item in files}:
+            if not required_roles(config) <= {item['role'] for item in files}:
                 raise ValueError('CDC SVI archive evidence incomplete')
             for item in files:
                 if not Path(item['path']).is_file() or file_evidence(item['path'], '', '')['sha256'] != item['sha256']:
                     raise ValueError(f'CDC SVI archived source checksum mismatch: {item["role"]}')
-        staged = conn.execute(text(f'''SELECT source_level,source_fips,record,geo_level,geoid,
+        staged = conn.execute(text(f'''SELECT source_scope,source_level,source_fips,record,geo_level,geoid,
             boundary_status,exclusion_reason FROM {S}.stage_cdc_svi WHERE release_id=:id'''),
             {'id': candidate_id}).mappings().all()
-        records = {(s['source_level'], s['source_fips']): s['record'] for s in staged}
-        classified = {(s['source_level'], s['source_fips']): {
-            'source_level': s['source_level'], 'source_fips': s['source_fips'],
+        records = {(s['source_scope'], s['source_level'], s['source_fips']): s['record'] for s in staged}
+        classified = {(s['source_scope'], s['source_level'], s['source_fips']): {
+            'source_scope': s['source_scope'], 'source_level': s['source_level'], 'source_fips': s['source_fips'],
             'level': s['geo_level'], 'geoid': s['geoid'], 'boundary_status': s['boundary_status'],
             'exclusion_reason': s['exclusion_reason']} for s in staged}
         if semantic_sha(records) != row['semantic_sha256']:

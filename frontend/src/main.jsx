@@ -120,6 +120,8 @@ function Root() {
     routedPage = <Places2025Pilot dataset="cmsgv" />;
   } else if (route.type === "svi-area") {
     routedPage = <Places2025Pilot dataset="svi" />;
+  } else if (route.type === "fema-nri-area") {
+    routedPage = <Places2025Pilot dataset="nri" />;
   } else if (route.type === "usda-fea-area") {
     routedPage = <Places2025Pilot dataset="usdafea" />;
   } else {

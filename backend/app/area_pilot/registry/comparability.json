@@ -136,6 +136,15 @@
       "trend_levels": [],
       "trend_note": "SVI ranks may share an axis only with other SVI ranks at the same level from the same release. They never share an axis with any other product.",
       "shared_axis_rule": "same_product_level_and_release_only"
+    },
+    "fema_nri": {
+      "state_marker_levels": [],
+      "national_marker_levels": [],
+      "peers": null,
+      "trend_style": null,
+      "trend_levels": [],
+      "trend_note": "An NRI measure may share an axis only with the same NRI measure at the same level. It never shares an axis with SVI or any other product.",
+      "shared_axis_rule": "same_product_measure_and_level_only"
     }
   }
 }

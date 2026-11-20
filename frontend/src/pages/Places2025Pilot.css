@@ -536,6 +536,38 @@
 .pilot-controls select:hover, .pilot-tools .community-search-row input:hover { border-color: #0277bd; }
 .pilot-controls select:focus, .pilot-tools .community-search-row input:focus { border-color: #0277bd; box-shadow: 0 0 0 3px rgba(2, 119, 189, .15); outline: none; }
 
+.pilot-svi-scope {
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.pilot-svi-scope legend {
+  font-weight: 700;
+  padding: 0 4px;
+  color: #003f61;
+}
+.pilot-svi-scope-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.pilot-svi-scope label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.pilot-svi-state-note {
+  padding: 6px 8px;
+  border-left: 3px solid #0277bd;
+  background: #f4f7fb;
+  color: #1a2f3f;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pilot-app *, .pilot-app *::before, .pilot-app *::after {
     animation-duration: .01ms !important;

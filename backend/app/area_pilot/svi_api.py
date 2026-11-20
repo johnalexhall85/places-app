@@ -1,4 +1,4 @@
-"""CDC/ATSDR SVI 2022 read model: published US-wide county and tract percentile ranks only.
+"""CDC/ATSDR SVI 2022 read model: published US-wide and within-state county/tract percentile ranks.
 
 Every 2024 boundary county or tract in the viewport is returned. Areas with no SVI row
 (such as Puerto Rico) are labelled ``not_in_release`` at read time. CDC's -999 sentinel
@@ -26,6 +26,9 @@ LIMITATIONS = [
     'The ranks are built on ACS 2018–2022 estimates, which have margins of error. '
     'CDC publishes no uncertainty for the ranks.',
     'A county rank and a tract rank come from separate rankings, so they are not comparable.',
+    'A within-state rank compares an area only with others in the same state. '
+    'Colors on a national map mean different things in different states.',
+    'DC has one county, so its within-DC county rank is 0.',
 ]
 COMMON = f'''FROM {S}.acs_boundary_2024 b
  LEFT JOIN {S}.observation_cdc_svi o ON o.geoid=b.geoid AND o.geo_level=b.level AND o.release_id=:release
@@ -87,9 +90,11 @@ def ensure_cap(db, p):
 
 
 def metadata(config, measure, release_id, geography, bbox):
+    pop_by_level = measure.get('population_by_level') or config['population_by_level']
     return {'dataset_id': config['dataset_id'], 'release_id': str(release_id), 'measure_id': measure['measure_id'],
+            'source_scope': measure.get('source_scope', 'us'),
             'period': measure['observation_period'], 'population': measure['population'],
-            'population_label': config['population_by_level'][geography],
+            'population_label': pop_by_level[geography],
             'value_type': config['value_type'], 'geography': geography, 'unit': measure['unit'],
             'kind': measure['kind'], 'storage_scale': measure['storage_scale'],
             'legend_breaks': measure['legend_breaks'][geography], 'denominator': measure['denominator'],

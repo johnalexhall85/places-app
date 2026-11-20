@@ -1,0 +1,291 @@
+{
+  "dataset_id": "fema_nri_v120",
+  "name": "FEMA National Risk Index (NRI) v1.20",
+  "short_name": "FEMA National Risk Index",
+  "publisher": "Federal Emergency Management Agency (FEMA)",
+  "landing_page": "https://www.fema.gov/about/openfema/data-sets/national-risk-index-data",
+  "source_release_id": "FEMA National Risk Index v1.20 (December 2025)",
+  "observation_year": 2025,
+  "observation_period": "NRI v1.20 (December 2025)",
+  "expected_nri_ver": "December 2025",
+  "source_urls": {
+    "state": "https://www.fema.gov/about/reports-and-data/openfema/nri/v120/NRI_Table_States.zip",
+    "county": "https://www.fema.gov/about/reports-and-data/openfema/nri/v120/NRI_Table_Counties.zip",
+    "tract": "https://www.fema.gov/about/reports-and-data/openfema/nri/v120/NRI_Table_CensusTracts.zip"
+  },
+  "source_archives": {
+    "state": {
+      "zip": "NRI_Table_States.zip",
+      "csv": "NRI_Table_States.csv",
+      "fips_field": "STATEFIPS",
+      "sha256": "f8c324e1abf9b246127006228cde16e40417cce5973958b6213c4df77309d997",
+      "expected_column_count": 313,
+      "expected_header_sha256": "51bdaf542659ca97dc8a3bf54e3c6c70e4306c6be71a6f9cbbf9dd1e734fa9ef",
+      "expected_rows": 56,
+      "identifier_fields": ["NRI_ID", "STATE", "STATEABBRV", "STATEFIPS", "NRI_VER"]
+    },
+    "county": {
+      "zip": "NRI_Table_Counties.zip",
+      "csv": "NRI_Table_Counties.csv",
+      "fips_field": "STCOFIPS",
+      "sha256": "b99dae90a317b16630d7f9b1faa4a2784d5ca458761c1d3ab9646f046df9d072",
+      "expected_column_count": 465,
+      "expected_header_sha256": "510c57ab6dfe9ca10060c88a1ec824db874ef9b5565116fa690bd2f2fcd6c3f9",
+      "expected_rows": 3232,
+      "identifier_fields": ["NRI_ID", "STATE", "STATEABBRV", "STATEFIPS", "COUNTY", "COUNTYTYPE", "COUNTYFIPS", "STCOFIPS", "NRI_VER"]
+    },
+    "tract": {
+      "zip": "NRI_Table_CensusTracts.zip",
+      "csv": "NRI_Table_CensusTracts.csv",
+      "fips_field": "TRACTFIPS",
+      "sha256": "a08d51731a33eaea9700a477d4b2bc7594feb64f6ce80edee63a869477efe4d2",
+      "expected_column_count": 467,
+      "expected_header_sha256": "d49cb872d8c865520c7315c27ca8222b4188bb1d5f944501ee3687cc0465ec8b",
+      "expected_rows": 85154,
+      "identifier_fields": ["NRI_ID", "STATE", "STATEABBRV", "STATEFIPS", "COUNTY", "COUNTYTYPE", "COUNTYFIPS", "STCOFIPS", "TRACT", "TRACTFIPS", "NRI_VER"]
+    }
+  },
+  "geography_rules": {
+    "state": "Two-digit STATEFIPS joined exactly to TIGER/Line 2024 state GEOID. Territories outside CHIP's 2024 boundary layer are staged as source_only and not published.",
+    "county": "Five-digit STCOFIPS joined exactly to TIGER/Line 2024 county-equivalent GEOID. Connecticut appears as planning regions (09110-09190). Unmatched rows are staged as source_only and not published.",
+    "tract": "Eleven-digit TRACTFIPS joined exactly to TIGER/Line 2024 census tract GEOID. Connecticut appears as planning-region tracts. Unmatched rows are staged as source_only and not published."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 states, county equivalents, and census tracts (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "boundary_vintage": {
+    "state": "TIGER/Line 2024 states",
+    "county": "TIGER/Line 2024 county equivalents (Connecticut planning regions)",
+    "tract": "TIGER/Line 2024 census tracts (Connecticut planning regions)"
+  },
+  "geographies": ["state", "county", "tract"],
+  "aggregation_method": "none",
+  "value_type": "fema_nri_published",
+  "limitations": [
+    "These are FEMA's scores, percentiles, and dollar estimates for natural-hazard risk. They are not forecasts, and they say nothing about any one property.",
+    "A score is a national percentile among areas at the same level. A state percentile compares an area only with others in its state.",
+    "Expected annual loss is FEMA's modeled average dollars per year, not a count of past losses.",
+    "NRI's social vulnerability and resilience components come from other sources (CDC SVI and HVRI BRIC) and are not CHIP's SVI release.",
+    "CHIP publishes FEMA's values as released. It does not average, combine, or re-rank them, and does not derive state values.",
+    "Version v1.20 (December 2025). FEMA retired the NRI web application, and the data is distributed through OpenFEMA and FEMA's Resilience Analysis and Planning Tool (RAPT)."
+  ],
+  "refresh_policy": {
+    "schedule": "manual_archive_only",
+    "auto_publish": false,
+    "same_label_revision": "hold_for_review",
+    "new_release": "hold_for_review"
+  },
+  "measures": [
+    {
+      "measure_id": "risk_score",
+      "source_field": "RISK_SCORE",
+      "rating_field": "RISK_RATNG",
+      "label": "National Risk Index score",
+      "kind": "score",
+      "unit": "score (0–100)",
+      "storage_scale": "score_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. counties or census tracts in FEMA NRI v1.20",
+      "denominator": "National percentile rank (0–100) among areas at the same level.",
+      "official_definition": "FEMA National Risk Index composite score (RISK_SCORE, 0–100), combining expected annual loss, social vulnerability, and community resilience.",
+      "interpretation": "National percentile score (0–100) among areas at the same level; higher score means greater modeled natural-hazard risk. Not a forecast and not property-level risk.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater modeled natural-hazard risk.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "risk_spctl",
+      "source_field": "RISK_SPCTL",
+      "paired_score_field": "RISK_SCORE",
+      "label": "Risk index, percentile within state",
+      "kind": "percentile",
+      "unit": "percentile within state (0–100)",
+      "storage_scale": "percentile_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "Counties or census tracts in the same state in FEMA NRI v1.20",
+      "denominator": "Within-state percentile rank (0–100) among areas at the same level.",
+      "official_definition": "FEMA National Risk Index composite state percentile (RISK_SPCTL, 0–100), comparing an area only with others in the same state.",
+      "interpretation": "Within-state percentile (0–100) among areas at the same level; higher values indicate greater modeled risk within the same state. Colors on a national map compare areas only within their own state.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater modeled natural-hazard risk within the same state.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "eal_score",
+      "source_field": "EAL_SCORE",
+      "rating_field": "EAL_RATNG",
+      "label": "Expected annual loss score",
+      "kind": "score",
+      "unit": "score (0–100)",
+      "storage_scale": "score_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. states, counties, or census tracts in FEMA NRI v1.20",
+      "denominator": "National percentile rank (0–100) among areas at the same level.",
+      "official_definition": "FEMA Expected Annual Loss composite score (EAL_SCORE, 0–100), representing the national percentile of modeled average annual natural-hazard loss.",
+      "interpretation": "National percentile score (0–100) among areas at the same level; higher values indicate greater modeled expected annual loss.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater modeled expected annual loss.",
+      "legend_breaks": {
+        "state": [20, 40, 60, 80],
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["state", "county", "tract"]
+    },
+    {
+      "measure_id": "eal_spctl",
+      "source_field": "EAL_SPCTL",
+      "paired_score_field": "EAL_SCORE",
+      "label": "Expected annual loss, percentile within state",
+      "kind": "percentile",
+      "unit": "percentile within state (0–100)",
+      "storage_scale": "percentile_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "Counties or census tracts in the same state in FEMA NRI v1.20",
+      "denominator": "Within-state percentile rank (0–100) among areas at the same level.",
+      "official_definition": "FEMA Expected Annual Loss composite state percentile (EAL_SPCTL, 0–100), comparing an area only with others in the same state.",
+      "interpretation": "Within-state percentile (0–100) among areas at the same level; higher values indicate greater modeled expected annual loss within the same state.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater modeled expected annual loss within the same state.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "eal_valt",
+      "source_field": "EAL_VALT",
+      "label": "Expected annual loss, total ($ per year)",
+      "kind": "currency",
+      "unit": "US dollars per year",
+      "storage_scale": "dollars_per_year",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. states, counties, or census tracts in FEMA NRI v1.20",
+      "denominator": "Modeled average annual economic loss across buildings, population equivalence, and agriculture (dollars per year).",
+      "official_definition": "FEMA Expected Annual Loss total composite value (EAL_VALT), in modeled average US dollars per year across all included natural hazards.",
+      "interpretation": "FEMA's modeled average dollars per year of natural-hazard loss, not a count of past losses. Higher values indicate greater modeled annual loss. Legend classes differ by geography level.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater modeled average annual loss in dollars.",
+      "legend_breaks": {
+        "state": [500000000, 1500000000, 2500000000, 4000000000],
+        "county": [5000000, 12000000, 25000000, 50000000],
+        "tract": [750000, 1250000, 1750000, 2500000]
+      },
+      "geographies": ["state", "county", "tract"]
+    },
+    {
+      "measure_id": "sovi_score",
+      "source_field": "SOVI_SCORE",
+      "rating_field": "SOVI_RATNG",
+      "label": "Social vulnerability score (as used by NRI)",
+      "kind": "score",
+      "unit": "score (0–100)",
+      "storage_scale": "score_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. counties or census tracts in FEMA NRI v1.20",
+      "denominator": "National percentile rank (0–100) among areas at the same level.",
+      "official_definition": "Social vulnerability component score (SOVI_SCORE, 0–100) as incorporated by FEMA NRI from CDC/ATSDR SVI.",
+      "interpretation": "National percentile score (0–100) as used in FEMA NRI; higher values indicate greater social vulnerability. This is FEMA's NRI component, not CHIP's standalone CDC SVI release.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater social vulnerability (as used by NRI).",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "sovi_spctl",
+      "source_field": "SOVI_SPCTL",
+      "paired_score_field": "SOVI_SCORE",
+      "label": "Social vulnerability, percentile within state",
+      "kind": "percentile",
+      "unit": "percentile within state (0–100)",
+      "storage_scale": "percentile_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "Counties or census tracts in the same state in FEMA NRI v1.20",
+      "denominator": "Within-state percentile rank (0–100) among areas at the same level.",
+      "official_definition": "Social vulnerability state percentile (SOVI_SPCTL, 0–100) as published in FEMA NRI.",
+      "interpretation": "Within-state percentile (0–100) as used in FEMA NRI; higher values indicate greater social vulnerability within the same state.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate greater social vulnerability within the same state.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "resl_score",
+      "source_field": "RESL_SCORE",
+      "rating_field": "RESL_RATNG",
+      "label": "Community resilience score",
+      "kind": "score",
+      "unit": "score (0–100)",
+      "storage_scale": "score_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. counties or census tracts in FEMA NRI v1.20",
+      "denominator": "National percentile rank (0–100) among areas at the same level.",
+      "official_definition": "Community resilience component score (RESL_SCORE, 0–100) as incorporated by FEMA NRI from HVRI BRIC.",
+      "interpretation": "National percentile score (0–100) among areas at the same level; higher community resilience is better (greater capacity to prepare for, adapt to, and recover from natural hazards).",
+      "direction": "higher_better",
+      "direction_note": "Higher values are better: a higher score indicates greater community resilience.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "resl_spctl",
+      "source_field": "RESL_SPCTL",
+      "paired_score_field": "RESL_SCORE",
+      "label": "Community resilience, percentile within state",
+      "kind": "percentile",
+      "unit": "percentile within state (0–100)",
+      "storage_scale": "percentile_0_100",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "Counties or census tracts in the same state in FEMA NRI v1.20",
+      "denominator": "Within-state percentile rank (0–100) among areas at the same level.",
+      "official_definition": "Community resilience state percentile (RESL_SPCTL, 0–100) as published in FEMA NRI.",
+      "interpretation": "Within-state percentile (0–100) among areas at the same level; higher community resilience is better compared with other areas in the same state.",
+      "direction": "higher_better",
+      "direction_note": "Higher values are better: a higher percentile indicates greater community resilience within the same state.",
+      "legend_breaks": {
+        "county": [20, 40, 60, 80],
+        "tract": [20, 40, 60, 80]
+      },
+      "geographies": ["county", "tract"]
+    },
+    {
+      "measure_id": "crf_value",
+      "source_field": "CRF_VALUE",
+      "label": "Community risk factor",
+      "kind": "factor",
+      "unit": "community risk factor",
+      "storage_scale": "multiplier",
+      "observation_period": "NRI v1.20 (December 2025)",
+      "population": "All U.S. counties or census tracts in FEMA NRI v1.20",
+      "denominator": "Scaling factor combining social vulnerability and community resilience (dimensionless multiplier).",
+      "official_definition": "FEMA Community Risk Factor (CRF_VALUE), a scaling factor derived from social vulnerability and community resilience that adjusts expected annual loss to produce the National Risk Index.",
+      "interpretation": "Dimensionless multiplier (typically ~0.5 to 2.0); higher values amplify expected annual loss into higher overall natural-hazard risk.",
+      "direction": "higher_worse",
+      "direction_note": "Higher values indicate a greater risk amplification factor.",
+      "legend_breaks": {
+        "county": [0.9, 1.05, 1.25, 1.45],
+        "tract": [0.9, 1.05, 1.25, 1.45]
+      },
+      "geographies": ["county", "tract"]
+    }
+  ]
+}

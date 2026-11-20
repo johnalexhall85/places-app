@@ -67,6 +67,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/svi\/?$/i.test(normalizedPath)) {
     return { type: "svi-area" };
   }
+  if (/^\/area\/fema-nri\/?$/i.test(normalizedPath)) {
+    return { type: "fema-nri-area" };
+  }
   if (/^\/area\/usda-fea\/?$/i.test(normalizedPath)) {
     return { type: "usda-fea-area" };
   }
