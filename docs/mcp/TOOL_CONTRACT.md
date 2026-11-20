@@ -277,3 +277,11 @@ John approved these tools on 2026-11-20. The data rules are in [docs/grant-histo
    - **Cache fingerprint:** includes the active `state_funding` build id (and the `funding_report` build id for grant history).
 5. **Server instructions.** Add one sentence, keeping the text under 1,200 characters: "For CDC money to recipients in a state, call get_state_funding and list_state_grants; for one CDC grant's recipients and history by state, call get_grant_history."
 6. **Not exposed:** the CSV routes, unattributed (`'__'`) state rows as a state, and any write.
+
+## Amendment 5 (2026-11-20, Claude): CDC Social Vulnerability Index
+
+1. **New public product `cdc_svi`** (dataset `cdc_svi_2022`). Its data comes through the existing tools by way of `app.area_pilot.lookup`; no tool is added. It covers counties and tracts. Its five measures are `rpl_themes` and `rpl_theme1` to `rpl_theme4`: CDC/ATSDR's US-wide percentile ranks (0–1), period 2018–2022. See the [vulnerability contract](../vulnerability/CONTRACT.md) §1.
+2. **Status.** `not_available` means the source has `-999`: "Not ranked by CDC". It is never zero.
+3. **Rule added to `interpretation_rules`:** "SVI values are CDC/ATSDR percentile ranks (0–1) among all U.S. counties or all U.S. tracts; do not average, combine, or compare them across years or levels."
+4. **`list_data_sources`** now lists nine area products.
+5. **No history.** Earlier SVI years (2018, 2020) are not published.
