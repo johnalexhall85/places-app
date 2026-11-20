@@ -4,6 +4,15 @@
 |---|---|---|
 | G1+G2 | implemented, uncommitted 2026-11-20 | Read-only grant history API/page and three MCP tools; local verification passed. Claude to review and stage. |
 | G1b | implemented, uncommitted 2026-11-20 | Grant page layout and labeling fixes after staging review; mocked Chromium layouts checked at 1280 px and 375 px. Claude to review and stage. |
+| G6 | implemented, uncommitted 2026-11-20 | Recipient cards below 640 px and stable state-group order; Chromium 375 px screenshots and frontend checks passed. Claude to review for Gate A. |
+
+## G6 diary facts — 2026-11-20T01:00:29+00:00
+
+- **Objective:** Fix the grant-history recipient details clipped at 375 px and enforce the contract's state-group order for every sort and direction.
+- **Files changed:** `frontend/src/pages/CdcGrantHistory.{jsx,css,test.jsx}`, `frontend/screenshots/grant-history-g6-375-{viewport,full}.png`, and this status file.
+- **Outcome:** Below 640 px, recipient table rows display as stacked cards and the expanded detail uses the full card width. Funded states precede past-only states, and `__` (State not recorded) stays last regardless of sort or direction. The vitest fixture uses `CDC-RFA-TU-24-0137` with `__` at $1,268,643.
+- **Verification:** `npm test` passed 181/181; `npm run build` passed; `git diff --check` passed. Mocked-data Chromium screenshots at 375 px were visually inspected with a row expanded: document scroll width 375 px, detail right edge 346 px. At 639 px, the card layout and no-overflow check also passed. The 640 px desktop table retains its internal horizontal scroll.
+- **Publication and next action:** No database writes, commit, push, merge, or deploy. Staging and live are unchanged by this task. Claude should review the uncommitted diff and run the real-data staging walkthrough before Gate A.
 
 ## G1b diary facts — 2026-11-20T00:54:27+00:00
 

@@ -178,10 +178,21 @@ export default function CdcGrantHistory({ nofo }) {
       });
       return { state, awards: sorted, total: awards.length };
     }).filter((group) => group.awards.length);
-    if (view.sort === "state_name") all.sort((a, b) =>
-      (view.dir === "asc" ? 1 : -1) * a.state.name.localeCompare(b.state.name));
-    if (view.sort === "state_total") all.sort((a, b) =>
-      (view.dir === "asc" ? 1 : -1) * ((a.state.latest_fy_total || 0) - (b.state.latest_fy_total || 0)));
+    all.sort((a, b) => {
+      const groupRank = (group) => group.state.state === "__" ? 2 :
+        group.state.latest_fy_total == null ? 1 : 0;
+      const rankDifference = groupRank(a) - groupRank(b);
+      if (rankDifference) return rankDifference;
+      const direction = view.dir === "asc" ? 1 : -1;
+      if (view.sort === "state_name") {
+        return direction * a.state.name.localeCompare(b.state.name);
+      }
+      if (view.sort === "state_total" && groupRank(a) === 0) {
+        const difference = direction * (a.state.latest_fy_total - b.state.latest_fy_total);
+        if (difference) return difference;
+      }
+      return 0;
+    });
     return all;
   }, [data, view]);
   const variants = data?.nofo.fon_variants.filter((value) => value !== data.nofo.fon_display) || [];
@@ -252,8 +263,8 @@ export default function CdcGrantHistory({ nofo }) {
             <th>Project title</th><th>FY{data.latest_fy} obligations</th></tr></thead>
             <tbody>{awards.map((a) => {
               const expanded = view.open === a.award_unique_key && (!openState || openState === a.state);
-              return <Fragment key={`${a.state}-${a.award_unique_key}`}><tr>
-              <td><button className="sf-expand"
+              return <Fragment key={`${a.state}-${a.award_unique_key}`}><tr className="gh-award-row">
+              <td data-label="Recipient"><button className="sf-expand"
                 aria-expanded={expanded}
                 onClick={() => {
                   setOpenState(a.state);
@@ -262,8 +273,10 @@ export default function CdcGrantHistory({ nofo }) {
                 }}>
                 {a.recipient_name}</button>{a.split_state && <small>Split across states</small>}
                 <small>{a.award_id}</small></td>
-              <td>{a.recipient_type}</td><td>{a.project_title || "—"}</td>
-              <td className="gh-amount">{money(a.latest_fy_amount?.total)}
+              <td data-label="Recipient type">{a.recipient_type}</td>
+              <td data-label="Project title">{a.project_title || "—"}</td>
+              <td className="gh-amount" data-label={`FY${data.latest_fy} obligations`}>
+                {money(a.latest_fy_amount?.total)}
                 {!a.is_current && <small>Last funded FY{a.last_fy}</small>}</td>
             </tr>
               {expanded && <tr className="gh-detail-row"><td colSpan={4}>

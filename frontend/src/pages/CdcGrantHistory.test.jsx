@@ -87,6 +87,8 @@ describe("CDC grant history", () => {
     const detailCell = document.querySelector(".gh-detail-row > td");
     expect(detailCell?.getAttribute("colspan")).toBe("4");
     expect(detailCell?.closest("tr")?.previousElementSibling?.cells.length).toBe(4);
+    expect(detailCell?.closest(".gh-awards-scroll")).toBeTruthy();
+    expect(detailCell?.closest("tr")?.previousElementSibling?.cells[0].dataset.label).toBe("Recipient");
   });
 
   it.each([
@@ -130,5 +132,37 @@ describe("CDC grant history", () => {
     expect(document.querySelectorAll(".gh-states > div")).toHaveLength(10);
     fireEvent.click(screen.getByRole("button", { name: "Show all 12 states" }));
     expect(document.querySelectorAll(".gh-states > div")).toHaveLength(12);
+  });
+
+  it("keeps past-only states and State not recorded last for every sort and direction", async () => {
+    const byState = [
+      { state: "TX", name: "Texas", latest_fy_total: 2_000_000, current_count: 1, past_count: 0 },
+      { state: "CA", name: "California", latest_fy_total: 500_000, current_count: 1, past_count: 0 },
+      { state: "WY", name: "Wyoming", latest_fy_total: -5_000, current_count: 1, past_count: 0 },
+      { state: "PR", name: "Puerto Rico", latest_fy_total: null, current_count: 0, past_count: 1 },
+      { state: "__", name: "State not recorded", latest_fy_total: 1_268_643,
+        current_count: 1, past_count: 0 },
+    ];
+    api.grantHistory.mockResolvedValue({ ...fixture,
+      nofo: { ...fixture.nofo, nofo_key: "TU240137", fon_display: "CDC-RFA-TU-24-0137" },
+      by_state: byState,
+      awards: [award("tx", "TX", 2_000_000), award("ca", "CA", 500_000),
+        award("wy", "WY", -5_000), award("pr", "PR", 100, false),
+        award("unknown", "__", 1_268_643)],
+    });
+    render(<CdcGrantHistory nofo="CDC-RFA-TU-24-0137" />);
+    await screen.findByRole("heading", { name: "Prevention grant" });
+    const order = () => [...document.querySelectorAll(".gh-group")].map((group) => group.id);
+    for (const sort of ["state_total", "state_name", "recipient", "recipient_type", "amount"]) {
+      fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: sort } });
+      for (const dir of ["asc", "desc"]) {
+        fireEvent.change(screen.getByLabelText("Direction"), { target: { value: dir } });
+        expect(order().slice(-2)).toEqual(["state-PR", "state-__"]);
+        expect(order().slice(0, 3).sort()).toEqual(["state-CA", "state-TX", "state-WY"]);
+      }
+    }
+    fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "state_total" } });
+    fireEvent.change(screen.getByLabelText("Direction"), { target: { value: "asc" } });
+    expect(order()).toEqual(["state-WY", "state-CA", "state-TX", "state-PR", "state-__"]);
   });
 });
