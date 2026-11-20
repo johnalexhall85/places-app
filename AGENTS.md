@@ -91,3 +91,13 @@ The [grant history plan](docs/grant-history/PLAN.md), its [contract](docs/grant-
 - **Antigravity owns** `backend/tests/test_grant_history_audit.py`, the state funding questions in `backend/tests/mcp_eval/**`, `deliverables/grant-history/**`, and `docs/grant-history/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
 - No new table or build: the page and tools read the active `state_funding` and `funding_report` builds. Other federal awards are not shown on the grant page.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
+
+## CDC state funding map: three-agent ownership (from 2026-11-20)
+
+The [state map plan](docs/state-map/PLAN.md) and [contract](docs/state-map/CONTRACT.md) govern the national map at `/cdc-funding/map`. Claude manages it as it does the MCP server work: task files in `docs/state-map/tasks/`, dispatch with `chip-dispatch`, review, commit, merge to `beta`, and deploy. Read your task file and the files in [docs/state-map/status](docs/state-map/status/) first.
+
+- **Claude Code owns** `docs/state-map/**` (except the other agents' status files), `backend/alembic/**`, `infra/**`, and the handbook.
+- **Codex owns** `backend/app/state_funding/**`, `backend/tests/test_state_map_*` and `backend/tests/test_state_funding_*` (except the audit files), `frontend/**`, and `docs/state-map/status/codex.md`. Codex works in `/home/john/chip-codex-state`.
+- **Antigravity owns** `backend/tests/test_state_map_audit.py`, `deliverables/state-map/**`, and `docs/state-map/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
+- No new table, build, or migration: the map reads the active `state_funding` build, and state outlines only through `app.area_pilot.lookup.area_info`.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
