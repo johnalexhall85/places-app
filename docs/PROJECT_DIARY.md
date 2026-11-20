@@ -2,6 +2,45 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-20T21:45:00+00:00 — Vulnerability and hazards: CDC SVI 2022 published on staging (Claude, Antigravity)
+
+- **Request (John):** brainstorm which datasets from the RWJF/CODE "Essential Health Data" Airtable list (72 datasets) to add to CHIP. He then approved the first package: move SVI and FEMA NRI from legacy tables to shared releases. He noted that Codex is at about 20% of weekly use, so Antigravity did the coding. The ranked shortlist is in [the vulnerability plan](vulnerability/PLAN.md).
+- **Claude (VH0):** wrote the plan, the [contract](vulnerability/CONTRACT.md), the VH1 task, and a new AGENTS.md ownership section; wrote migration `e2b8d4f6a1c3` (`stage_cdc_svi`, `observation_cdc_svi`) and applied it to `places_staging` only.
+- **Antigravity (VH1):** built the SVI product (`svi.py`, `svi_api.py`, `svi_cli.py`, registry), the lookup and router entries, comparability, the `/area/svi` map, and the MCP listing. Its tests passed. It reported three tests outside its paths that hard-code product counts; Claude updated the two count tests. The third, `test_http_client`, fails only in its worktree because `.venv-mcp` is missing there.
+- **Staging ingest:**
+  - Candidate `1e907764-402a-4352-8866-1ac63178c38f`: 87,264 rows staged, 436,320 observations, 0 rows excluded, every check passed.
+  - Published on staging.
+  - Durham County (37063) matches the CDC file for all five measures.
+  - The zero-population tract 01015981901 reads `not_available`.
+- **Verification:**
+  - `pytest` for the area, lookup, CMS GV, and community tests: 59 passed.
+  - MCP tests: 28 passed.
+  - The SVI PostGIS test passed.
+  - `docs/beta/contract-examples` unchanged.
+  - Frontend `vitest`: 37 passed (Antigravity's run).
+  - `/area/svi` on staging returned 200.
+- **Deployed:** staging only, `beta` `628e04b`, through `infra/staging/deploy-staging.sh claude/vuln`. Live is unchanged. Tool contract Amendment 5 was added.
+- **NRI blocked:** FEMA retired the NRI application. The v1.20 files are on the OpenFEMA page, but fema.gov returns HTTP 403 to scripted downloads from this server, and no original NRI file was ever archived. **Next:** John downloads `NRI_Table_Counties.zip` and `NRI_Table_CensusTracts.zip` into `data/ingest/fema_nri_v120/`. After that, Gate A for SVI: John's browser tryout of `/area/svi`.
+
+## 2026-11-20T16:05:00+00:00 — CHIP funder deck and slide library updated (Claude)
+
+- **Request (John):** update the CHIP presentations with everything added since they were made on 2026-11-16.
+- **Outcome:** two new files beside the originals, which are kept unchanged:
+  - `/home/john/CHIP_Funder_Deck_2026-11-20.pptx`: 15 slides (was 12). It adds slides on CDC funding (map, state profiles, grant histories), the AI connector with a real Kanawha County answer, and the NOFO recipient report. "How it works" now has five steps, the profile slide shows the small charts, and the numbers, audiences, and "What's next" slides are updated.
+  - `/home/john/CHIP_Slide_Library_2026-11-20.pptx`: 84 slides in ten sections (was 71 in nine). It adds a "What's new" slide, a "CHIP with AI" section (connector page, sample answer, the 14 tools, answer rules, recipient report), a rebuilt funding section (map, state profile, grant list, grant history, "How CHIP counts the money"), "Earlier years on every map", "Charts only line up what is comparable", and a phone map drawer. Trust, audience, architecture, hosting, and roadmap slides are revised.
+- **Sources:** build scripts and screenshots are in `/home/john/chip-decks/v2/` (outside the repository); the 2026-11-16 sources were copied from an old scratchpad to `/home/john/chip-decks/src-2026-11-16/`.
+  - Every screenshot was retaken from staging (`127.0.0.1:8080`, `beta` `a853289`, the same commit as live) with read-only, signed-in browsing. The access code was read from its file and not printed. The saved session cookie was deleted afterwards. The demo-access rate limit (10 per 300 s) returned 429 once and the capture waited it out.
+  - The AI example is real output from the live connector (`get_measure_over_time`, county 54039, `acs:B19013_001E`). The report pages were rendered locally with the skill's `render.py` from the live `PS212102.json?subawards=1` dataset (97 recipients, 180 pages).
+  - The catalog is unchanged since 2026-11-16 (66 measures; diffed).
+- **Verification:**
+  - The skill validator passed for both decks.
+  - The HTML mirror of every slide was rendered with Roboto Slab: no text, table, or image overflow after fixing two (funder comparison image, library tool card heading) and one overlap (AI page slide).
+  - Every slide was reviewed visually.
+  - Not opened in PowerPoint. LibreOffice here has Writer and Calc but not Impress, so it cannot load .pptx files.
+- **Unconfirmed content:** "What's next" is still proposed direction; the sub-awardee list comes from the grant-history plan's deferred item. Off-site backup status is not stated (the notes say to check it). Dollar figures are live values as of 2026-11-20.
+- **Product observation:** the PLACES tract-level map link (`geography=tract&focus=county:54039`), which did not open at tract level on 2026-11-16, now does.
+- **No application, data, or deployment changes.** The handbook is unchanged, because the decks live outside the repository.
+
 ## 2026-11-20T16:30:00+00:00 — CDC state funding map promoted to live (Claude)
 
 - **Approval:** John said "Yes, approved. Push this live and do git pushes." He did not answer the per-person question; it stays open.
