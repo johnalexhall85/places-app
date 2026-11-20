@@ -109,7 +109,7 @@ def test_level_filter_returns_only_products_published_at_that_level():
     state = {r['product'] for r in lookup.area_values(FakeDb({}), 'state', ['01'])['values']}
     tract = {r['product'] for r in lookup.area_values(FakeDb({}), 'tract', ['01055000100'])['values']}
     assert state == {'acs', 'acs_profile', 'brfss', 'cms_gv'}
-    assert tract == {'places', 'acs', 'acs_profile', 'clh'}
+    assert tract == {'places', 'acs', 'acs_profile', 'clh', 'cdc_svi'}
     district = {r['product'] for r in lookup.area_values(FakeDb({}), 'cd', ['0103'])['values']}
     assert district == {'acs_profile'}   # no other product publishes district values; none is derived
     tract_measures = {r['measure_id'] for r in lookup.area_values(FakeDb({}), 'tract', ['01055000100'], products=['clh'])['values']}
