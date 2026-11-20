@@ -101,3 +101,19 @@ The [state map plan](docs/state-map/PLAN.md) and [contract](docs/state-map/CONTR
 - **Antigravity owns** `backend/tests/test_state_map_audit.py`, `deliverables/state-map/**`, and `docs/state-map/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
 - No new table, build, or migration: the map reads the active `state_funding` build, and state outlines only through `app.area_pilot.lookup.area_info`.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
+
+## Vulnerability and hazards: three-agent ownership (from 2026-11-20)
+
+The [vulnerability plan](docs/vulnerability/PLAN.md) and [contract](docs/vulnerability/CONTRACT.md) govern moving CDC SVI and FEMA NRI from legacy tables to shared `area_pilot` releases. Claude manages the work as it does the MCP server work: task files in `docs/vulnerability/tasks/`, dispatch with `chip-dispatch`, review, commit, merge to `beta`, and deploy. Read your task file and the files in [docs/vulnerability/status](docs/vulnerability/status/) first.
+
+- **Claude Code owns** `backend/alembic/**`, `infra/**`, `docs/vulnerability/**` (except the other agents' status files), `docs/mcp/TOOL_CONTRACT.md`, and the handbook. Claude runs every ingest and publication.
+- **Antigravity** works in `/home/john/chip-agy-vuln` and **owns**:
+  - `backend/app/area_pilot/{svi,svi_api,svi_cli}.py` and the later NRI equivalents
+  - their registry files
+  - the additions its task file names in `lookup.py`, `router.py`, `registry/comparability.json`, `backend/app/mcp_server/config.py`, and `frontend/**`
+  - `backend/tests/test_area_svi*` and `test_area_fema_nri*`
+  - `docs/vulnerability/status/antigravity.md`
+- **Reassigned 2026-11-20 by John** (Codex is low on weekly usage): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live.
+- **Codex** may review this package read-only. It edits nothing here.
+- Profiles must not change: `backend/app/community/**` is not edited, and the `docs/beta/contract-examples` snapshots stay byte-identical.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
