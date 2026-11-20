@@ -81,3 +81,13 @@ The [state funding plan](docs/state-funding/PLAN.md) and [contract](docs/state-f
 - **Antigravity owns** `backend/tests/test_state_funding_audit.py`, `deliverables/state-funding/**`, and `docs/state-funding/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
 - Supplemental means the File C Disaster Emergency Fund Code split of dollars, never an inferred label. Amounts are not allocated, rescaled, or summed with sub-awards.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
+
+## CDC grant history and state funding MCP tools: three-agent ownership (from 2026-11-20)
+
+The [grant history plan](docs/grant-history/PLAN.md), its [contract](docs/grant-history/CONTRACT.md), and Amendment 4 of the [tool contract](docs/mcp/TOOL_CONTRACT.md) govern the page at `/cdc-funding/grant/{nofo}` and the MCP tools `get_state_funding`, `list_state_grants`, and `get_grant_history`. Claude manages it as it does the MCP server work: task files in `docs/grant-history/tasks/`, dispatch with `chip-dispatch`, review, commit, merge to `beta`, and deploy. Read your task file and the files in [docs/grant-history/status](docs/grant-history/status/) first.
+
+- **Claude Code owns** `docs/grant-history/**` (except the other agents' status files), `docs/mcp/TOOL_CONTRACT.md`, `backend/alembic/**`, `infra/**`, and the handbook.
+- **Codex owns** `backend/app/state_funding/**`, read-only additions to `backend/app/funding_report/lookup.py`, `backend/app/mcp_server/**`, `backend/tests/test_state_funding_*` and `backend/tests/test_grant_history_*` (except the audit files), `backend/tests/test_mcp_*`, `frontend/**`, and `docs/grant-history/status/codex.md`. Codex works in `/home/john/chip-codex-state`.
+- **Antigravity owns** `backend/tests/test_grant_history_audit.py`, the state funding questions in `backend/tests/mcp_eval/**`, `deliverables/grant-history/**`, and `docs/grant-history/status/antigravity.md`. It works in `/home/john/chip-agy-state`.
+- No new table or build: the page and tools read the active `state_funding` and `funding_report` builds. Other federal awards are not shown on the grant page.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.

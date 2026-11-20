@@ -245,3 +245,35 @@ John approved funding tools on 2026-11-18. The full specification, including the
    - The cache fingerprint includes the active `funding_report` build id.
 5. **Wording:** the general wording rules apply. In addition, never add sub-award amounts to prime obligations, and never call the other-award list complete.
 6. **Not exposed:** funding for agencies other than CDC (refused with an explanation), legacy `/api/cdc/funding/*` data, and any write.
+
+## Amendment 4 (2026-11-20, Claude): CDC state funding and grant history
+
+John approved these tools on 2026-11-20. The data rules are in [docs/grant-history/CONTRACT.md](../grant-history/CONTRACT.md) and [docs/state-funding/CONTRACT.md](../state-funding/CONTRACT.md) (with Amendments 1–2). Where this amendment and those differ on data, those win.
+
+1. **New read layer.** These tools read only through `app.state_funding.lookup`, which in turn uses `app.funding_report.lookup` for recipient profiles. `mcp_server` still contains no SQL. If importing `app.state_funding.lookup` needs a package that `.venv-mcp` lacks (for example the state-name map from `app.taggs.redo_ingest` pulling in pandas), move the dependency inside `app/state_funding`. Do not add packages to `.venv-mcp`.
+2. **Three tools are added, for 14 in total.** Each has the same read-only annotations, returns an `Envelope`, and is subject to the 50,000-byte cap.
+   - **`get_state_funding(state, fiscal_year=None, funding_type="all", award_type="grant", category=None, recipient_type="all")`**
+     - Returns the state summary payload (state contract §3 `/summary`, with Amendment 1 `by_category`, including `accounts`), plus `fiscal_years_available` and `period`.
+     - `state` is a two-letter postal code, a state name, or a two-digit FIPS code.
+   - **`list_state_grants(state, fiscal_year=None, query=None, funding_type="all", award_type="grant", category=None, recipient_type="all", sort="amount", direction="desc", offset=0, limit=25)`**
+     - `limit` is 1–100.
+     - Returns `total_rows` and `sum_total` (over every match, not just the page).
+     - Each row has `award_unique_key`, `award_id`, `grant_name`, `name_source`, `fon`, `recipient_name`, `is_state_government`, `categories` (names), `regular`, `supplemental`, `total`, `description` (cut to 300 characters at a word boundary), and `usaspending_url`.
+   - **`get_grant_history(nofo, state=None, include_past=True, offset=0, limit=50)`**
+     - `limit` is 1–100.
+     - Returns `nofo`, `latest_fy`, `latest_fy_period`, `totals`, `by_fiscal_year`, and `by_state` (always complete).
+     - Returns `awards` from grant-history §2, filtered by `state` and `include_past` and then paged, with `total_rows`. `history` is kept. Fields are dropped only if needed to fit the cap.
+     - Points to `get_recipient_funding(nofo, recipient)` for one award's full profile.
+3. **Errors.**
+   - An unknown state, fiscal year, category, or filter value raises a `ToolError` that names the allowed values.
+   - An unknown or non-CDC NOFO behaves as in `get_nofo_overview` (suggestions, or the HHS division named).
+4. **Sources and rules.**
+   - **`sources`:** USAspending Award financial (File C), CDC, with the data-through period; Grants.gov NOFO titles; and HHS TAGGS (for grant history recipient fields). Each source has a ready citation string. The lookup's `citation` is returned in `data`.
+   - **`interpretation_rules`:** funding rules 1, 2, 4, and 5 from Amendment 3, plus:
+     1. A recipient's state is the state USAspending records for the recipient, not where services are delivered.
+     2. Supplemental means dollars with a non-regular Disaster Emergency Fund Code, and it can be negative when earlier emergency money was reduced. Award actions are not labelled supplemental.
+     3. Contracts are counted in the contractor's state; the default is grants only.
+     4. Budget categories follow the top-level lines of CDC's FY 2026 Operating Plan, and amounts are not split between categories.
+   - **Cache fingerprint:** includes the active `state_funding` build id (and the `funding_report` build id for grant history).
+5. **Server instructions.** Add one sentence, keeping the text under 1,200 characters: "For CDC money to recipients in a state, call get_state_funding and list_state_grants; for one CDC grant's recipients and history by state, call get_grant_history."
+6. **Not exposed:** the CSV routes, unattributed (`'__'`) state rows as a state, and any write.
