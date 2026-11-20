@@ -94,3 +94,11 @@ John asked for a check box that removes deobligations from the map.
 **Tests and audit.**
 - Backend and vitest cover the parameter, the note, the query string, the subtitle, and the panel line.
 - Audit invariants 1–3 and 5 also run with `deobligations=exclude` for every fiscal year × funding type. With `exclude`, invariant 1 compares against `sum(amount) filter (where amount > 0)`, and no state row has a negative `total`, `regular`, or `supplemental`.
+
+## Amendment 2 (2026-11-20): Freely Associated States, and legend ranges
+
+Antigravity's audit found grant rows for the Federated States of Micronesia (`FM`), the Marshall Islands (`MH`), and Palau (`PW`) in FY2021–FY2025. They have no shape, no FIPS, and no community profile, and the state page already serves them.
+
+- **Tiles.** The tile row shows DC and PR always, then every other code in `states[]` with `has_shape = false`, in the order GU, VI, AS, MP, FM, MH, PW. A code without grants in the selected year shows no tile, except DC and PR, which show "No grants". Their panels have no "State indicators" link.
+- **Invariant 4** allows `has_shape = false` only for GU, VI, AS, MP, FM, MH, and PW.
+- **Legend.** Merge quantile classes whose rounded bounds are equal, so no range reads "$75.0 thousand to $75.0 thousand". A class that holds a single value shows that value alone.
