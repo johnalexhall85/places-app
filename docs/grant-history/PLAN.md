@@ -40,10 +40,10 @@ Approved by John on 2026-11-20. The contract is [CONTRACT.md](CONTRACT.md); task
 | WP | Owner | Content | Depends on | Status |
 |---|---|---|---|---|
 | G0 | Claude | Plan, contract, tool contract Amendment 4, AGENTS.md section, task files, branches | none | done |
-| G1 | Codex | Grant history lookup, API, page, state-page links, tests | G0 | |
-| G2 | Codex | MCP tools `get_state_funding`, `list_state_grants`, `get_grant_history`, tests | G1 lookup | |
-| G3 | Antigravity | Reconciliation audit, MCP eval questions, walkthrough checklist | G1, G2 | |
-| G4 | Claude | Review, commit, PR to `beta`, staging deploy (backend and `chip-mcp-staging`), walkthrough; **Gate A** | G1–G3 | |
+| G1 | Codex | Grant history lookup, API, page, state-page links, tests | G0 | done (+ G1b, G6 fixes) |
+| G2 | Codex | MCP tools `get_state_funding`, `list_state_grants`, `get_grant_history`, tests | G1 lookup | done |
+| G3 | Antigravity | Reconciliation audit, MCP eval questions, walkthrough checklist | G1, G2 | done, 7/7 (+ G6 eval runner) |
+| G4 | Claude | Review, commit, PR to `beta`, staging deploy (backend and `chip-mcp-staging`), walkthrough; **Gate A** | G1–G3 | staging deployed 2026-11-20; awaiting Gate A |
 | G5 | Claude | **Gate B**: rollback pair, fast-forward `main`, frontend build, restart `places-backend` and `chip-mcp`, verify, handbook, diary, push | Gate A | |
 
 Deferred: a sub-awardee list per award (contract §6).

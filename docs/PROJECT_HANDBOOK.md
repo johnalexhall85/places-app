@@ -39,6 +39,27 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
+**CDC grant history pages and state funding MCP tools: on staging for Gate A since 2026-11-20 (Claude, with Codex and Antigravity; plan [docs/grant-history/PLAN.md](grant-history/PLAN.md), [contract](grant-history/CONTRACT.md), tool contract Amendment 4). Not on live.**
+- **Page:** `/cdc-funding/grant/{nofo}` (any NOFO form; the URL is replaced with the FON display). It shows:
+  - a summary;
+  - FY bars;
+  - state totals for the NOFO's last funded fiscal year (the latest FY with a positive net grant obligation);
+  - recipient awards grouped by state, with current awards before past ones;
+  - search, sort, and a past-recipient toggle;
+  - lazy expanded details (profile, per-FY history, categories, sub-award summary);
+  - a CSV download.
+
+  Other federal awards are not shown. Grant rows on `/cdc-funding/state/{code}` link to it.
+- **API:** `/api/state-funding/v1/grants/{nofo}`, `/grants/{nofo}/awards/{award_unique_key}`, and `/grants/{nofo}.csv`, behind the demo gate. `/grants/{nofo}/awards/{key}/subawards` is reserved for a later sub-awardee list.
+- **Method (`grant-history-v1`):** no new table or build. Money comes from the active `state_funding` build (File C, FY2021–FY2026, grants); recipient profiles and sub-award summaries come from the active `funding_report` build. Recipient type is the TAGGS recipient class, then USAspending business types. State totals equal the state page restricted to the NOFO.
+- **MCP:** `get_state_funding`, `list_state_grants`, and `get_grant_history` (14 tools in total), reading only through `app.state_funding.lookup`. Large pages are cut to fit the 50,000-byte cap, with `next_offset`.
+- **Verification on staging (`beta` `e4db9ea`):**
+  - The audit `backend/tests/test_grant_history_audit.py` passes 7/7 ($0.00 difference; 14 NOFOs, 679 NOFO×state pairs).
+  - MCP eval Q67–Q72 were added; `--validate` passes for 72 questions.
+  - The signed-in walkthrough passes. Anonymous API requests return 401.
+  - The checklist is in `deliverables/grant-history/walkthrough.md`.
+- **Gate B needs:** fast-forward `main`, `npm run build` plus `rsync` to `/var/www/places`, and a restart of `places-backend` and `chip-mcp`. There is no migration and no data step.
+
 **CDC state funding profiles, rebuilt: live since 2026-11-19T23:20Z (Claude; Gate A passed and Gate B approved by John: "It looks great. I approve."; plan [docs/state-funding/PLAN.md](state-funding/PLAN.md), [contract](state-funding/CONTRACT.md) with Amendments 1–2):**
 - **What:** `/cdc-funding/state/{code}` was rebuilt in the PDO brand. It shows one fiscal year (FY2021–FY2026):
   - KPI tiles: total, regular, supplemental (emergency), grants, and recipients;

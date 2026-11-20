@@ -2,6 +2,33 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-20T01:30:00+00:00 — CDC grant history pages and state funding MCP tools on staging for Gate A (Claude, with Codex and Antigravity)
+
+- **Request:** John asked for a per-grant history page and for state funding tools in the MCP server.
+  - **Page:** formatted like the recipient profiles, but without other federal awards. A summary at the top. Recipients grouped by state, with state totals for the latest FY. Each row shows the recipient name, type, project title, and latest obligation, and expands to the full history. The list is searchable and sortable.
+  - **John's answers:** use the NOFO's last funded FY; list all recipients with current first; show a sub-award summary now and plan for a sub-awardee list later; add three MCP tools, including grant history.
+- **Claude:**
+  - Checked staging read-only: all 5,633 FY2026 in-state grants link to a CDC NOFO in `funding_report`; 42 grant awards have no FON; the largest NOFO has 346 awards; 55 awards span more than one state.
+  - Wrote the plan, the contract, tool contract Amendment 4, the AGENTS.md section, and task files G1G2, G1b, G3, and G6. No migration was needed, because `chip_mcp_ro` already reads `state_funding`.
+- **Codex:**
+  - G1+G2: lookup, API, page, state-page links, three MCP tools, and tests. OT202004 loads in 0.083 s; the MCP responses are at most 49.9 KB.
+  - G1b: expanded-row, label, bar, and state-list fixes after Claude's 1280 px and 375 px screenshots of staging.
+  - G6: phone cards and group order.
+- **Antigravity:**
+  - G3: the audit passes 7/7 with a $0.00 difference; it added eval Q67–Q72 and the walkthrough checklist.
+  - G6: eval runner support for the three tools (72 questions validate).
+- **Staging deploys:** `infra/staging/deploy-staging.sh claude/grant-history`, giving `beta` `9ed1040`, then `16f9c55`, then `e4db9ea`, then this documentation commit. `chip-mcp-staging` lists 14 tools.
+- **Verification:**
+  - **Backend:** state funding and grant-history tests 25 passed, 1 skipped.
+  - **MCP:** MCP, audit, and eval-check tests 49 passed under `.venv-mcp`.
+  - **Frontend:** vitest 181 passed; `npm run build` passes.
+  - **Walkthrough:** the full signed-in walkthrough passes.
+  - **Access:** an anonymous API request returns 401.
+  - **Snapshots:** `docs/beta/contract-examples` and `backend/app/community` are unchanged.
+  - **Known environment gap:** `test_mcp_integration.py::test_http_client` fails in agent worktrees that lack a local `.venv-mcp`; it passes in `chip-claude`.
+- **Not done:** live is untouched. Nothing has been pushed to `origin`.
+- **Next:** Gate A, where John tries the page and the beta MCP connector. Gate B, when approved: rollback pair, fast-forward `main`, frontend build and rsync, restart `places-backend` and `chip-mcp`, verify, push.
+
 ## 2026-11-19T23:25:00+00:00 — CDC state funding profiles promoted to live (Claude)
 
 - **Approval:** after trying staging, John said "It looks great. I approve."
