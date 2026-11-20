@@ -37,6 +37,8 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.area_pilot import lookup  # noqa: E402
 from app.funding_report import lookup as funding_lookup  # noqa: E402
+from app.state_funding import lookup as state_funding_lookup  # noqa: E402
+from app.state_funding.grant_history import GrantNotFound  # noqa: E402
 
 DEFAULT_QUESTIONS_PATH = Path(__file__).resolve().parent / "questions.yaml"
 DEFAULT_REPORT_PATH = REPO_ROOT / "deliverables" / "mcp" / "eval_report.md"
@@ -59,7 +61,15 @@ FUNDING_TOOLS: tuple[str, ...] = (
     "get_recipient_funding",
 )
 
-ALL_TOOLS: tuple[str, ...] = AREA_TOOLS + FUNDING_TOOLS
+STATE_FUNDING_TOOLS: tuple[str, ...] = (
+    "get_state_funding",
+    "list_state_grants",
+    "get_grant_history",
+)
+
+ALL_FUNDING_TOOLS: tuple[str, ...] = FUNDING_TOOLS + STATE_FUNDING_TOOLS
+
+ALL_TOOLS: tuple[str, ...] = AREA_TOOLS + FUNDING_TOOLS + STATE_FUNDING_TOOLS
 
 PUBLIC_PRODUCTS: tuple[str, ...] = (
     "places",
@@ -121,6 +131,17 @@ FUNDING_INTERPRETATION_RULES: tuple[str, ...] = (
     "Other federal awards are HHS awards recorded in TAGGS for the same UEI; they are not a complete federal funding portfolio.",
     "State the data-through date of each source and say when a fiscal year is not complete.",
     "Do not rank recipients by merit or describe funding as good or bad; report amounts, periods, and sources.",
+)
+
+STATE_FUNDING_INTERPRETATION_RULES: tuple[str, ...] = (
+    FUNDING_INTERPRETATION_RULES[0],
+    FUNDING_INTERPRETATION_RULES[1],
+    FUNDING_INTERPRETATION_RULES[3],
+    FUNDING_INTERPRETATION_RULES[4],
+    "A recipient's state is the state USAspending records for the recipient, not where services are delivered.",
+    "Supplemental means dollars with a non-regular Disaster Emergency Fund Code; it can be negative when earlier emergency money was reduced. Award actions are not labelled supplemental.",
+    "Contracts are counted in the contractor's state; the default is grants only.",
+    "Budget categories follow the top-level lines of CDC's FY 2026 Operating Plan; amounts are not split between categories.",
 )
 
 FUNDING_ALLOWED_BEST_KEYS: frozenset[str] = frozenset({
@@ -1120,11 +1141,11 @@ def check_no_funding_sources_in_area(sources: Any, interpretation_rules: Any = N
                 continue
             sid = src.get("id")
             pub = str(src.get("publisher") or "").lower()
-            if sid in FUNDING_SOURCE_IDS or "usaspending" in pub or "taggs" in pub:
+            if sid in FUNDING_SOURCE_IDS or "usaspending" in pub or "taggs" in pub or "grants.gov" in pub:
                 failures.append(f"Funding source leaked into area sources[{idx}]: {src!r}")
     if isinstance(interpretation_rules, list):
         norm_actual = {_norm_rule(r) for r in interpretation_rules if isinstance(r, str)}
-        for f_rule in FUNDING_INTERPRETATION_RULES:
+        for f_rule in dict.fromkeys(FUNDING_INTERPRETATION_RULES + STATE_FUNDING_INTERPRETATION_RULES):
             if _norm_rule(f_rule) in norm_actual:
                 failures.append(f"Funding interpretation rule leaked into area response: {f_rule!r}")
     return failures
@@ -1636,6 +1657,168 @@ def check_nofo_dataset_v1(
     return failures
 
 
+def check_state_funding_sources(sources: Any, *, require_taggs: bool = False) -> list[str]:
+    """Verify Amendment 4 state funding / grant history `sources` contain no area sources and valid citations."""
+    failures: list[str] = []
+    if not isinstance(sources, list) or not sources:
+        return [f"State funding response must have non-empty sources list, got {sources!r}"]
+    publishers: set[str] = set()
+    for idx, src in enumerate(sources):
+        if not isinstance(src, dict):
+            failures.append(f"sources[{idx}] must be a dict, got {type(src).__name__}")
+            continue
+        if "dataset_id" in src or src.get("product") in AREA_SOURCE_PRODUCTS:
+            failures.append(f"Area-product source leaked into state funding sources[{idx}]: {src!r}")
+            continue
+        for req_k in ("publisher", "dataset", "citation"):
+            val = src.get(req_k)
+            if not isinstance(val, str) or not val.strip():
+                failures.append(f"State funding sources[{idx}] missing non-empty {req_k!r}")
+        citation = src.get("citation")
+        if isinstance(citation, str) and not citation.startswith("Source: "):
+            failures.append(f"State funding sources[{idx}] invalid citation: {citation!r}")
+        pub = src.get("publisher")
+        if isinstance(pub, str):
+            publishers.add(pub)
+    for req_pub in ("USAspending", "Grants.gov"):
+        if req_pub not in publishers:
+            failures.append(f"State funding sources missing required publisher {req_pub!r} (got {sorted(publishers)})")
+    if require_taggs and "HHS TAGGS" not in publishers:
+        failures.append(f"get_grant_history sources missing required publisher 'HHS TAGGS' (got {sorted(publishers)})")
+    return failures
+
+
+def check_state_funding_envelope(
+    payload: Any,
+    tool_name: str,
+    arguments: dict[str, Any] | None = None,
+) -> list[str]:
+    """Run global Amendment 4 checks on a state funding or grant history MCP tool response."""
+    failures: list[str] = []
+    if not isinstance(payload, dict):
+        return [f"Response is not a dict: {type(payload).__name__}"]
+
+    for req_key in ("data", "sources", "interpretation_rules", "warnings"):
+        if req_key not in payload:
+            failures.append(f"Response envelope missing top-level key {req_key!r}")
+    if failures:
+        return failures
+
+    if not isinstance(payload["data"], dict):
+        failures.append("'data' must be a dict")
+    if not isinstance(payload["sources"], list):
+        failures.append("'sources' must be a list")
+    if not isinstance(payload["interpretation_rules"], list):
+        failures.append("'interpretation_rules' must be a list")
+    if not isinstance(payload["warnings"], list):
+        failures.append("'warnings' must be a list")
+    if failures:
+        return failures
+
+    failures.extend(check_no_ahrf(payload))
+    failures.extend(check_response_size(payload))
+    failures.extend(check_forbidden_words(payload))
+    failures.extend(check_state_funding_sources(payload["sources"], require_taggs=(tool_name == "get_grant_history")))
+
+    norm_actual_rules = {_norm_rule(r) for r in payload["interpretation_rules"] if isinstance(r, str)}
+    for expected_rule in STATE_FUNDING_INTERPRETATION_RULES:
+        if _norm_rule(expected_rule) not in norm_actual_rules:
+            failures.append(f"Missing state funding interpretation rule: {expected_rule!r}")
+    if len(payload["interpretation_rules"]) != len(STATE_FUNDING_INTERPRETATION_RULES):
+        failures.append(
+            f"Expected exactly {len(STATE_FUNDING_INTERPRETATION_RULES)} state funding interpretation_rules, "
+            f"got {len(payload['interpretation_rules'])}"
+        )
+    for area_rule in GENERAL_INTERPRETATION_RULES:
+        if _norm_rule(area_rule) in norm_actual_rules:
+            failures.append(f"Area interpretation rule leaked into state funding response: {area_rule!r}")
+
+    data = payload["data"]
+    citation = data.get("citation")
+    if not isinstance(citation, str) or not citation.startswith("Source: "):
+        failures.append(f"{tool_name} data.citation must start with 'Source: ', got {citation!r}")
+
+    if tool_name == "get_state_funding":
+        for req_k in (
+            "state",
+            "fiscal_year",
+            "period",
+            "filters",
+            "totals",
+            "by_category",
+            "categories_available",
+            "citation",
+            "notes",
+            "fiscal_years_available",
+        ):
+            if req_k not in data:
+                failures.append(f"get_state_funding data missing key {req_k!r}")
+        st = data.get("state")
+        if not isinstance(st, dict) or not st.get("code") or not st.get("name"):
+            failures.append(f"get_state_funding data.state invalid: {st!r}")
+        if not isinstance(data.get("by_category"), list):
+            failures.append("get_state_funding data.by_category must be a list")
+
+    elif tool_name == "list_state_grants":
+        for req_k in (
+            "state",
+            "fiscal_year",
+            "period",
+            "filters",
+            "total_rows",
+            "sum_total",
+            "rows",
+            "offset",
+            "limit",
+            "citation",
+            "fiscal_years_available",
+        ):
+            if req_k not in data:
+                failures.append(f"list_state_grants data missing key {req_k!r}")
+        rows = data.get("rows")
+        if not isinstance(rows, list):
+            failures.append("list_state_grants data.rows must be a list")
+        else:
+            for idx, r in enumerate(rows):
+                if not isinstance(r, dict):
+                    failures.append(f"list_state_grants data.rows[{idx}] must be a dict")
+                    break
+                desc = r.get("description")
+                if isinstance(desc, str) and len(desc) > 300:
+                    failures.append(f"list_state_grants data.rows[{idx}].description exceeds 300 chars ({len(desc)})")
+                cats = r.get("categories")
+                if not isinstance(cats, list) or not all(isinstance(c, str) for c in cats):
+                    failures.append(f"list_state_grants data.rows[{idx}].categories must be list of strings")
+                    break
+
+    elif tool_name == "get_grant_history":
+        for req_k in (
+            "nofo",
+            "latest_fy",
+            "latest_fy_period",
+            "totals",
+            "by_fiscal_year",
+            "by_state",
+            "awards",
+            "total_rows",
+            "offset",
+            "limit",
+            "citation",
+            "build",
+            "recipient_profile_tool",
+        ):
+            if req_k not in data:
+                failures.append(f"get_grant_history data missing key {req_k!r}")
+        failures.extend(check_funding_fiscal_years_ordered(data.get("by_fiscal_year"), "data.by_fiscal_year"))
+        failures.extend(check_funding_no_subawards_added(data))
+        if not isinstance(data.get("by_state"), list):
+            failures.append("get_grant_history data.by_state must be a list")
+        if not isinstance(data.get("awards"), list):
+            failures.append("get_grant_history data.awards must be a list")
+
+    return failures
+
+
 def check_envelope(
     payload: Any,
     tool_name: str,
@@ -1644,6 +1827,8 @@ def check_envelope(
     """Run global contract checks on a structured tool response."""
     if tool_name in FUNDING_TOOLS:
         return check_funding_envelope(payload, tool_name, arguments)
+    if tool_name in STATE_FUNDING_TOOLS:
+        return check_state_funding_envelope(payload, tool_name, arguments)
 
     failures: list[str] = []
     if not isinstance(payload, dict):
@@ -1895,8 +2080,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
         return False, {}, ["Top-level YAML must be a mapping with a 'questions' list"]
 
     questions = raw["questions"]
-    if len(questions) < 66:
-        errors.append(f"Expected at least 66 questions (54 area + 12 funding), found {len(questions)}")
+    if len(questions) < 72:
+        errors.append(f"Expected at least 72 questions (54 area + 18 funding), found {len(questions)}")
 
     reg_measures = load_registry_measures_offline()
     topics_data = json.loads(TOPICS_PATH.read_text(encoding="utf-8"))
@@ -1957,7 +2142,7 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
             else:
                 errors.append(f"{qid}: trap=true but missing 'trap_kind'")
 
-        if any(c.get("tool") in FUNDING_TOOLS for c in calls if isinstance(c, dict)):
+        if any(c.get("tool") in ALL_FUNDING_TOOLS for c in calls if isinstance(c, dict)):
             funding_questions_count += 1
 
         for c_idx, call in enumerate(calls):
@@ -2004,8 +2189,8 @@ def validate_questions_yaml(path: Path = DEFAULT_QUESTIONS_PATH) -> tuple[bool, 
         if product_counts[prod] == 0:
             errors.append(f"Public product / facility block {prod!r} is not covered in questions.yaml")
 
-    if funding_questions_count < 12:
-        errors.append(f"At least 12 funding questions required (F4), found {funding_questions_count}")
+    if funding_questions_count < 18:
+        errors.append(f"At least 18 funding questions required (F4 + G3), found {funding_questions_count}")
 
     for lvl in ALL_LEVELS:
         if level_counts[lvl] == 0:
@@ -2457,6 +2642,150 @@ def compute_expected_for_call(
             "expected_source_ids": [s["id"] for s in dataset.get("sources", [])],
         }
 
+    elif tool in ("get_state_funding", "list_state_grants"):
+        state = arguments["state"]
+        fiscal_year = arguments.get("fiscal_year")
+        funding_type = arguments.get("funding_type", "all")
+        award_type = arguments.get("award_type", "grant")
+        category = arguments.get("category")
+        recipient_type = arguments.get("recipient_type", "all")
+
+        try:
+            code = state_funding_lookup.resolve_state(state)
+        except ValueError as exc:
+            return {"expect_error": True, "reason": str(exc)}
+
+        for label, value, choices in (
+            ("funding_type", funding_type, ("all", "regular", "supplemental")),
+            ("award_type", award_type, ("all", "grant", "contract")),
+            ("recipient_type", recipient_type, ("all", "state_government")),
+        ):
+            if value not in choices:
+                return {"expect_error": True, "reason": f"Unknown {label}; use {', '.join(choices)}."}
+
+        build_info = state_funding_lookup.build_info(db)
+        if not build_info or not state_funding_lookup.state_exists(db, code, build_info["build_id"]):
+            return {"expect_error": True, "reason": "Unknown state in the active build; use a state with CDC funding rows."}
+
+        years = state_funding_lookup.fiscal_years(db)
+        fy = fiscal_year if fiscal_year is not None else years["default"]
+        if fy not in years["fiscal_years"]:
+            return {"expect_error": True, "reason": f"Unknown fiscal year; use {', '.join(map(str, years['fiscal_years']))}."}
+
+        filters = {
+            "funding_type": funding_type,
+            "award_type": award_type,
+            "category": category,
+            "recipient_type": recipient_type,
+        }
+        if category:
+            base_filters = filters | {"category": None}
+            available = state_funding_lookup.summary(db, code, fy, base_filters, build_info)["categories_available"]
+            if category not in {row["code"] for row in available}:
+                return {
+                    "expect_error": True,
+                    "reason": "Unknown category for this state and year; use "
+                    + ", ".join(row["code"] for row in available)
+                    + ".",
+                }
+
+        if tool == "get_state_funding":
+            summary_data = state_funding_lookup.summary(db, code, fy, filters, build_info)
+            summary_data["fiscal_years_available"] = years["fiscal_years"]
+            return {"expect_error": False, "summary": summary_data}
+
+        sort = arguments.get("sort", "amount")
+        direction = arguments.get("direction", "desc")
+        offset = int(arguments.get("offset", 0))
+        limit = int(arguments.get("limit", 25))
+        query = arguments.get("query")
+        if sort not in ("amount", "name", "recipient", "category"):
+            return {"expect_error": True, "reason": "Unknown sort; use amount, name, recipient, or category."}
+        if direction not in ("asc", "desc"):
+            return {"expect_error": True, "reason": "Unknown direction; use asc or desc."}
+        if offset < 0 or not 1 <= limit <= 100:
+            return {"expect_error": True, "reason": "Use offset 0 or greater and limit between 1 and 100."}
+
+        grants_data = state_funding_lookup.grants(
+            db,
+            code,
+            fy,
+            filters,
+            build_info,
+            q=query or "",
+            sort=sort,
+            direction=direction,
+            page_size=limit,
+            offset=offset,
+        )
+        fields = (
+            "award_unique_key",
+            "award_id",
+            "grant_name",
+            "name_source",
+            "fon",
+            "recipient_name",
+            "is_state_government",
+            "categories",
+            "regular",
+            "supplemental",
+            "total",
+            "description",
+            "usaspending_url",
+        )
+        shaped_rows = []
+        for row in grants_data["rows"]:
+            item = {k: row[k] for k in fields}
+            item["categories"] = [c["name"] for c in item["categories"]]
+            desc = item.get("description") or ""
+            if len(desc) > 300:
+                item["description"] = desc[:301].rsplit(" ", 1)[0] or desc[:300]
+            shaped_rows.append(item)
+        grants_data["rows"] = shaped_rows
+        grants_data["offset"] = offset
+        grants_data["limit"] = limit
+        grants_data["state"] = {"code": code, "name": state_funding_lookup.state_name(code)}
+        grants_data["fiscal_years_available"] = years["fiscal_years"]
+        grants_data["period"] = (build_info["sources"] or {}).get("periods", {}).get(str(fy), f"FY{fy}")
+        return {"expect_error": False, "grants": grants_data}
+
+    elif tool == "get_grant_history":
+        nofo = arguments["nofo"]
+        state = arguments.get("state")
+        include_past = bool(arguments.get("include_past", True))
+        offset = int(arguments.get("offset", 0))
+        limit = int(arguments.get("limit", 50))
+        if offset < 0 or not 1 <= limit <= 100:
+            return {"expect_error": True, "reason": "Use offset 0 or greater and limit between 1 and 100."}
+
+        try:
+            raw_hist = state_funding_lookup.grant_history(db, nofo)
+        except (GrantNotFound, funding_lookup.UnsupportedNOFOError, funding_lookup.FundingLookupError) as exc:
+            return {"expect_error": True, "reason": str(exc)}
+
+        code = None
+        if state is not None:
+            try:
+                code = state_funding_lookup.resolve_state(state)
+            except ValueError as exc:
+                return {"expect_error": True, "reason": str(exc)}
+
+        awards = [
+            a
+            for a in raw_hist["awards"]
+            if (code is None or a["state"] == code) and (include_past or a["is_current"])
+        ]
+        response_data = {
+            key: raw_hist[key]
+            for key in ("nofo", "latest_fy", "latest_fy_period", "totals", "by_fiscal_year", "by_state", "citation", "build")
+        }
+        response_data["awards"] = awards[offset : offset + limit]
+        response_data["total_rows"] = len(awards)
+        response_data["offset"] = offset
+        response_data["limit"] = limit
+        response_data["recipient_profile_tool"] = "get_recipient_funding(nofo, recipient)"
+        return {"expect_error": False, "history": response_data}
+
     return {"expect_error": False}
 
 
@@ -2898,6 +3227,51 @@ def verify_call_against_lookup_and_checks(
             act_src_ids = [s.get("id") for s in sources if isinstance(s, dict)]
             if act_src_ids != exp_src_ids:
                 failures.append(f"get_recipient_funding source ids {act_src_ids!r} != lookup {exp_src_ids!r}")
+
+        elif tool == "get_state_funding":
+            exp_sum = expected_lookup.get("summary") or {}
+            for fld in (
+                "state",
+                "fiscal_year",
+                "period",
+                "filters",
+                "totals",
+                "by_category",
+                "categories_available",
+                "citation",
+                "notes",
+                "fiscal_years_available",
+            ):
+                if data.get(fld) != exp_sum.get(fld):
+                    failures.append(f"get_state_funding data.{fld} does not match state_funding.lookup")
+
+        elif tool == "list_state_grants":
+            exp_g = expected_lookup.get("grants") or {}
+            for fld in ("state", "fiscal_year", "period", "total_rows", "sum_total", "offset", "limit", "citation", "fiscal_years_available"):
+                if data.get(fld) != exp_g.get(fld):
+                    failures.append(f"list_state_grants data.{fld} does not match state_funding.lookup")
+            act_rows = data.get("rows") or []
+            exp_rows = exp_g.get("rows") or []
+            if not data.get("truncated") and len(act_rows) != len(exp_rows):
+                failures.append(f"list_state_grants rows count {len(act_rows)} != lookup {len(exp_rows)}")
+            elif act_rows != exp_rows[: len(act_rows)]:
+                failures.append("list_state_grants data.rows does not match state_funding.lookup")
+
+        elif tool == "get_grant_history":
+            exp_h = expected_lookup.get("history") or {}
+            for fld in ("nofo", "latest_fy", "latest_fy_period", "totals", "by_fiscal_year", "by_state", "total_rows", "offset", "limit", "citation", "build"):
+                if data.get(fld) != exp_h.get(fld):
+                    failures.append(f"get_grant_history data.{fld} does not match state_funding.lookup")
+            act_awards = data.get("awards") or []
+            exp_awards = exp_h.get("awards") or []
+            if not data.get("truncated") and len(act_awards) != len(exp_awards):
+                failures.append(f"get_grant_history awards count {len(act_awards)} != lookup {len(exp_awards)}")
+            else:
+                for a_idx, (act_a, exp_a) in enumerate(zip(act_awards, exp_awards)):
+                    for afld in ("award_unique_key", "state", "is_current", "recipient_name", "latest_fy_amount", "history"):
+                        if act_a.get(afld) != exp_a.get(afld):
+                            failures.append(f"get_grant_history awards[{a_idx}].{afld} does not match state_funding.lookup")
+                            break
 
     # 5. Evaluate explicit call_checks from questions.yaml
     if "expect_match_geoid" in call_check_spec:
@@ -3362,6 +3736,126 @@ def verify_call_against_lookup_and_checks(
                 if not isinstance(act_amt, (int, float)) or abs(float(act_amt) - exp_amt) > 0.02:
                     failures.append(f"recipient.subawards.reported_amount={act_amt!r}, expected {exp_amt!r}")
 
+    # State funding & grant history call_checks (G3 / G6)
+    failures.extend(check_state_funding_call_checks(data, call_check_spec))
+
+    return failures
+
+
+def check_state_funding_call_checks(data: dict[str, Any], call_check_spec: dict[str, Any]) -> list[str]:
+    """Validate Q67-Q72 state funding and grant history call_checks against a response or lookup dict."""
+    failures: list[str] = []
+
+    if "expected_state_code" in call_check_spec:
+        act_code = (data.get("state") or {}).get("code") if isinstance(data.get("state"), dict) else data.get("state")
+        if act_code != call_check_spec["expected_state_code"]:
+            failures.append(f"state.code={act_code!r}, expected {call_check_spec['expected_state_code']!r}")
+
+    if "expected_fiscal_year" in call_check_spec:
+        if data.get("fiscal_year") != call_check_spec["expected_fiscal_year"]:
+            failures.append(f"fiscal_year={data.get('fiscal_year')!r}, expected {call_check_spec['expected_fiscal_year']!r}")
+
+    if "expected_period" in call_check_spec:
+        if data.get("period") != call_check_spec["expected_period"]:
+            failures.append(f"period={data.get('period')!r}, expected {call_check_spec['expected_period']!r}")
+
+    if "expected_state_totals" in call_check_spec:
+        totals = data.get("totals")
+        if not isinstance(totals, dict):
+            failures.append(f"Expected dict data.totals, got {totals!r}")
+        else:
+            for k, exp_v in call_check_spec["expected_state_totals"].items():
+                act_v = totals.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or isinstance(act_v, bool) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"totals.{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"totals.{k}={act_v!r}, expected {exp_v!r}")
+
+    if "expected_top_category" in call_check_spec:
+        cats = data.get("by_category") or []
+        if not isinstance(cats, list) or not cats or not isinstance(cats[0], dict):
+            failures.append(f"by_category is empty or invalid: {cats!r}")
+        else:
+            top = cats[0]
+            for k, exp_v in call_check_spec["expected_top_category"].items():
+                act_v = top.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or isinstance(act_v, bool) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"by_category[0].{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"by_category[0].{k}={act_v!r}, expected {exp_v!r}")
+
+    if "expected_total_rows" in call_check_spec:
+        if data.get("total_rows") != call_check_spec["expected_total_rows"]:
+            failures.append(f"total_rows={data.get('total_rows')!r}, expected {call_check_spec['expected_total_rows']!r}")
+
+    if "expected_sum_total" in call_check_spec:
+        act_sum = data.get("sum_total")
+        exp_sum = float(call_check_spec["expected_sum_total"])
+        if not isinstance(act_sum, (int, float)) or isinstance(act_sum, bool) or abs(float(act_sum) - exp_sum) > 0.02:
+            failures.append(f"sum_total={act_sum!r}, expected {exp_sum!r}")
+
+    if "expected_first_grant" in call_check_spec:
+        rows = data.get("rows") or []
+        if not isinstance(rows, list) or not rows or not isinstance(rows[0], dict):
+            failures.append(f"rows is empty or invalid: {rows!r}")
+        else:
+            first = rows[0]
+            for k, exp_v in call_check_spec["expected_first_grant"].items():
+                act_v = first.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or isinstance(act_v, bool) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"rows[0].{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"rows[0].{k}={act_v!r}, expected {exp_v!r}")
+
+    if "expected_latest_fy" in call_check_spec:
+        if data.get("latest_fy") != call_check_spec["expected_latest_fy"]:
+            failures.append(f"latest_fy={data.get('latest_fy')!r}, expected {call_check_spec['expected_latest_fy']!r}")
+
+    if "expected_latest_fy_period" in call_check_spec:
+        if data.get("latest_fy_period") != call_check_spec["expected_latest_fy_period"]:
+            failures.append(
+                f"latest_fy_period={data.get('latest_fy_period')!r}, expected {call_check_spec['expected_latest_fy_period']!r}"
+            )
+
+    if "expected_latest_fy_totals" in call_check_spec:
+        latest_t = (data.get("totals") or {}).get("latest_fy") if isinstance(data.get("totals"), dict) else None
+        if not isinstance(latest_t, dict):
+            failures.append(f"Expected dict data.totals.latest_fy, got {latest_t!r}")
+        else:
+            for k, exp_v in call_check_spec["expected_latest_fy_totals"].items():
+                act_v = latest_t.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or isinstance(act_v, bool) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"totals.latest_fy.{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"totals.latest_fy.{k}={act_v!r}, expected {exp_v!r}")
+
+    if "expected_top_state" in call_check_spec:
+        states = data.get("by_state") or []
+        if not isinstance(states, list) or not states or not isinstance(states[0], dict):
+            failures.append(f"by_state is empty or invalid: {states!r}")
+        else:
+            top_st = states[0]
+            for k, exp_v in call_check_spec["expected_top_state"].items():
+                act_v = top_st.get(k)
+                if isinstance(exp_v, float):
+                    if not isinstance(act_v, (int, float)) or isinstance(act_v, bool) or abs(float(act_v) - exp_v) > 0.02:
+                        failures.append(f"by_state[0].{k}={act_v!r}, expected {exp_v!r}")
+                elif act_v != exp_v:
+                    failures.append(f"by_state[0].{k}={act_v!r}, expected {exp_v!r}")
+
+    if "expected_past_count" in call_check_spec:
+        states = data.get("by_state") or []
+        if not isinstance(states, list):
+            failures.append(f"by_state must be a list for expected_past_count check, got {states!r}")
+        else:
+            act_past = sum(int(s.get("past_count", 0)) for s in states if isinstance(s, dict))
+            if act_past != call_check_spec["expected_past_count"]:
+                failures.append(f"past_count={act_past}, expected {call_check_spec['expected_past_count']}")
+
     return failures
 
 
@@ -3501,14 +3995,14 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                             "get_measure_across_areas",
                             "get_measure_over_time",
                             "search_measures",
-                            *FUNDING_TOOLS,
+                            *ALL_FUNDING_TOOLS,
                         )
                         and not exp.get("expect_error")
                     ):
                         q_failures.append(
                             f"Call {idx} ({tool}) expected error in YAML, but lookup succeeded"
                         )
-                    elif tool in FUNDING_TOOLS and exp.get("expect_error"):
+                    elif tool in ALL_FUNDING_TOOLS and exp.get("expect_error"):
                         q_failures.extend(
                             f"Call {idx} ({tool}): {e}"
                             for e in verify_error_message_checks(str(exp.get("reason") or ""), c_check)
@@ -3668,6 +4162,39 @@ def run_expected_only(questions_path: Path, report_path: Path | None = None) -> 
                         if "expected_recipient_subaward_amount" in c_check:
                             if abs(float((rec.get("subawards") or {}).get("reported_amount") or 0) - float(c_check["expected_recipient_subaward_amount"])) > 0.02:
                                 q_failures.append(f"Call {idx} recipient subaward amount={(rec.get('subawards') or {}).get('reported_amount')!r} != {c_check['expected_recipient_subaward_amount']!r}")
+
+                    elif tool == "get_state_funding":
+                        summary_data = exp["summary"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_state_funding_call_checks(summary_data, c_check)
+                        )
+
+                    elif tool == "list_state_grants":
+                        grants_data = exp["grants"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_state_funding_call_checks(grants_data, c_check)
+                        )
+
+                    elif tool == "get_grant_history":
+                        hist_data = exp["history"]
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_funding_fiscal_years_ordered(hist_data.get("by_fiscal_year"), "by_fiscal_year")
+                        )
+                        if "expected_nofo_key" in c_check and (hist_data.get("nofo") or {}).get("nofo_key") != c_check["expected_nofo_key"]:
+                            q_failures.append(
+                                f"Call {idx} nofo_key={(hist_data.get('nofo') or {}).get('nofo_key')!r} != {c_check['expected_nofo_key']!r}"
+                            )
+                        if "expected_fon_display" in c_check and (hist_data.get("nofo") or {}).get("fon_display") != c_check["expected_fon_display"]:
+                            q_failures.append(
+                                f"Call {idx} fon_display={(hist_data.get('nofo') or {}).get('fon_display')!r} != {c_check['expected_fon_display']!r}"
+                            )
+                        q_failures.extend(
+                            f"Call {idx} ({tool}): {e}"
+                            for e in check_state_funding_call_checks(hist_data, c_check)
+                        )
 
             if "expect_paging_union_total" in q.get("checks", {}):
                 exp_union = int(q["checks"]["expect_paging_union_total"])

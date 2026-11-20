@@ -787,10 +787,10 @@ def test_envelope_checks_across_tools():
 def test_questions_yaml_validates_offline():
     ok, summary, errors = run_eval.validate_questions_yaml()
     assert ok, f"questions.yaml validation failed: {errors}"
-    assert summary["total_questions"] == 66
+    assert summary["total_questions"] == 72
     assert summary["area_questions"] == 54
-    assert summary["funding_questions"] == 12
-    assert summary["regular_questions"] == 47
+    assert summary["funding_questions"] == 18
+    assert summary["regular_questions"] == 53
     assert summary["trap_questions"] == 19
     for tool in run_eval.ALL_TOOLS:
         assert summary["tool_call_counts"][tool] >= 1
@@ -1097,3 +1097,111 @@ def test_nofo_dataset_v1_contract_validator():
     # Origin helper
     assert run_eval._origin_from_url("http://127.0.0.1:8011/mcp") == "http://127.0.0.1:8011"
     assert run_eval._origin_from_url("https://mcp.publicdataobservatory.org/mcp") == "https://mcp.publicdataobservatory.org"
+
+
+def test_state_funding_envelope_and_call_checks():
+    state_sources = [
+        {
+            "publisher": "USAspending",
+            "dataset": "Award financial (File C), CDC",
+            "period": "FY2026 P12",
+            "citation": "Source: USAspending · Award financial (File C), CDC · FY2026 P12",
+        },
+        {
+            "publisher": "Grants.gov",
+            "dataset": "NOFO titles",
+            "citation": "Source: Grants.gov · funding opportunity titles",
+        },
+    ]
+    state_env = {
+        "data": {
+            "state": {"code": "CA", "name": "California"},
+            "fiscal_year": 2026,
+            "period": "FY2026 P12",
+            "filters": {"funding_type": "all", "award_type": "grant", "category": None, "recipient_type": "all"},
+            "totals": {
+                "total": 275957458.0,
+                "regular": 393477480.14,
+                "supplemental": -117520022.14,
+                "award_count": 294,
+                "grant_count": 294,
+                "recipient_count": 110,
+            },
+            "by_category": [
+                {
+                    "code": "HIV",
+                    "name": "HIV/AIDS, Viral Hepatitis, STI and TB Prevention",
+                    "basis": "cdc_operating_plan",
+                    "regular": 72972128.39,
+                    "supplemental": 0.0,
+                    "total": 72972128.39,
+                    "award_count": 40,
+                    "accounts": [],
+                }
+            ],
+            "categories_available": [],
+            "citation": "Source: USAspending · Award financial (File C), CDC · FY2026 P12 · CHIP build 7",
+            "notes": [],
+            "fiscal_years_available": [2026, 2025, 2024, 2023, 2022, 2021],
+        },
+        "sources": state_sources,
+        "interpretation_rules": list(run_eval.STATE_FUNDING_INTERPRETATION_RULES),
+        "warnings": [],
+    }
+    assert run_eval.check_envelope(state_env, "get_state_funding", {"state": "CA", "fiscal_year": 2026}) == []
+    assert run_eval.check_state_funding_call_checks(
+        state_env["data"],
+        {
+            "expected_state_code": "CA",
+            "expected_fiscal_year": 2026,
+            "expected_period": "FY2026 P12",
+            "expected_state_totals": {"total": 275957458.0, "award_count": 294},
+            "expected_top_category": {"code": "HIV", "total": 72972128.39},
+        },
+    ) == []
+
+    # Missing TAGGS publisher on get_grant_history must fail
+    hist_env = {
+        "data": {
+            "nofo": {"nofo_key": "PS212102", "fon_display": "CDC-RFA-PS21-2102"},
+            "latest_fy": 2026,
+            "latest_fy_period": "FY2026 P12",
+            "totals": {"latest_fy": {"total": 10166689.0, "award_count": 96}, "all_years": {"total": 239315542.0}},
+            "by_fiscal_year": [{"fiscal_year": 2021, "total": 42395995.0}, {"fiscal_year": 2026, "total": 10166689.0}],
+            "by_state": [{"state": "TX", "name": "Texas", "latest_fy_total": 1214576.0, "current_count": 11, "past_count": 3}],
+            "awards": [],
+            "total_rows": 97,
+            "offset": 0,
+            "limit": 25,
+            "citation": "Source: USAspending · Award financial (File C), CDC · FY2026 P12 · CHIP state funding build 7; HHS TAGGS; Grants.gov",
+            "build": {"state_funding_build_id": 7, "funding_report_build_id": 7, "method_version": "grant-history-v1"},
+            "recipient_profile_tool": "get_recipient_funding(nofo, recipient)",
+        },
+        "sources": state_sources,
+        "interpretation_rules": list(run_eval.STATE_FUNDING_INTERPRETATION_RULES),
+        "warnings": [],
+    }
+    assert any("HHS TAGGS" in e for e in run_eval.check_envelope(hist_env, "get_grant_history", {"nofo": "PS212102"}))
+
+    hist_env["sources"] = [
+        *state_sources,
+        {
+            "publisher": "HHS TAGGS",
+            "dataset": "award recipient profiles",
+            "citation": "Source: HHS TAGGS · CDC award recipient profiles",
+        },
+    ]
+    assert run_eval.check_envelope(hist_env, "get_grant_history", {"nofo": "PS212102"}) == []
+    assert run_eval.check_state_funding_call_checks(
+        hist_env["data"],
+        {
+            "expected_latest_fy": 2026,
+            "expected_latest_fy_period": "FY2026 P12",
+            "expected_latest_fy_totals": {"total": 10166689.0, "award_count": 96},
+            "expected_top_state": {"state": "TX", "latest_fy_total": 1214576.0},
+            "expected_total_rows": 97,
+            "expected_past_count": 3,
+        },
+    ) == []
+    bad_past = run_eval.check_state_funding_call_checks(hist_env["data"], {"expected_past_count": 99})
+    assert bad_past and "past_count=3" in bad_past[0]
