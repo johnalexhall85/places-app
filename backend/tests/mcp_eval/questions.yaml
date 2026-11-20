@@ -1631,3 +1631,179 @@ questions:
           expected_recipient_subaward_actions: 8
           expected_recipient_subaward_amount: 796721.93
           expect_dataset_url_suffix: "/funding/nofo/CE232301.json?subawards=1"
+
+  # --- CDC STATE FUNDING & GRANT HISTORY (Q67 - Q72, Task G3) ---
+
+  - id: Q67
+    question: "What is California's total FY2026 CDC grant funding, including regular and supplemental obligations and award and recipient counts?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_state_funding
+        arguments:
+          state: "CA"
+          fiscal_year: 2026
+          funding_type: "all"
+          award_type: "grant"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_state_code: "CA"
+          expected_fiscal_year: 2026
+          expected_period: "FY2026 P12"
+          expected_state_totals:
+            total: 275957458.0
+            regular: 393477480.14
+            supplemental: -117520022.14
+            award_count: 294
+            grant_count: 294
+            recipient_count: 110
+
+  - id: Q68
+    question: "What is Texas's largest CDC budget category for FY2026 grants, including its regular, supplemental, and total obligations?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: ["state"]
+    expected_calls:
+      - tool: get_state_funding
+        arguments:
+          state: "Texas"
+          fiscal_year: 2026
+          funding_type: "all"
+          award_type: "grant"
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_state_code: "TX"
+          expected_fiscal_year: 2026
+          expected_top_category:
+            code: "HIV"
+            name: "HIV/AIDS, Viral Hepatitis, STI and TB Prevention"
+            basis: "cdc_operating_plan"
+            regular: 72972128.39
+            supplemental: 0.0
+            total: 72972128.39
+            award_count: 40
+
+  - id: Q69
+    question: "Find all FY2026 CDC grants in California under NOFO CDC-RFA-PS21-2102, including the count of matching awards and their combined obligation total."
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: ["state"]
+    expected_calls:
+      - tool: list_state_grants
+        arguments:
+          state: "CA"
+          fiscal_year: 2026
+          query: "CDC-RFA-PS21-2102"
+          award_type: "grant"
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_state_code: "CA"
+          expected_fiscal_year: 2026
+          expected_total_rows: 11
+          expected_sum_total: 1104148.0
+          expected_first_grant:
+            award_id: "NU62PS924674"
+            fon: "CDC-RFA-PS21-2102"
+            recipient_name: "SAN FRANCISCO AIDS FOUNDATION"
+            total: 110417.0
+
+  - id: Q70
+    question: "What is the top FY2026 CDC grant by absolute obligation amount in California, including its FAIN, NOFO, recipient, and total?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: ["state"]
+    expected_calls:
+      - tool: list_state_grants
+        arguments:
+          state: "CA"
+          fiscal_year: 2026
+          award_type: "grant"
+          sort: "amount"
+          direction: "desc"
+          limit: 5
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_state_code: "CA"
+          expected_fiscal_year: 2026
+          expected_total_rows: 294
+          expected_sum_total: 275957458.0
+          expected_first_grant:
+            award_id: "NH23IP922612"
+            fon: "CDC-RFA-IP19-1901"
+            grant_name: "Immunization and Vaccines for Children"
+            recipient_name: "PUBLIC HEALTH, CALIFORNIA DEPARTMENT OF"
+            regular: 0.0
+            supplemental: -87227926.5
+            total: -87227926.5
+
+  - id: Q71
+    question: "What is CDC-RFA-PS21-2102's latest funded fiscal year, its latest-year obligation total, and which state received the largest total in that year?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_grant_history
+        arguments:
+          nofo: "CDC-RFA-PS21-2102"
+          include_past: true
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "PS212102"
+          expected_fon_display: "CDC-RFA-PS21-2102"
+          expected_latest_fy: 2026
+          expected_latest_fy_period: "FY2026 P12"
+          expected_latest_fy_totals:
+            total: 10166689.0
+            regular: 10166689.0
+            supplemental: 0.0
+            award_count: 96
+            recipient_count: 96
+            state_count: 34
+          expected_top_state:
+            state: "TX"
+            name: "Texas"
+            latest_fy_total: 1214576.0
+            current_count: 11
+
+  - id: Q72
+    question: "How many past recipients (awards funded in earlier years but not in the latest fiscal year) does CDC NOFO NH28CE4 have?"
+    trap: false
+    products: ["cdc_nofo_funding"]
+    levels: []
+    expected_calls:
+      - tool: get_grant_history
+        arguments:
+          nofo: "NH28CE4"
+          include_past: true
+          limit: 25
+      - tool: get_grant_history
+        arguments:
+          nofo: "NH28CE4"
+          include_past: false
+          limit: 25
+    checks:
+      match_lookup: true
+      call_checks:
+        - call_index: 0
+          expected_nofo_key: "NH28CE4"
+          expected_latest_fy: 2026
+          expected_total_rows: 191
+          expected_past_count: 139
+        - call_index: 1
+          expected_nofo_key: "NH28CE4"
+          expected_latest_fy: 2026
+          expected_total_rows: 52
+          expected_past_count: 139
