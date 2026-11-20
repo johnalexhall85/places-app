@@ -46,7 +46,7 @@ describe("CDC grant history", () => {
     expect(window.location.pathname).toBe("/cdc-funding/grant/CDC-RFA-PS21-2102");
     expect(screen.getAllByText("−$6").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Split across states").length).toBe(2);
-    expect(screen.getAllByRole("link", { name: "State profile" })[0].getAttribute("href"))
+    expect(screen.getAllByRole("link", { name: "State funding page" })[0].getAttribute("href"))
       .toContain("q=CDC-RFA-PS21-2102");
   });
 
@@ -67,5 +67,68 @@ describe("CDC grant history", () => {
       "CDC-RFA-PS21-2102", "split", expect.anything()));
     expect(await screen.findByText("An abstract")).toBeTruthy();
     expect(document.querySelector('[data-subawards-for="split"]')).toBeTruthy();
+  });
+
+  it("puts labeled details in a full-width row", async () => {
+    api.grantAward.mockResolvedValue({ ...fixture.awards[0], address: { line1: "123 MAIN STREET" },
+      categories: [], period_of_performance: {}, cfda: {}, abstract: "An abstract",
+      business_types: ["STATE GOVERNMENT"], congressional_district: "CA-01",
+      congressional_district_source: "usaspending_current", abstract_source: "taggs",
+      subawards: null });
+    render(<CdcGrantHistory nofo="ps212102" />);
+    await screen.findByRole("heading", { name: "Prevention grant" });
+    fireEvent.click(within(document.getElementById("state-CA"))
+      .getByRole("button", { name: "Health One" }));
+    expect(await screen.findByText("HHS TAGGS recipient class")).toBeTruthy();
+    expect(screen.getByText("USAspending, current district")).toBeTruthy();
+    expect(screen.getByText("Abstract source: HHS TAGGS")).toBeTruthy();
+    expect(screen.getByText("123 Main Street")).toBeTruthy();
+    expect(screen.getAllByText("State Government", { exact: true }).length).toBeGreaterThan(0);
+    const detailCell = document.querySelector(".gh-detail-row > td");
+    expect(detailCell?.getAttribute("colspan")).toBe("4");
+    expect(detailCell?.closest("tr")?.previousElementSibling?.cells.length).toBe(4);
+  });
+
+  it.each([
+    ["usaspending_business_types", "usaspending_original", "usaspending",
+      "USAspending business types", "USAspending, district at award", "Abstract source: USAspending"],
+    ["none", "taggs", null, null, "HHS TAGGS", null],
+  ])("shows readable source labels for %s and %s", async (
+    recipientSource, districtSource, abstractSource, recipientLabel, districtLabel, abstractLabel,
+  ) => {
+    api.grantAward.mockResolvedValue({ ...fixture.awards[0], address: {}, categories: [],
+      period_of_performance: {}, cfda: {}, abstract: "An abstract", business_types: [],
+      recipient_type_source: recipientSource, congressional_district_source: districtSource,
+      abstract_source: abstractSource, subawards: null });
+    render(<CdcGrantHistory nofo="ps212102" />);
+    await screen.findByRole("heading", { name: "Prevention grant" });
+    fireEvent.click(within(document.getElementById("state-CA"))
+      .getByRole("button", { name: "Health One" }));
+    await screen.findByText("An abstract");
+    if (recipientLabel) expect(screen.getByText(recipientLabel)).toBeTruthy();
+    else expect(screen.queryByText(/recipient class|business types/i, { selector: "small" })).toBeNull();
+    expect(screen.getByText(districtLabel)).toBeTruthy();
+    if (abstractLabel) expect(screen.getByText(abstractLabel)).toBeTruthy();
+    else expect(screen.queryByText(/Abstract source:/)).toBeNull();
+  });
+
+  it("deduplicates the FON, anchors positive bars left, and limits states to ten", async () => {
+    const states = Array.from({ length: 12 }, (_, index) => ({
+      state: `S${index}`, name: `State ${index}`, latest_fy_total: 100 - index,
+      current_count: 1, past_count: 0,
+    }));
+    api.grantHistory.mockResolvedValue({ ...fixture,
+      nofo: { ...fixture.nofo, fon_variants: [fixture.nofo.fon_display, "PS21-2102"] },
+      by_state: states,
+      by_fiscal_year: [{ fiscal_year: 2026, regular: 100, supplemental: 0, total: 100 }],
+    });
+    render(<CdcGrantHistory nofo="ps212102" />);
+    await screen.findByRole("heading", { name: "Prevention grant" });
+    expect(screen.getByText(/Also recorded as PS21-2102/)).toBeTruthy();
+    expect(screen.queryByText(/Also recorded as CDC-RFA-PS21-2102/)).toBeNull();
+    expect(document.querySelector(".gh-positive-only .gh-zero")).toBeTruthy();
+    expect(document.querySelectorAll(".gh-states > div")).toHaveLength(10);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 12 states" }));
+    expect(document.querySelectorAll(".gh-states > div")).toHaveLength(12);
   });
 });

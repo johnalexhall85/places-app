@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import Footer from "../components/Footer";
 import { grantHistory, grantAward, grantHistoryCsvUrl } from "../api/stateFunding";
@@ -12,6 +12,18 @@ const sourceLabel = {
   cdc_funding_profiles_nofo_title: "NOFO title (CDC Funding Profiles)",
   fon: "Funding opportunity number",
 };
+const recipientSourceLabel = {
+  taggs_recipient_class: "HHS TAGGS recipient class",
+  usaspending_business_types: "USAspending business types",
+};
+const districtSourceLabel = {
+  usaspending_current: "USAspending, current district",
+  usaspending_original: "USAspending, district at award",
+  taggs: "HHS TAGGS",
+};
+const abstractSourceLabel = { taggs: "HHS TAGGS", usaspending: "USAspending" };
+const titleCase = (value) => value && value === value.toUpperCase()
+  ? value.toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase()) : value;
 const initial = () => {
   const p = new URLSearchParams(window.location.search);
   return { q: p.get("q") || "", past: p.get("past") !== "0", sort: p.get("sort") || "state_total",
@@ -20,12 +32,13 @@ const initial = () => {
 
 function HistoryBars({ rows, latest, table = false }) {
   const max = Math.max(1, ...rows.map((r) => Math.abs(r.total)));
-  return <div className="gh-bars">
+  const diverging = rows.some((row) => row.total < 0);
+  return <div className={`gh-bars ${diverging ? "gh-diverging" : "gh-positive-only"}`}>
     {rows.map((row) => <div className="gh-bar-row" key={row.fiscal_year}>
       <span>FY{row.fiscal_year}{row.fiscal_year === latest && " · latest"}</span>
       <div className="gh-track" aria-hidden="true"><i className="gh-zero" />
         <i className={`gh-bar ${row.total < 0 ? "negative" : ""}`}
-          style={{ width: `${Math.abs(row.total) / max * 48}%` }} /></div>
+          style={{ width: `${Math.abs(row.total) / max * (diverging ? 48 : 100)}%` }} /></div>
       <strong>{money(row.total)}</strong>
     </div>)}
     {table && <div className="sf-scroll"><table>
@@ -53,28 +66,39 @@ function AwardDetail({ nofo, awardKey, onClose }) {
   if (!detail) return <div className="gh-detail" role="status">Loading award details…</div>;
   const address = detail.address || {};
   const abstract = detail.abstract || "No abstract available.";
+  const addressText = [titleCase(address.line1), titleCase(address.city), address.state,
+    address.zip, titleCase(address.county)].filter(Boolean).join(", ") || "Not stated";
+  const districtSource = districtSourceLabel[detail.congressional_district_source];
+  const recipientSource = recipientSourceLabel[detail.recipient_type_source];
+  const abstractSource = abstractSourceLabel[detail.abstract_source];
   return <div className="gh-detail">
     <button onClick={onClose}>Close details</button>
     <h4>Recipient and award details</h4>
-    <p>{detail.recipient_name} · UEI {detail.recipient_uei || "not stated"}</p>
-    <p>{[address.line1, address.city, address.state, address.zip, address.county]
-      .filter(Boolean).join(", ") || "Address not stated"}</p>
-    <p>Congressional district: {detail.congressional_district || "not stated"}
-      {detail.congressional_district_source && ` (${detail.congressional_district_source})`}</p>
-    <p>Recipient type: {detail.recipient_type} ({detail.recipient_type_source}) ·
-      Organization type: {detail.organization_type || "not stated"}</p>
-    <p>Business types: {(detail.business_types || []).join("; ") || "not stated"} ·
-      Metro status: {detail.metro_status || "not stated"}</p>
-    <p>Award ID: {detail.award_id} {detail.usaspending_url && <a href={detail.usaspending_url}
-      target="_blank" rel="noreferrer">View on USAspending</a>}</p>
-    <p>Project: {detail.project_title || "not stated"}</p>
+    <p>{detail.recipient_name}</p>
+    <dl className="gh-definition-list">
+      <div><dt>UEI</dt><dd>{detail.recipient_uei || "Not stated"}</dd></div>
+      <div><dt>Address</dt><dd>{addressText}</dd></div>
+      <div><dt>Congressional district</dt><dd>{detail.congressional_district || "Not stated"}
+        {districtSource && <small>{districtSource}</small>}</dd></div>
+      <div><dt>Recipient type</dt><dd>{detail.recipient_type || "Not stated"}
+        {recipientSource && <small>{recipientSource}</small>}</dd></div>
+      <div><dt>Organization type</dt><dd>{detail.organization_type || "Not stated"}</dd></div>
+      <div><dt>Business types</dt><dd>{(detail.business_types || []).map(titleCase).join("; ") || "Not stated"}</dd></div>
+      <div><dt>Metro status</dt><dd>{detail.metro_status || "Not stated"}</dd></div>
+      <div><dt>Award ID</dt><dd>{detail.award_id || "Not stated"}
+        {detail.usaspending_url && <small><a href={detail.usaspending_url}
+          target="_blank" rel="noreferrer">View on USAspending</a></small>}</dd></div>
+      <div><dt>Assistance listing</dt><dd>{detail.cfda?.number || "—"} {detail.cfda?.title || ""}</dd></div>
+      <div><dt>Funding office</dt><dd>{detail.funding_office || "Not stated"}</dd></div>
+      <div><dt>Period of performance</dt><dd>{detail.period_of_performance?.start || "—"} to
+        {` ${detail.period_of_performance?.end || "—"}`}</dd></div>
+    </dl>
+    <h4>Project abstract</h4>
+    <p>{detail.project_title || "Project title not stated"}</p>
     <p>{abstractOpen || abstract.length <= 600 ? abstract : `${abstract.slice(0, 600)}…`}</p>
+    {abstractSource && <small>Abstract source: {abstractSource}</small>}
     {abstract.length > 600 && <button onClick={() => setAbstractOpen(!abstractOpen)}>
       {abstractOpen ? "Show less" : "Read full abstract"}</button>}
-    <p>Assistance listing: {detail.cfda?.number || "—"} {detail.cfda?.title || ""} ·
-      Funding office: {detail.funding_office || "not stated"}</p>
-    <p>Period of performance: {detail.period_of_performance?.start || "—"} to
-      {` ${detail.period_of_performance?.end || "—"}`}</p>
     <h4>Funding history under this grant</h4>
     <HistoryBars rows={detail.history} latest={detail.last_fy} table />
     <p>FY2021–FY2026 award total: <strong>{money(detail.all_years_total)}</strong></p>
@@ -100,6 +124,7 @@ export default function CdcGrantHistory({ nofo }) {
   const [view, setView] = useState(initial);
   const [openState, setOpenState] = useState(null);
   const [showTable, setShowTable] = useState(false);
+  const [showAllStates, setShowAllStates] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     setError("");
@@ -159,6 +184,7 @@ export default function CdcGrantHistory({ nofo }) {
       (view.dir === "asc" ? 1 : -1) * ((a.state.latest_fy_total || 0) - (b.state.latest_fy_total || 0)));
     return all;
   }, [data, view]);
+  const variants = data?.nofo.fon_variants.filter((value) => value !== data.nofo.fon_display) || [];
   return <div className="sf-page gh-page"><SiteHeader /><main id="main" className="sf-main">
     <a href="/cdc-funding">← CDC funding overview</a>
     {error && <div className="sf-message" role="alert"><p>{error}</p>
@@ -169,7 +195,7 @@ export default function CdcGrantHistory({ nofo }) {
       <section className="sf-hero"><span className="sf-eyebrow">CDC funding · Grant history</span>
         <h1>{data.nofo.grant_name}</h1><small>{sourceLabel[data.nofo.name_source]}</small>
         <p><strong>{data.nofo.fon_display}</strong>
-          {data.nofo.fon_variants.length > 0 && ` · Also recorded as ${data.nofo.fon_variants.join(", ")}`}</p>
+          {variants.length > 0 && ` · Also recorded as ${variants.join(", ")}`}</p>
         <p>Assistance listings: {data.nofo.cfda.map((c) => `${c.number} ${c.title || ""}`).join("; ") || "—"}</p>
         <p>Awarding offices: {data.nofo.awarding_offices.join("; ") || "—"}</p>
         <p>Period of performance: {data.nofo.period_of_performance.start_min || "—"} to
@@ -195,11 +221,15 @@ export default function CdcGrantHistory({ nofo }) {
         <HistoryBars rows={data.by_fiscal_year} latest={data.latest_fy} table={showTable} />
         <p className="sf-source">{data.citation}</p></section>
       <section className="sf-panel"><h2>By state, FY{data.latest_fy}</h2>
-        <div className="gh-states">{data.by_state.map((s) => <div key={s.state}>
+        <div className="gh-states">{(showAllStates ? data.by_state : data.by_state.slice(0, 10))
+          .map((s) => <div key={s.state}>
           <a href={`#state-${s.state}`}>{s.name}</a>
-          {s.state !== "__" && <a className="gh-state-link" href={`/cdc-funding/state/${s.state}?fy=${data.latest_fy}&award_type=grant&q=${encodeURIComponent(data.nofo.fon_display)}`}>State profile</a>}
+          {s.state !== "__" && <a className="gh-state-link" href={`/cdc-funding/state/${s.state}?fy=${data.latest_fy}&award_type=grant&q=${encodeURIComponent(data.nofo.fon_display)}`}>State funding page</a>}
           <strong>{money(s.latest_fy_total)}</strong><span>{s.current_count} current</span>
-        </div>)}</div></section>
+        </div>)}</div>
+        {data.by_state.length > 10 && <button onClick={() => setShowAllStates(!showAllStates)}>
+          {showAllStates ? "Show top 10 states" : `Show all ${data.by_state.length} states`}
+        </button>}</section>
       <section className="sf-panel"><h2>Recipients</h2>
         <div className="gh-controls"><label>Search recipients
           <input value={view.q} onChange={(e) => update({ q: e.target.value })} /></label>
@@ -218,25 +248,29 @@ export default function CdcGrantHistory({ nofo }) {
           <h3>{state.name} · {money(state.latest_fy_total)}
             <small>{state.current_count} current · {state.past_count} past
               {view.q && ` · ${awards.length} of ${total} shown`}</small></h3>
-          <div className="sf-scroll"><table><thead><tr><th>Recipient</th><th>Recipient type</th>
+          <div className="sf-scroll gh-awards-scroll"><table><thead><tr><th>Recipient</th><th>Recipient type</th>
             <th>Project title</th><th>FY{data.latest_fy} obligations</th></tr></thead>
-            <tbody>{awards.map((a) => <tr key={`${a.state}-${a.award_unique_key}`}>
+            <tbody>{awards.map((a) => {
+              const expanded = view.open === a.award_unique_key && (!openState || openState === a.state);
+              return <Fragment key={`${a.state}-${a.award_unique_key}`}><tr>
               <td><button className="sf-expand"
-                aria-expanded={view.open === a.award_unique_key && (!openState || openState === a.state)}
+                aria-expanded={expanded}
                 onClick={() => {
                   setOpenState(a.state);
                   update({ open: view.open === a.award_unique_key && openState === a.state
                     ? "" : a.award_unique_key });
                 }}>
                 {a.recipient_name}</button>{a.split_state && <small>Split across states</small>}
-                <small>{a.award_id}</small>
-                {view.open === a.award_unique_key && (!openState || openState === a.state) &&
-                  <AwardDetail nofo={data.nofo.fon_display} awardKey={a.award_unique_key}
-                    onClose={() => update({ open: "" })} />}</td>
+                <small>{a.award_id}</small></td>
               <td>{a.recipient_type}</td><td>{a.project_title || "—"}</td>
-              <td>{money(a.latest_fy_amount?.total)}
+              <td className="gh-amount">{money(a.latest_fy_amount?.total)}
                 {!a.is_current && <small>Last funded FY{a.last_fy}</small>}</td>
-            </tr>)}</tbody></table></div></section>)}
+            </tr>
+              {expanded && <tr className="gh-detail-row"><td colSpan={4}>
+                <AwardDetail nofo={data.nofo.fon_display} awardKey={a.award_unique_key}
+                  onClose={() => update({ open: "" })} />
+              </td></tr>}</Fragment>;
+            })}</tbody></table></div></section>)}
         <a href={grantHistoryCsvUrl(data.nofo.fon_display)}>Download CSV</a>
         <p className="sf-source">{data.citation}</p></section>
       <section className="sf-panel sf-about"><h2>About these numbers</h2>

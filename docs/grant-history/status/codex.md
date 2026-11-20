@@ -3,6 +3,16 @@
 | Task | State | Notes |
 |---|---|---|
 | G1+G2 | implemented, uncommitted 2026-11-20 | Read-only grant history API/page and three MCP tools; local verification passed. Claude to review and stage. |
+| G1b | implemented, uncommitted 2026-11-20 | Grant page layout and labeling fixes after staging review; mocked Chromium layouts checked at 1280 px and 375 px. Claude to review and stage. |
+
+## G1b diary facts — 2026-11-20T00:54:27+00:00
+
+- **Objective:** Fix the grant-history page's expanded-row layout, phone width, source labels, detail presentation, duplicate FON variant, fiscal-year bars, and by-state list after Claude's staging review.
+- **Files changed:** `frontend/src/pages/CdcGrantHistory.{jsx,css,test.jsx}`, screenshots in `frontend/screenshots/grant-history-g1b-{1280,375}.png`, and this status file. The walkthrough locator still matches, so its script needed no change.
+- **Outcome:** Details use a full-width table row and a two-column definition list that becomes one column on phones. Recipient table widths and a local scroll container keep amounts unwrapped. Source codes have display labels; uppercase address and business-type strings are title-cased for display. The FON excludes self-variants, positive-only bars start at the left, and the state list starts at 10 with a show-all control and separate total/count columns.
+- **Verification:** `npm test` passed 180/180; `npm run build` passed; `node --check scripts/beta-walkthrough.mjs` passed; `git diff --check` passed. An initial focused test failed because its abstract-source expectation omitted the visible "Abstract source:" prefix; corrected it and reran successfully.
+- **Browser review:** Chromium against a mocked Vite server, with one row expanded, produced the two screenshots. At 1280 px and 375 px, `document.documentElement.scrollWidth` equaled the viewport width; the amount cell computed `white-space: nowrap`. At 375 px, the recipient table's 850 px content scrolls inside a 317 px container. Screenshots were visually inspected.
+- **Publication and next action:** No database writes, commit, push, merge, or deploy. Staging and live are unchanged by this task. Claude should review this worktree and deploy staging for the real-data walkthrough.
 
 ## G1+G2 diary facts — 2026-11-20T00:43:00+00:00
 

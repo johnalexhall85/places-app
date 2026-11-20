@@ -1,4 +1,4 @@
-.gh-page .sf-main { overflow-wrap: anywhere; }
+.gh-page .sf-main { min-width: 0; }
 .gh-page .sf-hero p { line-height: 1.5; }
 .gh-page .sf-kpis { margin-top: 24px; }
 .gh-page .sf-kpi strong { font-size: clamp(1.2rem, 2vw, 1.8rem); }
@@ -15,10 +15,11 @@
 .gh-zero { position: absolute; left: 50%; height: 100%; border-left: 1px solid var(--chip-navy); }
 .gh-bar { position: absolute; left: 50%; top: 2px; height: 12px; background: var(--pdo-primary); }
 .gh-bar.negative { left: auto; right: 50%; background: var(--pdo-accent); border: 1px solid var(--chip-navy); }
+.gh-positive-only .gh-zero, .gh-positive-only .gh-bar { left: 0; }
 .gh-states { display: grid; gap: 6px; }
 .gh-states > div {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) 90px 130px 90px;
+  grid-template-columns: minmax(130px, 1fr) 115px 130px 90px;
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid var(--pdo-border);
@@ -26,23 +27,41 @@
 }
 .gh-state-link { font-size: .8rem; }
 .gh-states strong { text-align: right; white-space: nowrap; }
+.gh-states span { text-align: right; white-space: nowrap; }
 .gh-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .gh-controls label { display: grid; gap: 6px; font-weight: 700; }
 .gh-controls label:has([type="checkbox"]) { display: flex; align-items: center; }
-.gh-group { margin-top: 24px; scroll-margin-top: 80px; }
+.gh-group { margin-top: 24px; scroll-margin-top: 80px; min-width: 0; }
 .gh-group h3 { color: var(--chip-navy); }
 .gh-group h3 small { display: block; color: var(--pdo-text-muted); font-weight: 400; }
-.gh-page table { min-width: 680px; }
-.gh-detail { margin-top: 12px; padding: 16px; border: 1px solid var(--pdo-border); border-radius: 8px; min-width: 300px; }
+.gh-awards-scroll { width: 100%; min-width: 0; }
+.gh-page .gh-awards-scroll table { min-width: 850px; table-layout: fixed; }
+.gh-awards-scroll th:first-child { width: 27%; }
+.gh-awards-scroll th:nth-child(2) { width: 21%; }
+.gh-awards-scroll th:nth-child(3) { width: 32%; }
+.gh-awards-scroll th:nth-child(4) { width: 20%; white-space: nowrap; }
+.gh-awards-scroll .gh-amount { white-space: nowrap; }
+.gh-detail { padding: 16px; border: 1px solid var(--pdo-border); border-radius: 8px; }
 .gh-detail h4 { color: var(--chip-navy); margin: 16px 0 8px; }
 .gh-detail p { line-height: 1.5; }
+.gh-definition-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+.gh-definition-list > div { min-width: 0; }
+.gh-definition-list dt { color: var(--pdo-text-muted); font-weight: 700; }
+.gh-definition-list dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.gh-definition-list dd small { display: block; margin-top: 4px; }
 .gh-detail .gh-bar-row { grid-template-columns: 80px minmax(30px, 1fr) 110px; }
 .gh-detail .sf-scroll { max-width: 100%; }
-.gh-detail table { min-width: 500px; }
+.gh-page .gh-detail table { min-width: 500px; }
 @media (max-width: 600px) {
   .gh-bar-row { grid-template-columns: 82px minmax(20px, 1fr); }
   .gh-bar-row strong { grid-column: 2; }
-  .gh-states > div { grid-template-columns: minmax(0, 1fr) 90px; }
-  .gh-states > div strong { text-align: left; }
-  .gh-detail { min-width: 0; width: min(75vw, 340px); }
+  .gh-states > div { grid-template-columns: minmax(0, 1fr) auto; }
+  .gh-states strong { grid-column: 2; grid-row: 1; }
+  .gh-states .gh-state-link { grid-column: 1; grid-row: 2; }
+  .gh-states span { grid-column: 2; grid-row: 2; }
+  .gh-definition-list { grid-template-columns: 1fr; }
 }
