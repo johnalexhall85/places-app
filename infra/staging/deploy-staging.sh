@@ -50,7 +50,7 @@ HEADS="$(.venv/bin/alembic heads | wc -l)"
 .venv/bin/alembic upgrade head
 
 cd "$BETA_DIR/frontend"
-if [ ! -d node_modules ] || changed frontend/package-lock.json; then npm ci --no-audit --no-fund; fi
+if [ ! -d node_modules ] || changed frontend/package-lock.json || ! npm ls --depth=0 >/dev/null 2>&1; then npm ci --no-audit --no-fund; fi
 # frontend/.env.production is git-ignored, so set the API base here: the bundle must call /api on its own origin.
 VITE_API_BASE_URL=/api npm run build
 sudo -n rsync -a --delete dist/ "$WEBROOT/"

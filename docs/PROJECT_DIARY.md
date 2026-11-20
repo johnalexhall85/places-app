@@ -2,6 +2,41 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-20T16:00:00+00:00 — CDC state funding map on staging for Gate A (Claude, with Codex and Antigravity)
+
+- **Request:** John asked for a national CDC grant map by state with these features:
+  - dropdowns for fiscal year, budget category, and funding type (regular, supplemental, all);
+  - the number of grants in the tooltip;
+  - a click panel linking to the state's indicators page and its state funding page.
+
+  He then added an "Exclude deobligations" check box. He accepted the read-model definition (0.3% from source-exact in FY2026) and deferred the exact version.
+- **Claude:**
+  - Checked staging read-only: FY2026 grants cover 57 codes ($2,903,439,520, including `__` $152.6M); 52 codes have shapes; 5 states are net negative under all funding and 55 of 57 under supplemental.
+  - Wrote the plan, the contract with Amendments 1–2, the AGENTS.md section, and tasks M1–M1d, M2, and M2b.
+  - Reviewed every screenshot round at 1280 and 375 px. That review found the oversized Puerto Rico inset and the duplicate legend ranges.
+- **Codex:**
+  - M1: the `state_map` lookup, `/map`, `/map/shapes`, the `/cdc-funding/map` page, and links.
+  - M1b: the check box.
+  - M1c: the Puerto Rico inset.
+  - M1d: FM, MH, and PW tiles and merged legend classes.
+- **Antigravity:**
+  - M2: `test_state_map_audit.py` and the walkthrough checklist. It found FY2021–FY2025 grants to FM, MH, and PW that the contract had missed; Amendment 2 adds them.
+  - M2b: invariant 4 updated.
+- **Staging deploy:**
+  - `infra/staging/deploy-staging.sh claude/state-map` merged `beta` to `509ffdd`, but the frontend build failed because `d3-geo` was not installed: `npm ci` had not run.
+  - Claude ran `npm ci` in `chip-beta` and redeployed.
+  - The script now also reinstalls when `npm ls --depth=0` fails.
+- **Verification:**
+  - **Backend:** state funding, grant history, and map tests 37 passed, 1 skipped.
+  - **Audit:** 6/6, with a $0.00 largest difference.
+  - **Frontend:** vitest 187 passed; build passes.
+  - **Walkthrough:** the full signed-in walkthrough passes, including the map step.
+  - **Access:** the anonymous `/map` returns 401.
+  - **Unchanged:** contract snapshots, `backend/app/community`, `area_pilot`, and migrations.
+  - **Figures:** FY2026 national grants are $2,903,439,520.38 with deobligations, and $5,520,499,200.60 without them (equal to Claude's own positive-row query).
+- **Not done:** live is untouched. Nothing has been pushed to `origin`.
+- **Next:** Gate A (John tries `/cdc-funding/map` on staging; the open question is whether to add a per-person view). At Gate B: the rollback pair, fast-forward `main`, frontend build and rsync, restart `places-backend`, verify, and push.
+
 ## 2026-11-20T02:00:00+00:00 — CDC grant history pages and state funding MCP tools promoted to live (Claude)
 
 - **Approval:** after trying staging, John said "Everything works, let's go live."

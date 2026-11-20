@@ -39,6 +39,21 @@
   - **Data:** `python -m app.area_pilot.national_cli deactivate`.
   - **Code:** `git reset --hard f16487f`, restore `webroot-before/`, `alembic downgrade b3f9d2a7c1e4`, then restart `places-backend`.
 
+**CDC state funding map: on staging for Gate A since 2026-11-20; not live (Claude, with Codex and Antigravity; plan [docs/state-map/PLAN.md](state-map/PLAN.md), [contract](state-map/CONTRACT.md) with Amendments 1–2):**
+- **Page:** `/cdc-funding/map`, a national choropleth of CDC **grants** by recipient state (inline SVG with `d3-geo`, `geoAlbersUsa`, plus a Puerto Rico inset). Linked from `/cdc-funding` and `/cdc-funding/state/{code}`.
+  - **Controls:** fiscal year, budget category, funding type (all, regular, supplemental), and an "Exclude deobligations" check box. They are kept in the query string with `state` for the open panel.
+  - **Tooltip:** amount and number of grants.
+  - **Panel:** total, regular, supplemental, grants, recipients, and the top 5 budget categories. It links to "State indicators" (`/community/state/{fips}`) and "State funding profile".
+  - **Tiles:** DC and PR always appear. GU, VI, AS, and MP, and in FY2021–FY2025 also FM, MH, and PW, appear when they have grants.
+  - Unattributed (`__`) money is stated in a note, not mapped.
+- **API:** `/state-funding/v1/map` and `/map/shapes` (cached for a day; outlines come from `area_pilot.lookup.area_info`). `/states/{code}/summary` accepts an optional `deobligations=exclude`; its default output is unchanged. No migration, table, or build.
+- **Deobligations:** "exclude" drops `state_funding.obligation` rows with `amount <= 0`. This is the read-model grain, which differs from summing negative File C rows by $7.4M of $2.62B in FY2026. John accepted this; making it source-exact is deferred.
+- **Verified on staging (`beta` `509ffdd`):**
+  - **Audit:** `tests/test_state_map_audit.py` passes 6/6, with a $0.00 largest difference over 3,152 dollar checks.
+  - **Tests:** backend 37 passed; vitest 187 passed.
+  - **Walkthrough:** the full signed-in walkthrough passes.
+  - **Access:** the anonymous `/map` returns 401.
+
 **CDC grant history pages and state funding MCP tools: live since 2026-11-20 (Claude, with Codex and Antigravity; Gate A passed and Gate B approved by John: "Everything works, let's go live."; plan [docs/grant-history/PLAN.md](grant-history/PLAN.md), [contract](grant-history/CONTRACT.md), tool contract Amendment 4):**
 - **Page:** `/cdc-funding/grant/{nofo}` (any NOFO form; the URL is replaced with the FON display). It shows:
   - a summary;
