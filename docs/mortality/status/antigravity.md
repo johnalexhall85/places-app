@@ -1,5 +1,78 @@
 # Antigravity status: mortality
 
+## M2 (2026-11-21T02:04Z)
+
+Implemented `nci_cancer_mortality` (NCI/CDC State Cancer Profiles death rates, 2020–2024: all sites, lung and bronchus, colon and rectum) across backend ingest/CLI/API/lookup/router/comparability, `/area/cancer-mortality` map page, and public MCP config. Reused helpers by import from `hds_mortality`, `hds_mortality_cli`, and `hds_mortality_api`. No commits, pushes, merges, deploys, network calls, or database writes were made.
+
+### Files changed (`git status --short`)
+
+```text
+ M backend/app/area_pilot/lookup.py
+ M backend/app/area_pilot/registry/comparability.json
+ M backend/app/area_pilot/router.py
+ M backend/app/mcp_server/config.py
+ M docs/mortality/status/antigravity.md
+ M frontend/src/main.jsx
+ M frontend/src/pages/Places2025Pilot.jsx
+ M frontend/src/pages/Places2025Pilot.test.jsx
+ M frontend/src/utils/routeResolver.js
+?? backend/app/area_pilot/cancer_mortality.py
+?? backend/app/area_pilot/cancer_mortality_api.py
+?? backend/app/area_pilot/cancer_mortality_cli.py
+?? backend/app/area_pilot/registry/nci_cancer_mortality_2020_2024.json
+?? backend/tests/test_area_mortality_cancer.py
+?? backend/tests/test_area_mortality_cancer_postgis.py
+?? frontend/node_modules
+```
+
+*(Note: `frontend/node_modules` is a pre-existing symlink to `/home/john/chip-claude/frontend/node_modules`.)*
+
+### Test commands and results
+
+1. **Part A backend tests:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -m pytest tests/test_area_mortality_cancer.py tests/test_area_mortality_cancer_postgis.py tests/test_area_mortality_hds.py tests/test_area_lookup.py -q`
+   - **Result:** `1 failed, 40 passed, 1 skipped`
+     - `tests/test_area_mortality_cancer.py`: 11 passed
+     - `tests/test_area_mortality_cancer_postgis.py`: 1 skipped (no active published `nci_cancer_mortality_2020_2024` release in `places_staging` yet)
+     - `tests/test_area_mortality_hds.py`: 12 passed
+     - `tests/test_area_lookup.py`: 17 passed, 1 failed (see Failures below)
+
+2. **Read-only dry-run against archived CSVs (`data/ingest/nci_scp_mortality_2024/`):**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -c "..."` calling `cancer_mortality.retrieve(cfg, skip_fetch=True)` and `cancer_mortality_cli.validate_counts_and_checks(stats, cfg)`
+   - **Result:** Passed — 6 files parsed (`all`, `lung`, `colorectal` county + state; `breast_female_*` and `prostate_*` ignored), 9,591 staged rows (`3,144` per county file, `53` per state file), exact SHA-256 match on all 6 files, exact suppressed county counts (`58` all, `418` lung, `943` colorectal; `0` in state files), Durham County (`37063`) check values verified (`132.6` / `127.2–138.2` all; `25.1` / `22.8–27.5` lung; `11.8` / `10.2–13.5` colorectal), and national (`00000`) values verified and confirmed identical between county and state files (`143.2` / `143–143.4` all; `30.2` / `30.2–30.3` lung; `12.7` / `12.7–12.8` colorectal).
+
+3. **Frontend tests and production build:**
+   `cd frontend && npx vitest run src/pages/Places2025Pilot.test.jsx && npm run build`
+   - **Result:** `45 passed (45)` in `src/pages/Places2025Pilot.test.jsx`; `vite build` succeeded cleanly (`dist/index.html`, `dist/assets/index-*.js`, `dist/assets/index-*.css`).
+
+4. **MCP tests:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv-mcp/bin/python -m pytest tests/test_mcp_*.py -q`
+   - **Result:** `2 failed, 26 passed` (see Failures below)
+
+5. **Community profile regression tests and snapshot diff:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -m pytest tests/test_community_api.py tests/test_community_state.py tests/test_community_charts_api.py -q`
+   - **Result:** `1 failed, 14 passed` (see Failures below)
+   `git diff --exit-code docs/beta/contract-examples`
+   - **Result:** Exit code `0` (byte-identical)
+
+### Failures (outside owned files; not modified)
+
+1. `backend/tests/test_area_lookup.py::test_level_filter_returns_only_products_published_at_that_level`
+   - **Reason:** Hard-codes the state-level product set (`{'acs', 'acs_profile', 'brfss', 'cms_gv', 'fema_nri', 'cdc_hds_mortality'}`), which now also includes `'nci_cancer_mortality'`.
+2. `backend/tests/test_mcp_integration.py::test_search_context_and_sources`
+   - **Reason:** Hard-codes `assert len(sources.data['products']) == 11`; with `'nci_cancer_mortality'` added to `PUBLIC_PRODUCTS`, `list_data_sources()` now returns `12` products.
+3. `backend/tests/test_mcp_integration.py::test_http_client`
+   - **Reason:** `FileNotFoundError: '.venv-mcp/bin/uvicorn'`. The test launches `.venv-mcp/bin/uvicorn` relative to the worktree's `backend/` directory, whereas `.venv-mcp` lives in `/home/john/chip-claude/backend/.venv-mcp`.
+4. `backend/tests/test_community_charts_api.py::test_shapes_and_all_current_measures`
+   - **Reason:** `cdc_hds_mortality_2022_2024` is now published in `places_staging`, while line 55 of `test_community_charts_api.py` only excludes `{'cdc_svi', 'fema_nri'}` when comparing `/charts` measures to `lookup.area_values` (pre-M6 hard-coded exclusion set; will apply to `nci_cancer_mortality` too once published).
+
+### Open questions / notes for Claude
+
+- **Non-`SS000` FIPS codes in `*_state.csv` (`02900` Alaska, `11001` DC, `72001` Puerto Rico):** All three `*_state.csv` files have 53 rows: `00000` (United States), 49 states encoded as `SS000`, plus `"Alaska"` (`02900`), `"District of Columbia"` (`11001`), and `"Puerto Rico"` (`72001`). Following the contract strictly (`SS000` → state `SS`, no unapproved crosswalks, and never classifying state-file rows as counties so they cannot collide with `*_county.csv`), `cancer_mortality.classify` currently stages `02900`, `11001`, and `72001` from `*_state.csv` as `source_only` (`no_2024_boundary`), matching 49 states. **Question before M4 ingest:** Should we add an explicit NCI state-file code map (`{'02900': '02', '11001': '11', '72001': '72'}`) so Alaska, DC, and Puerto Rico publish at state level (all 52 2024 TIGER states), or keep them `source_only`?
+- **Puerto Rico commonwealth row (`72001`) in `*_county.csv`:** Each `*_county.csv` contains one `72*` row: `"Puerto Rico",72001` with island-wide totals (`98.6`, 5,364 annual deaths for all sites — identical to `all_state.csv`). In 2024 TIGER, `72001` is Adjuntas Municipio, PR. To avoid falsely assigning all of Puerto Rico's cancer mortality to Adjuntas Municipio, `cancer_mortality.classify` stages `code == '72001'` with `County == 'Puerto Rico'` as `source_only` (`puerto_rico_territory_aggregate_not_county`).
+- **Duplicate `00000` (`United States`) rows across `*_state.csv` and `*_county.csv`:** Both files include `00000` with identical rates and 95% CIs. Both rows are staged (`stage_nci_cancer_mortality` PK includes `source_file`); `*_state.csv`'s `00000` is published as `national_reference` (`US`), `*_county.csv`'s `00000` is staged as `source_only` (`duplicate_national_row_in_county_file`), and `validate_counts_and_checks` verifies that both files report the exact same national rate and 95% CI.
+- **Other legacy/synthetic county codes in `*_county.csv`:** Beyond the 8 legacy Connecticut counties (`09001`–`09015`, `legacy_connecticut_county_code`), `*_county.csv` contains `02261` (Valdez-Cordova Census Area, AK) and `51917` (Bedford City and County, VA), both staged as `source_only` (`no_2024_boundary`).
+
 ## M1 (2026-11-21T01:49Z)
 
 Implemented `cdc_hds_mortality` (CDC Interactive Atlas of Heart Disease and Stroke mortality, 2022–2024) across backend ingest/CLI/API/lookup/router/comparability, `/area/heart-stroke-mortality` map page, and public MCP config. No commits, pushes, merges, deploys, network calls, or database writes were made.

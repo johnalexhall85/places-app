@@ -134,3 +134,6 @@ Add each product to `PUBLIC_PRODUCTS` and add one `RULES` sentence: "Mortality r
 - Suppressed values show their `status_text`, never 0 or a blank.
 - The profile pages must skip the three mortality products in every other section, as they do for SVI and NRI.
 - The CSV and PDF exports follow the existing behaviour.
+
+## Amendment 1 (2026-11-21, Claude): NCI state-file codes
+NCI's state files code three areas without the `SS000` pattern: Alaska `02900`, District of Columbia `11001`, and Puerto Rico `72001`. These codes stand for the whole state in NCI's state files, so they are mapped to state `02`, `11`, and `72` when the row's `State` name matches. This is not a crosswalk. In the county files, `11001` is DC's county and `72001` labelled "Puerto Rico" is a territory total, which stays `source_only`. Antigravity found this in M2.

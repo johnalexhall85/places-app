@@ -78,6 +78,20 @@
       "trend_note": "Values share an axis only with the same measure from the same product and release. Mortality products never share an axis with each other or with any other product.",
       "shared_axis_rule": "same_product_measure_and_release_only"
     },
+    "nci_cancer_mortality": {
+      "state_marker_levels": [
+        "county"
+      ],
+      "national_marker_levels": [
+        "state",
+        "county"
+      ],
+      "peers": null,
+      "trend_style": null,
+      "trend_levels": [],
+      "trend_note": "Values share an axis only with the same measure from the same product and release. Mortality products never share an axis with each other or with any other product.",
+      "shared_axis_rule": "same_product_measure_and_release_only"
+    },
     "places": {
       "state_marker_levels": [],
       "national_marker_levels": [],

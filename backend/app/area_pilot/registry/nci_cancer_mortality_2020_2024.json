@@ -1,0 +1,216 @@
+{
+  "dataset_id": "nci_cancer_mortality_2020_2024",
+  "name": "NCI/CDC State Cancer Profiles Death Rates (2020–2024)",
+  "short_name": "NCI cancer deaths",
+  "publisher": "National Cancer Institute and Centers for Disease Control and Prevention (State Cancer Profiles)",
+  "landing_page": "https://statecancerprofiles.cancer.gov/deathrates/index.php",
+  "source_release_id": "NCI/CDC State Cancer Profiles Death Rates (2020-2024, all/lung/colorectal)",
+  "observation_period": "2020–2024",
+  "source_period_title": "2020-2024",
+  "suppression_token": "*",
+  "source_files": [
+    {
+      "measure_id": "cancer_death_rate_all",
+      "site_code": "001",
+      "file_prefix": "all",
+      "areatype": "county",
+      "source_level": "County",
+      "filename": "all_county.csv",
+      "role": "nci_cancer_all_county_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=county&cancer=001&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "All Cancer Sites, 2020-2024",
+      "expected_column_count": 15,
+      "expected_header_sha256": "240225f22567ebdd972f7b717e55565d7137edea63dbe9583e8fe9527c61f692",
+      "expected_sha256": "28e8dee7e8affa61f56e50c421171207863d9e4925cf42a2d4df08a1199882ba",
+      "expected_data_rows": 3144,
+      "expected_suppressed_rows": 58,
+      "check_values": {
+        "national": {"value": "143.2", "ci_low": "143", "ci_high": "143.4"},
+        "37063": {"value": "132.6", "ci_low": "127.2", "ci_high": "138.2"}
+      }
+    },
+    {
+      "measure_id": "cancer_death_rate_all",
+      "site_code": "001",
+      "file_prefix": "all",
+      "areatype": "state",
+      "source_level": "State",
+      "filename": "all_state.csv",
+      "role": "nci_cancer_all_state_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=state&cancer=001&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "All Cancer Sites, 2020-2024",
+      "expected_column_count": 14,
+      "expected_header_sha256": "7fb62d4bce4de9c1310e5e49fd0ac5f7024100890efdeebfaa139a655c7dfbb0",
+      "expected_sha256": "36351ea861daf83f04e15aaab1266908adef3e8a857e2f7c5978b680783d0dce",
+      "expected_data_rows": 53,
+      "expected_suppressed_rows": 0,
+      "check_values": {
+        "national": {"value": "143.2", "ci_low": "143", "ci_high": "143.4"}
+      }
+    },
+    {
+      "measure_id": "cancer_death_rate_lung",
+      "site_code": "047",
+      "file_prefix": "lung",
+      "areatype": "county",
+      "source_level": "County",
+      "filename": "lung_county.csv",
+      "role": "nci_cancer_lung_county_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=county&cancer=047&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "Lung & Bronchus, 2020-2024",
+      "expected_column_count": 15,
+      "expected_header_sha256": "4e8ccc1725928ef3e8d5fb208a7c675efc19643e918349f3a9cf5ab84ccfbcd2",
+      "expected_sha256": "4f91378051bd913c2cc925a349f508342292740652fd12fd79c017717fed0aae",
+      "expected_data_rows": 3144,
+      "expected_suppressed_rows": 418,
+      "check_values": {
+        "national": {"value": "30.2", "ci_low": "30.2", "ci_high": "30.3"},
+        "37063": {"value": "25.1", "ci_low": "22.8", "ci_high": "27.5"}
+      }
+    },
+    {
+      "measure_id": "cancer_death_rate_lung",
+      "site_code": "047",
+      "file_prefix": "lung",
+      "areatype": "state",
+      "source_level": "State",
+      "filename": "lung_state.csv",
+      "role": "nci_cancer_lung_state_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=state&cancer=047&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "Lung & Bronchus, 2020-2024",
+      "expected_column_count": 14,
+      "expected_header_sha256": "8c1367206e1304c07b53d96fb212f2641361709250dfa9c17cd645610e02f643",
+      "expected_sha256": "6b76ac3ba95009975df42daba78802b669dd0e4768a77f8883ade167d96aba7c",
+      "expected_data_rows": 53,
+      "expected_suppressed_rows": 0,
+      "check_values": {
+        "national": {"value": "30.2", "ci_low": "30.2", "ci_high": "30.3"}
+      }
+    },
+    {
+      "measure_id": "cancer_death_rate_colorectal",
+      "site_code": "020",
+      "file_prefix": "colorectal",
+      "areatype": "county",
+      "source_level": "County",
+      "filename": "colorectal_county.csv",
+      "role": "nci_cancer_colorectal_county_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=county&cancer=020&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "Colon & Rectum, 2020-2024",
+      "expected_column_count": 15,
+      "expected_header_sha256": "ebee7b257983d2c8222887b603c843d223b8352dcc2d618104bd8dba33a15439",
+      "expected_sha256": "e53255453fbe008b062ae18c7edcb2625d2d7feef3582d9458d47a63debef815",
+      "expected_data_rows": 3144,
+      "expected_suppressed_rows": 943,
+      "check_values": {
+        "national": {"value": "12.7", "ci_low": "12.7", "ci_high": "12.8"},
+        "37063": {"value": "11.8", "ci_low": "10.2", "ci_high": "13.5"}
+      }
+    },
+    {
+      "measure_id": "cancer_death_rate_colorectal",
+      "site_code": "020",
+      "file_prefix": "colorectal",
+      "areatype": "state",
+      "source_level": "State",
+      "filename": "colorectal_state.csv",
+      "role": "nci_cancer_colorectal_state_csv",
+      "url": "https://statecancerprofiles.cancer.gov/deathrates/index.php?stateFIPS=00&areatype=state&cancer=020&race=00&sex=0&age=001&year=0&type=death&sortVariableName=rate&sortOrder=default&output=1",
+      "expected_title": "Colon & Rectum, 2020-2024",
+      "expected_column_count": 14,
+      "expected_header_sha256": "89ad6c9e5b96db01867a2e3fb718f22798ef1bb454398e87e1ae62e737f0ebc3",
+      "expected_sha256": "37c22c9ec0fae681774ea5bd974248b5e0096e677f31391f3e96eeb52841db39",
+      "expected_data_rows": 53,
+      "expected_suppressed_rows": 0,
+      "check_values": {
+        "national": {"value": "12.7", "ci_low": "12.7", "ci_high": "12.8"}
+      }
+    }
+  ],
+  "geography_rules": {
+    "national": "FIPS '00000' ('United States'); published once per site from the state file as reference geoid 'US', never drawn as a map feature.",
+    "state": "State-file rows with FIPS 'SS000' map to 2-digit state GEOID 'SS', joined exactly to TIGER/Line 2024 states. Non-matching codes are staged as source_only (no_2024_boundary).",
+    "county": "County-file 5-digit FIPS codes joined exactly to TIGER/Line 2024 county equivalents. Connecticut's eight former counties (09001-09015) are staged as source_only (legacy_connecticut_county_code) and never crosswalked. The Puerto Rico territory aggregate row (72001) in county files is staged as source_only (puerto_rico_territory_aggregate_not_county)."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "geographies": ["state", "county"],
+  "state_to_county_zoom": 6,
+  "aggregation_method": "none",
+  "value_type": "age_adjusted_rate",
+  "population_label": "All ages, both sexes (2000 U.S. standard population)",
+  "unit": "deaths per 100,000 population (age-adjusted)",
+  "uncertainty": "95% confidence interval",
+  "limitations": [
+    "These are NCI's age-adjusted death rates for 2020–2024, with 95% confidence intervals. They are deaths, not new cases.",
+    "Rates based on few deaths are suppressed by NCI. A suppressed county did not have zero deaths.",
+    "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries."
+  ],
+  "refresh_policy": {
+    "schedule": "manual_full_content",
+    "auto_publish": false,
+    "same_label_revision": "hold_for_review",
+    "new_observation_period": "hold_for_registry_review"
+  },
+  "measures": [
+    {
+      "measure_id": "cancer_death_rate_all",
+      "label": "Cancer death rate, all sites (per 100,000, age-adjusted)",
+      "site_code": "001",
+      "file_prefix": "all",
+      "source_files": ["all_state.csv", "all_county.csv"],
+      "source_field": "Age-Adjusted Death Rate([rate note]) - deaths per 100,000",
+      "source_ci_low_field": "Lower CI (Rate)",
+      "source_ci_high_field": "Upper CI (Rate)",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted)",
+      "storage_scale": "per_100000",
+      "observation_period": "2020–2024",
+      "population": "All ages, both sexes (2000 U.S. standard population)",
+      "denominator": "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "Age-adjusted cancer death rate across all cancer sites per 100,000 population (2020–2024) from National Vital Statistics System public use data calculated by NCI using SEER*Stat.",
+      "interpretation": "Death rates, not new cancer incidence. Rates based on fewer than 16 deaths in 2020–2024 are suppressed by NCI. Published with 95% confidence intervals.",
+      "geographies": ["state", "county"]
+    },
+    {
+      "measure_id": "cancer_death_rate_lung",
+      "label": "Lung and bronchus cancer death rate (per 100,000, age-adjusted)",
+      "site_code": "047",
+      "file_prefix": "lung",
+      "source_files": ["lung_state.csv", "lung_county.csv"],
+      "source_field": "Age-Adjusted Death Rate([rate note]) - deaths per 100,000",
+      "source_ci_low_field": "Lower CI (Rate)",
+      "source_ci_high_field": "Upper CI (Rate)",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted)",
+      "storage_scale": "per_100000",
+      "observation_period": "2020–2024",
+      "population": "All ages, both sexes (2000 U.S. standard population)",
+      "denominator": "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "Age-adjusted lung and bronchus cancer death rate per 100,000 population (2020–2024) from National Vital Statistics System public use data calculated by NCI using SEER*Stat.",
+      "interpretation": "Death rates, not new cancer incidence. Rates based on fewer than 16 deaths in 2020–2024 are suppressed by NCI. Published with 95% confidence intervals.",
+      "geographies": ["state", "county"]
+    },
+    {
+      "measure_id": "cancer_death_rate_colorectal",
+      "label": "Colon and rectum cancer death rate (per 100,000, age-adjusted)",
+      "site_code": "020",
+      "file_prefix": "colorectal",
+      "source_files": ["colorectal_state.csv", "colorectal_county.csv"],
+      "source_field": "Age-Adjusted Death Rate([rate note]) - deaths per 100,000",
+      "source_ci_low_field": "Lower CI (Rate)",
+      "source_ci_high_field": "Upper CI (Rate)",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted)",
+      "storage_scale": "per_100000",
+      "observation_period": "2020–2024",
+      "population": "All ages, both sexes (2000 U.S. standard population)",
+      "denominator": "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "Age-adjusted colon and rectum cancer death rate per 100,000 population (2020–2024) from National Vital Statistics System public use data calculated by NCI using SEER*Stat.",
+      "interpretation": "Death rates, not new cancer incidence. Rates based on fewer than 16 deaths in 2020–2024 are suppressed by NCI. Published with 95% confidence intervals.",
+      "geographies": ["state", "county"]
+    }
+  ]
+}

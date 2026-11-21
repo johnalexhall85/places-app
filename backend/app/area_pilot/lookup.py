@@ -25,8 +25,9 @@ from typing import Any, Callable
 
 from sqlalchemy import text
 
-from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
-                            fema_nri_area_api, hds_mortality_api, hrsa_sites_api, svi_api, tri_api, usda_fea_api)
+from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, cancer_mortality_api, clh_api,
+                            cms_gv_api, cms_nursing_homes_api, epa_aqi_api, fema_nri_area_api, hds_mortality_api,
+                            hrsa_sites_api, svi_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
@@ -112,6 +113,9 @@ SPECS: tuple[Spec, ...] = (
     Spec('cdc_hds_mortality', hds_mortality_api.load_registry,
          {lvl: ('observation_cdc_hds_mortality', 'geoid', 'geo_level') for lvl in ('state', 'county')},
          ('source_value',), 'none', hds_mortality_api),
+    Spec('nci_cancer_mortality', cancer_mortality_api.load_registry,
+         {lvl: ('observation_nci_cancer_mortality', 'geoid', 'geo_level') for lvl in ('state', 'county')},
+         ('source_value', 'ci_low', 'ci_high'), 'ci95', cancer_mortality_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
@@ -122,6 +126,7 @@ MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     'cdc_svi': lambda geoid, level: NOT_IN_RELEASE,
     'fema_nri': lambda geoid, level: NOT_IN_RELEASE,
     'cdc_hds_mortality': lambda geoid, level: NOT_IN_RELEASE,
+    'nci_cancer_mortality': lambda geoid, level: NOT_IN_RELEASE,
 }
 
 
@@ -348,12 +353,13 @@ def area_values(db, level: str, geoids: list[str], products: list[str] | None = 
 
 
 def national_reference(db) -> list[dict]:
-    """National values that a source itself publishes (CMS Original Medicare GV and CDC HDS mortality)."""
+    """National values that a source itself publishes (CMS GV, CDC HDS, and NCI cancer mortality)."""
     releases = active_releases(db)
     out = []
     for key, table, extra in (
         ('cms_gv', 'observation_cms_gv', ('source_value', 'source_desc')),
         ('cdc_hds_mortality', 'observation_cdc_hds_mortality', ('source_value',)),
+        ('nci_cancer_mortality', 'observation_nci_cancer_mortality', ('source_value', 'ci_low', 'ci_high')),
     ):
         spec = next(s for s in SPECS if s.key == key)
         config = spec.load()

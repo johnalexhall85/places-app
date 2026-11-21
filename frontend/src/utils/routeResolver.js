@@ -67,6 +67,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/heart-stroke-mortality\/?$/i.test(normalizedPath)) {
     return { type: "hds-mortality-area" };
   }
+  if (/^\/area\/cancer-mortality\/?$/i.test(normalizedPath)) {
+    return { type: "cancer-mortality-area" };
+  }
   if (/^\/area\/svi\/?$/i.test(normalizedPath)) {
     return { type: "svi-area" };
   }
