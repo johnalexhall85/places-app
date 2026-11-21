@@ -7,6 +7,13 @@ import TractPatternMap from "./TractPatternMap";
 import { IndicatorChart, SectionChartLegend } from "./charts/IndicatorChart";
 import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
+import SviQuartileBar, {
+  SVI_RANGE_TEXT,
+  SVI_THEMES,
+  sviFormatValue,
+  sviIsMissing,
+  sviLevel,
+} from "../components/SviQuartileBar";
 import "./community.css";
 
 const SHOWCASE = [
@@ -61,8 +68,8 @@ export function useHazards(level, geoid, ready) {
 
 export function formatSviRank(cell) {
   if (!cell) return "Not available";
-  if (cell.value == null) return cell.status_text || "Not available";
-  return Number(cell.value).toFixed(2);
+  if (sviIsMissing(cell.value, cell.status)) return cell.status_text || "Not available";
+  return sviFormatValue(cell.value);
 }
 
 export function formatNriValue(row) {
@@ -83,49 +90,72 @@ export function formatNriPercentile(cell) {
   return Number(cell.value).toFixed(1);
 }
 
-export function CountySviSection({ geoid, stateName, rows, source }) {
+function SviRankRow({ label, cell, measureId }) {
+  const missing = !cell || sviIsMissing(cell.value, cell.status);
+  const level = missing ? null : sviLevel(cell.value, cell.status);
+  return (
+    <div className="community-svi-row">
+      <div className="community-svi-row-head">
+        <span className="community-svi-row-label">{label}</span>
+        {!missing && (
+          <span className="community-svi-row-value">
+            <strong>{sviFormatValue(cell.value)}</strong>
+            {level && <span className="community-svi-row-phrase"> ({level.phrase})</span>}
+          </span>
+        )}
+      </div>
+      {missing ? (
+        <p className="community-svi-missing">{cell?.status_text || "Not available"}</p>
+      ) : (
+        <SviQuartileBar value={cell.value} status={cell.status} measureId={measureId} />
+      )}
+    </div>
+  );
+}
+
+export function CountySviSection({ geoid, stateGeoid, stateName, rows, source }) {
   if (!rows?.length) return null;
-  const stateColLabel = stateName ? `Rank within ${stateName}` : "Rank within state";
+  const rowsById = new Map(rows.map((row) => [row.measure_id, row]));
+  const orderedCards = SVI_THEMES
+    .map((theme) => ({ theme, row: rowsById.get(theme.baseId) }))
+    .filter(({ row }) => Boolean(row));
+  if (!orderedCards.length) return null;
+  const stateLabel = stateName ? `Within ${stateName}` : "Within state";
+  const resolvedStateGeoid = stateGeoid || (String(geoid || "").length >= 2 ? String(geoid).slice(0, 2) : "");
   const citation = source?.citation || rows[0]?.citation;
-  const mapUrl = `/area/svi?focus=county:${encodeURIComponent(geoid)}`;
   return <section className="community-profile-section community-hazard-section" id="svi">
     <div className="community-section-heading">
-      <h2>Social vulnerability (CDC SVI)</h2>
-      <p>Percentile ranks: higher means more vulnerable. 0.75 means more vulnerable than 75% of counties.</p>
+      <h2>Social vulnerability (CDC/ATSDR SVI 2022)</h2>
+      <p>A rank of 0.85 means 85% of counties in the nation (or state) are less vulnerable.</p>
     </div>
-    <div className="community-hazard-card">
-      <table className="community-hazard-table">
-        <thead>
-          <tr>
-            <th scope="col">Theme</th>
-            <th scope="col">Rank among U.S. counties</th>
-            <th scope="col">{stateColLabel}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const usMissing = row.us?.value == null;
-            const stateMissing = row.state?.value == null;
-            return <tr key={row.measure_id || row.label}>
-              <th scope="row">{row.label}</th>
-              <td data-label="Rank among U.S. counties" className={usMissing ? "community-hazard-missing" : "community-hazard-num"}>
-                {formatSviRank(row.us)}
-              </td>
-              <td data-label={stateColLabel} className={stateMissing ? "community-hazard-missing" : "community-hazard-num"}>
-                {row.state ? formatSviRank(row.state) : "—"}
-              </td>
-            </tr>;
-          })}
-        </tbody>
-      </table>
-      {citation && <p className="community-source">
-        {citation}
-        {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">CDC/ATSDR documentation</a></>}
-      </p>}
-      <p className="community-hazard-actions">
-        <a className="community-map-link" href={mapUrl}>Explore CDC SVI on the map →</a>
-      </p>
+    <div className="community-svi-grid">
+      {orderedCards.map(({ theme, row }) => {
+        const nationalMapUrl = `/area/svi?measure_id=${encodeURIComponent(theme.baseId)}&scope=us&focus=county:${encodeURIComponent(geoid)}`;
+        const stateMapUrl = resolvedStateGeoid
+          ? `/area/svi?measure_id=${encodeURIComponent(theme.stateId)}&scope=state&state=${encodeURIComponent(resolvedStateGeoid)}&focus=county:${encodeURIComponent(geoid)}`
+          : null;
+        return (
+          <article className="community-svi-card" key={theme.baseId}>
+            <h3>{theme.title}</h3>
+            <SviRankRow label="Among all U.S. counties" cell={row.us} measureId={theme.baseId} />
+            <SviRankRow label={stateLabel} cell={row.state} measureId={theme.baseId} />
+            <footer className="community-svi-card-footer">
+              <p className="community-svi-range">{SVI_RANGE_TEXT}</p>
+              <div className="community-svi-links">
+                <a className="community-map-link" href={nationalMapUrl}>View on map</a>
+                {stateMapUrl && (
+                  <a className="community-map-link" href={stateMapUrl}>View within {stateName || "state"}</a>
+                )}
+              </div>
+            </footer>
+          </article>
+        );
+      })}
     </div>
+    {citation && <p className="community-source community-svi-source">
+      {citation}
+      {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">CDC/ATSDR documentation</a></>}
+    </p>}
   </section>;
 }
 
@@ -393,7 +423,7 @@ export function CommunityCounty({ geoid }) {
           {SECTIONS.map((section) => <Fragment key={section.key}>
             {bySection[section.key]?.length > 0 && <a href={`#${section.key}`}>{section.title}</a>}
             {section.key === "environment" && <>
-              {hazards?.svi?.length > 0 && <a href="#svi">Social vulnerability (CDC SVI)</a>}
+              {hazards?.svi?.length > 0 && <a href="#svi">Social vulnerability (CDC/ATSDR SVI 2022)</a>}
               {hazards?.nri?.length > 0 && <a href="#fema-nri">Natural hazard risk (FEMA NRI)</a>}
             </>}
           </Fragment>)}
@@ -406,7 +436,7 @@ export function CommunityCounty({ geoid }) {
             .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
             .filter(Boolean);
           const hazardBlocks = section.key === "environment" ? <>
-            <CountySviSection geoid={geoid} stateName={profile.area.state_name} rows={hazards?.svi} source={hazards?.sources?.cdc_svi} />
+            <CountySviSection geoid={geoid} stateGeoid={profile.area.state_geoid} stateName={profile.area.state_name} rows={hazards?.svi} source={hazards?.sources?.cdc_svi} />
             <NriSection level="county" geoid={geoid} rows={hazards?.nri} source={hazards?.sources?.fema_nri} />
           </> : null;
           if (!rows.length && !hazardBlocks) return null;

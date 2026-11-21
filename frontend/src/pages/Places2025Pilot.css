@@ -86,7 +86,7 @@
 
 /* Classes first, then the selected area, then the explanatory notes; the panel scrolls when long. */
 .pilot-legend { max-height: calc(100% - 200px); overflow-y: auto; }
-.pilot-legend > h2, .pilot-legend > .pilot-panel-toggle { order: 0; }
+.pilot-legend > h2, .pilot-legend > .pilot-panel-toggle, .pilot-legend > .pilot-svi-state-note { order: 0; }
 .pilot-legend > .pilot-swatches { order: 1; }
 .pilot-legend > .pilot-selected { order: 2; }
 .pilot-legend > p { order: 3; }
@@ -536,6 +536,10 @@
 .pilot-controls select:hover, .pilot-tools .community-search-row input:hover { border-color: #0277bd; }
 .pilot-controls select:focus, .pilot-tools .community-search-row input:focus { border-color: #0277bd; box-shadow: 0 0 0 3px rgba(2, 119, 189, .15); outline: none; }
 
+.pilot-svi-controls {
+  display: grid;
+  gap: 8px;
+}
 .pilot-svi-scope {
   border: 1px solid var(--pdo-border-strong);
   border-radius: 10px;
@@ -549,23 +553,124 @@
   padding: 0 4px;
   color: #003f61;
 }
-.pilot-svi-scope-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
+.pilot-svi-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #0277bd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
 }
-.pilot-svi-scope label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
+.pilot-svi-toggle button {
+  border: 0;
+  padding: 7px 10px;
+  background: #fff;
+  color: #003f61;
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
-.pilot-svi-state-note {
+.pilot-svi-toggle button + button {
+  border-left: 1px solid #0277bd;
+}
+.pilot-svi-toggle button:hover:not(.is-active) {
+  background: #e8f3fa;
+}
+.pilot-svi-toggle button.is-active {
+  background: #0277bd;
+  color: #fff;
+}
+.pilot-svi-state-picker {
+  display: grid;
+  gap: 5px;
+}
+.pilot-svi-state-picker select:disabled {
+  background: #f1f5f8;
+  color: #6b7d8a;
+  cursor: not-allowed;
+}
+.pilot-svi-hint {
+  color: var(--pdo-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.pilot-svi-state-note,
+.pilot-svi-dc-note {
   padding: 6px 8px;
   border-left: 3px solid #0277bd;
   background: #f4f7fb;
   color: #1a2f3f;
+}
+.pilot-svi-dc-note {
+  border-left-color: #c26d1f;
+  background: #fff8ee;
+}
+.pilot-svi-swatches i {
+  border: 1px solid #555555;
+}
+.pilot-svi-selected {
+  gap: 8px;
+}
+.pilot-svi-selected-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pilot-svi-selected h3.pilot-svi-heading {
+  margin: 0;
+  color: #003f61;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.3;
+  display: grid;
+  gap: 1px;
+}
+.pilot-svi-tract-line {
+  font-size: 12px;
+  color: #334e5e;
+  font-weight: 600;
+}
+.pilot-svi-close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--pdo-border-strong);
+  border-radius: 4px;
+  background: #fff;
+  color: #003f61;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.pilot-svi-close:hover {
+  background: #e8f3fa;
+  border-color: #0277bd;
+}
+.pilot-svi-rank-title {
+  font-weight: 700;
+  color: #003f61;
+  font-size: 13px;
+}
+.pilot-svi-range {
+  color: var(--pdo-text-muted);
+  font-size: 11px;
+}
+.pilot-svi-phrase {
+  color: #1a2f3f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pilot-svi-unavailable {
+  color: #546e7a;
+  font-style: italic;
+}
+.pilot-svi-profile-link {
+  margin-top: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

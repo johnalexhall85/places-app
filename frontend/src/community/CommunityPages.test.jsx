@@ -38,7 +38,7 @@ describe("community indicator display", () => {
   });
 
   it("formats SVI ranks and NRI scores, dollars, and missing status text without showing zero", () => {
-    expect(formatSviRank({ value: 0.686, status: "available" })).toBe("0.69");
+    expect(formatSviRank({ value: 0.686, status: "available" })).toBe("0.686");
     expect(formatSviRank({ value: 0, status: "true_zero" })).toBe("0.00");
     expect(formatSviRank({ value: null, status: "not_available", status_text: "Not ranked by CDC (−999 in the source file)" }))
       .toBe("Not ranked by CDC (−999 in the source file)");
@@ -145,6 +145,33 @@ const SAMPLE_COUNTY_HAZARDS = {
       status_text: "Not ranked by CDC (−999 in the source file)",
       citation: "Source: CDC/ATSDR · CDC Social Vulnerability Index · 2018–2022",
     },
+    {
+      measure_id: "rpl_theme2",
+      label: "Household characteristics",
+      us: { value: 0.25, status: "available", status_text: "Published value" },
+      state: { value: 0.2501, status: "available", status_text: "Published value" },
+      status: "available",
+      status_text: "Published value",
+      citation: "Source: CDC/ATSDR · CDC Social Vulnerability Index · 2018–2022",
+    },
+    {
+      measure_id: "rpl_theme3",
+      label: "Racial and ethnic minority status",
+      us: { value: 0.75, status: "available", status_text: "Published value" },
+      state: { value: 0.7501, status: "available", status_text: "Published value" },
+      status: "available",
+      status_text: "Published value",
+      citation: "Source: CDC/ATSDR · CDC Social Vulnerability Index · 2018–2022",
+    },
+    {
+      measure_id: "rpl_theme4",
+      label: "Housing type and transportation",
+      us: { value: 0.5, status: "available", status_text: "Published value" },
+      state: { value: 0.5001, status: "available", status_text: "Published value" },
+      status: "available",
+      status_text: "Published value",
+      citation: "Source: CDC/ATSDR · CDC Social Vulnerability Index · 2018–2022",
+    },
   ],
   nri: [
     {
@@ -220,7 +247,7 @@ describe("county and state profile hazard sections", () => {
     }));
 
     const { container } = render(<CommunityCounty geoid="37063" />);
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Social vulnerability (CDC SVI)" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Social vulnerability (CDC/ATSDR SVI 2022)" })).toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Natural hazard risk (FEMA NRI)" })).toBeInTheDocument();
 
     // Section order: environment -> svi -> fema-nri -> medicare, and no Community conditions dump
@@ -231,13 +258,43 @@ describe("county and state profile hazard sections", () => {
     expect(sectionIds).not.toContain("conditions");
 
     const sviSection = container.querySelector("#svi");
-    expect(within(sviSection).getByText(/Percentile ranks: higher means more vulnerable/)).toBeInTheDocument();
-    expect(within(sviSection).getByRole("columnheader", { name: "Rank within North Carolina" })).toBeInTheDocument();
-    expect(within(sviSection).getByText("0.69")).toBeInTheDocument();
-    expect(within(sviSection).getByText("0.60")).toBeInTheDocument();
-    expect(within(sviSection).getAllByText("Not ranked by CDC (−999 in the source file)")).toHaveLength(2);
+    expect(within(sviSection).getByText("A rank of 0.85 means 85% of counties in the nation (or state) are less vulnerable.")).toBeInTheDocument();
+    const cardTitles = Array.from(sviSection.querySelectorAll(".community-svi-card h3")).map((h) => h.textContent);
+    expect(cardTitles).toEqual([
+      "Overall SVI",
+      "Socioeconomic Status",
+      "Household Characteristics",
+      "Racial & Ethnic Minority Status",
+      "Housing Type & Transportation",
+    ]);
+
+    // Overall SVI card: two rows with quartile bars, phrases, footer, and map links
+    const overallCard = sviSection.querySelectorAll(".community-svi-card")[0];
+    expect(within(overallCard).getByText("Among all U.S. counties")).toBeInTheDocument();
+    expect(within(overallCard).getByText("Within North Carolina")).toBeInTheDocument();
+    expect(within(overallCard).getByText("0.686")).toBeInTheDocument();
+    expect(within(overallCard).getByText("0.596")).toBeInTheDocument();
+    expect(within(overallCard).getByRole("img", { name: "Rank 0.686 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    expect(within(overallCard).getByRole("img", { name: "Rank 0.596 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    expect(within(overallCard).getByText("Possible ranks range from 0 (lowest vulnerability) to 1 (highest vulnerability).")).toBeInTheDocument();
+    expect(within(overallCard).getByRole("link", { name: "View on map" }))
+      .toHaveAttribute("href", "/area/svi?measure_id=rpl_themes&scope=us&focus=county:37063");
+    expect(within(overallCard).getByRole("link", { name: "View within North Carolina" }))
+      .toHaveAttribute("href", "/area/svi?measure_id=rpl_themes_state&scope=state&state=37&focus=county:37063");
+
+    // Socioeconomic Status card (-999 missing): shows status_text, NEVER renders a quartile bar or dot at 0
+    const missingCard = sviSection.querySelectorAll(".community-svi-card")[1];
+    expect(within(missingCard).getAllByText("Not ranked by CDC (−999 in the source file)")).toHaveLength(2);
+    expect(missingCard.querySelector("svg")).toBeNull();
+    expect(missingCard.querySelector("[data-testid='svi-quartile-dot']")).toBeNull();
+
+    // Boundary checks on cards 2 and 3: 0.25 -> low, 0.2501 -> low to medium, 0.75 -> medium to high, 0.7501 -> high
+    expect(within(sviSection).getByRole("img", { name: "Rank 0.25 of 1, low vulnerability" })).toBeInTheDocument();
+    expect(within(sviSection).getByRole("img", { name: "Rank 0.2501 of 1, low to medium vulnerability" })).toBeInTheDocument();
+    expect(within(sviSection).getByRole("img", { name: "Rank 0.75 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    expect(within(sviSection).getByRole("img", { name: "Rank 0.7501 of 1, high vulnerability" })).toBeInTheDocument();
+
     expect(within(sviSection).getByText(/Source: CDC\/ATSDR/)).toBeInTheDocument();
-    expect(within(sviSection).getByRole("link", { name: /Explore CDC SVI on the map/ })).toHaveAttribute("href", "/area/svi?focus=county:37063");
 
     const nriSection = container.querySelector("#fema-nri");
     expect(within(nriSection).getByText(/Higher community resilience is better/)).toBeInTheDocument();
@@ -262,7 +319,7 @@ describe("county and state profile hazard sections", () => {
     render(<CommunityCounty geoid="37063" />);
     await waitFor(() => expect(screen.getByTestId("profile-ready")).toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Environment" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Social vulnerability (CDC SVI)" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Social vulnerability (CDC/ATSDR SVI 2022)" })).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -342,7 +399,7 @@ describe("county and state profile hazard sections", () => {
     const { container } = render(<CommunityState geoid="37" />);
     await waitFor(() => expect(screen.getByRole("heading", { name: "Natural hazard risk (FEMA NRI)" })).toBeInTheDocument());
 
-    expect(screen.queryByRole("heading", { name: "Social vulnerability (CDC SVI)" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Social vulnerability (CDC/ATSDR SVI 2022)" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Health conditions and status" })).not.toBeInTheDocument();
     const nriSection = container.querySelector("#fema-nri");
     expect(within(nriSection).getByText("FEMA publishes no state-level risk score; see county and tract values on the map.")).toBeInTheDocument();
