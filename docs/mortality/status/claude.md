@@ -15,3 +15,14 @@
 - Published on staging. Durham County (37063) reads 227.2 and 71.2, and the US reads 315.3 and 75.9, matching the source. Connecticut planning regions read `not_in_release`.
 - Deployed staging: `beta` `fadf071`. `/area/heart-stroke-mortality` returns 200.
 - M2 has been dispatched.
+
+## M2 review and staging (2026-11-21T02:40Z)
+- Committed Antigravity's M2 with Claude's changes:
+  - Contract Amendment 1: NCI's state-file codes 02900, 11001, and 72001 map to AK, DC, and PR when the name matches.
+  - The matching parser test.
+  - Count and product-set test updates.
+  - The charts test now excludes the mortality products, which `/deaths` serves.
+- Backend: 78 passed, 1 skipped. MCP: 28 passed. Snapshots unchanged.
+- Staging candidate `2353290d-4444-41e4-90ea-fb4343aa20dd`: 156 state, 3 national, and 9,396 county observations, 1,418 of them suppressed. Source-only rows: 24 legacy Connecticut, 3 Puerto Rico totals in the county files, 6 with no boundary, and 3 duplicate US rows.
+- Published on staging. Durham all sites 132.6 (127.2–138.2), lung 25.1, and colorectal 11.8, matching the source.
+- M3 has been dispatched.
