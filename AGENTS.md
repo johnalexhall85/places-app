@@ -113,7 +113,7 @@ The [vulnerability plan](docs/vulnerability/PLAN.md) and [contract](docs/vulnera
   - the additions its task file names in `lookup.py`, `router.py`, `registry/comparability.json`, `backend/app/mcp_server/config.py`, and `frontend/**`
   - `backend/tests/test_area_svi*` and `test_area_fema_nri*`
   - `docs/vulnerability/status/antigravity.md`
-- **Reassigned 2026-11-20 by John** (Codex is low on weekly usage): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live.
+- **Reassigned 2026-11-20 by John** (Codex is low on weekly usage): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live. **Ended 2026-11-21 (Claude):** the package is live; ownership reverts to the earlier sections.
 - **Codex** may review this package read-only. It edits nothing here.
 - **Amended 2026-11-20 (John asked for profile sections):** for this package, Antigravity also owns additions to `backend/app/community/**` and `backend/tests/test_community_hazards*`.
   - Existing profile endpoints and the `docs/beta/contract-examples` snapshots stay byte-identical.

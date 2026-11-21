@@ -2,6 +2,35 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T01:15:00+00:00: CDC SVI and FEMA NRI promoted to live (Claude, Gate B)
+
+- **Approval:** John said "Everything works. We can push live." He did not ask for git pushes, so none were made.
+- **Recovery set:**
+  - `data/deploy-recovery/vuln-20261121/`: commit `a853289`, Alembic `f7c3a1d9e5b2`, bundle `index-CvzazMSa.js`, `webroot-before/`, `pointers-before.txt` (22), `profiles-before.json`, and the live ingest reports.
+  - A private `pg_dump -Fc -n area_pilot` at `/home/john/chip-recovery/20261121-vuln/` (2.0 GB; `pg_restore --list` reads 283 entries).
+- **Steps on live:**
+  1. Fast-forwarded `main` to `1b14ed9`.
+  2. `alembic upgrade head`, from `f7c3a1d9e5b2` through `e2b8d4f6a1c3` to `a6c4e8b2d0f7`.
+  3. Copied the archived SVI files (US and 102 state) and linked the NRI ZIPs into `data/ingest/`.
+  4. `svi_cli fetch-stage-validate --skip-fetch`. The first try was held because the US CSVs sat only in run folders; after placing the same-hash files at the archive root, it passed.
+  5. `fema_nri_area_cli fetch-stage-validate`.
+  6. Both candidates matched the staging semantic, schema, and metadata digests and observation counts (SVI 872,640; NRI 794,390). `approve-publish` gave SVI `247c9f1d…` and NRI `f6d3435b…`.
+  7. `npm ci`, then `VITE_API_BASE_URL=/api npm run build`, giving `index-Bvr3SVpW.js` (the same as staging), then `rsync --delete` to `/var/www/places`, and `systemctl restart places-backend chip-mcp`.
+- **Verification:**
+  - **Pointers:** only `cdc_svi_2022` and `fema_nri_v120` were added.
+  - **Existing values:** `lookup.area_values` for 37145, 54039, 06019, district 5401, state 37, and tract 37063001502 is unchanged apart from the added SVI and NRI rows.
+  - **Routes:** `/api/health`, `/`, `/area/svi`, `/area/fema-nri`, and `/community/county/37063` return 200. The anonymous catalog returns 401.
+  - **Public MCP connector:** `list_data_sources` shows 10 area products, including `cdc_svi` (10 measures) and `fema_nri` (9). `get_area_values` for Durham returns SVI 0.686 and 0.596, NRI risk 89.631, and expected annual loss $90,860,454.28, all equal to the source files.
+- **Not done:**
+  - The live Nginx `Cache-Control` fix, which is applied on both staging sites (`fa92900`). The permission classifier blocked changing `/etc/nginx/sites-available/places-demo`, so live visitors who loaded an old page may need one hard refresh. It needs John's explicit approval.
+  - No signed-in browser check on live (no live access code on file).
+  - No git push.
+- **Follow-ups:**
+  - SVI limitation 2 still says not to compare with "state-ranked SVI files", which reads oddly now that state ranks are included. Reword it in a later release.
+  - The MCP `status_glossary` text for `not_available` mentions USDA. The per-row `status_text` is product-specific.
+  - SVI history (2018, 2020) and the NRI per-hazard fields.
+- The AGENTS.md reassignment to Antigravity for this package has ended.
+
 ## 2026-11-21T00:55:00+00:00: SVI state ranks, CDC-style SVI map and profile cards, and FEMA NRI on staging (Claude, Antigravity)
 
 - **Requests (John):**
