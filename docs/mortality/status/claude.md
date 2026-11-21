@@ -26,3 +26,11 @@
 - Staging candidate `2353290d-4444-41e4-90ea-fb4343aa20dd`: 156 state, 3 national, and 9,396 county observations, 1,418 of them suppressed. Source-only rows: 24 legacy Connecticut, 3 Puerto Rico totals in the county files, 6 with no boundary, and 3 duplicate US rows.
 - Published on staging. Durham all sites 132.6 (127.2–138.2), lung 25.1, and colorectal 11.8, matching the source.
 - M3 has been dispatched.
+
+## M3 review and staging (2026-11-21T03:10Z)
+- Committed Antigravity's M3, after Claude updated the MCP count test to 13.
+- Area and community: 315 passed, 1 skipped. MCP: 28 passed. Snapshots unchanged.
+- Antigravity added a per-product `ci95` label hook (`UNCERTAINTY_LABEL`) in `lookup._row`, so drug poisoning reads "95% interval from NCHS's model". Other `ci95` products are unchanged.
+- Staging candidate `09113340-499e-4ce0-a82c-1f36c05a6172`: 59,318 matched and 266 source-only stage rows (2003–2021), and 3,122 county observations for 2021, all available.
+- Published on staging. Durham reads 23.87115 (22.12165–25.75957), matching the source.
+- M6 has been dispatched.
