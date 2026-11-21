@@ -1,0 +1,115 @@
+{
+  "dataset_id": "cdc_hds_mortality_2022_2024",
+  "name": "CDC Interactive Atlas of Heart Disease and Stroke Mortality (2022–2024)",
+  "short_name": "CDC heart disease and stroke deaths",
+  "publisher": "Centers for Disease Control and Prevention, Division for Heart Disease and Stroke Prevention",
+  "landing_page": "https://www.cdc.gov/dhdsp/maps/atlas/index.htm",
+  "source_release_id": "CDC Interactive Atlas of Heart Disease and Stroke (2022-2024, mri7-5jtw and y5ii-knwc)",
+  "observation_year": 2023,
+  "observation_period": "2022–2024",
+  "source_files": [
+    {
+      "measure_id": "heart_disease_death_rate",
+      "dataset_id": "mri7-5jtw",
+      "filename": "mri7-5jtw.csv",
+      "role": "hds_heart_disease_csv",
+      "url": "https://data.cdc.gov/api/views/mri7-5jtw/rows.csv?accessType=DOWNLOAD",
+      "expected_total_rows": 78792,
+      "expected_sha256": "fdfac5f8d2550e2a986a3b2c21a0ff8f3ae9f4721f7fb60c1b8aefdc37c885bc",
+      "expected_suppressed_counties": 16,
+      "check_values": {
+        "national": "315.3",
+        "37063": "227.2"
+      }
+    },
+    {
+      "measure_id": "stroke_death_rate",
+      "dataset_id": "y5ii-knwc",
+      "filename": "y5ii-knwc.csv",
+      "role": "hds_stroke_csv",
+      "url": "https://data.cdc.gov/api/views/y5ii-knwc/rows.csv?accessType=DOWNLOAD",
+      "expected_total_rows": 78792,
+      "expected_sha256": "71bba020b46efcf07a2ae5195d0eb14711bfbe37da75de0f0c04c8d64787b26e",
+      "expected_suppressed_counties": 20,
+      "check_values": {
+        "national": "75.9",
+        "37063": "71.2"
+      }
+    }
+  ],
+  "expected_column_count": 20,
+  "expected_header_sha256": "efd0e8bc7bd4c463158ab051523097cfef948ee7a3c4be77b9c1a0146bb16819",
+  "expected_levels_per_file": {
+    "Nation": 1,
+    "State": 56,
+    "County": 3226
+  },
+  "suppression_symbol": "~",
+  "suppression_footnote": "Insufficient Data",
+  "geography_rules": {
+    "national": "GeographicLevel 'Nation' with LocationID '0'; stored as reference geoid 'US', never drawn as a map feature.",
+    "state": "GeographicLevel 'State' with LocationID zero-padded to 2 digits, joined exactly to TIGER/Line 2024 state GEOID. Territories without a 2024 TIGER state are staged as source_only (no_2024_boundary).",
+    "county": "GeographicLevel 'County' with LocationID zero-padded to 5 digits, joined exactly to TIGER/Line 2024 county-equivalent GEOID. Connecticut's eight former counties (09001-09015) are staged as source_only (legacy_connecticut_county_code) and never crosswalked."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 states and county equivalents (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "geographies": ["state", "county"],
+  "state_to_county_zoom": 6,
+  "aggregation_method": "none",
+  "value_type": "Age-adjusted, 3-year Average Rate",
+  "value_type_by_level": {
+    "national": "Age-adjusted, 3-year Average Rate",
+    "state": "Age-adjusted, 3-year Average Rate",
+    "county": "Age-adjusted, Spatially Smoothed, 3-year Average Rate"
+  },
+  "population_label": "Adults aged 35 and older",
+  "unit": "deaths per 100,000 population (age-adjusted)",
+  "limitations": [
+    "These are CDC's age-adjusted death rates for adults 35 and older, averaged over 2022–2024. They are not the share of people with the disease.",
+    "County rates are spatially smoothed by CDC, which borrows strength from neighbouring counties. State and national rates are not smoothed.",
+    "CDC publishes no confidence interval for these rates. Small differences between counties may not be meaningful.",
+    "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries."
+  ],
+  "refresh_policy": {
+    "schedule": "manual_full_content",
+    "auto_publish": false,
+    "same_label_revision": "hold_for_review",
+    "new_observation_year": "hold_for_registry_review"
+  },
+  "measures": [
+    {
+      "measure_id": "heart_disease_death_rate",
+      "label": "Heart disease death rate, adults 35 and older (per 100,000, age-adjusted)",
+      "source_file": "mri7-5jtw.csv",
+      "source_dataset_id": "mri7-5jtw",
+      "source_field": "Data_Value",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted)",
+      "storage_scale": "per_100000",
+      "observation_period": "2022–2024",
+      "population": "Adults aged 35 and older",
+      "denominator": "100,000 adults aged 35 and older, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "Age-adjusted 3-year average heart disease mortality rate per 100,000 adults aged 35 and older (2022–2024) from the National Vital Statistics System via CDC's Interactive Atlas of Heart Disease and Stroke.",
+      "interpretation": "County rates are spatially smoothed by CDC, which borrows strength from neighbouring counties; state and national rates are not smoothed. These are death rates, not disease prevalence. CDC publishes no confidence interval.",
+      "geographies": ["state", "county"]
+    },
+    {
+      "measure_id": "stroke_death_rate",
+      "label": "Stroke death rate, adults 35 and older (per 100,000, age-adjusted)",
+      "source_file": "y5ii-knwc.csv",
+      "source_dataset_id": "y5ii-knwc",
+      "source_field": "Data_Value",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted)",
+      "storage_scale": "per_100000",
+      "observation_period": "2022–2024",
+      "population": "Adults aged 35 and older",
+      "denominator": "100,000 adults aged 35 and older, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "Age-adjusted 3-year average stroke mortality rate per 100,000 adults aged 35 and older (2022–2024) from the National Vital Statistics System via CDC's Interactive Atlas of Heart Disease and Stroke.",
+      "interpretation": "County rates are spatially smoothed by CDC, which borrows strength from neighbouring counties; state and national rates are not smoothed. These are death rates, not disease prevalence. CDC publishes no confidence interval.",
+      "geographies": ["state", "county"]
+    }
+  ]
+}

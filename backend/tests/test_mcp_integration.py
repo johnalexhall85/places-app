@@ -76,7 +76,7 @@ def test_search_context_and_sources(staging):
     assert 'ahrf' not in json.dumps(topic.data).lower()
     assert WITHHELD_TOPIC_WARNING in topic.warnings
     sources = tools.list_data_sources()
-    assert len(sources.data['products']) == 10
+    assert len(sources.data['products']) == 11
     assert {p['product'] for p in sources.data['products']}.isdisjoint({'ahrf'})
     context = tools.get_area_context('county', '37145')
     assert len(context.data['facilities']['health_centers']['examples']) <= 10

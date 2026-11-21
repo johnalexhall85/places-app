@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, HDS_MORTALITY_DATASET_ID, HDS_STATUS_TEXT, hdsNumber, hdsValueText, hdsColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -40,7 +40,8 @@ describe("PLACES 2025 county pilot selection", () => {
     render(<Places2025Pilot />);
     const menu = await screen.findByLabelText("Data source");
     const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
-    expect(options).toHaveLength(11);
+    expect(options).toHaveLength(12);
+    expect(options).toContain("CDC heart disease and stroke deaths");
     expect(options).toContain("CDC Social Vulnerability Index");
     expect(options).toContain("FEMA National Risk Index");
     expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
@@ -1359,5 +1360,184 @@ describe("FEMA National Risk Index (NRI v1.20)", () => {
     expect(mapCalls).toContainEqual(["risk_score", "county"]);
     expect(mapCalls).toContainEqual(["resl_score", "tract"]);
     expect(mapCalls.some(([m, g]) => m === "risk_score" && g === "state")).toBe(false);
+  });
+});
+
+describe("CDC heart disease and stroke deaths", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    mapHarness.zoom = 4;
+    mapHarness.handlers = null;
+  });
+
+  const population = "Adults aged 35 and older";
+  const valueTypeByLevel = {
+    national: "Age-adjusted, 3-year Average Rate",
+    state: "Age-adjusted, 3-year Average Rate",
+    county: "Age-adjusted, Spatially Smoothed, 3-year Average Rate",
+  };
+  const measures = [
+    {
+      measure_id: "heart_disease_death_rate",
+      label: "Heart disease death rate, adults 35 and older (per 100,000, age-adjusted)",
+      source_dataset_id: "mri7-5jtw",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted)",
+      observation_period: "2022–2024",
+      population,
+      denominator: "100,000 adults aged 35 and older, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "Age-adjusted 3-year average heart disease mortality rate.",
+      interpretation: "County rates are spatially smoothed by CDC; state and national rates are not smoothed.",
+      geographies: ["state", "county"],
+    },
+    {
+      measure_id: "stroke_death_rate",
+      label: "Stroke death rate, adults 35 and older (per 100,000, age-adjusted)",
+      source_dataset_id: "y5ii-knwc",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted)",
+      observation_period: "2022–2024",
+      population,
+      denominator: "100,000 adults aged 35 and older, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "Age-adjusted 3-year average stroke mortality rate.",
+      interpretation: "County rates are spatially smoothed by CDC; state and national rates are not smoothed.",
+      geographies: ["state", "county"],
+    },
+  ];
+  const catalog = {
+    dataset_id: HDS_MORTALITY_DATASET_ID,
+    active_release_id: "hds-release",
+    value_type: valueTypeByLevel.state,
+    value_type_by_level: valueTypeByLevel,
+    geographies: ["state", "county"],
+    state_to_county_zoom: 6,
+    observation_year: 2023,
+    observation_period: "2022–2024",
+    population_label: population,
+    source_url: "https://www.cdc.gov/dhdsp/maps/atlas/index.htm",
+    measures,
+    limitations: [
+      "These are CDC's age-adjusted death rates for adults 35 and older, averaged over 2022–2024. They are not the share of people with the disease.",
+      "County rates are spatially smoothed by CDC, which borrows strength from neighbouring counties. State and national rates are not smoothed.",
+      "CDC publishes no confidence interval for these rates. Small differences between counties may not be meaningful.",
+      "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries.",
+    ],
+  };
+
+  it("routes /area/heart-stroke-mortality and formats values, statuses, and explanations", () => {
+    expect(resolveRoute("/area/heart-stroke-mortality")).toEqual({ type: "hds-mortality-area" });
+    expect(hdsNumber(227.2)).toBe("227.2 per 100,000");
+    expect(hdsValueText({ value: 227.2, status: "available" })).toBe("227.2 per 100,000");
+    expect(hdsValueText({ value: null, status: "suppressed" })).toBe(HDS_STATUS_TEXT.suppressed);
+    expect(hdsColor(null, "suppressed", [200, 260, 320, 380])).toBe("#8f6b74");
+    expect(hdsColor(null, "not_in_release", [200, 260, 320, 380])).toBe("#ffffff");
+    const details = areaFeatureDetails(
+      "hds_mortality",
+      { name: "Durham", geography_id: "37063", value: 227.2, source_value: "227.2", status: "available" },
+      measures[0],
+      { geography: "county", catalog },
+    );
+    expect(details.explanation).toMatch(/age-adjusted death rate for adults 35 and older/i);
+    expect(details.explanation).toMatch(/spatially smoothed/i);
+    expect(details.value).toBe("227.2 per 100,000");
+  });
+
+  it("opens on states with heart_disease_death_rate, switches to counties, and shows quantile legend and national reference", async () => {
+    const urls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const path = String(url);
+        urls.push(path);
+        if (path.includes("/catalog")) {
+          return { ok: true, json: async () => catalog };
+        }
+        const geography = path.includes("geography=county") ? "county" : "state";
+        const cuts = geography === "county" ? [250, 300, 350, 410] : [230, 280, 330, 390];
+        const payload = path.includes("/map?")
+          ? { features: [] }
+          : path.includes("/legend?")
+            ? {
+                quantile_breaks: cuts,
+                quantile_basis: "quintiles_of_published_values_in_release",
+                national_reference: { value: 315.3, source_value: "315.3", status: "available" },
+                statuses: [
+                  { status: "available", n: 1, low: 227.2, high: 227.2 },
+                  {
+                    status: "suppressed",
+                    n: 1,
+                    low: null,
+                    high: null,
+                    status_text: HDS_STATUS_TEXT.suppressed,
+                  },
+                ],
+              }
+            : geography === "state"
+              ? {
+                  total: 1,
+                  rows: [
+                    {
+                      geography_id: "37",
+                      name: "North Carolina",
+                      value: 280.1,
+                      source_value: "280.1",
+                      status: "available",
+                    },
+                  ],
+                }
+              : {
+                  total: 2,
+                  rows: [
+                    {
+                      geography_id: "37063",
+                      name: "Durham",
+                      value: 227.2,
+                      source_value: "227.2",
+                      status: "available",
+                    },
+                    {
+                      geography_id: "02060",
+                      name: "Bristol Bay",
+                      value: null,
+                      source_value: "~",
+                      status: "suppressed",
+                      status_text: HDS_STATUS_TEXT.suppressed,
+                    },
+                  ],
+                };
+        return { ok: true, json: async () => ({ ...payload, release_id: "hds-release", geography }) };
+      }),
+    );
+
+    render(<Places2025Pilot dataset="hds_mortality" />);
+    expect(await screen.findByText("37")).toBeInTheDocument();
+    expect(screen.getByLabelText("Measure")).toHaveValue("heart_disease_death_rate");
+    expect(screen.getByRole("columnheader", { name: "CDC source value" })).toBeInTheDocument();
+    expect(screen.getAllByText(/age-adjusted death rates for adults 35 and older/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/spatially smoothed by CDC/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/United States \(CDC-published national value, reference only\): 315\.3 per 100,000/),
+    ).toBeInTheDocument();
+
+    mapHarness.zoom = 6;
+    act(() => mapHarness.handlers.zoomend());
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getAllByText(HDS_STATUS_TEXT.suppressed).length).toBeGreaterThan(0);
+
+    act(() => {
+      mapHarness.zoom = 12;
+      mapHarness.handlers.zoomend();
+    });
+    expect(await screen.findByText(/CDC publishes no tract estimates/)).toBeInTheDocument();
+
+    const mapCalls = urls
+      .filter((u) => u.includes("/map?"))
+      .map((u) => {
+        const p = new URLSearchParams(u.split("?")[1]);
+        return [p.get("geography"), p.get("measure_id"), p.get("value_type")];
+      });
+    expect(mapCalls[0]).toEqual(["state", "heart_disease_death_rate", valueTypeByLevel.state]);
+    expect(mapCalls).toContainEqual(["county", "heart_disease_death_rate", valueTypeByLevel.county]);
+    expect(mapCalls.some(([geo]) => geo === "tract")).toBe(false);
   });
 });

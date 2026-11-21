@@ -26,7 +26,7 @@ from typing import Any, Callable
 from sqlalchemy import text
 
 from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, clh_api, cms_gv_api, cms_nursing_homes_api, epa_aqi_api,
-                            fema_nri_area_api, hrsa_sites_api, svi_api, tri_api, usda_fea_api)
+                            fema_nri_area_api, hds_mortality_api, hrsa_sites_api, svi_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
@@ -109,6 +109,9 @@ SPECS: tuple[Spec, ...] = (
     Spec('fema_nri', fema_nri_area_api.load_registry,
          {lvl: ('observation_fema_nri', 'geoid', 'geo_level') for lvl in ('state', 'county', 'tract')},
          ('source_value', 'rating'), 'none', fema_nri_area_api),
+    Spec('cdc_hds_mortality', hds_mortality_api.load_registry,
+         {lvl: ('observation_cdc_hds_mortality', 'geoid', 'geo_level') for lvl in ('state', 'county')},
+         ('source_value',), 'none', hds_mortality_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
@@ -118,6 +121,7 @@ MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     'usda_fea': _fea_missing,
     'cdc_svi': lambda geoid, level: NOT_IN_RELEASE,
     'fema_nri': lambda geoid, level: NOT_IN_RELEASE,
+    'cdc_hds_mortality': lambda geoid, level: NOT_IN_RELEASE,
 }
 
 
@@ -333,28 +337,40 @@ def area_values(db, level: str, geoids: list[str], products: list[str] | None = 
             meta = _measure_meta(spec, config, measure)
             if level not in meta['levels']:
                 continue
+            level_vt = (config.get('value_type_by_level') or {}).get(level, meta['value_type'])
+            row_meta = meta if level_vt == meta['value_type'] else meta | {'value_type': level_vt}
             for geoid in geoids:
-                row = stored.get((geoid, meta['measure_id'], meta['period'], meta['population'], meta['value_type']))
-                values.append(_row(meta, level, geoid, release, config, row, spec))
+                row = stored.get((geoid, row_meta['measure_id'], row_meta['period'],
+                                  row_meta['population'], row_meta['value_type']))
+                values.append(_row(row_meta, level, geoid, release, config, row, spec))
         used[config['dataset_id']] = release
     return {'level': level, 'geoids': geoids, 'values': values, 'releases': used}
 
 
 def national_reference(db) -> list[dict]:
-    """National values that a source itself publishes (currently CMS Original Medicare GV only)."""
-    spec = next(s for s in SPECS if s.key == 'cms_gv')
-    config = spec.load()
-    release = active_releases(db).get(config['dataset_id'])
-    if release is None:
-        return []
-    rows = {r['measure_id']: r for r in db.execute(text(f'''SELECT measure_id,observation_period,population,value_type,
-        value,status,source_value,source_desc FROM {S}.observation_cms_gv
-        WHERE release_id=:release AND geo_level='national' AND geoid='US' '''), {'release': release['release_id']}).mappings()}
+    """National values that a source itself publishes (CMS Original Medicare GV and CDC HDS mortality)."""
+    releases = active_releases(db)
     out = []
-    for measure in config['measures']:
-        row = rows.get(measure['measure_id'])
-        if row is not None:
-            out.append(_row(_measure_meta(spec, config, measure), 'national', 'US', release, config, row, spec))
+    for key, table, extra in (
+        ('cms_gv', 'observation_cms_gv', ('source_value', 'source_desc')),
+        ('cdc_hds_mortality', 'observation_cdc_hds_mortality', ('source_value',)),
+    ):
+        spec = next(s for s in SPECS if s.key == key)
+        config = spec.load()
+        release = releases.get(config['dataset_id'])
+        if release is None:
+            continue
+        cols = ','.join(('measure_id', 'observation_period', 'population', 'value_type', 'value', 'status') + extra)
+        rows = {r['measure_id']: r for r in db.execute(text(f'''SELECT {cols} FROM {S}.{table}
+            WHERE release_id=:release AND geo_level='national' AND geoid='US' '''),
+            {'release': release['release_id']}).mappings()}
+        for measure in config['measures']:
+            row = rows.get(measure['measure_id'])
+            if row is not None:
+                meta = _measure_meta(spec, config, measure)
+                if row.get('value_type'):
+                    meta = meta | {'value_type': row['value_type']}
+                out.append(_row(meta, 'national', 'US', release, config, row, spec))
     return out
 
 
@@ -431,6 +447,9 @@ def measure_values_within(db, product: str, measure_id: str, level: str, parent_
     if level not in meta['levels']:
         raise LookupError_(f'{product}:{measure_id} is not published for {level}; '
                            f'it is published for {", ".join(meta["levels"]) or "no level"}')
+    level_vt = (config.get('value_type_by_level') or {}).get(level, meta['value_type'])
+    if level_vt != meta['value_type']:
+        meta = meta | {'value_type': level_vt}
     out = {'product': product, 'measure': meta, 'level': level, 'parent_level': parent_level,
            'parent_geoid': parent_geoid or None}
     release = active_releases(db).get(config['dataset_id'])
