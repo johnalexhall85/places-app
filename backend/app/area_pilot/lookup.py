@@ -26,8 +26,8 @@ from typing import Any, Callable
 from sqlalchemy import text
 
 from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, cancer_mortality_api, clh_api,
-                            cms_gv_api, cms_nursing_homes_api, epa_aqi_api, fema_nri_area_api, hds_mortality_api,
-                            hrsa_sites_api, svi_api, tri_api, usda_fea_api)
+                            cms_gv_api, cms_nursing_homes_api, drug_poisoning_api, epa_aqi_api, fema_nri_area_api,
+                            hds_mortality_api, hrsa_sites_api, svi_api, tri_api, usda_fea_api)
 from app.area_pilot.registry import load_registry as load_places_registry
 
 S = 'area_pilot'
@@ -116,6 +116,9 @@ SPECS: tuple[Spec, ...] = (
     Spec('nci_cancer_mortality', cancer_mortality_api.load_registry,
          {lvl: ('observation_nci_cancer_mortality', 'geoid', 'geo_level') for lvl in ('state', 'county')},
          ('source_value', 'ci_low', 'ci_high'), 'ci95', cancer_mortality_api),
+    Spec('nchs_drug_poisoning', drug_poisoning_api.load_registry,
+         {'county': ('observation_nchs_drug_poisoning', 'geoid', 'geo_level')},
+         ('source_value', 'ci_low', 'ci_high'), 'ci95', drug_poisoning_api),
 )
 MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     # CDC's file has no row for a state and year it has no result for (Kentucky and Pennsylvania, 2023).
@@ -127,6 +130,7 @@ MISSING_STATUS: dict[str, Callable[[str, str], str]] = {
     'fema_nri': lambda geoid, level: NOT_IN_RELEASE,
     'cdc_hds_mortality': lambda geoid, level: NOT_IN_RELEASE,
     'nci_cancer_mortality': lambda geoid, level: NOT_IN_RELEASE,
+    'nchs_drug_poisoning': lambda geoid, level: NOT_IN_RELEASE,
 }
 
 
@@ -288,8 +292,9 @@ def _row(meta: dict, level: str, geoid: str, release: dict, config: dict, row, s
         value = int(value)
     uncertainty = {'kind': spec.uncertainty}
     if spec.uncertainty == 'ci95':
+        label = getattr(spec.api, 'UNCERTAINTY_LABEL', None) or '95% confidence interval'
         uncertainty |= {'low': _num(row['ci_low']) if stored else None, 'high': _num(row['ci_high']) if stored else None,
-                        'label': '95% confidence interval'}
+                        'label': label}
     elif spec.uncertainty == 'moe90':
         uncertainty |= {'moe': _num(row['moe']) if stored else None,
                         'label': f"{(row['moe_confidence'] if stored and row['moe_confidence'] else 90)}% margin of error"}

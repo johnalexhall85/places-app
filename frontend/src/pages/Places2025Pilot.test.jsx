@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, HDS_MORTALITY_DATASET_ID, HDS_STATUS_TEXT, hdsNumber, hdsValueText, hdsColor, CANCER_MORTALITY_DATASET_ID, CANCER_STATUS_TEXT, cancerNumber, cancerValueText, cancerCiText, cancerColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, HDS_MORTALITY_DATASET_ID, HDS_STATUS_TEXT, hdsNumber, hdsValueText, hdsColor, CANCER_MORTALITY_DATASET_ID, CANCER_STATUS_TEXT, cancerNumber, cancerValueText, cancerCiText, cancerColor, DRUG_POISONING_DATASET_ID, DRUG_STATUS_TEXT, drugNumber, drugValueText, drugCiText, drugColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -40,9 +40,10 @@ describe("PLACES 2025 county pilot selection", () => {
     render(<Places2025Pilot />);
     const menu = await screen.findByLabelText("Data source");
     const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
-    expect(options).toHaveLength(13);
+    expect(options).toHaveLength(14);
     expect(options).toContain("CDC heart disease and stroke deaths");
     expect(options).toContain("NCI cancer deaths");
+    expect(options).toContain("NCHS drug poisoning deaths (modelled)");
     expect(options).toContain("CDC Social Vulnerability Index");
     expect(options).toContain("FEMA National Risk Index");
     expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
@@ -1751,5 +1752,152 @@ describe("NCI cancer deaths", () => {
     expect(mapCalls[0]).toEqual(["state", "cancer_death_rate_all", "age_adjusted_rate"]);
     expect(mapCalls).toContainEqual(["county", "cancer_death_rate_all", "age_adjusted_rate"]);
     expect(mapCalls.some(([geo]) => geo === "tract")).toBe(false);
+  });
+});
+
+describe("NCHS drug poisoning deaths (modelled)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    mapHarness.zoom = 4;
+    mapHarness.handlers = null;
+  });
+
+  const population = "All ages (2000 U.S. standard population)";
+  const measures = [
+    {
+      measure_id: "drug_poisoning_death_rate",
+      label: "Drug poisoning death rate, model-based (per 100,000, age-adjusted)",
+      source_dataset_id: "rpvx-m2md",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted, model-based)",
+      observation_period: "2021",
+      population,
+      denominator: "100,000 population, all ages, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "NCHS model-based age-adjusted drug poisoning death rate per 100,000 population.",
+      interpretation: "Model-based county estimates with 95% intervals from NCHS's model.",
+      geographies: ["county"],
+    },
+  ];
+  const catalog = {
+    dataset_id: DRUG_POISONING_DATASET_ID,
+    active_release_id: "nchs-release",
+    value_type: "model_based_age_adjusted_rate",
+    geographies: ["county"],
+    observation_year: 2021,
+    observation_period: "2021",
+    population_label: population,
+    source_url: "https://data.cdc.gov/NCHS/NCHS-Drug-Poisoning-Mortality-by-County-United-Sta/rpvx-m2md",
+    measures,
+    limitations: [
+      "These are NCHS model-based estimates, not counts of recorded deaths. NCHS says that they may over- or under-estimate true rates, and that they may not match CDC WONDER.",
+      "Drug poisoning means ICD-10 underlying causes X40–X44, X60–X64, X85, and Y10–Y14 (all intents).",
+      "NCHS has not updated this file since 2023. Its latest year is 2021.",
+      "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries.",
+    ],
+  };
+
+  it("routes /area/drug-poisoning-mortality and formats values, model intervals, colors, and explanations", () => {
+    expect(resolveRoute("/area/drug-poisoning-mortality")).toEqual({ type: "drug-poisoning-area" });
+    expect(drugNumber(23.87115)).toBe("23.9 per 100,000");
+    expect(drugValueText({ value: 23.87115, status: "available" })).toBe("23.9 per 100,000");
+    expect(drugValueText({ value: null, status: "not_in_release" })).toBe(DRUG_STATUS_TEXT.not_in_release);
+    expect(drugCiText({ ci_low: 22.12165, ci_high: 25.75957 })).toBe("22.1–25.8 per 100,000");
+    expect(drugCiText({ ci_low: null, ci_high: null })).toBe("—");
+    expect(drugColor(null, "not_in_release", [18, 24, 31, 40])).toBe("#ffffff");
+    const details = areaFeatureDetails(
+      "drug_poisoning",
+      {
+        name: "Durham",
+        geography_id: "37063",
+        value: 23.87115,
+        ci_low: 22.12165,
+        ci_high: 25.75957,
+        source_value: "23.87115",
+        status: "available",
+      },
+      measures[0],
+      { geography: "county", catalog },
+    );
+    expect(details.explanation).toMatch(/model-based estimates, not counts of recorded deaths/i);
+    expect(details.explanation).toMatch(/not updated this file since 2023/i);
+    expect(details.value).toBe("23.9 per 100,000");
+    expect(details.lines.join(" | ")).toContain("95% interval from NCHS's model: 22.1–25.8 per 100,000");
+  });
+
+  it("opens on counties with drug_poisoning_death_rate, keeps counties at all zooms, and shows model intervals and limitations", async () => {
+    const urls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const path = String(url);
+        urls.push(path);
+        if (path.includes("/catalog")) {
+          return { ok: true, json: async () => catalog };
+        }
+        const cuts = [18, 24, 31, 40];
+        const payload = path.includes("/map?")
+          ? { features: [] }
+          : path.includes("/legend?")
+            ? {
+                quantile_breaks: cuts,
+                quantile_basis: "quintiles_of_published_values_in_release",
+                national_reference: null,
+                statuses: [
+                  { status: "available", n: 1, low: 23.87115, high: 23.87115 },
+                  { status: "not_in_release", n: 1, low: null, high: null },
+                ],
+              }
+            : {
+                total: 2,
+                rows: [
+                  {
+                    geography_id: "37063",
+                    name: "Durham",
+                    value: 23.87115,
+                    ci_low: 22.12165,
+                    ci_high: 25.75957,
+                    source_value: "23.87115",
+                    status: "available",
+                  },
+                  {
+                    geography_id: "09110",
+                    name: "Capitol Planning Region",
+                    value: null,
+                    ci_low: null,
+                    ci_high: null,
+                    source_value: null,
+                    status: "not_in_release",
+                  },
+                ],
+              };
+        return { ok: true, json: async () => ({ ...payload, release_id: "nchs-release", geography: "county" }) };
+      }),
+    );
+
+    render(<Places2025Pilot dataset="drug_poisoning" />);
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getByLabelText("Measure")).toHaveValue("drug_poisoning_death_rate");
+    expect(screen.getByRole("columnheader", { name: "95% interval (model)" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "NCHS source value" })).toBeInTheDocument();
+    expect(screen.getByText("22.1–25.8 per 100,000")).toBeInTheDocument();
+    expect(screen.getByText("23.87115")).toBeInTheDocument();
+    expect(screen.getAllByText(/model-based estimates, not counts of recorded deaths/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/State values are not published for this product/)).toBeInTheDocument();
+
+    act(() => {
+      mapHarness.zoom = 12;
+      mapHarness.handlers.zoomend();
+    });
+    expect(await screen.findByText(/NCHS publishes no tract estimates/)).toBeInTheDocument();
+
+    const mapCalls = urls
+      .filter((u) => u.includes("/map?"))
+      .map((u) => {
+        const p = new URLSearchParams(u.split("?")[1]);
+        return [p.get("geography"), p.get("measure_id"), p.get("value_type")];
+      });
+    expect(mapCalls.length).toBeGreaterThan(0);
+    expect(mapCalls.every(([geo]) => geo === "county")).toBe(true);
+    expect(mapCalls[0]).toEqual(["county", "drug_poisoning_death_rate", "model_based_age_adjusted_rate"]);
   });
 });

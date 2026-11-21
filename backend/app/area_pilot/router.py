@@ -9,7 +9,8 @@ from app.db import get_db
 from app.area_pilot.registry import load_registry
 from app.area_pilot import legend_breaks
 from app.area_pilot import (acs_api, acs_profile_api, ahrf_api, brfss_api, cancer_mortality_api, clh_api,
-                            cms_gv_api, epa_aqi_api, fema_nri_area_api, hds_mortality_api, svi_api, usda_fea_api)
+                            cms_gv_api, drug_poisoning_api, epa_aqi_api, fema_nri_area_api, hds_mortality_api,
+                            svi_api, usda_fea_api)
 from app.area_pilot import history_api
 from app.geometry_sql import fitted_geom
 
@@ -97,6 +98,8 @@ def current_catalog(dataset_id, db):
         return hds_mortality_api.catalog(db)
     if dataset_id == cancer_mortality_api.load_registry()['dataset_id']:
         return cancer_mortality_api.catalog(db)
+    if dataset_id == drug_poisoning_api.load_registry()['dataset_id']:
+        return drug_poisoning_api.catalog(db)
     if dataset_id == svi_api.load_registry()['dataset_id']:
         return svi_api.catalog(db)
     if dataset_id == fema_nri_area_api.load_registry()['dataset_id']:
@@ -163,6 +166,11 @@ def map_data(dataset_id: str, release_id: UUID, measure_id: str, period: str, po
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
         count = cancer_mortality_api.ensure_cap(db,p)
         return cancer_mortality_api.map_data(db,p,count,cancer_mortality_api.metadata(config,measure,release_id,geography,bbox),simplify)
+    if dataset_id == drug_poisoning_api.load_registry()['dataset_id']:
+        config, measure = drug_poisoning_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
+        count = drug_poisoning_api.ensure_cap(db,p)
+        return drug_poisoning_api.map_data(db,p,count,drug_poisoning_api.metadata(config,measure,release_id,geography,bbox),simplify)
     if dataset_id == svi_api.load_registry()['dataset_id']:
         config, measure = svi_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
@@ -251,6 +259,11 @@ def legend(dataset_id: str, release_id: UUID, measure_id: str, period: str, popu
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
         cancer_mortality_api.ensure_cap(db,p)
         return cancer_mortality_api.legend(db,p,cancer_mortality_api.metadata(config,measure,release_id,geography,bbox))
+    if dataset_id == drug_poisoning_api.load_registry()['dataset_id']:
+        config, measure = drug_poisoning_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
+        drug_poisoning_api.ensure_cap(db,p)
+        return drug_poisoning_api.legend(db,p,drug_poisoning_api.metadata(config,measure,release_id,geography,bbox))
     if dataset_id == svi_api.load_registry()['dataset_id']:
         config, measure = svi_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
@@ -329,6 +342,11 @@ def table(dataset_id: str, release_id: UUID, measure_id: str, period: str, popul
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
         count = cancer_mortality_api.ensure_cap(db,p)
         return cancer_mortality_api.table(db,p,cancer_mortality_api.metadata(config,measure,release_id,geography,bbox),count,limit,offset)
+    if dataset_id == drug_poisoning_api.load_registry()['dataset_id']:
+        config, measure = drug_poisoning_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
+        p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}
+        count = drug_poisoning_api.ensure_cap(db,p)
+        return drug_poisoning_api.table(db,p,drug_poisoning_api.metadata(config,measure,release_id,geography,bbox),count,limit,offset)
     if dataset_id == svi_api.load_registry()['dataset_id']:
         config, measure = svi_api.selection(db,dataset_id,release_id,measure_id,period,population,value_type,geography)
         p = params(release_id,measure_id,period,population,value_type,bbox) | {'level':geography}

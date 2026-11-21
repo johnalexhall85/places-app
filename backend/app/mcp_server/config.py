@@ -3,7 +3,7 @@ import os
 
 PUBLIC_PRODUCTS = frozenset({
     'places', 'acs', 'acs_profile', 'brfss', 'clh', 'cms_gv', 'epa_aqi', 'usda_fea',
-    'cdc_svi', 'fema_nri', 'cdc_hds_mortality', 'nci_cancer_mortality',
+    'cdc_svi', 'fema_nri', 'cdc_hds_mortality', 'nci_cancer_mortality', 'nchs_drug_poisoning',
 })
 FACILITY_PRODUCTS = ('health_centers', 'nursing_homes', 'tri_facilities')
 LEVELS = {'state': 2, 'county': 5, 'tract': 11, 'cd': 4}

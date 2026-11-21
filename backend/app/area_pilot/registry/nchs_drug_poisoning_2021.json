@@ -1,0 +1,81 @@
+{
+  "dataset_id": "nchs_drug_poisoning_2021",
+  "name": "NCHS Drug Poisoning Mortality by County (2021, model-based)",
+  "short_name": "NCHS drug poisoning deaths (modelled)",
+  "publisher": "National Center for Health Statistics (NCHS), Centers for Disease Control and Prevention",
+  "landing_page": "https://data.cdc.gov/NCHS/NCHS-Drug-Poisoning-Mortality-by-County-United-Sta/rpvx-m2md",
+  "source_release_id": "NCHS Drug Poisoning Mortality by County (rpvx-m2md, updated 2023-04-20; 2021 published)",
+  "catalog_updated": "2023-04-20",
+  "observation_year": 2021,
+  "observation_period": "2021",
+  "staged_years": [
+    "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+    "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021"
+  ],
+  "source_files": [
+    {
+      "measure_id": "drug_poisoning_death_rate",
+      "dataset_id": "rpvx-m2md",
+      "filename": "rpvx-m2md.csv",
+      "role": "nchs_drug_poisoning_csv",
+      "url": "https://data.cdc.gov/api/views/rpvx-m2md/rows.csv?accessType=DOWNLOAD",
+      "expected_total_rows": 59584,
+      "expected_rows_per_year": 3136,
+      "expected_sha256": "822bae06e376f62947e745aa9dfba079d46e641ec8e6906449fa00cbff617b03",
+      "check_values": {
+        "37063": {
+          "value": "23.87115",
+          "ci_low": "22.12165",
+          "ci_high": "25.75957"
+        }
+      }
+    }
+  ],
+  "expected_column_count": 12,
+  "expected_header_sha256": "e5b983e2e35923d749651241c5dd5ad5372cd73e47fc5d598e55a48268f95c41",
+  "geography_rules": {
+    "county": "County 5-digit FIPS (zero-padded from FIPS) joined exactly to TIGER/Line 2024 county equivalents. Every 2003–2021 row is staged; only 2021 is published. Connecticut's eight former counties (09001–09015) are staged as source_only (legacy_connecticut_county_code) and never crosswalked; other unmatched 5-digit county codes are staged as source_only (no_2024_boundary)."
+  },
+  "boundary": {
+    "vintage": "TIGER/Line 2024 county equivalents (Connecticut planning regions)",
+    "table": "area_pilot.acs_boundary_2024"
+  },
+  "geographies": ["county"],
+  "aggregation_method": "none",
+  "value_type": "model_based_age_adjusted_rate",
+  "population_label": "All ages (2000 U.S. standard population)",
+  "unit": "deaths per 100,000 population (age-adjusted, model-based)",
+  "uncertainty": "95% interval from NCHS's model",
+  "limitations": [
+    "These are NCHS model-based estimates, not counts of recorded deaths. NCHS says that they may over- or under-estimate true rates, and that they may not match CDC WONDER.",
+    "Drug poisoning means ICD-10 underlying causes X40–X44, X60–X64, X85, and Y10–Y14 (all intents).",
+    "NCHS has not updated this file since 2023. Its latest year is 2021.",
+    "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries."
+  ],
+  "refresh_policy": {
+    "schedule": "manual_full_content",
+    "auto_publish": false,
+    "same_label_revision": "hold_for_review",
+    "new_observation_year": "hold_for_registry_review"
+  },
+  "measures": [
+    {
+      "measure_id": "drug_poisoning_death_rate",
+      "label": "Drug poisoning death rate, model-based (per 100,000, age-adjusted)",
+      "source_file": "rpvx-m2md.csv",
+      "source_dataset_id": "rpvx-m2md",
+      "source_field": "Model-based Death Rate",
+      "source_ci_low_field": "Lower Confidence Limit",
+      "source_ci_high_field": "Upper Confidence Limit",
+      "kind": "rate_per_100k",
+      "unit": "deaths per 100,000 population (age-adjusted, model-based)",
+      "storage_scale": "per_100000",
+      "observation_period": "2021",
+      "population": "All ages (2000 U.S. standard population)",
+      "denominator": "100,000 population, all ages, age-adjusted to the 2000 U.S. standard population.",
+      "official_definition": "NCHS model-based age-adjusted drug poisoning death rate per 100,000 population (ICD-10 underlying causes X40–X44, X60–X64, X85, and Y10–Y14, all intents), estimated by hierarchical Bayesian modeling of NVSS mortality data.",
+      "interpretation": "Model-based county estimates with 95% intervals from NCHS's model, not counts of recorded deaths. They may over- or under-estimate true rates and may not match CDC WONDER. Latest year is 2021.",
+      "geographies": ["county"]
+    }
+  ]
+}

@@ -1,5 +1,73 @@
 # Antigravity status: mortality
 
+## M3 (2026-11-21T02:17Z)
+
+Implemented `nchs_drug_poisoning` (NCHS Drug Poisoning Mortality by County, model-based; staging all 2003–2021 rows and publishing 2021 county-level rates with 95% intervals from NCHS's model) across backend ingest/CLI/API/lookup/router/comparability, `/area/drug-poisoning-mortality` map page, and public MCP config. Reused helpers by import from `hds_mortality`, `hds_mortality_cli`, and `hds_mortality_api`. No commits, pushes, merges, deploys, network calls, or database writes were made.
+
+### Files changed (`git status --short`)
+
+```text
+ M backend/app/area_pilot/lookup.py
+ M backend/app/area_pilot/registry/comparability.json
+ M backend/app/area_pilot/router.py
+ M backend/app/mcp_server/config.py
+ M docs/mortality/status/antigravity.md
+ M frontend/src/main.jsx
+ M frontend/src/pages/Places2025Pilot.jsx
+ M frontend/src/pages/Places2025Pilot.test.jsx
+ M frontend/src/utils/routeResolver.js
+?? backend/app/area_pilot/drug_poisoning.py
+?? backend/app/area_pilot/drug_poisoning_api.py
+?? backend/app/area_pilot/drug_poisoning_cli.py
+?? backend/app/area_pilot/registry/nchs_drug_poisoning_2021.json
+?? backend/tests/test_area_mortality_drug.py
+?? backend/tests/test_area_mortality_drug_postgis.py
+?? frontend/node_modules
+```
+
+*(Note: `frontend/node_modules` is a pre-existing symlink to `/home/john/chip-claude/frontend/node_modules`.)*
+
+### Test commands and results
+
+1. **Part A backend tests:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -m pytest tests/test_area_mortality_drug.py tests/test_area_mortality_drug_postgis.py tests/test_area_mortality_hds.py tests/test_area_lookup.py -q`
+   - **Result:** `41 passed, 1 skipped`
+     - `tests/test_area_mortality_drug.py`: 11 passed
+     - `tests/test_area_mortality_drug_postgis.py`: 1 skipped (no active published `nchs_drug_poisoning_2021` release in `places_staging` yet)
+     - `tests/test_area_mortality_hds.py`: 12 passed
+     - `tests/test_area_lookup.py`: 18 passed (0 failed; `nchs_drug_poisoning` is county-only)
+
+2. **Read-only dry-run against archived CSV (`data/ingest/nchs_drug_poisoning_county/rpvx-m2md.csv`):**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -c "..."` calling `drug_poisoning.retrieve(cfg, skip_fetch=True)`, `drug_poisoning_cli.validate_counts_and_checks(stats, cfg)`, and `drug_poisoning.classify` / `boundary_without_source` / `expected_observations` against 2024 TIGER county GEOIDs from `places_staging` (read-only `SELECT`).
+   - **Result:** Passed — exact SHA-256 match (`822bae06e376f62947e745aa9dfba079d46e641ec8e6906449fa00cbff617b03`), 59,584 staged rows across all 19 years `2003`–`2021` (3,136 counties per year), Durham County (`37063`) 2021 check value verified (`23.87115`, 95% interval `22.12165`–`25.75957`), `0` unexplained rows, `0` duplicate GEOIDs, `0` range problems, and 3,122 published 2021 county observations (range `5.00205`–`164.57930`).
+
+3. **Frontend tests and production build:**
+   `cd frontend && npx vitest run src/pages/Places2025Pilot.test.jsx && npm run build`
+   - **Result:** `47 passed (47)` in `src/pages/Places2025Pilot.test.jsx`; `vite build` succeeded cleanly (`dist/index.html`, `dist/assets/index-*.js`, `dist/assets/index-*.css`).
+
+4. **MCP tests:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv-mcp/bin/python -m pytest tests/test_mcp_*.py -q`
+   - **Result:** `2 failed, 26 passed` (see Failures below)
+
+5. **Community profile regression tests and snapshot diff:**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -m pytest tests/test_community_api.py tests/test_community_state.py tests/test_community_charts_api.py -q`
+   - **Result:** `15 passed`
+   `git diff --exit-code docs/beta/contract-examples`
+   - **Result:** Exit code `0` (byte-identical)
+
+### Failures (outside owned files; not modified)
+
+1. `backend/tests/test_mcp_integration.py::test_search_context_and_sources`
+   - **Reason:** Hard-codes `assert len(sources.data['products']) == 12`; with `'nchs_drug_poisoning'` added to `PUBLIC_PRODUCTS`, `list_data_sources()` now returns `13` products.
+2. `backend/tests/test_mcp_integration.py::test_http_client`
+   - **Reason:** `FileNotFoundError: '.venv-mcp/bin/uvicorn'`. The test launches `.venv-mcp/bin/uvicorn` relative to the worktree's `backend/` directory, whereas `.venv-mcp` lives in `/home/john/chip-claude/backend/.venv-mcp`.
+
+### Open questions / notes for Claude
+
+- **Custom `ci95` label in `lookup.py`:** Contract §3 specifies that `nchs_drug_poisoning`'s uncertainty label reads `"95% interval from NCHS's model"` rather than `"95% confidence interval"`. Added `UNCERTAINTY_LABEL = "95% interval from NCHS's model"` on `drug_poisoning_api` and updated `lookup._row` to read `getattr(spec.api, 'UNCERTAINTY_LABEL', None) or '95% confidence interval'` so existing `ci95` products (`places`, `brfss`, `nci_cancer_mortality`) remain unchanged.
+- **Unmatched 2021 county codes (`source_only`):** Of 3,136 rows in 2021, 3,122 match 2024 TIGER counties and 14 are staged as `source_only`: the 8 legacy Connecticut counties (`09001`–`09015`, reason `legacy_connecticut_county_code`) plus 6 pre-2024 legacy county codes (`02201`, `02232`, `02261`, `02270`, `02280`, and `46113`, reason `no_2024_boundary`). The 100 2024 TIGER counties absent from 2021 (9 Connecticut planning regions + 91 Puerto Rico municipios and newer AK/SD equivalents) read `not_in_release` at query time.
+- **No open blockers for M4 ingest.**
+
 ## M2 (2026-11-21T02:04Z)
 
 Implemented `nci_cancer_mortality` (NCI/CDC State Cancer Profiles death rates, 2020–2024: all sites, lung and bronchus, colon and rectum) across backend ingest/CLI/API/lookup/router/comparability, `/area/cancer-mortality` map page, and public MCP config. Reused helpers by import from `hds_mortality`, `hds_mortality_cli`, and `hds_mortality_api`. No commits, pushes, merges, deploys, network calls, or database writes were made.

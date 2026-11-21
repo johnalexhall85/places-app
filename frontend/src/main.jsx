@@ -122,6 +122,8 @@ function Root() {
     routedPage = <Places2025Pilot dataset="hds_mortality" />;
   } else if (route.type === "cancer-mortality-area") {
     routedPage = <Places2025Pilot dataset="cancer_mortality" />;
+  } else if (route.type === "drug-poisoning-area") {
+    routedPage = <Places2025Pilot dataset="drug_poisoning" />;
   } else if (route.type === "svi-area") {
     routedPage = <Places2025Pilot dataset="svi" />;
   } else if (route.type === "fema-nri-area") {
