@@ -2,6 +2,45 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T16:30:00+00:00: GitHub push, worktree cleanup, off-VM backup to Google Drive, decks updated (Claude)
+
+- **Requests (John):** push to GitHub; send off-VM backups to his Google Drive; remove the old worktrees; update the slide decks with the new information. He will delete the decks and `chip-nofo-recipient-profile.zip` from the live checkout himself after downloading.
+- **Push:** `main` and `beta` were pushed to `origin` at `bae27a4`.
+- **Worktrees:**
+  - Eleven merged agent worktrees were removed with `git worktree remove --force`:
+    - `chip-agy`, `chip-agy-funding`, `chip-agy-mort`, `chip-agy-state`, `chip-agy-viz`, `chip-agy-vuln`
+    - `chip-codex`, `chip-codex-funding`, `chip-codex-state`, `chip-codex-viz`
+    - `places-app-ahrf-push`
+  - Before removal, each one's uncommitted diff and untracked files (except `node_modules`) were archived to `/home/john/chip-recovery/worktree-archive-20261121/`.
+  - All their branches remain. `codex/ahrf-county-five-measures` is not an ancestor of `main` (AHRF reached live by other commits).
+  - Kept: `places-app`, `chip-beta`, and `chip-claude`. About 2 GB was freed.
+- **Off-VM backup:**
+  - `rclone` 1.60 was installed from apt.
+  - Remote `gdrive:` (Google Drive, `scope=drive.file`) is wrapped by crypt remote `chip-crypt:` (folder `CHIP-backups`).
+  - The passwords are in `~/.config/chip-backup/RECOVERY-PASSWORDS.txt` (mode 600). They are not written anywhere else.
+  - Added [infra/backup/](../infra/backup/README.md): the script, service, and timer, plus a restore guide.
+  - The script streams `pg_dump -Fc` of `places` straight to Drive and checks that the uploaded size equals the bytes `pg_dump` wrote. It also checks that the table of contents reads back.
+  - Retention is 7 nightly and 4 weekly copies. On Sundays it also syncs `data/ingest` and `data/deploy-recovery`.
+  - The truncated-file table-of-contents check was tested on a 256 MB head of the mortality dump: all 294 entries were listed.
+  - `chip-offsite-backup.timer` is enabled; the first run is 2026-11-22 at about 08:40 UTC. Commit `d4de056` is on live `main`.
+  - **Not working yet:** Google has not been authorized. John must run `rclone config reconnect gdrive:` once. No upload has run, and no restore drill has been done.
+- **Decks:**
+  - `/home/john/places-app/CHIP_Funder_Deck_2026-11-21.pptx` has 16 slides (was 15).
+    - New slide: "Death rates and hazard risk, on every profile".
+    - "Nine areas" topic slide.
+    - Updated figures: 91 measures from 9 agencies (was 66 from 7), with FEMA and NCI added. The trust and score wording now covers agency indexes. Kanawha now has 71 indicators.
+    - "What's next" no longer lists death rates.
+  - `/home/john/places-app/CHIP_Slide_Library_2026-11-21.pptx` has 92 slides (was 84).
+    - Three new "What's new" cards.
+    - Product-tour slides for death rates and for SVI and NRI.
+    - Five new map slides: SVI, NRI, heart disease and stroke, cancer, and drug poisoning.
+    - Sources, coverage, and measure tables now come from the live catalog.
+    - "Earlier years on the maps" now says the new maps have one period.
+  - Every screenshot was retaken from staging (54 shots, 0 failures), and the session cookie was deleted.
+  - Sources are in `/home/john/chip-decks/v3/` (v2 is unchanged).
+  - Checks: the skill validator passed, the HTML mirror shows no overflow after the fixes, and the changed slides were reviewed visually. The decks were not opened in PowerPoint.
+- **No application or data changes** beyond the backup timer.
+
 ## 2026-11-21T15:25:00+00:00: Mortality promoted to live (Claude, Gate B)
 
 - **Approval:** John said "This is great. Approved. Go live." He did not ask for git pushes, so none were made.
