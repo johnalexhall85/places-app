@@ -17,6 +17,24 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Unverified risk:** the chip-beta Let's Encrypt certificate (expires 2027-02-14) renews by webroot over port 80, which UFW does not allow, so renewal will probably fail. Check it before the cutover.
 - **Next:** when John says the testers have been told, install the cutover config, run `nginx -t`, reload, check that `/mcp` still answers publicly and `/` returns 404, then merge the branch to `beta`.
 
+## 2026-11-21T16:45:00+00:00: First off-VM backup uploaded and restore-tested (Claude)
+
+- **Setup:** John authorized rclone for Google Drive. An encrypted test file made the round trip, and Drive shows 4.8 TB free.
+- **First run:** `systemctl start chip-offsite-backup` at 15:39Z uploaded `db/daily/places-20261121T153947Z.dump`: 13,189,595,506 bytes, about 21 minutes.
+  - The decrypted remote size equals the bytes `pg_dump` wrote, and the table of contents reads back with 1,913 entries.
+  - The run then exited 1 at weekly retention, because `rclone delete` fails on the weekly folder, which does not exist yet.
+  - Fixed in `b50bc05`: retention now skips a missing folder. The fix is on live `main`.
+- **Restore drill:**
+  - Streamed the Drive copy with `rclone cat | pg_restore -n area_pilot` into a scratch database, `chip_restore_drill`, with PostGIS installed and the schema created first. The first attempt failed only because `-n` does not create the schema.
+  - The restore exited 0 with no errors in 266 s.
+  - Compared with live:
+    - `area_pilot` has 51 tables in both.
+    - Active pointers: 27 in both, and the dataset and release list has the same MD5.
+    - Releases: 37 in both.
+    - Row counts match: SVI 872,640, NCI 9,555, NRI 794,390.
+  - The scratch database was dropped. Only `area_pilot` was restored; a full-database restore has not been done.
+- **Next:** check the 08:30Z run on 2026-11-22 in `~/.local/state/chip-backup/runs.log`.
+
 ## 2026-11-21T16:30:00+00:00: GitHub push, worktree cleanup, off-VM backup to Google Drive, decks updated (Claude)
 
 - **Requests (John):** push to GitHub; send off-VM backups to his Google Drive; remove the old worktrees; update the slide decks with the new information. He will delete the decks and `chip-nofo-recipient-profile.zip` from the live checkout himself after downloading.
