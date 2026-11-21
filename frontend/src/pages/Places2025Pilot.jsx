@@ -157,9 +157,65 @@ export const SVI_STATUS_TEXT = {
 };
 export const SVI_DC_SWITCH_MESSAGE = "There is no State comparison data for county, switched to census.";
 export const SVI_CHOOSE_STATE_MESSAGE = "Choose a state to see statewide rankings.";
+export const SVI_OUTSIDE_STATE_MESSAGE = "Outside the selected state";
 export const SVI_STATE_DISABLED_HINT = "Switch Geographic Comparison to Statewide to select a state/district/territory";
 export const SVI_COMPARISON_TOOLTIP = "Toggle to view nationwide or statewide data comparison level";
 export { SVI_LEVELS, SVI_THEMES, SVI_STATES, SVI_UNAVAILABLE_MESSAGE, sviLevel, sviLevelIndex, sviThemeForMeasure };
+
+export function sviIsInSelectedState(geoid, selectedState) {
+  const stateFips = String(selectedState || "").trim();
+  if (!stateFips) return false;
+  return String(geoid || "").trim().startsWith(stateFips);
+}
+export function filterSviStateFeatures(features, selectedState) {
+  if (!Array.isArray(features) || !selectedState) return [];
+  return features.filter((feature) => sviIsInSelectedState(featureId(feature?.properties), selectedState));
+}
+export function summarizeSviStatuses(rows) {
+  const byStatus = new Map();
+  for (const row of rows || []) {
+    const status = row?.status || "not_in_release";
+    const existing = byStatus.get(status) || {
+      status,
+      n: 0,
+      low: null,
+      high: null,
+      ...(row?.status_text
+        ? { status_text: row.status_text }
+        : SVI_STATUS_TEXT[status]
+          ? { status_text: SVI_STATUS_TEXT[status] }
+          : {}),
+    };
+    existing.n += 1;
+    if (row?.value != null && Number.isFinite(Number(row.value))) {
+      const num = Number(row.value);
+      existing.low = existing.low == null ? num : Math.min(existing.low, num);
+      existing.high = existing.high == null ? num : Math.max(existing.high, num);
+    }
+    byStatus.set(status, existing);
+  }
+  return [...byStatus.values()].sort((a, b) => a.status.localeCompare(b.status));
+}
+export function sanitizeSviStateMapData(data, selectedState) {
+  if (!data?.features || !selectedState) return data;
+  return {
+    ...data,
+    features: data.features.map((feature) => {
+      const props = feature?.properties || {};
+      if (sviIsInSelectedState(featureId(props), selectedState)) return feature;
+      return {
+        ...feature,
+        properties: {
+          ...props,
+          value: null,
+          source_value: null,
+          status: "outside_selected_state",
+          status_text: SVI_OUTSIDE_STATE_MESSAGE,
+        },
+      };
+    }),
+  };
+}
 
 export function sviNumber(value) {
   return sviFormatValue(value);
@@ -180,11 +236,11 @@ export function sviBinLabels() {
 export function sviFeatureStyle(feature, { scope = "us", selectedState = "", measureId = "rpl_themes" } = {}) {
   const props = feature?.properties || {};
   if (scope === "state" && !selectedState) {
-    return { color: "#b0bec5", weight: 0.5, fill: false, fillOpacity: 0, fillColor: "transparent", dashArray: null };
+    return { color: "#b0bec5", weight: 0.5, opacity: 0.85, fill: false, fillOpacity: 0, fillColor: "transparent", dashArray: null };
   }
   const geoid = featureId(props);
-  if (scope === "state" && selectedState && !geoid.startsWith(selectedState)) {
-    return { color: "#b0bec5", weight: 0.5, fill: false, fillOpacity: 0, fillColor: "transparent", dashArray: null };
+  if (scope === "state" && selectedState && (!sviIsInSelectedState(geoid, selectedState) || props.status === "outside_selected_state")) {
+    return { color: "#b0bec5", weight: 0.5, opacity: 0.85, fill: true, fillOpacity: 0, fillColor: "transparent", dashArray: null };
   }
   const idx = sviLevelIndex(props.value, props.status);
   if (idx < 0) {
@@ -436,10 +492,11 @@ export function areaFeatureDetails(dataset, item, measure, context = {}) {
       "No confidence interval or margin of error is published."];
   } else if (dataset === "svi") {
     const isStateRank = measure?.source_scope === "state" || sviScopeForMeasure(measure?.measure_id) === "state";
-    if (context.sviScope === "state" && (!context.sviState || !featureId(item).startsWith(context.sviState))) {
-      base.explanation = context.sviState ? "Outside the selected state." : SVI_CHOOSE_STATE_MESSAGE;
-      value = "No Data";
-      lines = [context.sviState ? "Areas outside the selected state have no statewide fill." : SVI_CHOOSE_STATE_MESSAGE];
+    if (context.sviScope === "state" && (!context.sviState || !sviIsInSelectedState(featureId(item), context.sviState) || item.status === "outside_selected_state")) {
+      const msg = context.sviState ? SVI_OUTSIDE_STATE_MESSAGE : SVI_CHOOSE_STATE_MESSAGE;
+      base.explanation = msg;
+      value = msg;
+      lines = [msg];
     } else {
       const rankLabel = measure?.population_by_level?.[geography]
         ?? (isStateRank
@@ -827,9 +884,33 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const settled = ready || sviAwaitingState || Boolean(error) || Boolean(catalogError) || Boolean(catalog && !releaseId);
   useEffect(() => { if (settled) setFirstLoadDone(true); }, [settled]);
   const sourceTitle = isBrfss ? "BRFSS state survey estimates" : isProfile ? `ACS ${period ?? "2020–2024"} community characteristics` : isAcs ? `ACS ${period ?? "2020–2024"} 5-year income` : isAhrf ? `AHRF ${period ?? "2023"} county resources` : isClh ? "AHRQ CLH community conditions" : isAqi ? `EPA annual AQI by county, ${period ?? "2025"}` : isGv ? `CMS Original Medicare Geographic Variation, ${period ?? "2024"}` : isSvi ? `CDC Social Vulnerability Index, ${period ?? "2018–2022"}` : isNri ? `FEMA National Risk Index, ${period ?? "NRI v1.20 (December 2025)"}` : isFea ? "USDA Food Environment Atlas: county food access and retailers" : `PLACES county and tract estimates${period ? `, ${period}` : ""}`;
-  const features = ready ? mapData?.features || [] : [];
-  const geoJsonData = isSvi && sviAwaitingState ? sviOutlineData : mapData;
+  const sviStateFilterActive = isSvi && sviScope === "state" && Boolean(sviState);
+  const sviSanitizedMapData = useMemo(
+    () => (sviStateFilterActive && ready && mapData ? sanitizeSviStateMapData(mapData, sviState) : mapData),
+    [sviStateFilterActive, ready, mapData, sviState],
+  );
+  const features = ready ? sviSanitizedMapData?.features || [] : [];
+  const geoJsonData = isSvi && sviAwaitingState ? sviOutlineData : sviSanitizedMapData;
   const geoJsonFeatures = isSvi && sviAwaitingState ? (sviOutlineData?.features || []) : features;
+  const sviInStateRows = useMemo(() => {
+    if (!sviStateFilterActive || !ready) return null;
+    if (mapData?.features?.length) {
+      return filterSviStateFeatures(mapData.features, sviState).map((feature) => feature.properties);
+    }
+    return (table?.rows || []).filter((row) => sviIsInSelectedState(featureId(row), sviState));
+  }, [sviStateFilterActive, ready, mapData, table, sviState]);
+  const displayLegend = useMemo(() => {
+    if (!sviStateFilterActive || !ready || !legend || !sviInStateRows) return legend;
+    return { ...legend, statuses: summarizeSviStatuses(sviInStateRows) };
+  }, [sviStateFilterActive, ready, legend, sviInStateRows]);
+  const displayTable = useMemo(() => {
+    if (!sviStateFilterActive || !ready || !table || !sviInStateRows) return table;
+    return {
+      ...table,
+      total: sviInStateRows.length,
+      rows: sviInStateRows.slice(page * 100, (page + 1) * 100),
+    };
+  }, [sviStateFilterActive, ready, table, sviInStateRows, page]);
   // Quintile cut points for the whole release at this level (PLACES, ACS income, AHRF, CLH).
   const cuts = useMemo(() => quantileCuts(ready ? legend?.quantile_breaks : null), [ready, legend]);
   const cutColors = rampColors(cuts.length + 1);
@@ -1021,12 +1102,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
           })} onEachFeature={(feature, layer) => {
             const item = feature.properties;
             const baseSviStyle = isSvi ? sviFeatureStyle(feature, { scope: sviScope, selectedState: sviState, measureId }) : null;
+            if (baseSviStyle) layer.setStyle?.(baseSviStyle);
             // Same hover tooltip as the legacy map; skipped on touch pointers.
             if (!isCoarsePointer() && typeof layer.bindTooltip === "function") {
               layer.bindTooltip(areaTooltip(datasetKey, item, measure, detailContext), MAP_HOVER_TOOLTIP_OPTIONS);
             }
             layer.on?.("mouseover", () => layer.setStyle?.({ weight: 2, color: HOVER_LINE }));
-            layer.on?.("mouseout", () => layer.setStyle?.(baseSviStyle ? { weight: baseSviStyle.weight, color: baseSviStyle.color } : { weight: 0.5, color: "#516677" }));
+            layer.on?.("mouseout", () => layer.setStyle?.(baseSviStyle || { weight: 0.5, color: "#516677" }));
             layer.on?.("click", () => {
               if (isSvi && sviAwaitingState) return;
               const box = typeof layer.getBounds === "function" ? layer.getBounds() : null;
@@ -1252,7 +1334,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             <p>{sviScope === "state"
               ? "Colors compare areas only within their own state."
               : `2022 National ${sviTheme.title} (${geography === "tract" ? "census tracts" : "counties"}). Higher values indicate greater vulnerability.`}</p>
-            {ready && legend && <p>{legend.statuses.map((item) => `${item.status_text || SVI_STATUS_TEXT[item.status] || item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>}
+            {ready && displayLegend && <p>{displayLegend.statuses.map((item) => `${item.status_text || SVI_STATUS_TEXT[item.status] || item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>}
             {!sviAwaitingState && <p>Select a {areaName(geography)} for its rank and vulnerability level.</p>}
           </> : ready && legend && isNri ? <>
             <ul className="pilot-swatches">
@@ -1295,10 +1377,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
               ? (sviCountyHeading(selection.countyName || selectedProps?.county_name, countyGeoid)
                 || (sviStateAbbrForGeoid(selection.geoid) ? `County ${countyGeoid}, ${sviStateAbbrForGeoid(selection.geoid)}` : selection.name))
               : sviCountyHeading(selection.name, selection.geoid);
-            const outsideSelectedState = sviScope === "state" && (!sviState || !String(selection.geoid).startsWith(sviState));
-            const unavailable = outsideSelectedState || (selectedProps && sviIsMissing(selectedProps.value, selectedProps.status));
-            const sviRankFormatted = selectedProps && !unavailable ? sviFormatValue(selectedProps.value) : null;
-            const sviRankLevel = selectedProps && !unavailable ? sviLevel(selectedProps.value, selectedProps.status) : null;
+            const outsideSelectedState = sviScope === "state" && (!sviState || !sviIsInSelectedState(selection.geoid, sviState));
+            const unavailable = !outsideSelectedState && selectedProps && sviIsMissing(selectedProps.value, selectedProps.status);
+            const sviRankFormatted = selectedProps && !outsideSelectedState && !unavailable ? sviFormatValue(selectedProps.value) : null;
+            const sviRankLevel = selectedProps && !outsideSelectedState && !unavailable ? sviLevel(selectedProps.value, selectedProps.status) : null;
             return (
               <div className="pilot-selected pilot-svi-selected" data-testid="selected-area">
                 <div className="pilot-svi-selected-head">
@@ -1310,7 +1392,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
                   </h3>
                   <button type="button" className="pilot-svi-close" aria-label="Close panel" onClick={clearSelection}>×</button>
                 </div>
-                {unavailable ? (
+                {outsideSelectedState ? (
+                  <p className="pilot-svi-unavailable">{sviState ? SVI_OUTSIDE_STATE_MESSAGE : SVI_CHOOSE_STATE_MESSAGE}</p>
+                ) : unavailable ? (
                   <p className="pilot-svi-unavailable">{SVI_UNAVAILABLE_MESSAGE}</p>
                 ) : selectedProps && sviRankLevel ? (
                   <>
@@ -1363,14 +1447,14 @@ export default function Places2025Pilot({ dataset = "places" }) {
         </section>
         <section className={`pilot-panel pilot-table ${tableOpen ? "is-open" : ""}`} aria-label={`${areaName(geography)} table`}>
           <button className="pilot-table-toggle" type="button" aria-expanded={tableOpen} onClick={() => setTableOpen((open) => !open)}>
-            <span>Displayed {areaName(geography)} values{ready && table ? ` (${table.total})` : ""}</span><span aria-hidden="true">{tableOpen ? "−" : "+"}</span>
+            <span>Displayed {areaName(geography)} values{ready && displayTable ? ` (${displayTable.total})` : ""}</span><span aria-hidden="true">{tableOpen ? "−" : "+"}</span>
           </button>
           {tableOpen && <div className="pilot-table-body">
             {error && <p role="alert">{error}</p>}
             {isSvi && sviAwaitingState && <p role="status">{SVI_CHOOSE_STATE_MESSAGE}</p>}
             {!ready && !error && !sviAwaitingState && <p role="status">Loading selected {areaName(geography)} estimates…</p>}
-            {ready && table && <>
-              <p>{areaName(geography)} areas intersecting the map viewport. Map and table use the same geometry rule.{isBrfss ? " States without a CDC result for this year are marked Not published." : isFea ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties in view are listed with USDA's published value and status.` : isAqi ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties are listed; counties without an EPA summary are marked No reported value.` : isGv ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CMS's published value and status.` : isSvi ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in view are listed with CDC/ATSDR's published percentile rank and status.` : isNri ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : geography === "tract" ? "tracts" : "counties"} in view are listed with FEMA's published NRI value, rating, and status.` : ""}</p>
+            {ready && displayTable && <>
+              <p>{areaName(geography)} areas intersecting the map viewport. Map and table use the same geometry rule.{isBrfss ? " States without a CDC result for this year are marked Not published." : isFea ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties in view are listed with USDA's published value and status.` : isAqi ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties are listed; counties without an EPA summary are marked No reported value.` : isGv ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CMS's published value and status.` : isSvi ? (sviStateFilterActive ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in ${sviStateObj?.name || "the selected state"} in view are listed with CDC/ATSDR's published percentile rank and status.` : ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in view are listed with CDC/ATSDR's published percentile rank and status.`) : isNri ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : geography === "tract" ? "tracts" : "counties"} in view are listed with FEMA's published NRI value, rating, and status.` : ""}</p>
               <div className="pilot-table-scroll"><table><caption>{measure?.label}, {period}; release {releaseId}</caption>
                 {isBrfss ? <thead><tr><th scope="col">State FIPS</th><th scope="col">State</th><th scope="col">{measure?.label} (%)</th><th scope="col">95% CI</th><th scope="col">Response count</th><th scope="col">Status</th></tr></thead>
                 : isFea ? <thead><tr><th scope="col">County FIPS</th><th scope="col">County</th><th scope="col">{measure?.label} ({period})</th><th scope="col">USDA source value</th><th scope="col">Status</th></tr></thead>
@@ -1379,22 +1463,21 @@ export default function Places2025Pilot({ dataset = "places" }) {
                 : isNri ? <thead><tr><th scope="col">{geography === "state" ? "State FIPS" : geography === "tract" ? "Tract GEOID" : "County FIPS"}</th><th scope="col">{areaName(geography)}</th><th scope="col">{measure?.label}</th><th scope="col">FEMA rating</th><th scope="col">FEMA source value</th><th scope="col">Status</th></tr></thead>
                 : isAqi ? <thead><tr><th scope="col">County FIPS</th><th scope="col">County</th><th scope="col">{measure?.label} ({measure?.unit})</th><th scope="col">Days with AQI</th><th scope="col">EPA source name</th><th scope="col">Status</th></tr></thead>
                 : <thead><tr><th scope="col">{geography === "cd" ? "District GEOID" : geography === "tract" ? "Tract GEOID" : geography === "state" ? "State FIPS" : "County FIPS"}</th><th scope="col">{geography === "cd" ? "District" : areaName(geography)}</th><th scope="col">{isProfile ? `Value (${measure?.unit})` : isAcs ? `Value (${String(period).slice(-4)} USD)` : isAhrf || isClh ? `Value (${measure?.unit})` : "Value (%)"}</th><th scope="col">{isProfile || isAcs ? "90% MOE" : isAhrf || isClh ? "Uncertainty" : "95% CI"}</th><th scope="col">Status</th></tr></thead>}
-                <tbody>{table.rows.map((row) => {
+                <tbody>{displayTable.rows.map((row) => {
                   const key = row.geography_id || row.tract_fips || row.county_fips;
                   if (isBrfss) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{brfssValueText(row)}</td><td>{row.ci_low == null ? "—" : `${row.ci_low}–${row.ci_high}%`}</td><td>{row.sample_size ?? "—"}</td><td>{row.status_text || row.status}</td></tr>;
                   if (isFea) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{feaValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published value" : row.status === "true_zero" ? "Published zero" : FEA_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
                   if (isGv) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{gvValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{GV_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
                   if (isSvi) {
-                    const outOfState = sviScope === "state" && sviState && !String(key).startsWith(sviState);
-                    return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{outOfState ? "No Data" : sviValueText(row)}</td><td>{outOfState ? "—" : (row.source_value ?? "—")}</td><td>{outOfState ? "Outside selected state" : (row.status === "available" ? "Published rank" : row.status === "true_zero" ? "Published zero" : row.status_text || SVI_STATUS_TEXT[row.status] || row.status)}</td></tr>;
+                    return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{sviValueText(row)}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published rank" : row.status === "true_zero" ? "Published zero" : row.status_text || SVI_STATUS_TEXT[row.status] || row.status}</td></tr>;
                   }
                   if (isNri) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{nriValueText(row, measure)}</td><td>{row.rating ?? "—"}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published value" : row.status === "true_zero" ? "Published zero" : row.status_text || NRI_STATUS_TEXT[row.status] || row.status}</td></tr>;
                   if (isAqi) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{aqiValueText(row, measure)}</td><td>{row.days_with_aqi ?? "—"}</td><td>{row.source_name ?? "—"}</td><td>{row.status === AQI_NO_VALUE ? "No reported value" : row.status}</td></tr>;
                   return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{isProfile ? profileValue(row, measure) : displayValue(row, isAcs, isAhrf, isClh, measure?.unit)}</td><td>{isProfile ? profileUncertainty(row) : displayUncertainty(row, isAcs, isAhrf, isClh)}</td><td>{row.status_text || row.status}</td></tr>;
                 })}</tbody>
               </table></div>
-              {isBrfss && table.reference?.median?.find((item) => item.geography_id === "98") && <p className="pilot-metadata">Median of states and DC (CDC-published reference, not a national estimate): {brfssValueText(table.reference.median.find((item) => item.geography_id === "98"))}. No confidence interval is published for this median.</p>}
-              <nav aria-label={`${areaName(geography)} table pages`}><button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button> Page {page + 1} of {Math.max(1, Math.ceil(table.total / 100))} <button disabled={(page + 1) * 100 >= table.total} onClick={() => setPage(page + 1)}>Next</button></nav>
+              {isBrfss && displayTable.reference?.median?.find((item) => item.geography_id === "98") && <p className="pilot-metadata">Median of states and DC (CDC-published reference, not a national estimate): {brfssValueText(displayTable.reference.median.find((item) => item.geography_id === "98"))}. No confidence interval is published for this median.</p>}
+              <nav aria-label={`${areaName(geography)} table pages`}><button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button> Page {page + 1} of {Math.max(1, Math.ceil(displayTable.total / 100))} <button disabled={(page + 1) * 100 >= displayTable.total} onClick={() => setPage(page + 1)}>Next</button></nav>
             </>}
           </div>}
         </section>

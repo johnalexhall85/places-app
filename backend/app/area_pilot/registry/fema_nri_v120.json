@@ -68,7 +68,8 @@
     "Expected annual loss is FEMA's modeled average dollars per year, not a count of past losses.",
     "NRI's social vulnerability and resilience components come from other sources (CDC SVI and HVRI BRIC) and are not CHIP's SVI release.",
     "CHIP publishes FEMA's values as released. It does not average, combine, or re-rank them, and does not derive state values.",
-    "Version v1.20 (December 2025). FEMA retired the NRI web application, and the data is distributed through OpenFEMA and FEMA's Resilience Analysis and Planning Tool (RAPT)."
+    "Version v1.20 (December 2025). FEMA retired the NRI web application, and the data is distributed through OpenFEMA and FEMA's Resilience Analysis and Planning Tool (RAPT).",
+    "FEMA's v1.20 file repeats the national risk score in its risk state-percentile field for every county and tract, so CHIP does not show a within-state percentile for the overall risk score."
   ],
   "refresh_policy": {
     "schedule": "manual_archive_only",
@@ -92,27 +93,6 @@
       "interpretation": "National percentile score (0–100) among areas at the same level; higher score means greater modeled natural-hazard risk. Not a forecast and not property-level risk.",
       "direction": "higher_worse",
       "direction_note": "Higher values indicate greater modeled natural-hazard risk.",
-      "legend_breaks": {
-        "county": [20, 40, 60, 80],
-        "tract": [20, 40, 60, 80]
-      },
-      "geographies": ["county", "tract"]
-    },
-    {
-      "measure_id": "risk_spctl",
-      "source_field": "RISK_SPCTL",
-      "paired_score_field": "RISK_SCORE",
-      "label": "Risk index, percentile within state",
-      "kind": "percentile",
-      "unit": "percentile within state (0–100)",
-      "storage_scale": "percentile_0_100",
-      "observation_period": "NRI v1.20 (December 2025)",
-      "population": "Counties or census tracts in the same state in FEMA NRI v1.20",
-      "denominator": "Within-state percentile rank (0–100) among areas at the same level.",
-      "official_definition": "FEMA National Risk Index composite state percentile (RISK_SPCTL, 0–100), comparing an area only with others in the same state.",
-      "interpretation": "Within-state percentile (0–100) among areas at the same level; higher values indicate greater modeled risk within the same state. Colors on a national map compare areas only within their own state.",
-      "direction": "higher_worse",
-      "direction_note": "Higher values indicate greater modeled natural-hazard risk within the same state.",
       "legend_breaks": {
         "county": [20, 40, 60, 80],
         "tract": [20, 40, 60, 80]

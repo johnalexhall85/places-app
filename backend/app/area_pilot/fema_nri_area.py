@@ -24,7 +24,7 @@ FIPS_WIDTH = {'state': 2, 'county': 5, 'tract': 11}
 MAX_ROWS = {'state': 100, 'county': 5_000, 'tract': 100_000}
 NUMBER = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
 MEASURE_IDS = [
-    'risk_score', 'risk_spctl', 'eal_score', 'eal_spctl', 'eal_valt',
+    'risk_score', 'eal_score', 'eal_spctl', 'eal_valt',
     'sovi_score', 'sovi_spctl', 'resl_score', 'resl_spctl', 'crf_value',
 ]
 RANGES = {

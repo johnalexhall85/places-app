@@ -30,6 +30,8 @@ LIMITATIONS = [
     'and does not derive state values.',
     'Version v1.20 (December 2025). FEMA retired the NRI web application, and the data is distributed '
     "through OpenFEMA and FEMA's Resilience Analysis and Planning Tool (RAPT).",
+    "FEMA's v1.20 file repeats the national risk score in its risk state-percentile field for every "
+    'county and tract, so CHIP does not show a within-state percentile for the overall risk score.',
 ]
 COMMON = f'''FROM {S}.acs_boundary_2024 b
  LEFT JOIN {S}.observation_fema_nri o ON o.geoid=b.geoid AND o.geo_level=b.level AND o.release_id=:release

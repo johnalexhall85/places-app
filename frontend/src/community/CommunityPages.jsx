@@ -159,11 +159,15 @@ export function CountySviSection({ geoid, stateGeoid, stateName, rows, source })
   </section>;
 }
 
+export const NRI_RISK_SPCTL_NOTE =
+  "FEMA's v1.20 file repeats the national risk score in its risk state-percentile field for every county and tract, so CHIP does not show a within-state percentile for the overall risk score.";
+
 export function NriSection({ level, geoid, rows, source }) {
   if (!rows?.length) return null;
   const isState = level === "state";
   const citation = source?.citation || rows[0]?.citation;
   const mapUrl = `/area/fema-nri?focus=${encodeURIComponent(level)}:${encodeURIComponent(geoid)}`;
+  const hasRiskNoSpctl = !isState && rows.some((row) => row.measure_id === "risk_score" && !row.state_percentile);
   return <section className="community-profile-section community-hazard-section" id="fema-nri">
     <div className="community-section-heading">
       <h2>Natural hazard risk (FEMA NRI)</h2>
@@ -186,6 +190,7 @@ export function NriSection({ level, geoid, rows, source }) {
           {rows.map((row) => {
             const valueMissing = row.value == null;
             const spctlMissing = row.state_percentile != null && row.state_percentile.value == null;
+            const isRiskNoSpctl = !isState && row.measure_id === "risk_score" && !row.state_percentile;
             return <tr key={row.measure_id}>
               <th scope="row">
                 {row.label}
@@ -195,13 +200,21 @@ export function NriSection({ level, geoid, rows, source }) {
                 {formatNriValue(row)}
               </td>
               <td data-label="FEMA rating">{row.rating || "—"}</td>
-              {!isState && <td data-label="Within-state percentile" className={spctlMissing ? "community-hazard-missing" : "community-hazard-num"}>
+              {!isState && <td
+                data-label="Within-state percentile"
+                className={spctlMissing ? "community-hazard-missing" : "community-hazard-num"}
+                aria-describedby={isRiskNoSpctl ? "nri-risk-spctl-note" : undefined}
+              >
                 {formatNriPercentile(row.state_percentile)}
+                {isRiskNoSpctl && <sup className="community-hazard-footnote-mark" aria-hidden="true">*</sup>}
               </td>}
             </tr>;
           })}
         </tbody>
       </table>
+      {hasRiskNoSpctl && <p id="nri-risk-spctl-note" className="community-hazard-footnote">
+        <span aria-hidden="true">* </span>{NRI_RISK_SPCTL_NOTE}
+      </p>}
       {citation && <p className="community-source">
         {citation}
         {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">FEMA OpenFEMA data</a></>}

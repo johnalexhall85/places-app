@@ -154,7 +154,6 @@ def test_county_hazards_shape_order_and_pairing():
     ]
     nri_rows = [
         _nri_obs("county", geoid, "risk_score", Decimal("81.4000"), rating="Relatively Moderate"),
-        _nri_obs("county", geoid, "risk_spctl", Decimal("89.0000")),
         _nri_obs("county", geoid, "eal_score", Decimal("84.2000"), rating="Relatively Moderate"),
         _nri_obs("county", geoid, "eal_spctl", Decimal("86.0000")),
         _nri_obs("county", geoid, "eal_valt", Decimal("38142500.2500")),
@@ -207,23 +206,26 @@ def test_county_hazards_shape_order_and_pairing():
     ]
     nri_by_id = {row["measure_id"]: row for row in body["nri"]}
     assert nri_by_id["risk_score"]["rating"] == "Relatively Moderate"
-    assert nri_by_id["risk_score"]["state_percentile"]["measure_id"] == "risk_spctl"
-    assert nri_by_id["risk_score"]["state_percentile"]["value"] == pytest.approx(89.0)
+    assert "state_percentile" not in nri_by_id["risk_score"]
     assert nri_by_id["eal_score"]["state_percentile"]["measure_id"] == "eal_spctl"
     assert nri_by_id["eal_valt"]["rating"] is None
-    assert nri_by_id["eal_valt"]["state_percentile"] is None
+    assert "state_percentile" not in nri_by_id["eal_valt"]
     assert nri_by_id["sovi_score"]["state_percentile"]["measure_id"] == "sovi_spctl"
     assert nri_by_id["resl_score"]["state_percentile"]["measure_id"] == "resl_spctl"
     assert nri_by_id["resl_score"]["direction"] == "higher_better"
     assert nri_by_id["risk_score"]["direction"] == "higher_worse"
     assert nri_by_id["crf_value"]["rating"] is None
-    assert nri_by_id["crf_value"]["state_percentile"] is None
+    assert "state_percentile" not in nri_by_id["crf_value"]
     assert all(row["citation"].startswith("Source: ") for row in body["nri"])
 
     assert set(body["sources"]) == {"cdc_svi", "fema_nri"}
     assert set(body["limitations"]) == {"cdc_svi", "fema_nri"}
     assert len(body["limitations"]["cdc_svi"]) == 7
-    assert len(body["limitations"]["fema_nri"]) == 6
+    assert len(body["limitations"]["fema_nri"]) == 7
+    assert (
+        "FEMA's v1.20 file repeats the national risk score in its risk state-percentile field for every "
+        "county and tract, so CHIP does not show a within-state percentile for the overall risk score."
+    ) in body["limitations"]["fema_nri"]
 
     # 404 / 400 / demo access gate match /charts
     assert client.get("/community/county/99999/hazards").status_code == 404
@@ -265,7 +267,6 @@ def test_county_hazards_nri_blank_score_and_paired_percentile():
     geoid = "72001"
     nri_rows = [
         _nri_obs("county", geoid, "risk_score", None, status="not_available", rating="Data Unavailable", source_value=""),
-        _nri_obs("county", geoid, "risk_spctl", None, status="not_available", rating=None, source_value=""),
         _nri_obs("county", geoid, "eal_score", Decimal("41.5000"), rating="Relatively Low"),
         _nri_obs("county", geoid, "eal_spctl", Decimal("32.1000")),
         _nri_obs("county", geoid, "eal_valt", Decimal("1250000.0000")),
@@ -324,7 +325,7 @@ def test_state_hazards_has_no_svi_and_only_eal_measures():
     assert body["geoid"] == geoid
     assert [row["measure_id"] for row in body["nri"]] == ["eal_score", "eal_valt"]
     assert body["nri"][0]["rating"] == "Relatively High"
-    assert body["nri"][0]["state_percentile"] is None
+    assert "state_percentile" not in body["nri"][0]
     assert body["nri"][1]["rating"] is None
     assert body["nri"][1]["value"] == pytest.approx(3210450123.5)
     assert set(body["sources"]) == {"fema_nri"}
@@ -367,7 +368,8 @@ def test_postgis_staging_durham_county_and_north_carolina(staging_db):
     nri_by_id = {row["measure_id"]: row for row in body["nri"]}
     assert nri_by_id["risk_score"]["value"] is not None
     assert nri_by_id["risk_score"]["rating"]
-    assert nri_by_id["risk_score"]["state_percentile"]["value"] is not None
+    assert "state_percentile" not in nri_by_id["risk_score"]
+    assert nri_by_id["eal_score"]["state_percentile"]["value"] is not None
     assert nri_by_id["eal_valt"]["value"] > 0
     assert nri_by_id["resl_score"]["direction"] == "higher_better"
 

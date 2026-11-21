@@ -1,3 +1,5 @@
+import "./SviQuartileBar.css";
+
 export const SVI_NO_DATA_COLOR = "#d8dee3";
 export const SVI_UNAVAILABLE_MESSAGE = "Data unavailable from the Census to calculate this variable.";
 export const SVI_RANGE_TEXT = "Possible ranks range from 0 (lowest vulnerability) to 1 (highest vulnerability).";
@@ -195,11 +197,11 @@ export function sviPaletteColor(value, status, measureId = "rpl_themes") {
 }
 
 const TICKS = [
-  { label: "0", x: 10 },
-  { label: "0.25", x: 65 },
-  { label: "0.50", x: 120 },
-  { label: "0.75", x: 175 },
-  { label: "1", x: 230 },
+  { label: "0", pct: 0, edge: "is-start" },
+  { label: "0.25", pct: 25, edge: "" },
+  { label: "0.50", pct: 50, edge: "" },
+  { label: "0.75", pct: 75, edge: "" },
+  { label: "1", pct: 100, edge: "is-end" },
 ];
 
 export default function SviQuartileBar({ value, status, measureId = "rpl_themes", className = "" }) {
@@ -208,69 +210,65 @@ export default function SviQuartileBar({ value, status, measureId = "rpl_themes"
   const theme = sviThemeForMeasure(measureId);
   const level = sviLevel(num, status);
   const formatted = sviFormatValue(num);
-  const barX = 10;
-  const barY = 6;
-  const barW = 220;
-  const barH = 14;
-  const bandW = barW / 4;
-  const dotX = barX + num * barW;
-  const dotY = barY + barH / 2;
+  const pct = (num * 100).toFixed(2);
   const ariaLabel = `Rank ${formatted} of 1, ${level.phrase} vulnerability`;
 
   return (
-    <svg
+    <div
       className={`svi-quartile-bar ${className}`.trim()}
-      viewBox="0 0 240 42"
       role="img"
       aria-label={ariaLabel}
-      style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }}
     >
-      {theme.palette.map((fill, index) => (
-        <rect
-          key={SVI_LEVELS[index].key}
-          x={barX + index * bandW}
-          y={barY}
-          width={bandW}
-          height={barH}
-          fill={fill}
-          stroke="#555555"
-          strokeWidth="0.75"
+      <div className="svi-quartile-track">
+        <svg
+          className="svi-quartile-svg"
+          viewBox="0 0 400 14"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {theme.palette.map((fill, index) => (
+            <rect
+              key={SVI_LEVELS[index].key}
+              x={index * 100}
+              y={0}
+              width={100}
+              height={14}
+              fill={fill}
+            />
+          ))}
+          {[100, 200, 300].map((x) => (
+            <line
+              key={x}
+              x1={x}
+              y1={0}
+              x2={x}
+              y2={14}
+              stroke="#555555"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+        <span
+          className="svi-quartile-dot"
+          data-testid="svi-quartile-dot"
+          data-pct={pct}
+          aria-hidden="true"
+          style={{ left: `${pct}%` }}
         />
-      ))}
-      <rect
-        x={barX}
-        y={barY}
-        width={barW}
-        height={barH}
-        fill="none"
-        stroke="#555555"
-        strokeWidth="1"
-      />
-      {TICKS.map((tick) => (
-        <g key={tick.label}>
-          <line x1={tick.x} y1={barY + barH} x2={tick.x} y2={barY + barH + 3} stroke="#555555" strokeWidth="1" />
-          <text
-            x={tick.x}
-            y={35}
-            textAnchor="middle"
-            fontSize="10"
-            fill="#334e5e"
-            fontFamily="Arial, sans-serif"
+      </div>
+      <div className="svi-quartile-ticks" aria-hidden="true">
+        {TICKS.map((tick) => (
+          <span
+            key={tick.label}
+            className={`svi-quartile-tick ${tick.edge}`.trim()}
+            style={{ left: `${tick.pct}%` }}
           >
-            {tick.label}
-          </text>
-        </g>
-      ))}
-      <circle
-        cx={dotX}
-        cy={dotY}
-        r={5}
-        fill="#000000"
-        stroke="#ffffff"
-        strokeWidth="1.25"
-        data-testid="svi-quartile-dot"
-        data-pct={(num * 100).toFixed(2)}
-      />
-    </svg>
+            <span className="svi-quartile-tick-mark" />
+            <span className="svi-quartile-tick-label">{tick.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

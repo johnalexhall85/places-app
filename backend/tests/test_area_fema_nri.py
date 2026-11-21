@@ -85,16 +85,22 @@ def test_registry_and_mcp_contract():
     assert not CONFIG['refresh_policy']['auto_publish'] and CONFIG['aggregation_method'] == 'none'
     by_id = {m['measure_id']: m for m in CONFIG['measures']}
     assert list(by_id) == fema_nri_area.MEASURE_IDS
+    assert len(CONFIG['measures']) == 9
+    assert 'risk_spctl' not in by_id
     assert by_id['eal_score']['geographies'] == ['state', 'county', 'tract']
     assert by_id['eal_valt']['geographies'] == ['state', 'county', 'tract']
-    for mid in ('risk_score', 'risk_spctl', 'eal_spctl', 'sovi_score', 'sovi_spctl', 'resl_score', 'resl_spctl', 'crf_value'):
+    for mid in ('risk_score', 'eal_spctl', 'sovi_score', 'sovi_spctl', 'resl_score', 'resl_spctl', 'crf_value'):
         assert by_id[mid]['geographies'] == ['county', 'tract']
     assert by_id['resl_score']['direction'] == 'higher_better'
     assert by_id['resl_spctl']['direction'] == 'higher_better'
     assert by_id['risk_score']['direction'] == 'higher_worse'
     assert by_id['eal_valt']['legend_breaks']['state'] != by_id['eal_valt']['legend_breaks']['county']
     assert by_id['eal_valt']['legend_breaks']['county'] != by_id['eal_valt']['legend_breaks']['tract']
-    assert len(CONFIG['limitations']) == 6
+    assert len(CONFIG['limitations']) == 7
+    assert (
+        "FEMA's v1.20 file repeats the national risk score in its risk state-percentile field for every "
+        "county and tract, so CHIP does not show a within-state percentile for the overall risk score."
+    ) in CONFIG['limitations']
     assert fema_nri_area_api.LIMITATIONS == CONFIG['limitations']
 
     comp = lookup.comparability('fema_nri')
@@ -116,7 +122,7 @@ def test_parse_value_status_rules_including_paired_blank_spctl():
     # Paired *_SCORE blank forces *_SPCTL=0 to not_available!
     assert parse_value('0.000000000000000', by_id['sovi_spctl'], paired_score_raw='') == (None, 'not_available')
     assert parse_value('0', by_id['resl_spctl'], paired_score_raw='') == (None, 'not_available')
-    assert parse_value('', by_id['risk_spctl'], paired_score_raw='') == (None, 'not_available')
+    assert parse_value('', by_id['eal_spctl'], paired_score_raw='') == (None, 'not_available')
     # Rounding to Numeric(20, 4) matches PostgreSQL ROUND_HALF_UP.
     assert parse_value('19756570.050850827', by_id['eal_valt']) == (Decimal('19756570.0509'), 'available')
     assert parse_value('62.500000000000000', by_id['eal_score']) == (Decimal('62.5000'), 'available')
@@ -146,13 +152,21 @@ def test_parse_zip_reads_in_memory_stages_selected_fields_only_and_handles_ratin
     assert prov['archive_only'] is True
     assert stats['row_counts'] == {'state': 1, 'county': 2, 'tract': 1}
     assert {f['role'] for f in files} == {'nri_state_zip', 'nri_county_zip', 'nri_tract_zip'}
-    # Only identifiers + selected fields are staged in record (EXTRA_COL / UNUSED_HAZARD_COL excluded).
+    # Only identifiers + selected fields are staged in record (EXTRA_COL / UNUSED_HAZARD_COL / RISK_SPCTL excluded).
     assert set(records[('state', '01')]) == set(selected_fields_for_level(TEST, 'state'))
     assert 'EXTRA_COL' not in records[('state', '01')]
     assert 'UNUSED_HAZARD_COL' not in records[('county', '01001')]
+    assert 'RISK_SPCTL' not in records[('county', '01001')]
+    assert 'RISK_SPCTL' not in records[('tract', '01001020100')]
+
+    # Check county observations do not produce risk_spctl even though RISK_SPCTL is in the source CSV.
+    al_obs = {v['measure']['measure_id']: v for v in observation_values(records[('county', '01001')], 'county', TEST)}
+    assert 'risk_spctl' not in al_obs
+    assert {'eal_spctl', 'sovi_spctl', 'resl_spctl'} <= set(al_obs)
 
     # Check Puerto Rico county where SOVI/RESL scores are blank and SPCTL is 0.
     pr_obs = {v['measure']['measure_id']: v for v in observation_values(records[('county', '72001')], 'county', TEST)}
+    assert 'risk_spctl' not in pr_obs
     assert pr_obs['risk_score']['status'] == 'not_available' and pr_obs['risk_score']['value'] is None
     assert pr_obs['risk_score']['rating'] == 'Insufficient Data'
     assert pr_obs['sovi_spctl']['status'] == 'not_available' and pr_obs['sovi_spctl']['value'] is None
@@ -162,8 +176,9 @@ def test_parse_zip_reads_in_memory_stages_selected_fields_only_and_handles_ratin
     assert pr_obs['sovi_score']['rating'] == 'Data Unavailable'
     assert pr_obs['eal_score']['status'] == 'available' and pr_obs['eal_score']['rating'] == 'Relatively Low'
 
-    # Check tract with true_zero EAL_VALT and blank RISK_RATNG -> rating None.
+    # Check tract with true_zero EAL_VALT and blank RISK_RATNG -> rating None, and no risk_spctl.
     t_obs = {v['measure']['measure_id']: v for v in observation_values(records[('tract', '01001020100')], 'tract', TEST)}
+    assert 'risk_spctl' not in t_obs
     assert t_obs['eal_valt']['status'] == 'true_zero' and t_obs['eal_valt']['value'] == Decimal('0.0000')
     assert t_obs['eal_score']['rating'] == 'No Expected Annual Losses'
     assert t_obs['risk_score']['rating'] is None
@@ -204,11 +219,13 @@ def test_classify_and_expected_observations():
     assert classified[('tract', '60010950100')]['boundary_status'] == 'source_only'
 
     expected = fema_nri_area_cli.expected_observations(records, classified, TEST)
-    # 1 matched state * 2 measures + 1 matched county * 10 measures + 1 matched tract * 10 measures = 22
-    assert len(expected) == 22
+    # 1 matched state * 2 measures + 1 matched county * 9 measures + 1 matched tract * 9 measures = 20
+    assert len(expected) == 20
     assert ('state', '01', 'eal_score') in expected
     assert ('state', '01', 'eal_valt') in expected
     assert ('state', '01', 'risk_score') not in expected
+    assert ('county', '09110', 'risk_spctl') not in expected
+    assert ('tract', '09110500100', 'risk_spctl') not in expected
 
     uncovered, _ = boundary_without_source(classified, {'01', '09'}, {'09110'}, {'09110500100'}, TEST)
     assert uncovered == {'state:09': 'no_fema_nri_row'}

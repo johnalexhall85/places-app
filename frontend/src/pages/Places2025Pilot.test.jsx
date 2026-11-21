@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -981,9 +981,14 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
     expect(sviFeatureStyle(durhamFeature, { scope: "state", selectedState: "", measureId: "rpl_themes_state" }))
       .toMatchObject({ fill: false, fillOpacity: 0, fillColor: "transparent" });
     expect(sviFeatureStyle(vaFeature, { scope: "state", selectedState: "37", measureId: "rpl_themes_state" }))
-      .toMatchObject({ fill: false, fillOpacity: 0, fillColor: "transparent" });
+      .toMatchObject({ color: "#b0bec5", fillOpacity: 0, fillColor: "transparent" });
     expect(sviFeatureStyle(durhamFeature, { scope: "state", selectedState: "37", measureId: "rpl_themes_state" }))
       .toMatchObject({ fill: true, fillColor: "#80CDD5" });
+    expect(filterSviStateFeatures([durhamFeature, vaFeature], "37")).toEqual([durhamFeature]);
+    expect(summarizeSviStatuses([durhamFeature.properties])).toEqual([{ status: "available", n: 1, low: 0.596, high: 0.596 }]);
+    const sanitized = sanitizeSviStateMapData({ type: "FeatureCollection", features: [durhamFeature, vaFeature] }, "37");
+    expect(sanitized.features[0].properties.value).toBe(0.596);
+    expect(sanitized.features[1].properties).toMatchObject({ value: null, status: "outside_selected_state", status_text: SVI_OUTSIDE_STATE_MESSAGE });
 
     const usDetails = areaFeatureDetails("svi", { name: "Durham County", geography_id: "37063", value: 0.686,
       source_value: "0.6860", status: "available" }, measures[0], { geography: "county", catalog });
@@ -993,6 +998,14 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
       source_value: "0.5960", status: "available" }, measures[2], { geography: "county", catalog, sviScope: "state", sviState: "37" });
     expect(stateDetails.explanation).toMatch(/within-state percentile rank/i);
     expect(stateDetails.lines.join(" | ")).toContain("Rank among counties in the same state");
+    const outsideDetails = areaFeatureDetails("svi", { name: "Fairfax", geography_id: "51059", value: 0.2,
+      source_value: "0.2000", status: "available" }, measures[2], { geography: "county", catalog, sviScope: "state", sviState: "37" });
+    expect(outsideDetails.value).toBe(SVI_OUTSIDE_STATE_MESSAGE);
+    expect(outsideDetails.lines).toEqual([SVI_OUTSIDE_STATE_MESSAGE]);
+    const outsideTip = areaTooltip("svi", { name: "Fairfax", geography_id: "51059", value: 0.2,
+      source_value: "0.2000", status: "available" }, measures[2], { geography: "county", catalog, sviScope: "state", sviState: "37" });
+    expect(outsideTip).toContain(SVI_OUTSIDE_STATE_MESSAGE);
+    expect(outsideTip).not.toContain("0.20");
   });
 
   it("renders CDC map panel for county, tract, and -999, closes on change, and handles Statewide + DC switch", async () => {
@@ -1079,6 +1092,8 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
     expect(panel).toHaveTextContent("Possible ranks range from 0 (lowest vulnerability) to 1 (highest vulnerability).");
     expect(panel).toHaveTextContent("A rank of 0.686 indicates a medium to high level of vulnerability.");
     expect(screen.getByRole("img", { name: "Rank 0.686 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    expect(panel.querySelectorAll(".svi-quartile-tick-label")).toHaveLength(5);
+    expect(panel.querySelector("svg text")).toBeNull();
     expect(screen.getByRole("link", { name: "Open county profile" })).toHaveAttribute("href", "/community/county/37063");
 
     // Switching to Statewide while Durham County is selected: closes panel, moves focus to State Selection, preselects NC (37), zooms, updates URL & legend title!
@@ -1095,7 +1110,7 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
 
     // Verify NC county filled while VA county has no fill in Statewide mode.
     expect(mapHarness.geojson.style(countyFeatureState)).toMatchObject({ fill: true, fillColor: "#80CDD5" });
-    expect(mapHarness.geojson.style(vaCountyFeature)).toMatchObject({ fill: false, fillOpacity: 0 });
+    expect(mapHarness.geojson.style(vaCountyFeature)).toMatchObject({ color: "#b0bec5", fillOpacity: 0, fillColor: "transparent" });
 
     // Clear state selection -> no fill colors, "Choose a state to see statewide rankings.", no new rpl_X_state fetch!
     const stateMapCallsBefore = urls.filter((u) => u.includes("/map?") && u.includes("_state")).length;
@@ -1156,6 +1171,84 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
     expect(screen.getByRole("button", { name: "Statewide" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("State Selection")).toHaveValue("37");
     expect(screen.getByRole("heading", { name: "Levels of Vulnerability (within North Carolina)" })).toBeInTheDocument();
+  });
+
+  it("excludes out-of-state rows from legend counts and table and shows Outside the selected state on click/tooltip", async () => {
+    window.history.replaceState(null, "", "/area/svi?measure_id=rpl_themes_state&scope=state&state=37");
+    const gaCounty = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-83.5, 34.8], [-83.2, 34.8], [-83.2, 35.0], [-83.5, 35.0], [-83.5, 34.8]]] },
+      properties: { geography_id: "13241", name: "Rabun", value: 0.42, source_value: "0.4200", status: "available" },
+    };
+    const ncAlamance = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-79.5, 35.9], [-79.2, 35.9], [-79.2, 36.2], [-79.5, 36.2], [-79.5, 35.9]]] },
+      properties: { geography_id: "37001", name: "Alamance", value: 0.71, source_value: "0.7100", status: "available" },
+    };
+    const ncDurham = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-79.0, 35.9], [-78.7, 35.9], [-78.7, 36.2], [-79.0, 36.2], [-79.0, 35.9]]] },
+      properties: { geography_id: "37063", name: "Durham", value: 0.596, source_value: "0.5960", status: "available" },
+    };
+    const vaCounty = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-79.0, 36.6], [-78.6, 36.6], [-78.6, 36.8], [-79.0, 36.8], [-79.0, 36.6]]] },
+      properties: { geography_id: "51117", name: "Mecklenburg", value: 0.88, source_value: "0.8800", status: "available" },
+    };
+    const allFeatures = [gaCounty, ncAlamance, ncDurham, vaCounty];
+    const allRows = allFeatures.map((f) => f.properties);
+
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url);
+      if (path.includes("/catalog")) return { ok: true, json: async () => ({ ...catalog, active_release_id: "svi-state-filter-rel" }) };
+      if (path.includes("/community/area/state/37")) {
+        return { ok: true, json: async () => ({ level: "state", geoid: "37", name: "North Carolina", bbox: [-84.32, 33.84, -75.46, 36.59] }) };
+      }
+      const payload = path.includes("/map?")
+        ? { type: "FeatureCollection", features: allFeatures, legend_breaks: [0.25, 0.5, 0.75] }
+        : path.includes("/legend?")
+          ? { legend_breaks: [0.25, 0.5, 0.75], statuses: [{ status: "available", n: 4 }] }
+          : { total: 4, rows: allRows };
+      return { ok: true, json: async () => ({ ...payload, release_id: "svi-state-filter-rel", geography: "county" }) };
+    }));
+
+    const { container } = render(<Places2025Pilot dataset="svi" />);
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getByText("37001")).toBeInTheDocument();
+
+    // Out-of-state rows (Georgia 13241, Virginia 51117) are excluded from table AND legend counts!
+    expect(screen.queryByText("13241")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rabun")).not.toBeInTheDocument();
+    expect(screen.queryByText("51117")).not.toBeInTheDocument();
+    expect(screen.getByText("Displayed county values (2)")).toBeInTheDocument();
+    expect(screen.getByText("available: 2")).toBeInTheDocument();
+    expect(screen.queryByText("available: 4")).not.toBeInTheDocument();
+
+    // Out-of-state map features have no fill + light outline, while NC features are filled.
+    const renderedFeatures = mapHarness.geojson.data.features;
+    const renderedGa = renderedFeatures.find((f) => f.properties.geography_id === "13241");
+    const renderedNc = renderedFeatures.find((f) => f.properties.geography_id === "37063");
+    expect(renderedGa.properties.value).toBeNull();
+    expect(mapHarness.geojson.style(renderedGa)).toMatchObject({ color: "#b0bec5", fillOpacity: 0, fillColor: "transparent" });
+    expect(mapHarness.geojson.style(renderedNc)).toMatchObject({ fill: true, fillColor: "#80CDD5" });
+
+    // Tooltip and click panel for out-of-state area say "Outside the selected state" and show no rank.
+    const tooltipSpy = vi.fn();
+    let clickGa;
+    mapHarness.geojson.onEachFeature(renderedGa, {
+      setStyle: vi.fn(),
+      bindTooltip: tooltipSpy,
+      on: (ev, fn) => { if (ev === "click") clickGa = fn; },
+    });
+    expect(tooltipSpy.mock.calls[0][0]).toContain(SVI_OUTSIDE_STATE_MESSAGE);
+    expect(tooltipSpy.mock.calls[0][0]).not.toContain("0.42");
+    act(() => clickGa());
+    const panel = await screen.findByTestId("selected-area");
+    expect(panel).toHaveTextContent("Rabun County, GA");
+    expect(panel).toHaveTextContent(SVI_OUTSIDE_STATE_MESSAGE);
+    expect(panel).not.toHaveTextContent("0.42");
+    expect(panel).not.toHaveTextContent(SVI_UNAVAILABLE_MESSAGE);
+    expect(container.querySelector("[data-testid='svi-quartile-dot']")).toBeNull();
   });
 });
 

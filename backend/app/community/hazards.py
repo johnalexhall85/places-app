@@ -12,7 +12,7 @@ SVI_THEMES: tuple[tuple[str, str, str], ...] = (
 )
 
 COUNTY_NRI_MEASURES: tuple[tuple[str, str | None], ...] = (
-    ("risk_score", "risk_spctl"),
+    ("risk_score", None),
     ("eal_score", "eal_spctl"),
     ("eal_valt", None),
     ("sovi_score", "sovi_spctl"),
@@ -76,14 +76,16 @@ def _nri_rows(
             continue
         spctl = _with_citation(by_measure.get(spctl_id), product) if spctl_id else None
         notes = row.get("notes") or {}
-        rows.append(
+        entry = (
             _with_citation(row, product)
             | {
                 "rating": notes.get("rating"),
-                "state_percentile": spctl,
                 "direction": "higher_better" if measure_id in HIGHER_BETTER_NRI else "higher_worse",
             }
         )
+        if spctl is not None:
+            entry["state_percentile"] = spctl
+        rows.append(entry)
     return rows
 
 

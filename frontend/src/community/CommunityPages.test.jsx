@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import {
   CommunityCounty,
+  NRI_RISK_SPCTL_NOTE,
   formatIndicatorValue,
   formatNriPercentile,
   formatNriValue,
@@ -183,7 +184,18 @@ const SAMPLE_COUNTY_HAZARDS = {
       status_text: "Published value",
       rating: "Relatively Moderate",
       direction: "higher_worse",
-      state_percentile: { value: 89.0, status: "available", status_text: "Published value" },
+      citation: "Source: FEMA · FEMA National Risk Index · NRI v1.20 (December 2025)",
+    },
+    {
+      measure_id: "eal_score",
+      label: "Expected annual loss score",
+      kind: "score",
+      value: 84.2,
+      status: "available",
+      status_text: "Published value",
+      rating: "Relatively Moderate",
+      direction: "higher_worse",
+      state_percentile: { value: 86.0, status: "available", status_text: "Published value" },
       citation: "Source: FEMA · FEMA National Risk Index · NRI v1.20 (December 2025)",
     },
     {
@@ -196,7 +208,6 @@ const SAMPLE_COUNTY_HAZARDS = {
       status_text: "Published value",
       rating: null,
       direction: "higher_worse",
-      state_percentile: null,
       citation: "Source: FEMA · FEMA National Risk Index · NRI v1.20 (December 2025)",
     },
     {
@@ -276,6 +287,10 @@ describe("county and state profile hazard sections", () => {
     expect(within(overallCard).getByText("0.596")).toBeInTheDocument();
     expect(within(overallCard).getByRole("img", { name: "Rank 0.686 of 1, medium to high vulnerability" })).toBeInTheDocument();
     expect(within(overallCard).getByRole("img", { name: "Rank 0.596 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    // Tick labels render as HTML (fixed 0.75rem), not scaled SVG <text>.
+    expect(overallCard.querySelectorAll(".svi-quartile-tick-label")).toHaveLength(10);
+    expect(overallCard.querySelector("svg text")).toBeNull();
+    expect(overallCard.querySelectorAll("[data-testid='svi-quartile-dot']")).toHaveLength(2);
     expect(within(overallCard).getByText("Possible ranks range from 0 (lowest vulnerability) to 1 (highest vulnerability).")).toBeInTheDocument();
     expect(within(overallCard).getByRole("link", { name: "View on map" }))
       .toHaveAttribute("href", "/area/svi?measure_id=rpl_themes&scope=us&focus=county:37063");
@@ -299,8 +314,14 @@ describe("county and state profile hazard sections", () => {
     const nriSection = container.querySelector("#fema-nri");
     expect(within(nriSection).getByText(/Higher community resilience is better/)).toBeInTheDocument();
     expect(within(nriSection).getByText("$38,142,500")).toBeInTheDocument();
-    expect(within(nriSection).getByText("Relatively Moderate")).toBeInTheDocument();
-    expect(within(nriSection).getByText("89.0")).toBeInTheDocument();
+    expect(within(nriSection).getAllByText("Relatively Moderate").length).toBeGreaterThan(0);
+    expect(within(nriSection).getByText("86.0")).toBeInTheDocument();
+    // Overall risk_score has no within-state percentile: shows "—" with footnote explaining FEMA v1.20.
+    const riskRow = within(nriSection).getByText("National Risk Index score").closest("tr");
+    const riskCells = riskRow.querySelectorAll("td");
+    expect(riskCells[2]).toHaveTextContent("—*");
+    expect(riskCells[2]).toHaveAttribute("aria-describedby", "nri-risk-spctl-note");
+    expect(within(nriSection).getByText(NRI_RISK_SPCTL_NOTE)).toBeInTheDocument();
     expect(within(nriSection).getByText("Not published by FEMA for this area (Data Unavailable)")).toBeInTheDocument();
     expect(within(nriSection).getByText("Not published by FEMA for this area")).toBeInTheDocument();
     expect(within(nriSection).getByText("higher is better")).toBeInTheDocument();
@@ -406,6 +427,7 @@ describe("county and state profile hazard sections", () => {
     expect(within(nriSection).getByText("89.3")).toBeInTheDocument();
     expect(within(nriSection).getByText("Relatively High")).toBeInTheDocument();
     expect(within(nriSection).getByText("$3,210,450,124")).toBeInTheDocument();
+    expect(within(nriSection).queryByText(NRI_RISK_SPCTL_NOTE)).not.toBeInTheDocument();
     expect(within(nriSection).getByRole("link", { name: /Explore FEMA NRI on the map/ })).toHaveAttribute("href", "/area/fema-nri?focus=state:37");
   });
 });
