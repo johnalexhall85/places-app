@@ -25,13 +25,13 @@ Each source was downloaded by script from this server and archived under `data/i
 | M1 | Antigravity | `cdc_hds_mortality`: backend, `/area/heart-stroke-mortality` map, MCP listing |
 | M2 | Antigravity | `nci_cancer_mortality`, the same pattern, `/area/cancer-mortality` |
 | M3 | Antigravity | `nchs_drug_poisoning` 2021, `/area/drug-poisoning-mortality` |
+| M6 | Antigravity | County and state profile "Death rates" section and `/deaths` endpoints (contract §5), added at John's request 2026-11-21 |
 | M4 | Claude | Staging ingests and publications, tool contract amendment 6, commit, merge to `beta`, staging deploy, then **Gate A** (John's tryout) |
 | M5 | Claude | Live ingest after **Gate B**; handbook, coverage matrix, diary |
 
 Codex was at about 20% of its weekly allowance on 2026-11-20, so Antigravity writes the code. Codex does at most one read-only review.
 
 ## Out of scope for this package
-- Profile sections for death rates. These need John's decision and a new endpoint like `/hazards`, because existing profile endpoints must stay byte-identical.
 - Drug poisoning history 2003–2020, and heart disease and stroke 2018–2020 (`jiwm-ppbh` and its stroke twin), through the history machinery.
 - Sex and race/ethnicity strata. Only the "Overall" rows are published.
 - Female breast and prostate cancer. 47–48% of counties are suppressed.

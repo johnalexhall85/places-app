@@ -128,7 +128,8 @@ The [mortality plan](docs/mortality/PLAN.md) and [contract](docs/mortality/CONTR
 - **Antigravity** works in `/home/john/chip-agy-mort` and **owns**:
   - the new product files its task file names, under `backend/app/area_pilot/` and `registry/`
   - the additions its task file names in `lookup.py`, `router.py`, `registry/comparability.json`, `backend/app/mcp_server/config.py`, and `frontend/**`
-  - `backend/tests/test_area_mortality_*`
+  - `backend/tests/test_area_mortality_*` and `backend/tests/test_community_deaths*`
+  - additions to `backend/app/community/**` and the profile pages, for the "Death rates" section (task M6)
   - `docs/mortality/status/antigravity.md`
 - **Reassigned 2026-11-21 by Claude** (Codex was low on weekly usage on 2026-11-20): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live. Codex may review read-only.
 - County, state, and district profile endpoints and the `docs/beta/contract-examples` snapshots stay byte-identical.
