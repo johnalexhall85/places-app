@@ -109,3 +109,28 @@ The archive also holds `breast_female_*` and `prostate_*`. These are not publish
 
 ## 4. MCP
 Add each product to `PUBLIC_PRODUCTS` and add one `RULES` sentence: "Mortality rates are published by the source, age-adjusted; never add them, compare them across mortality products, or call a suppressed value zero." Tool contract Amendment 6 records the change (Claude).
+
+## 5. Profile sections (added 2026-11-21 at John's request)
+
+**Endpoints:** `GET /api/community/county/{geoid}/deaths` and `GET /api/community/state/{geoid}/deaths`, modelled on `/hazards` (`backend/app/community/hazards.py`).
+- They read only through `app.area_pilot.lookup.area_values`, and add no ranks, changes, differences, or composites.
+- Each row carries the `lookup` value object, with `citation`, `status`, `status_text`, and the uncertainty as returned.
+- The existing `/county/{geoid}`, `/state/{geoid}`, `/charts`, `/peers`, and `/hazards` responses do not change. The `docs/beta/contract-examples` snapshots stay byte-identical.
+- The existing profile JSON and CSV will list mortality rows automatically once the products are published. The vulnerability Amendment 1 accepted the same for SVI and NRI.
+
+**County response:**
+- `heart_stroke`: rows for `heart_disease_death_rate` and `stroke_death_rate`. Each row has `county`, `state`, and `us` value objects, so the page can show the state and national reference values beside the county.
+- `cancer`: the three cancer measures, with the same `county`, `state`, and `us` objects.
+- `drug_poisoning`: `drug_poisoning_death_rate` for the county only, with no state or U.S. value.
+- `sources` and `limitations`.
+
+**State response:** `heart_stroke` and `cancer`, with `state` and `us` objects. There is no `drug_poisoning`, because NCHS publishes no state value in this file.
+
+**Page section:** "Death rates", on the county and state profiles.
+- One table per product. The columns are Measure, [County], [State], and United States.
+- Each value shows its period and the source's age-adjustment note. For cancer and drug poisoning, the 95% interval appears in smaller text.
+- Each product has a one-line note taken from its first limitation. Drug poisoning also states that it is a model-based 2021 estimate.
+- Each table links to its `/area/*` map.
+- Suppressed values show their `status_text`, never 0 or a blank.
+- The profile pages must skip the three mortality products in every other section, as they do for SVI and NRI.
+- The CSV and PDF exports follow the existing behaviour.
