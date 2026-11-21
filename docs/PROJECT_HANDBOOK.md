@@ -1,15 +1,15 @@
 # CHIP project handbook
 
-**Mortality: on staging since 2026-11-21T03:40Z, not live (Claude, Antigravity).** Plan: [docs/mortality/PLAN.md](mortality/PLAN.md); contract: [docs/mortality/CONTRACT.md](mortality/CONTRACT.md); MCP [Amendment 6](mcp/TOOL_CONTRACT.md).
-- **Products** (migration `c3e7a1f5b9d2`, staging only):
-  - `cdc_hds_mortality`: CDC heart disease and stroke death rates, adults 35+, 2022–2024. State and county, with a national reference. Staging release `0563fdb4…`.
-  - `nci_cancer_mortality`: NCI cancer death rates for all sites, lung, and colorectal, 2020–2024, with 95% CIs. State and county, with a national reference. Staging release `2353290d…`.
-  - `nchs_drug_poisoning`: NCHS model-based county drug poisoning death rate, 2021, with a 95% model interval. Staging release `09113340…`. The 2003–2020 rows are staged only.
+**Mortality: live since 2026-11-21T15:17Z (Gate B); on staging since 03:40Z (Claude, Antigravity).** Plan: [docs/mortality/PLAN.md](mortality/PLAN.md); contract: [docs/mortality/CONTRACT.md](mortality/CONTRACT.md); MCP [Amendment 6](mcp/TOOL_CONTRACT.md).
+- **Products** (migration `c3e7a1f5b9d2`, applied on live and staging):
+  - `cdc_hds_mortality`: CDC heart disease and stroke death rates, adults 35+, 2022–2024. State and county, with a national reference. Live release `b4e3e6c5-9c4d-4ee3-8160-62b003a36b31` (staging `0563fdb4…`; same digests).
+  - `nci_cancer_mortality`: NCI cancer death rates for all sites, lung, and colorectal, 2020–2024, with 95% CIs. State and county, with a national reference. Live release `3268a426-739c-43ed-aaaa-f5be4457f9c6` (staging `2353290d…`; same digests).
+  - `nchs_drug_poisoning`: NCHS model-based county drug poisoning death rate, 2021, with a 95% model interval. Live release `e8820dea-9b43-44d8-b6c3-b43db4fd533c` (staging `09113340…`; same digests). The 2003–2020 rows are staged only.
 - **Routes:** `/area/heart-stroke-mortality`, `/area/cancer-mortality`, and `/area/drug-poisoning-mortality`.
 - **Profiles:** a "Death rates" section on county and state profiles, from `GET /api/community/{county|state}/{geoid}/deaths` (`backend/app/community/deaths.py`). The other profile sections and `/charts` skip these products.
 - **Ingest:** `python -m app.area_pilot.{hds_mortality,cancer_mortality,drug_poisoning}_cli fetch-stage-validate [--skip-fetch]`, then `approve-publish <candidate> --semantic-sha256 … --schema-sha256 … --metadata-sha256 …`. Sources are archived in `data/ingest/{cdc_hds_mortality_2024,nci_scp_mortality_2024,nchs_drug_poisoning_county}/`.
 - **Connecticut:** all three sources use the former counties, which are staged as source-only. Planning regions read "No row in this release".
-- **Staging:** `beta` `1d7ae37`. Live is unchanged: no migration and no releases.
+- **Deployed:** live `main` `4edf13a` with bundle `index-D6uKhaMq.js`, the same as staging. Recovery set: `data/deploy-recovery/mort-20261121/` and a private `area_pilot` dump in `/home/john/chip-recovery/20261121-mort/`. The public MCP connector lists 13 area products.
 - **Open:** profile charts and MCP evaluation questions for mortality; history (NCHS 2003–2020, CDC HDS 2018–2020); female breast and prostate cancer (about 47% of counties suppressed).
 
 **Profile charts and trends: live since 2026-11-19T21:00Z (Claude; Gate A passed: John, "That looks great"; Gate B approved: "go ahead and push to live and git push"). Plan: [docs/profile-viz/PLAN.md](profile-viz/PLAN.md); contract v1.1: [CHART_CONTRACT.md](profile-viz/CHART_CONTRACT.md).**
@@ -305,6 +305,6 @@ The [November 14 local recovery-set guide](../backend/docs/chip_current_recovery
 Next work:
 
 1. Preserve the verified C4 local recovery set. Arrange an independent encrypted copy, credential recovery, and a recurring backup policy as separate operational work; no off-VM copy or schedule has been completed.
-2. **Updated 2026-11-21 (Claude):** every planned package (beta, MCP, history, funding MCP, profile charts, state funding, grant history, state map, vulnerability) is live, and `main` and `beta` are pushed to `origin`. The next product package is mortality ([plan](mortality/PLAN.md)), on staging only until Gate B.
+2. **Updated 2026-11-21 (Claude):** every planned package (beta, MCP, history, funding MCP, profile charts, state funding, grant history, state map, vulnerability) is live, and `main` and `beta` are pushed to `origin`. The mortality package ([plan](mortality/PLAN.md)) went live on 2026-11-21 at 15:17Z.
 3. Vulnerability follow-ons: SVI 2018 and 2020 as history periods; NRI per-hazard fields and rating labels; reword SVI limitation 2 ("state-ranked SVI files") in the next SVI release, since the text is part of the published release; make the MCP `status_glossary` text for `not_available` product-neutral (it reuses the USDA wording from `lookup.STATUS_TEXT`, which the `docs/beta/contract-examples` snapshots pin, so the fix belongs in `mcp_server/tools.py`, Codex's path).
 4. After beta, recheck CLH's AHRQ endpoint after empty HTTP 202 responses, record HRSA's answer on AHRF redistribution (question sent by John; credits added and deployed to live 2026-11-15) and settle legacy vintage/source gaps, and decide which manual products should join scheduled content checks. Separately decide whether to retire the older CMS GV import. Investigate the pre-existing FY2026 CDC account-summary natural-key test failure.

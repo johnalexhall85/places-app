@@ -2,6 +2,26 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T15:25:00+00:00: Mortality promoted to live (Claude, Gate B)
+
+- **Approval:** John said "This is great. Approved. Go live." He did not ask for git pushes, so none were made.
+- **Recovery set:**
+  - `data/deploy-recovery/mort-20261121/`: commit `9ec29b5`, Alembic `a6c4e8b2d0f7`, bundle `index-Bvr3SVpW.js`, `webroot-before/`, `pointers-before.txt` (24), and `profiles-before.json`.
+  - A private `pg_dump -Fc -n area_pilot` at `/home/john/chip-recovery/20261121-mort/` (2.1 GB; `pg_restore --list` reads 294 entries).
+- **Steps on live:**
+  1. Fast-forwarded `main` from `9ec29b5` to `4edf13a`. The first try was a no-op because `FETCH_HEAD` had changed; I reran it with the commit hash.
+  2. `alembic upgrade head`, from `a6c4e8b2d0f7` to `c3e7a1f5b9d2`.
+  3. Copied the three archived source folders into `data/ingest/`, then ran `{hds_mortality,cancer_mortality,drug_poisoning}_cli fetch-stage-validate --skip-fetch`. All three were ready.
+  4. Each candidate's semantic, schema, metadata, and keyset digests matched staging. `approve-publish` gave HDS `b4e3e6c5…`, NCI `3268a426…`, and NCHS `e8820dea…`.
+  5. `npm ci`, then `VITE_API_BASE_URL=/api npm run build`, giving `index-D6uKhaMq.js` (the same as staging), then `rsync --delete` to `/var/www/places`, and `systemctl restart places-backend chip-mcp` at 15:17Z.
+- **Verification:**
+  - **Pointers:** 24 → 27. Only the three mortality pointers were added.
+  - **Existing values:** `lookup.area_values` for 37145, 54039, 06019, 37063, district 5401, state 37, and tract 37063001502 is unchanged apart from the added mortality rows.
+  - **Routes:** `/api/health`, `/`, the three `/area/*-mortality` pages, and `/community/county/37063` return 200. The anonymous `/deaths` endpoint returns 401.
+  - **Public MCP connector:** `list_data_sources` shows 13 area products. For Durham, `get_area_values` returns heart disease 227.2, stroke 71.2, all-sites cancer 132.6 (127.2–138.2), lung 25.1, colorectal 11.8, and drug poisoning 23.87115, all equal to the source files.
+- **Not done:** no signed-in browser check on live (no live access code on file), and no git push.
+- **Next:** the follow-ups in the handbook mortality block. The open decisions for John are unchanged: the off-VM backup destination, pruning old worktrees, and the untracked files in `/home/john/places-app`.
+
 ## 2026-11-21T03:45:00+00:00: Mortality package on staging; documentation cleanup (Claude, Antigravity)
 
 - **Request (John):** clean up stale documents, then start the mortality package. Later, add death rates to the county and state profiles. He is away from 8 PM until 8 AM, and Gate A is his tryout.

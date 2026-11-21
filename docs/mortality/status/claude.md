@@ -38,4 +38,7 @@
 ## M6 review and staging deploy (2026-11-21T03:40Z)
 - Committed Antigravity's M6. Deployed staging at `beta` `1d7ae37`.
 - The signed-in walkthrough passed, after Claude corrected two counts that had been stale since SVI and NRI. The screenshots are good.
-- Waiting for Gate A (John).
+- Gate A passed (John: "This is great. Approved. Go live.").
+
+## Gate B: live (2026-11-21T15:17Z)
+- Migration `c3e7a1f5b9d2` applied on live; the three releases are published with the staging digests; bundle `index-D6uKhaMq.js` deployed. The package is complete.
