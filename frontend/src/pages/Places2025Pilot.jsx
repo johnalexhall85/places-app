@@ -171,6 +171,31 @@ export function hdsColor(value, status, cuts = []) {
   return quintileColor(value, status, cuts);
 }
 
+export const CANCER_MORTALITY_DATASET_ID = "nci_cancer_mortality_2020_2024";
+export const CANCER_STATUS_COLORS = { suppressed: "#8f6b74", not_in_release: "#ffffff" };
+export const CANCER_STATUS_TEXT = {
+  suppressed: "Suppressed by NCI (fewer than 16 deaths in 2020–2024)",
+  not_in_release: "No row in this release",
+};
+export function cancerNumber(value) {
+  return hdsNumber(value);
+}
+export function cancerValueText(item) {
+  if (CANCER_STATUS_TEXT[item?.status] || item?.value == null) {
+    return item?.status_text || CANCER_STATUS_TEXT[item?.status] || item?.status || "Unavailable";
+  }
+  return cancerNumber(item.value);
+}
+export function cancerCiText(item) {
+  if (item?.ci_low == null || item?.ci_high == null) return "—";
+  return `${gvDecimal.format(item.ci_low)}–${gvDecimal.format(item.ci_high)} per 100,000`;
+}
+export function cancerColor(value, status, cuts = []) {
+  if (CANCER_STATUS_COLORS[status]) return CANCER_STATUS_COLORS[status];
+  if (value == null) return "#d8dee3";
+  return quintileColor(value, status, cuts);
+}
+
 export const SVI_DATASET_ID = "cdc_svi_2022";
 export const SVI_STATUS_COLORS = { not_available: SVI_NO_DATA_COLOR, not_in_release: SVI_NO_DATA_COLOR };
 export const SVI_STATUS_TEXT = {
@@ -486,6 +511,8 @@ const EXPLANATIONS = {
   cmsgv: "Original Medicare beneficiaries only, not all residents.",
   hds_mortality:
     "Age-adjusted death rate for adults 35 and older (per 100,000); county rates are spatially smoothed by CDC, while state and national rates are not smoothed.",
+  cancer_mortality:
+    "NCI age-adjusted cancer death rate for 2020–2024 (per 100,000), with 95% confidence intervals. These are deaths, not new cases; suppressed counties did not have zero deaths.",
   svi: "CDC/ATSDR percentile rank (0–1) among all U.S. areas, not a rate; higher values indicate greater vulnerability.",
   nri: "FEMA National Risk Index v1.20; higher risk, loss, and social vulnerability are worse, higher community resilience is better.",
   usdafea: "USDA Food Environment Atlas county measure.",
@@ -523,6 +550,13 @@ export function areaFeatureDetails(dataset, item, measure, context = {}) {
         : "Age-adjusted 3-year average rate (state; not smoothed).",
       item.source_value != null ? `CDC source value: ${item.source_value}` : null,
       "No confidence interval or margin of error is published.",
+    ];
+  } else if (dataset === "cancer_mortality") {
+    value = cancerValueText(item);
+    lines = [
+      `95% confidence interval: ${item.ci_low == null || item.ci_high == null ? "unavailable" : cancerCiText(item)}`,
+      `${period} · ${catalog?.population_label ?? "All ages, both sexes (2000 U.S. standard population)"}`,
+      item.source_value != null ? `NCI source value: ${item.source_value}` : null,
     ];
   } else if (dataset === "svi") {
     const isStateRank = measure?.source_scope === "state" || sviScopeForMeasure(measure?.measure_id) === "state";
@@ -637,6 +671,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const isAqi = dataset === "aqi";
   const isGv = dataset === "cmsgv";
   const isHds = dataset === "hds_mortality";
+  const isCancer = dataset === "cancer_mortality";
   const isSvi = dataset === "svi";
   const isNri = dataset === "nri";
   const isFea = dataset === "usdafea";
@@ -653,7 +688,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
       return swapSviMeasureScope(rawMeasure || "rpl_themes", initScope);
     }
     return rawMeasure ||
-      (isProfile ? "poverty_pct" : isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isHds ? "heart_disease_death_rate" : isNri ? "eal_score" : isFea ? "low_income_low_access_pct" : isBrfss ? "diabetes" : "dental_crudeprev");
+      (isProfile ? "poverty_pct" : isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isHds ? "heart_disease_death_rate" : isCancer ? "cancer_death_rate_all" : isNri ? "eal_score" : isFea ? "low_income_low_access_pct" : isBrfss ? "diabetes" : "dental_crudeprev");
   });
   const [requestedPeriod, setRequestedPeriod] = useState(() => new URLSearchParams(window.location.search).get("period"));
   const [profileGeography, setProfileGeography] = useState(() => new URLSearchParams(window.location.search).get("geography") || "auto");
@@ -671,7 +706,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [tableOpen, setTableOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 700);
   const requestId = useRef(0);
   const viewportRef = useRef(null);
-  const datasetKey = isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isHds ? "hds_mortality" : isSvi ? "svi" : isNri ? "nri" : isFea ? "usdafea" : "places";
+  const datasetKey = isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isHds ? "hds_mortality" : isCancer ? "cancer_mortality" : isSvi ? "svi" : isNri ? "nri" : isFea ? "usdafea" : "places";
   // Selection is state, not a Leaflet layer: the area layer is rebuilt on every viewport change.
   const [selection, setSelection] = useState(null);
   const [focusRequest] = useState(parseFocus);
@@ -715,11 +750,11 @@ export default function Places2025Pilot({ dataset = "places" }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE}/area/catalog${isProfile ? "?dataset_id=census_acs5_2024_community_profile" : isAcs ? "?dataset_id=census_acs5_2024_b19013" : isAhrf ? "?dataset_id=hrsa_ahrf_county_2024_2025" : isClh ? "?dataset_id=ahrq_clh_2023_curated" : isAqi ? `?dataset_id=${AQI_DATASET_ID}` : isGv ? `?dataset_id=${GV_DATASET_ID}` : isHds ? `?dataset_id=${HDS_MORTALITY_DATASET_ID}` : isSvi ? `?dataset_id=${SVI_DATASET_ID}` : isNri ? `?dataset_id=${NRI_DATASET_ID}` : isFea ? `?dataset_id=${FEA_DATASET_ID}` : isBrfss ? `?dataset_id=${BRFSS_DATASET_ID}` : ""}`, { signal: controller.signal })
+    fetch(`${API_BASE}/area/catalog${isProfile ? "?dataset_id=census_acs5_2024_community_profile" : isAcs ? "?dataset_id=census_acs5_2024_b19013" : isAhrf ? "?dataset_id=hrsa_ahrf_county_2024_2025" : isClh ? "?dataset_id=ahrq_clh_2023_curated" : isAqi ? `?dataset_id=${AQI_DATASET_ID}` : isGv ? `?dataset_id=${GV_DATASET_ID}` : isHds ? `?dataset_id=${HDS_MORTALITY_DATASET_ID}` : isCancer ? `?dataset_id=${CANCER_MORTALITY_DATASET_ID}` : isSvi ? `?dataset_id=${SVI_DATASET_ID}` : isNri ? `?dataset_id=${NRI_DATASET_ID}` : isFea ? `?dataset_id=${FEA_DATASET_ID}` : isBrfss ? `?dataset_id=${BRFSS_DATASET_ID}` : ""}`, { signal: controller.signal })
       .then((response) => { if (!response.ok) throw new Error(`Catalog unavailable (${response.status})`); return response.json(); })
       .then(setCatalog).catch((err) => { if (err.name !== "AbortError") setCatalogError(err.message); });
     return () => controller.abort();
-  }, [isAcs, isProfile, isAhrf, isClh, isAqi, isGv, isHds, isSvi, isNri, isFea, isBrfss]);
+  }, [isAcs, isProfile, isAhrf, isClh, isAqi, isGv, isHds, isCancer, isSvi, isNri, isFea, isBrfss]);
 
   useEffect(() => {
     if (catalog?.measures?.length && !catalog.measures.some((item) => item.measure_id === measureId)) {
@@ -768,7 +803,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const sviDcForcedTracts = isSvi && sviScope === "state" && sviState === "11" && tractSupported && !tractCapExceeded;
   // USDA FEA publishes no state value for its selected measures, so counties are shown at every zoom.
   const wantedGeography = isBrfss ? "state" : isProfile && ["state", "county", "tract", "cd"].includes(profileGeography) ? profileGeography
-    : isAhrf || isAqi || isFea ? "county" : isGv || isHds ? gvGeography(mapZoom, catalog?.state_to_county_zoom)
+    : isAhrf || isAqi || isFea ? "county" : isGv || isHds || isCancer ? gvGeography(mapZoom, catalog?.state_to_county_zoom)
     : sviDcForcedTracts ? "tract"
     : areaGeography(mapZoom, isAcs || isProfile || isNri, tractSupported, tractCapExceeded);
   const geography = supportedLevels.includes(wantedGeography) ? wantedGeography
@@ -919,7 +954,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const ready = Boolean(requestKey && loadedKey === requestKey);
   const settled = ready || sviAwaitingState || Boolean(error) || Boolean(catalogError) || Boolean(catalog && !releaseId);
   useEffect(() => { if (settled) setFirstLoadDone(true); }, [settled]);
-  const sourceTitle = isBrfss ? "BRFSS state survey estimates" : isProfile ? `ACS ${period ?? "2020–2024"} community characteristics` : isAcs ? `ACS ${period ?? "2020–2024"} 5-year income` : isAhrf ? `AHRF ${period ?? "2023"} county resources` : isClh ? "AHRQ CLH community conditions" : isAqi ? `EPA annual AQI by county, ${period ?? "2025"}` : isGv ? `CMS Original Medicare Geographic Variation, ${period ?? "2024"}` : isHds ? `CDC heart disease and stroke deaths, ${period ?? "2022–2024"}` : isSvi ? `CDC Social Vulnerability Index, ${period ?? "2018–2022"}` : isNri ? `FEMA National Risk Index, ${period ?? "NRI v1.20 (December 2025)"}` : isFea ? "USDA Food Environment Atlas: county food access and retailers" : `PLACES county and tract estimates${period ? `, ${period}` : ""}`;
+  const sourceTitle = isBrfss ? "BRFSS state survey estimates" : isProfile ? `ACS ${period ?? "2020–2024"} community characteristics` : isAcs ? `ACS ${period ?? "2020–2024"} 5-year income` : isAhrf ? `AHRF ${period ?? "2023"} county resources` : isClh ? "AHRQ CLH community conditions" : isAqi ? `EPA annual AQI by county, ${period ?? "2025"}` : isGv ? `CMS Original Medicare Geographic Variation, ${period ?? "2024"}` : isHds ? `CDC heart disease and stroke deaths, ${period ?? "2022–2024"}` : isCancer ? `NCI cancer deaths, ${period ?? "2020–2024"}` : isSvi ? `CDC Social Vulnerability Index, ${period ?? "2018–2022"}` : isNri ? `FEMA National Risk Index, ${period ?? "NRI v1.20 (December 2025)"}` : isFea ? "USDA Food Environment Atlas: county food access and retailers" : `PLACES county and tract estimates${period ? `, ${period}` : ""}`;
   const sviStateFilterActive = isSvi && sviScope === "state" && Boolean(sviState);
   const sviSanitizedMapData = useMemo(
     () => (sviStateFilterActive && ready && mapData ? sanitizeSviStateMapData(mapData, sviState) : mapData),
@@ -951,7 +986,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const cuts = useMemo(() => quantileCuts(ready ? legend?.quantile_breaks : null), [ready, legend]);
   const cutColors = rampColors(cuts.length + 1);
   const formatCut = (value) => isAcs ? dollars.format(value)
-    : isHds ? hdsNumber(value)
+    : isHds || isCancer ? hdsNumber(value)
     : isAhrf ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)
     : isClh ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)
     : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}%`;
@@ -961,10 +996,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
 
   const zoomRange = useCallback((level) => focusZoomRange(level, {
     min: initialMapZoom(),
-    stateBelow: isBrfss ? 12 : isGv || isHds ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") || (isNri && supportedLevels.includes("state")) ? ACS_COUNTY_ZOOM : null,
-    countyFrom: isGv || isHds ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") || (isNri && supportedLevels.includes("state")) ? ACS_COUNTY_ZOOM : null,
+    stateBelow: isBrfss ? 12 : isGv || isHds || isCancer ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") || (isNri && supportedLevels.includes("state")) ? ACS_COUNTY_ZOOM : null,
+    countyFrom: isGv || isHds || isCancer ? (catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM) : isAcs || (isProfile && profileGeography === "auto") || (isNri && supportedLevels.includes("state")) ? ACS_COUNTY_ZOOM : null,
     tractFrom: tractSupported && !(isProfile && profileGeography !== "auto") ? (isAcs || isProfile || isNri ? ACS_TRACT_ZOOM : PILOT_TRACT_ZOOM) : null,
-  }), [isBrfss, isGv, isHds, isAcs, isProfile, isNri, supportedLevels, profileGeography, tractSupported, catalog]);
+  }), [isBrfss, isGv, isHds, isCancer, isAcs, isProfile, isNri, supportedLevels, profileGeography, tractSupported, catalog]);
 
   const fitArea = useCallback((bounds, level) => {
     if (!map || !bounds) return;
@@ -1100,7 +1135,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
   return <div className="app pilot-app">
     <Header />
     <main className="app-content pilot-content" ref={setContentEl}>
-      <div className="map-wrapper pilot-map" ref={mapSurfaceRef} aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isHds ? "CDC heart disease and stroke deaths" : isSvi ? "CDC Social Vulnerability Index" : isNri ? "FEMA National Risk Index" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
+      <div className="map-wrapper pilot-map" ref={mapSurfaceRef} aria-label={catalog && releaseId ? `${geography === "cd" ? "congressional district" : areaName(geography)} ${isBrfss ? "BRFSS" : isAcs || isProfile ? "ACS" : isClh ? "CLH" : isGv ? "CMS Original Medicare" : isHds ? "CDC heart disease and stroke deaths" : isCancer ? "NCI cancer deaths" : isSvi ? "CDC Social Vulnerability Index" : isNri ? "FEMA National Risk Index" : isFea ? "USDA Food Environment Atlas" : "pilot"} map` : undefined}>
         {catalog && releaseId && <MapContainer center={initialView.center} zoom={zoom} minZoom={initialMapZoom()} zoomSnap={0.25} zoomControl={false}
           maxBounds={[[-85, -180], [85, 180]]} maxBoundsViscosity={1} style={{ height: "100%", width: "100%" }}>
           <TileLayer key={baseMap.id} url={baseMap.url} attribution={baseMap.attribution} maxZoom={baseMap.maxZoom} />
@@ -1127,6 +1162,11 @@ export default function Places2025Pilot({ dataset = "places" }) {
             fillOpacity: feature.properties.status === "not_in_release" ? 0.35 : 0.85,
             dashArray: feature.properties.status === "not_in_release" ? "2 3" : null,
             fillColor: hdsColor(feature.properties.value, feature.properties.status, cuts),
+          } : isCancer ? {
+            color: "#516677", weight: 0.5,
+            fillOpacity: feature.properties.status === "not_in_release" ? 0.35 : 0.85,
+            dashArray: feature.properties.status === "not_in_release" ? "2 3" : null,
+            fillColor: cancerColor(feature.properties.value, feature.properties.status, cuts),
           } : isSvi ? sviFeatureStyle(feature, { scope: sviScope, selectedState: sviState, measureId }) : isNri ? {
             color: "#516677", weight: 0.5,
             fillOpacity: feature.properties.status === "not_in_release" ? 0.35 : 0.85,
@@ -1207,6 +1247,22 @@ export default function Places2025Pilot({ dataset = "places" }) {
               ))}
             </ul>
           </div>
+        ) : isCancer ? (
+          <div className="pilot-scope">
+            <p>
+              Published NCI/CDC age-adjusted cancer death rates for{" "}
+              {period ?? catalog?.observation_period ?? "2020–2024"}, with 95% confidence
+              intervals. These are deaths, not new cases. Rates based on few deaths are suppressed
+              by NCI; a suppressed county did not have zero deaths. States are shown at broad zoom
+              and counties from zoom {catalog?.state_to_county_zoom ?? ACS_COUNTY_ZOOM}. No tract
+              values exist.
+            </p>
+            <ul className="pilot-limitations" aria-label="Interpretation limits">
+              {(catalog?.limitations || []).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
         ) : isSvi ? <div className="pilot-scope">
           <p>Published CDC/ATSDR SVI 2022 {sviScope === "state" ? "within-state" : "U.S.-wide"} percentile ranks (0–1) for counties and census tracts, built on ACS {period ?? "2018–2022"} 5-year estimates. These are percentile ranks, not rates; higher values indicate greater vulnerability. Counties are shown at broad zoom and tracts from zoom {PILOT_TRACT_ZOOM}.</p>
           <ul className="pilot-limitations" aria-label="Interpretation limits">
@@ -1223,7 +1279,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             {(catalog?.limitations || []).map((item) => <li key={item}>{item}</li>)}
           </ul>
         </div> : <p className="pilot-scope">{isProfile ? `Census Bureau published community characteristics for states, counties, tracts, and current-period 119th Congress districts. The percentages and 90% margins of error come from ACS ${period ?? "2020–2024"} subject tables; population totals may have no sampling margin.` : isAcs ? `Published median household income for states, counties, and census tracts. Values are in ${String(period ?? "2020–2024").slice(-4)} dollars for this ACS window; margins of error use 90% confidence.` : isAhrf ? `HRSA AHRF county resources, observation year ${period ?? "2023"}. No state or tract values are inferred. Uncertainty was not supplied.` : isClh ? `AHRQ CLH community conditions for ${period ?? "the selected period"}. No state estimates or uncertainty fields are supplied.` : "Official county and census tract estimates. No state estimates are provided by this pilot."}</p>}
-        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isHds ? "hds_mortality" : isSvi ? "svi" : isNri ? "nri" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", hds_mortality: "/area/heart-stroke-mortality", svi: "/area/svi", nri: "/area/fema-nri", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
+        <label>Data source <select value={isBrfss ? "brfss" : isProfile ? "acs_profile" : isAcs ? "acs" : isAhrf ? "ahrf" : isClh ? "clh" : isAqi ? "aqi" : isGv ? "cmsgv" : isHds ? "hds_mortality" : isCancer ? "cancer_mortality" : isSvi ? "svi" : isNri ? "nri" : isFea ? "usdafea" : "pilot"} onChange={(event) => { const paths = { brfss: "/area/brfss", acs: "/area/acs-2024", acs_profile: "/area/acs-community", ahrf: "/area/ahrf", clh: "/area/clh", aqi: "/area/epa-aqi", cmsgv: "/area/cms-gv", hds_mortality: "/area/heart-stroke-mortality", cancer_mortality: "/area/cancer-mortality", svi: "/area/svi", nri: "/area/fema-nri", usdafea: "/area/usda-fea", pilot: "/area/places-2025" }; window.location.assign(paths[event.target.value]); }}>
           <option value="pilot">PLACES 2025 county and tract pilot</option>
           <option value="brfss">BRFSS state survey estimates</option>
           <option value="acs">ACS 2020–2024 5-year income</option>
@@ -1233,6 +1289,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <option value="aqi">EPA annual AQI by county (2025)</option>
           <option value="cmsgv">CMS Original Medicare 2024 (states and counties)</option>
           <option value="hds_mortality">CDC heart disease and stroke deaths</option>
+          <option value="cancer_mortality">NCI cancer deaths</option>
           <option value="svi">CDC Social Vulnerability Index</option>
           <option value="nri">FEMA National Risk Index</option>
           <option value="usdafea">USDA Food Environment Atlas (county measures)</option>
@@ -1313,7 +1370,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             <p className="pilot-metadata">{periodEntry?.current && <>Contributing sources: {measure?.contributing_sources} County boundary basis in the source: {measure?.source_boundary_basis}; </>}Joined by exact FIPS to {periodEntry?.boundary_vintage?.county ?? catalog.boundary_vintage}. Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">USDA ERS Food Environment Atlas</a> (<a href={catalog.documentation_url} target="_blank" rel="noreferrer">documentation</a>).</p>
             {mapZoom < ACS_COUNTY_ZOOM && <p role="status">State values are not published for this measure; counties are shown at the national view.</p>}
           </div>}
-          {!isFea && <p className="pilot-metadata">{geography === "cd" ? "Congressional district" : areaName(geography)} {isSvi ? "ranks" : isNri || isHds ? "values" : "estimates"} · {isClh || isProfile || isSvi || isNri || isHds ? "Observation period" : "Observation year"} {period} · {isSvi ? (measure?.population_by_level?.[geography] ?? catalog?.population_by_level?.[geography] ?? measure?.population) : measure?.population} · {isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isHds || isSvi || isNri ? selectedUnit : catalog.unit}{isAcs ? " · ACS 5-year Detailed Tables" : isProfile ? " · Census Bureau ACS 5-year Subject Tables" : ""}</p>}
+          {!isFea && <p className="pilot-metadata">{geography === "cd" ? "Congressional district" : areaName(geography)} {isSvi ? "ranks" : isNri || isHds || isCancer ? "values" : "estimates"} · {isClh || isProfile || isSvi || isNri || isHds || isCancer ? "Observation period" : "Observation year"} {period} · {isSvi ? (measure?.population_by_level?.[geography] ?? catalog?.population_by_level?.[geography] ?? measure?.population) : measure?.population} · {isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isHds || isCancer || isSvi || isNri ? selectedUnit : catalog.unit}{isAcs ? " · ACS 5-year Detailed Tables" : isProfile ? " · Census Bureau ACS 5-year Subject Tables" : ""}</p>}
           {!periodEntry?.current && wantedGeography !== geography && <p role="status">{wantedGeography === "cd"
             ? "Districts have no earlier years in CHIP: older Congresses had different districts."
             : `${areaName(wantedGeography)} values are not published for ${period}; ${areaName(geography)} values remain displayed.`}</p>}
@@ -1331,6 +1388,16 @@ export default function Places2025Pilot({ dataset = "places" }) {
               .
             </p>
           )}
+          {isCancer && (
+            <p className="pilot-metadata">
+              NCI/CDC definition (site {measure?.site_code}): {measure?.official_definition}{" "}
+              Denominator: {measure?.denominator} {measure?.interpretation} Source:{" "}
+              <a href={catalog.source_url} target="_blank" rel="noreferrer">
+                NCI/CDC State Cancer Profiles
+              </a>
+              .
+            </p>
+          )}
           {isSvi && <p className="pilot-metadata">CDC/ATSDR SVI ({measure?.source_field}): {measure?.official_definition} {measure?.interpretation} Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">CDC/ATSDR Social Vulnerability Index</a>.</p>}
           {isNri && <p className="pilot-metadata">FEMA NRI ({measure?.source_field}): {measure?.official_definition} {measure?.interpretation} Source: <a href={catalog.source_url} target="_blank" rel="noreferrer">OpenFEMA National Risk Index</a>.</p>}
           {isNri && !supportedLevels.includes("state") && mapZoom < ACS_COUNTY_ZOOM && <p role="status">FEMA publishes no state value for this measure; counties are shown below zoom {ACS_TRACT_ZOOM}.</p>}
@@ -1342,8 +1409,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
               County values remain displayed. CDC publishes no tract estimates for this product.
             </p>
           )}
+          {isCancer && wantsTracts && (
+            <p role="status">
+              County values remain displayed. NCI publishes no tract estimates for this product.
+            </p>
+          )}
           {isFea && wantsTracts && <p role="status">County values remain displayed. USDA publishes no tract values for these measures, and none is estimated.</p>}
-          {!isGv && !isHds && !isFea && !isBrfss && wantsTracts && !tractSupported && <p role="status">County estimates remain displayed; no tract estimate is published for this release.</p>}
+          {!isGv && !isHds && !isCancer && !isFea && !isBrfss && wantsTracts && !tractSupported && <p role="status">County estimates remain displayed; no tract estimate is published for this release.</p>}
           {isBrfss && <p role="status">State estimates remain displayed at every zoom. BRFSS has no county or tract values in this release.</p>}
           {wantsTracts && tractCapExceeded && <p role="status">This viewport contains more than 5,000 tracts. County estimates remain displayed; zoom in for tracts.</p>}
           <p className="pilot-release">Release {releaseId}</p>
@@ -1355,7 +1427,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <button type="button" className="pilot-panel-toggle" aria-label={legendOpen ? "Minimize legend" : "Expand legend"} aria-expanded={legendOpen} onClick={() => setLegendOpen((open) => !open)}>{legendOpen ? "\u2212" : "+"}</button>
           <h2>{isSvi
             ? (sviScope === "state" && sviStateObj ? `Levels of Vulnerability (within ${sviStateObj.name})` : "Levels of Vulnerability")
-            : `${isAcs ? "Median household income" : isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isHds || isNri || isFea ? measure?.label : "Crude prevalence"}, ${period} — ${geography === "cd" ? "congressional district" : areaName(geography)} level`}</h2>
+            : `${isAcs ? "Median household income" : isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isHds || isCancer || isNri || isFea ? measure?.label : "Crude prevalence"}, ${period} — ${geography === "cd" ? "congressional district" : areaName(geography)} level`}</h2>
           {legendOpen && <>
           {!periodEntry?.current && <div className="pilot-history-notes">
             {periodEntry?.note && <p>{periodEntry.note}</p>}
@@ -1452,6 +1524,63 @@ export default function Places2025Pilot({ dataset = "places" }) {
               <p>
                 Select a {areaName(geography)} for its value. No confidence interval or margin of
                 error is published.
+              </p>
+            </>
+          ) : ready && legend && isCancer ? (
+            <>
+              <ul className="pilot-swatches">
+                {cuts.length ? (
+                  quantileLabels(cuts, formatCut).map((label, i) => (
+                    <li key={label}>
+                      <i style={{ background: cutColors[i] }} />
+                      {label}
+                    </li>
+                  ))
+                ) : (
+                  <li>
+                    <i style={{ background: prevalenceColors[2] }} />
+                    Published value
+                  </li>
+                )}
+                <li>
+                  <i style={{ background: CANCER_STATUS_COLORS.suppressed }} />
+                  {CANCER_STATUS_TEXT.suppressed}
+                </li>
+                <li>
+                  <i
+                    className="pilot-swatch-none"
+                    style={{ background: CANCER_STATUS_COLORS.not_in_release }}
+                  />
+                  {CANCER_STATUS_TEXT.not_in_release} (Connecticut planning regions)
+                </li>
+              </ul>
+              {cuts.length > 0 && (
+                <p>
+                  Classes are quintiles of all published {areaName(geography)} rates in this
+                  release, so each holds about a fifth of them and colors do not change as the map
+                  moves. Higher values mean more deaths.
+                </p>
+              )}
+              <p>
+                {legend.statuses
+                  .map(
+                    (item) =>
+                      `${item.status_text || CANCER_STATUS_TEXT[item.status] || item.status.replace("_", " ")}: ${item.n}`,
+                  )
+                  .join(" · ")}
+              </p>
+              {legend.national_reference && (
+                <p>
+                  United States (NCI-published national value, reference only):{" "}
+                  {cancerValueText(legend.national_reference)}
+                  {legend.national_reference.ci_low != null &&
+                  legend.national_reference.ci_high != null
+                    ? ` (95% CI: ${cancerCiText(legend.national_reference)})`
+                    : ""}
+                </p>
+              )}
+              <p>
+                Select a {areaName(geography)} for its rate and 95% confidence interval.
               </p>
             </>
           ) : isSvi && (sviAwaitingState || (ready && legend)) ? <>
@@ -1591,7 +1720,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             {isSvi && sviAwaitingState && <p role="status">{SVI_CHOOSE_STATE_MESSAGE}</p>}
             {!ready && !error && !sviAwaitingState && <p role="status">Loading selected {areaName(geography)} estimates…</p>}
             {ready && displayTable && <>
-              <p>{areaName(geography)} areas intersecting the map viewport. Map and table use the same geometry rule.{isBrfss ? " States without a CDC result for this year are marked Not published." : isFea ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties in view are listed with USDA's published value and status.` : isAqi ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties are listed; counties without an EPA summary are marked No reported value.` : isGv ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CMS's published value and status.` : isHds ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CDC's published death rate and status.` : isSvi ? (sviStateFilterActive ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in ${sviStateObj?.name || "the selected state"} in view are listed with CDC/ATSDR's published percentile rank and status.` : ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in view are listed with CDC/ATSDR's published percentile rank and status.`) : isNri ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : geography === "tract" ? "tracts" : "counties"} in view are listed with FEMA's published NRI value, rating, and status.` : ""}</p>
+              <p>{areaName(geography)} areas intersecting the map viewport. Map and table use the same geometry rule.{isBrfss ? " States without a CDC result for this year are marked Not published." : isFea ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties in view are listed with USDA's published value and status.` : isAqi ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties are listed; counties without an EPA summary are marked No reported value.` : isGv ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CMS's published value and status.` : isHds ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CDC's published death rate and status.` : isCancer ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with NCI's published cancer death rate, 95% confidence interval, and status.` : isSvi ? (sviStateFilterActive ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in ${sviStateObj?.name || "the selected state"} in view are listed with CDC/ATSDR's published percentile rank and status.` : ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in view are listed with CDC/ATSDR's published percentile rank and status.`) : isNri ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : geography === "tract" ? "tracts" : "counties"} in view are listed with FEMA's published NRI value, rating, and status.` : ""}</p>
               <div className="pilot-table-scroll"><table><caption>{measure?.label}, {period}; release {releaseId}</caption>
                 {isBrfss ? <thead><tr><th scope="col">State FIPS</th><th scope="col">State</th><th scope="col">{measure?.label} (%)</th><th scope="col">95% CI</th><th scope="col">Response count</th><th scope="col">Status</th></tr></thead>
                 : isFea ? <thead><tr><th scope="col">County FIPS</th><th scope="col">County</th><th scope="col">{measure?.label} ({period})</th><th scope="col">USDA source value</th><th scope="col">Status</th></tr></thead>
@@ -1603,6 +1732,18 @@ export default function Places2025Pilot({ dataset = "places" }) {
                       <th scope="col">{areaName(geography)}</th>
                       <th scope="col">{measure?.label}</th>
                       <th scope="col">CDC source value</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                )
+                : isCancer ? (
+                  <thead>
+                    <tr>
+                      <th scope="col">{geography === "state" ? "State FIPS" : "County FIPS"}</th>
+                      <th scope="col">{areaName(geography)}</th>
+                      <th scope="col">{measure?.label}</th>
+                      <th scope="col">95% CI</th>
+                      <th scope="col">NCI source value</th>
                       <th scope="col">Status</th>
                     </tr>
                   </thead>
@@ -1627,6 +1768,22 @@ export default function Places2025Pilot({ dataset = "places" }) {
                           {row.status === "available"
                             ? "Published rate"
                             : row.status_text || HDS_STATUS_TEXT[row.status] || row.status}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (isCancer) {
+                    return (
+                      <tr key={key}>
+                        <th scope="row">{key}</th>
+                        <td>{row.name}</td>
+                        <td>{cancerValueText(row)}</td>
+                        <td>{cancerCiText(row)}</td>
+                        <td>{row.source_value ?? "—"}</td>
+                        <td>
+                          {row.status === "available"
+                            ? "Published rate"
+                            : row.status_text || CANCER_STATUS_TEXT[row.status] || row.status}
                         </td>
                       </tr>
                     );

@@ -48,9 +48,11 @@ def test_shapes_and_all_current_measures(payloads, staging):
     for geoid, payload in payloads.items():
         level = {"01": "state", "5401": "cd"}.get(geoid, "county")
         assert {"level", "geoid", "name", "state", "sections"} <= payload.keys()
-        # SVI and NRI are served by /hazards, not /charts (docs/vulnerability/CONTRACT.md section 4).
+        # SVI and NRI are served by /hazards and mortality by /deaths, not /charts
+        # (docs/vulnerability/CONTRACT.md section 4, docs/mortality/CONTRACT.md section 5).
         current = [row for row in lookup.area_values(staging, level, [geoid])["values"]
-                   if row["product"] not in {"cdc_svi", "fema_nri"}]
+                   if row["product"] not in {"cdc_svi", "fema_nri", "cdc_hds_mortality",
+                                             "nci_cancer_mortality", "nchs_drug_poisoning"}]
         rows = all_rows(payload)
         assert {(row["product"], row["measure_id"]) for row in rows} == {
             (row["product"], row["measure_id"]) for row in current}

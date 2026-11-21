@@ -108,7 +108,7 @@ def test_uncertainty_kinds_stay_distinct():
 def test_level_filter_returns_only_products_published_at_that_level():
     state = {r['product'] for r in lookup.area_values(FakeDb({}), 'state', ['01'])['values']}
     tract = {r['product'] for r in lookup.area_values(FakeDb({}), 'tract', ['01055000100'])['values']}
-    assert state == {'acs', 'acs_profile', 'brfss', 'cms_gv', 'fema_nri', 'cdc_hds_mortality'}
+    assert state == {'acs', 'acs_profile', 'brfss', 'cms_gv', 'fema_nri', 'cdc_hds_mortality', 'nci_cancer_mortality'}
     assert tract == {'places', 'acs', 'acs_profile', 'clh', 'cdc_svi', 'fema_nri'}
     district = {r['product'] for r in lookup.area_values(FakeDb({}), 'cd', ['0103'])['values']}
     assert district == {'acs_profile'}   # no other product publishes district values; none is derived

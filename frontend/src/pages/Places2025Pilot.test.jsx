@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, HDS_MORTALITY_DATASET_ID, HDS_STATUS_TEXT, hdsNumber, hdsValueText, hdsColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, HDS_MORTALITY_DATASET_ID, HDS_STATUS_TEXT, hdsNumber, hdsValueText, hdsColor, CANCER_MORTALITY_DATASET_ID, CANCER_STATUS_TEXT, cancerNumber, cancerValueText, cancerCiText, cancerColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_OUTSIDE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, filterSviStateFeatures, summarizeSviStatuses, sanitizeSviStateMapData, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -40,8 +40,9 @@ describe("PLACES 2025 county pilot selection", () => {
     render(<Places2025Pilot />);
     const menu = await screen.findByLabelText("Data source");
     const options = [...menu.querySelectorAll("option")].map((option) => option.textContent);
-    expect(options).toHaveLength(12);
+    expect(options).toHaveLength(13);
     expect(options).toContain("CDC heart disease and stroke deaths");
+    expect(options).toContain("NCI cancer deaths");
     expect(options).toContain("CDC Social Vulnerability Index");
     expect(options).toContain("FEMA National Risk Index");
     expect(options.some((label) => /legacy|main/i.test(label))).toBe(false);
@@ -1538,6 +1539,217 @@ describe("CDC heart disease and stroke deaths", () => {
       });
     expect(mapCalls[0]).toEqual(["state", "heart_disease_death_rate", valueTypeByLevel.state]);
     expect(mapCalls).toContainEqual(["county", "heart_disease_death_rate", valueTypeByLevel.county]);
+    expect(mapCalls.some(([geo]) => geo === "tract")).toBe(false);
+  });
+});
+
+describe("NCI cancer deaths", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    mapHarness.zoom = 4;
+    mapHarness.handlers = null;
+  });
+
+  const population = "All ages, both sexes (2000 U.S. standard population)";
+  const measures = [
+    {
+      measure_id: "cancer_death_rate_all",
+      label: "Cancer death rate, all sites (per 100,000, age-adjusted)",
+      site_code: "001",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted)",
+      observation_period: "2020–2024",
+      population,
+      denominator: "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "Age-adjusted cancer death rate across all cancer sites.",
+      interpretation: "Death rates, not new cancer incidence. Published with 95% confidence intervals.",
+      geographies: ["state", "county"],
+    },
+    {
+      measure_id: "cancer_death_rate_lung",
+      label: "Lung and bronchus cancer death rate (per 100,000, age-adjusted)",
+      site_code: "047",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted)",
+      observation_period: "2020–2024",
+      population,
+      denominator: "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "Age-adjusted lung and bronchus cancer death rate.",
+      interpretation: "Death rates, not new cancer incidence. Published with 95% confidence intervals.",
+      geographies: ["state", "county"],
+    },
+    {
+      measure_id: "cancer_death_rate_colorectal",
+      label: "Colon and rectum cancer death rate (per 100,000, age-adjusted)",
+      site_code: "020",
+      kind: "rate_per_100k",
+      unit: "deaths per 100,000 population (age-adjusted)",
+      observation_period: "2020–2024",
+      population,
+      denominator: "100,000 population, all ages and both sexes, age-adjusted to the 2000 U.S. standard population.",
+      official_definition: "Age-adjusted colon and rectum cancer death rate.",
+      interpretation: "Death rates, not new cancer incidence. Published with 95% confidence intervals.",
+      geographies: ["state", "county"],
+    },
+  ];
+  const catalog = {
+    dataset_id: CANCER_MORTALITY_DATASET_ID,
+    active_release_id: "nci-release",
+    value_type: "age_adjusted_rate",
+    geographies: ["state", "county"],
+    state_to_county_zoom: 6,
+    observation_period: "2020–2024",
+    population_label: population,
+    source_url: "https://statecancerprofiles.cancer.gov/deathrates/index.php",
+    measures,
+    limitations: [
+      "These are NCI's age-adjusted death rates for 2020–2024, with 95% confidence intervals. They are deaths, not new cases.",
+      "Rates based on few deaths are suppressed by NCI. A suppressed county did not have zero deaths.",
+      "Connecticut values are for its former counties and are not shown on the 2024 planning-region boundaries.",
+    ],
+  };
+
+  it("routes /area/cancer-mortality and formats values, 95% CIs, statuses, and explanations", () => {
+    expect(resolveRoute("/area/cancer-mortality")).toEqual({ type: "cancer-mortality-area" });
+    expect(cancerNumber(132.6)).toBe("132.6 per 100,000");
+    expect(cancerValueText({ value: 132.6, status: "available" })).toBe("132.6 per 100,000");
+    expect(cancerValueText({ value: null, status: "suppressed" })).toBe(CANCER_STATUS_TEXT.suppressed);
+    expect(cancerCiText({ ci_low: 127.2, ci_high: 138.2 })).toBe("127.2–138.2 per 100,000");
+    expect(cancerCiText({ ci_low: null, ci_high: null })).toBe("—");
+    expect(cancerColor(null, "suppressed", [130, 145, 160, 175])).toBe("#8f6b74");
+    expect(cancerColor(null, "not_in_release", [130, 145, 160, 175])).toBe("#ffffff");
+    const details = areaFeatureDetails(
+      "cancer_mortality",
+      {
+        name: "Durham",
+        geography_id: "37063",
+        value: 132.6,
+        ci_low: 127.2,
+        ci_high: 138.2,
+        source_value: "132.6",
+        status: "available",
+      },
+      measures[0],
+      { geography: "county", catalog },
+    );
+    expect(details.explanation).toMatch(/age-adjusted cancer death rate for 2020–2024/i);
+    expect(details.explanation).toMatch(/deaths, not new cases/i);
+    expect(details.value).toBe("132.6 per 100,000");
+    expect(details.lines.join(" | ")).toContain("95% confidence interval: 127.2–138.2 per 100,000");
+  });
+
+  it("opens on states with cancer_death_rate_all, switches to counties, and shows CIs, quantile legend, and national reference", async () => {
+    const urls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const path = String(url);
+        urls.push(path);
+        if (path.includes("/catalog")) {
+          return { ok: true, json: async () => catalog };
+        }
+        const geography = path.includes("geography=county") ? "county" : "state";
+        const cuts = geography === "county" ? [135, 150, 165, 180] : [130, 140, 150, 160];
+        const payload = path.includes("/map?")
+          ? { features: [] }
+          : path.includes("/legend?")
+            ? {
+                quantile_breaks: cuts,
+                quantile_basis: "quintiles_of_published_values_in_release",
+                national_reference: {
+                  value: 143.2,
+                  ci_low: 143,
+                  ci_high: 143.4,
+                  source_value: "143.2",
+                  status: "available",
+                },
+                statuses: [
+                  { status: "available", n: 1, low: 132.6, high: 132.6 },
+                  {
+                    status: "suppressed",
+                    n: 1,
+                    low: null,
+                    high: null,
+                    status_text: CANCER_STATUS_TEXT.suppressed,
+                  },
+                ],
+              }
+            : geography === "state"
+              ? {
+                  total: 1,
+                  rows: [
+                    {
+                      geography_id: "37",
+                      name: "North Carolina",
+                      value: 151.9,
+                      ci_low: 150.9,
+                      ci_high: 152.8,
+                      source_value: "151.9",
+                      status: "available",
+                    },
+                  ],
+                }
+              : {
+                  total: 2,
+                  rows: [
+                    {
+                      geography_id: "37063",
+                      name: "Durham",
+                      value: 132.6,
+                      ci_low: 127.2,
+                      ci_high: 138.2,
+                      source_value: "132.6",
+                      status: "available",
+                    },
+                    {
+                      geography_id: "02013",
+                      name: "Aleutians East",
+                      value: null,
+                      ci_low: null,
+                      ci_high: null,
+                      source_value: "*",
+                      status: "suppressed",
+                      status_text: CANCER_STATUS_TEXT.suppressed,
+                    },
+                  ],
+                };
+        return { ok: true, json: async () => ({ ...payload, release_id: "nci-release", geography }) };
+      }),
+    );
+
+    render(<Places2025Pilot dataset="cancer_mortality" />);
+    expect(await screen.findByText("37")).toBeInTheDocument();
+    expect(screen.getByLabelText("Measure")).toHaveValue("cancer_death_rate_all");
+    expect(screen.getByRole("columnheader", { name: "95% CI" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "NCI source value" })).toBeInTheDocument();
+    expect(screen.getByText("150.9–152.8 per 100,000")).toBeInTheDocument();
+    expect(screen.getAllByText(/deaths, not new cases/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        /United States \(NCI-published national value, reference only\): 143\.2 per 100,000 \(95% CI: 143–143\.4 per 100,000\)/,
+      ),
+    ).toBeInTheDocument();
+
+    mapHarness.zoom = 6;
+    act(() => mapHarness.handlers.zoomend());
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getByText("127.2–138.2 per 100,000")).toBeInTheDocument();
+    expect(screen.getAllByText(CANCER_STATUS_TEXT.suppressed).length).toBeGreaterThan(0);
+
+    act(() => {
+      mapHarness.zoom = 12;
+      mapHarness.handlers.zoomend();
+    });
+    expect(await screen.findByText(/NCI publishes no tract estimates/)).toBeInTheDocument();
+
+    const mapCalls = urls
+      .filter((u) => u.includes("/map?"))
+      .map((u) => {
+        const p = new URLSearchParams(u.split("?")[1]);
+        return [p.get("geography"), p.get("measure_id"), p.get("value_type")];
+      });
+    expect(mapCalls[0]).toEqual(["state", "cancer_death_rate_all", "age_adjusted_rate"]);
+    expect(mapCalls).toContainEqual(["county", "cancer_death_rate_all", "age_adjusted_rate"]);
     expect(mapCalls.some(([geo]) => geo === "tract")).toBe(false);
   });
 });
