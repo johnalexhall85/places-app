@@ -70,6 +70,9 @@ export function resolveRoute(pathname) {
   if (/^\/area\/cancer-mortality\/?$/i.test(normalizedPath)) {
     return { type: "cancer-mortality-area" };
   }
+  if (/^\/area\/drug-poisoning-mortality\/?$/i.test(normalizedPath)) {
+    return { type: "drug-poisoning-area" };
+  }
   if (/^\/area\/svi\/?$/i.test(normalizedPath)) {
     return { type: "svi-area" };
   }
