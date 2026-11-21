@@ -100,7 +100,7 @@ try {
 
   await visit('/compare?counties=37145,54039,06019', 'Compare published indicators');
   await page.getByText('Fresno County', { exact: false }).first().waitFor();
-  assert.equal(await page.locator('.community-compare-table tbody tr').count(), 46, 'comparison rows');
+  assert.equal(await page.locator('.community-compare-table tbody tr').count(), 71, 'comparison rows (46 + SVI 10 + NRI 9 + mortality 6)');
   await screenshot('three-county-comparison');
   console.log('Three-county comparison: passed');
 
@@ -213,7 +213,7 @@ try {
   await visit('/explore/map');
   await page.getByRole('heading', { name: /^PLACES county and tract estimates(?:, \d{4})?$/ }).waitFor();
   const sourceOptions = await page.getByLabel('Data source').locator('option').allInnerTexts();
-  assert.equal(sourceOptions.length, 9, 'nine published-release map sources');
+  assert.equal(sourceOptions.length, 14, '14 published-release map sources (9 + SVI + NRI + 3 mortality)');
   assert.ok(!sourceOptions.some((label) => /legacy|main/i.test(label)), 'no legacy entries in the Data source menu');
   assert.equal(await page.locator('.measure-controls-panel, .legend-panel').count(), 0, 'legacy map panels gone');
 

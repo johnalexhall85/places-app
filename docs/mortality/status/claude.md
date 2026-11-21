@@ -34,3 +34,8 @@
 - Staging candidate `09113340-499e-4ce0-a82c-1f36c05a6172`: 59,318 matched and 266 source-only stage rows (2003–2021), and 3,122 county observations for 2021, all available.
 - Published on staging. Durham reads 23.87115 (22.12165–25.75957), matching the source.
 - M6 has been dispatched.
+
+## M6 review and staging deploy (2026-11-21T03:40Z)
+- Committed Antigravity's M6. Deployed staging at `beta` `1d7ae37`.
+- The signed-in walkthrough passed, after Claude corrected two counts that had been stale since SVI and NRI. The screenshots are good.
+- Waiting for Gate A (John).

@@ -2,6 +2,31 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T03:45:00+00:00: Mortality package on staging; documentation cleanup (Claude, Antigravity)
+
+- **Request (John):** clean up stale documents, then start the mortality package. Later, add death rates to the county and state profiles. He is away from 8 PM until 8 AM, and Gate A is his tryout.
+- **Cleanup:** the handbook "Next work" list, the vulnerability plan (marked complete), and an update note in the coverage matrix.
+  - SVI limitation 2 is not reworded, because the text is part of the live release; it waits for the next SVI release.
+  - The MCP `not_available` glossary text (USDA wording) needs a change in `mcp_server/tools.py`. `lookup.STATUS_TEXT` is pinned by the contract-examples snapshots.
+- **Sources** (checked and archived 2026-11-21):
+  - CDC HDS Atlas (data.cdc.gov `mri7-5jtw` and `y5ii-knwc`).
+  - NCI State Cancer Profiles CSV exports.
+  - NCHS `rpvx-m2md`.
+  - CDC WONDER was rejected: its API returns only national data.
+- **Code:**
+  - Claude: migration `c3e7a1f5b9d2`, applied to `places_staging` with a round trip tested.
+  - Antigravity: M1 (HDS), M2 (cancer), M3 (drug poisoning), and M6 (profile "Death rates" section and `/deaths` endpoints) in `/home/john/chip-agy-mort`. Claude reviewed and committed each one.
+  - Claude added contract Amendment 1 (NCI state-file codes 02900, 11001, and 72001), updated the product-count and charts-exclusion tests, and corrected two counts in the walkthrough that had been stale since SVI and NRI (compare rows 71, map sources 14).
+- **Staging releases:** HDS `0563fdb4…`, cancer `2353290d…`, and drug poisoning `09113340…`.
+  - Durham County (37063) matches each source: heart disease 227.2, stroke 71.2, all-sites cancer 132.6 (127.2–138.2), and drug poisoning 23.87115.
+- **Verification:**
+  - Area and community tests: 321 passed. MCP: 28 passed.
+  - Frontend: 207 passed, and the build succeeded.
+  - `docs/beta/contract-examples` unchanged.
+  - The full signed-in staging walkthrough passed.
+  - Screenshots at 1280 and 375 px of the three maps and the Durham and North Carolina "Death rates" sections: no page errors and no horizontal scroll.
+- **Deployed:** staging only, `beta` `1d7ae37`. Live is unchanged. Nothing was pushed.
+- **Next:** Gate A, John's tryout of the three `/area/*-mortality` maps and the profile sections. Then Gate B: live migration, ingests, and deploy.
 ## 2026-11-21T01:20:00+00:00: Live Nginx caching fix applied; main and beta pushed (Claude)
 
 - **Approval:** John approved the live caching fix that had been blocked earlier, then pushes of `main` and `beta`.
