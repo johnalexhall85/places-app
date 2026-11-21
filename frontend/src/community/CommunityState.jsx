@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { getStateCodeForFips } from "../utils/stateFundingMap";
-import { CommunityShell, FacilityBlock, Indicator } from "./CommunityPages";
+import { CommunityShell, FacilityBlock, HAZARD_PRODUCTS, Indicator, NriSection, useHazards } from "./CommunityPages";
 import { SectionChartLegend } from "./charts/IndicatorChart";
 import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
@@ -28,6 +28,7 @@ export function CommunityState({ geoid }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const charts = useCharts("state", geoid, !!profile);
+  const hazards = useHazards("state", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -44,7 +45,10 @@ export function CommunityState({ geoid }) {
 
   const bySection = useMemo(() => {
     const groups = Object.fromEntries(SECTIONS.map((section) => [section.key, []]));
-    for (const row of profile?.values || []) groups[sectionFor(row)].push(row);
+    for (const row of profile?.values || []) {
+      if (HAZARD_PRODUCTS.has(row.product)) continue;
+      groups[sectionFor(row)].push(row);
+    }
     return groups;
   }, [profile]);
   const chartRows = useMemo(() => chartRowMap(charts), [charts]);
@@ -70,6 +74,7 @@ export function CommunityState({ geoid }) {
       </header>
       <nav className="community-section-nav" aria-label="Profile sections">
         {SECTIONS.filter((section) => bySection[section.key].length).map((section) => <a href={`#${section.key}`} key={section.key}>{section.title}</a>)}
+        {hazards?.nri?.length > 0 && <a href="#fema-nri">Natural hazard risk (FEMA NRI)</a>}
         <a href="#facilities">Facilities</a><a href="#places">Places in this state</a><a href="#limitations">What this data cannot tell you</a>
       </nav>
       {SECTIONS.map((section) => {
@@ -86,6 +91,7 @@ export function CommunityState({ geoid }) {
           <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={profile.area.name} stateLabel={profile.area.name} />)}</div>
         </section>;
       })}
+      <NriSection level="state" geoid={geoid} rows={hazards?.nri} source={hazards?.sources?.fema_nri} />
       <section className="community-profile-section" id="facilities">
         <div className="community-section-heading"><h2>Mapped facility locations</h2><p>Source-listed locations within the state boundary. Counts do not measure capacity, access, exposure, or quality.</p></div>
         <div className="community-facility-grid">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import SiteHeader from "../components/SiteHeader";
 import PlaceSearch from "../components/PlaceSearch";
@@ -36,7 +36,152 @@ export const MAP_ROUTES = {
   cms_gv: "/area/cms-gv",
   epa_aqi: "/area/epa-aqi",
   usda_fea: "/area/usda-fea",
+  cdc_svi: "/area/svi",
+  fema_nri: "/area/fema-nri",
 };
+
+export const HAZARD_PRODUCTS = new Set(["cdc_svi", "fema_nri"]);
+
+export function useHazards(level, geoid, ready) {
+  const [hazards, setHazards] = useState(null);
+  useEffect(() => {
+    setHazards(null);
+    if (!ready) return;
+    const controller = new AbortController();
+    fetch(`${API_BASE}/community/${level}/${geoid}/hazards`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (body && typeof body === "object") setHazards(body);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [level, geoid, ready]);
+  return hazards;
+}
+
+export function formatSviRank(cell) {
+  if (!cell) return "Not available";
+  if (cell.value == null) return cell.status_text || "Not available";
+  return Number(cell.value).toFixed(2);
+}
+
+export function formatNriValue(row) {
+  if (!row) return "Not available";
+  if (row.value == null) return row.status_text || "Not published by FEMA for this area";
+  if (row.kind === "currency" || row.storage_scale === "dollars_per_year") {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(row.value);
+  }
+  if (row.kind === "factor" || row.storage_scale === "multiplier") {
+    return Number(row.value).toFixed(2);
+  }
+  return Number(row.value).toFixed(1);
+}
+
+export function formatNriPercentile(cell) {
+  if (!cell) return "—";
+  if (cell.value == null) return cell.status_text || "Not published by FEMA for this area";
+  return Number(cell.value).toFixed(1);
+}
+
+export function CountySviSection({ geoid, stateName, rows, source }) {
+  if (!rows?.length) return null;
+  const stateColLabel = stateName ? `Rank within ${stateName}` : "Rank within state";
+  const citation = source?.citation || rows[0]?.citation;
+  const mapUrl = `/area/svi?focus=county:${encodeURIComponent(geoid)}`;
+  return <section className="community-profile-section community-hazard-section" id="svi">
+    <div className="community-section-heading">
+      <h2>Social vulnerability (CDC SVI)</h2>
+      <p>Percentile ranks: higher means more vulnerable. 0.75 means more vulnerable than 75% of counties.</p>
+    </div>
+    <div className="community-hazard-card">
+      <table className="community-hazard-table">
+        <thead>
+          <tr>
+            <th scope="col">Theme</th>
+            <th scope="col">Rank among U.S. counties</th>
+            <th scope="col">{stateColLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const usMissing = row.us?.value == null;
+            const stateMissing = row.state?.value == null;
+            return <tr key={row.measure_id || row.label}>
+              <th scope="row">{row.label}</th>
+              <td data-label="Rank among U.S. counties" className={usMissing ? "community-hazard-missing" : "community-hazard-num"}>
+                {formatSviRank(row.us)}
+              </td>
+              <td data-label={stateColLabel} className={stateMissing ? "community-hazard-missing" : "community-hazard-num"}>
+                {row.state ? formatSviRank(row.state) : "—"}
+              </td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+      {citation && <p className="community-source">
+        {citation}
+        {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">CDC/ATSDR documentation</a></>}
+      </p>}
+      <p className="community-hazard-actions">
+        <a className="community-map-link" href={mapUrl}>Explore CDC SVI on the map →</a>
+      </p>
+    </div>
+  </section>;
+}
+
+export function NriSection({ level, geoid, rows, source }) {
+  if (!rows?.length) return null;
+  const isState = level === "state";
+  const citation = source?.citation || rows[0]?.citation;
+  const mapUrl = `/area/fema-nri?focus=${encodeURIComponent(level)}:${encodeURIComponent(geoid)}`;
+  return <section className="community-profile-section community-hazard-section" id="fema-nri">
+    <div className="community-section-heading">
+      <h2>Natural hazard risk (FEMA NRI)</h2>
+      {isState ? <>
+        <p>FEMA publishes no state-level risk score; see county and tract values on the map.</p>
+        <p className="community-hazard-direction">Expected annual loss score runs from 0 to 100 among states; higher values mean greater modeled natural-hazard loss.</p>
+      </> : <p>Scores and percentiles run from 0 to 100. Higher community resilience is better; for all other measures, a higher value means greater modeled natural-hazard risk, loss, or vulnerability.</p>}
+    </div>
+    <div className="community-hazard-card">
+      <table className="community-hazard-table">
+        <thead>
+          <tr>
+            <th scope="col">Measure</th>
+            <th scope="col">{isState ? "Score / Dollars" : "Score (0–100)"}</th>
+            <th scope="col">FEMA rating</th>
+            {!isState && <th scope="col">Within-state percentile</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const valueMissing = row.value == null;
+            const spctlMissing = row.state_percentile != null && row.state_percentile.value == null;
+            return <tr key={row.measure_id}>
+              <th scope="row">
+                {row.label}
+                {row.direction === "higher_better" && <span className="community-hazard-badge">higher is better</span>}
+              </th>
+              <td data-label={isState ? "Score / Dollars" : "Score (0–100)"} className={valueMissing ? "community-hazard-missing" : "community-hazard-num"}>
+                {formatNriValue(row)}
+              </td>
+              <td data-label="FEMA rating">{row.rating || "—"}</td>
+              {!isState && <td data-label="Within-state percentile" className={spctlMissing ? "community-hazard-missing" : "community-hazard-num"}>
+                {formatNriPercentile(row.state_percentile)}
+              </td>}
+            </tr>;
+          })}
+        </tbody>
+      </table>
+      {citation && <p className="community-source">
+        {citation}
+        {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">FEMA OpenFEMA data</a></>}
+      </p>}
+      <p className="community-hazard-actions">
+        <a className="community-map-link" href={mapUrl}>Explore FEMA NRI on the map →</a>
+      </p>
+    </div>
+  </section>;
+}
 
 export function CommunityShell({ children }) {
   return (
@@ -185,6 +330,7 @@ export function CommunityCounty({ geoid }) {
   const [selectedTractKey, setSelectedTractKey] = useState("acs:B19013_001E");
   const [error, setError] = useState("");
   const charts = useCharts("county", geoid, !!profile);
+  const hazards = useHazards("county", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -209,16 +355,19 @@ export function CommunityCounty({ geoid }) {
 
   const bySection = useMemo(() => {
     const groups = Object.fromEntries(SECTIONS.map((section) => [section.key, []]));
-    for (const row of profile?.values || []) groups[sectionFor(row)].push(row);
+    for (const row of profile?.values || []) {
+      if (HAZARD_PRODUCTS.has(row.product)) continue;
+      groups[sectionFor(row)].push(row);
+    }
     return groups;
   }, [profile]);
   const stateValues = useMemo(() => new Map((profile?.state_values || []).map((row) => [`${row.product}:${row.measure_id}`, row])), [profile]);
   const chartRows = useMemo(() => chartRowMap(charts), [charts]);
   const countyLabel = profile ? (/County|Parish|Borough|Planning Region|Municipality|Census Area|City$/i.test(profile.area.name) ? profile.area.name : `${profile.area.name} County`) : "";
   const tractMeasures = useMemo(() => {
-    const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published)
+    const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published && !HAZARD_PRODUCTS.has(measure.product))
       .map((measure) => `${measure.product}:${measure.measure_id}`));
-    return (profile?.values || []).filter((row) => capable.has(`${row.product}:${row.measure_id}`));
+    return (profile?.values || []).filter((row) => !HAZARD_PRODUCTS.has(row.product) && capable.has(`${row.product}:${row.measure_id}`));
   }, [catalog, profile]);
   const selectedTractRow = tractMeasures.find((row) => `${row.product}:${row.measure_id}` === selectedTractKey) || tractMeasures[0];
 
@@ -241,23 +390,37 @@ export function CommunityCounty({ geoid }) {
           </div>
         </header>
         <nav className="community-section-nav" aria-label="Profile sections">
-          {SECTIONS.filter((section) => bySection[section.key]?.length).map((section) => <a href={`#${section.key}`} key={section.key}>{section.title}</a>)}
+          {SECTIONS.map((section) => <Fragment key={section.key}>
+            {bySection[section.key]?.length > 0 && <a href={`#${section.key}`}>{section.title}</a>}
+            {section.key === "environment" && <>
+              {hazards?.svi?.length > 0 && <a href="#svi">Social vulnerability (CDC SVI)</a>}
+              {hazards?.nri?.length > 0 && <a href="#fema-nri">Natural hazard risk (FEMA NRI)</a>}
+            </>}
+          </Fragment>)}
           {tractMeasures.length > 0 && <a href="#tract-patterns">Tract patterns</a>}
           <a href="#facilities">Facilities</a><a href="#limitations">What this data cannot tell you</a>
         </nav>
         {SECTIONS.map((section) => {
-          if (!bySection[section.key]?.length) return null;
-          const sectionChartRows = bySection[section.key]
+          const rows = bySection[section.key] || [];
+          const sectionChartRows = rows
             .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
             .filter(Boolean);
-          return <section className="community-profile-section" id={section.key} key={section.key}>
-            <div className="community-section-heading">
-              <h2>{section.title}</h2>
-              <p>{section.intro}</p>
-              <SectionChartLegend rows={sectionChartRows} areaLabel={countyLabel} stateLabel={profile.area.state_name} />
-            </div>
-            <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={countyLabel} stateLabel={profile.area.state_name} />)}</div>
-          </section>;
+          const hazardBlocks = section.key === "environment" ? <>
+            <CountySviSection geoid={geoid} stateName={profile.area.state_name} rows={hazards?.svi} source={hazards?.sources?.cdc_svi} />
+            <NriSection level="county" geoid={geoid} rows={hazards?.nri} source={hazards?.sources?.fema_nri} />
+          </> : null;
+          if (!rows.length && !hazardBlocks) return null;
+          return <Fragment key={section.key}>
+            {rows.length > 0 && <section className="community-profile-section" id={section.key}>
+              <div className="community-section-heading">
+                <h2>{section.title}</h2>
+                <p>{section.intro}</p>
+                <SectionChartLegend rows={sectionChartRows} areaLabel={countyLabel} stateLabel={profile.area.state_name} />
+              </div>
+              <div className="community-indicator-grid">{rows.map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={countyLabel} stateLabel={profile.area.state_name} />)}</div>
+            </section>}
+            {hazardBlocks}
+          </Fragment>;
         })}
         {selectedTractRow && <section className="community-profile-section" id="tract-patterns">
           <div className="community-section-heading"><h2>Within-county tract patterns</h2><p>Each shape is a source-published tract estimate. Darker blues show higher values for the selected measure within this county.</p></div>
