@@ -2,6 +2,39 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T00:55:00+00:00: SVI state ranks, CDC-style SVI map and profile cards, and FEMA NRI on staging (Claude, Antigravity)
+
+- **Requests (John):**
+  - A national/state ranking switch for SVI.
+  - A county-profile block showing both rankings.
+  - An NRI map that goes from state to county to tract.
+  - NRI sections on county and state profiles.
+  - After trying staging: match CDC's SVI Interactive Map panel, switch behavior, and profile block. He also reported that `/area/fema-nri` showed PLACES.
+- **Data:**
+  - Archived the 102 CDC SVI 2022 state-ranked files and John's three NRI v1.20 ZIPs.
+  - Migration `a6c4e8b2d0f7` (SVI `source_scope`, NRI tables) was applied to `places_staging`.
+  - Published on staging: SVI release `f18b5b2a…` (10 measures) and NRI release `be1ab07b…` (9 measures). An 10-measure NRI release `060c3d55…` preceded it.
+  - Durham County (37063) matches the CDC and FEMA files.
+- **Findings:**
+  - FEMA's v1.20 `RISK_SPCTL` equals `RISK_SCORE` for every county and tract, so it was dropped (contract Amendment 2).
+  - FEMA writes 0 in SOVI and RESL state percentiles where the score is blank; these are stored as `not_available`.
+  - The expected-annual-loss fields are present, contrary to a vendor's claim.
+  - The existing profile JSON and CSV now carry SVI and NRI rows (contract Amendment 1).
+  - CDC's map behavior was taken from the svi.cdc.gov/map25 app's JavaScript bundle, because the page renders only with JavaScript.
+- **Antigravity:**
+  - VH2: SVI state ranks and the NRI product and map.
+  - VH3: the `/hazards` endpoints and profile sections.
+  - VH4: CDC-style click panel, the "Geographic Comparison" toggle with state selection, CDC legend and palettes, and SVI cards with quartile bars.
+  - VH5: statewide view limited to the selected state, fixed bar labels, `risk_spctl` removed.
+  - Claude committed each round after review. Claude changed the charts test to exclude hazard products.
+- **`/area/fema-nri` showing PLACES:** the browser had cached an old page. The page loads correctly when signed in. Fix: both staging nginx sites now send `Cache-Control: no-cache` for the page and long caching for hashed assets (`fa92900`, installed and reloaded).
+- **Verification:**
+  - Backend: 58 passed. Frontend: 65 passed, and the build succeeded. MCP: 28 passed at VH2.
+  - `docs/beta/contract-examples` unchanged.
+  - Signed-in headless screenshots of `/area/svi` in North Carolina statewide mode (100 counties counted), the Durham SVI cards, and the NRI table.
+- **Deployed:** staging only, `beta` `90a0d1b`. Live is unchanged.
+- **Next:** Gate A, John's tryout of `/area/svi`, `/area/fema-nri`, and the county and state profiles. Open items: SVI history (2018, 2020) and the NRI per-hazard fields.
+
 ## 2026-11-20T21:45:00+00:00 — Vulnerability and hazards: CDC SVI 2022 published on staging (Claude, Antigravity)
 
 - **Request (John):** brainstorm which datasets from the RWJF/CODE "Essential Health Data" Airtable list (72 datasets) to add to CHIP. He then approved the first package: move SVI and FEMA NRI from legacy tables to shared releases. He noted that Codex is at about 20% of weekly use, so Antigravity did the coding. The ranked shortlist is in [the vulnerability plan](vulnerability/PLAN.md).
