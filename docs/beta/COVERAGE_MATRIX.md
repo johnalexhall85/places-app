@@ -2,6 +2,20 @@
 
 Written 2026-11-14 from the product registries in `backend/app/area_pilot/registry/` and a read-only check of the live active releases. "Released" means a shared product with a pinned, published release, read through `app.area_pilot.lookup`. "Legacy" means an older import with no release pointer; it may be shown only in the profile's separate "Additional context" section with its vintage.
 
+**Update 2026-11-21 (Claude), from the registry files:** the tables below are the 2026-11-14 snapshot and are kept as history. Live now has these area products with these measure counts:
+- CDC PLACES 2025: 13 measures (C, T).
+- ACS 5-year 2020–2024: B19013 (1) and subject tables (7).
+- BRFSS state 2023: 20 (S).
+- HRSA AHRF: 5 (C; not in the MCP server).
+- AHRQ CLH: 5.
+- CMS Original Medicare GV: 5.
+- EPA AQI: 5.
+- USDA FEA: 5.
+- CDC SVI 2022: 10 (C, T; US and state ranks).
+- FEMA NRI v1.20: 9 (C, T).
+
+Earlier periods are published for several products (see [history plan](../history/PLAN.md)). The "Vulnerability and hazards" row is now filled by SVI and NRI. Mortality has no released product yet ([mortality plan](../mortality/PLAN.md)).
+
 Levels: S = state, C = county, T = tract. Counts are of 2024 county equivalents (3,222 including Puerto Rico).
 
 ## Released measures (28 across seven products)

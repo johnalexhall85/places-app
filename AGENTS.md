@@ -119,3 +119,17 @@ The [vulnerability plan](docs/vulnerability/PLAN.md) and [contract](docs/vulnera
   - Existing profile endpoints and the `docs/beta/contract-examples` snapshots stay byte-identical.
   - Profiles get hazard data only through the new `/hazards` endpoints in contract §4.
 - The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
+
+## Mortality: three-agent ownership (from 2026-11-21)
+
+The [mortality plan](docs/mortality/PLAN.md) and [contract](docs/mortality/CONTRACT.md) govern three new `area_pilot` products: CDC heart disease and stroke deaths, NCI cancer deaths, and NCHS drug poisoning deaths. Claude manages the work as it does the MCP server work: task files in `docs/mortality/tasks/`, dispatch with `chip-dispatch`, review, commit, merge to `beta`, and deploy staging. Read your task file and the files in [docs/mortality/status](docs/mortality/status/) first.
+
+- **Claude Code owns** `backend/alembic/**`, `infra/**`, `docs/mortality/**` (except the other agents' status files), `docs/mcp/TOOL_CONTRACT.md`, and the handbook. Claude runs every ingest and publication.
+- **Antigravity** works in `/home/john/chip-agy-mort` and **owns**:
+  - the new product files its task file names, under `backend/app/area_pilot/` and `registry/`
+  - the additions its task file names in `lookup.py`, `router.py`, `registry/comparability.json`, `backend/app/mcp_server/config.py`, and `frontend/**`
+  - `backend/tests/test_area_mortality_*`
+  - `docs/mortality/status/antigravity.md`
+- **Reassigned 2026-11-21 by Claude** (Codex was low on weekly usage on 2026-11-20): for this package only, Antigravity edits these files, which Claude or Codex own elsewhere. The reassignment ends when this package is live. Codex may review read-only.
+- County, state, and district profile endpoints and the `docs/beta/contract-examples` snapshots stay byte-identical.
+- The MCP rules above still apply. Codex and Antigravity do not commit, push, merge, deploy, or use sudo.
