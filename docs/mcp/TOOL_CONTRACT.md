@@ -285,3 +285,14 @@ John approved these tools on 2026-11-20. The data rules are in [docs/grant-histo
 3. **Rule added to `interpretation_rules`:** "SVI values are CDC/ATSDR percentile ranks (0–1) among all U.S. counties or all U.S. tracts; do not average, combine, or compare them across years or levels."
 4. **`list_data_sources`** now lists nine area products.
 5. **No history.** Earlier SVI years (2018, 2020) are not published.
+
+## Amendment 6 (2026-11-21, Claude): mortality
+
+1. **New public products.** Their data comes through the existing tools by way of `app.area_pilot.lookup`, and no tool is added. See the [mortality contract](../mortality/CONTRACT.md).
+   - **`cdc_hds_mortality`** (dataset `cdc_hds_mortality_2022_2024`): `heart_disease_death_rate` and `stroke_death_rate` for adults 35 and older, 2022–2024, at state and county level, with a national reference. There is no uncertainty.
+   - **`nci_cancer_mortality`** (dataset `nci_cancer_mortality_2020_2024`): `cancer_death_rate_all`, `cancer_death_rate_lung`, and `cancer_death_rate_colorectal`, 2020–2024, at state and county level, with a national reference and 95% confidence intervals.
+   - **`nchs_drug_poisoning`** (dataset `nchs_drug_poisoning_2021`): `drug_poisoning_death_rate`, a model-based estimate for 2021, at county level only, with the 95% interval from NCHS's model.
+2. **Status:** `suppressed` means that the source withheld the rate (CDC "Insufficient data", or NCI fewer than 16 deaths). It is never zero.
+3. **Rule added to `interpretation_rules`:** "Mortality rates are published by the source, age-adjusted; never add them, compare them across mortality products, or call a suppressed value zero."
+4. **`list_data_sources`** now lists 13 area products.
+5. **No history:** earlier periods are not published. The NCHS 2003–2020 rows are staged only.
