@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../config/apiBase";
 import { getStateCodeForFips } from "../utils/stateFundingMap";
-import { CommunityShell, FacilityBlock, HAZARD_PRODUCTS, Indicator, NriSection, useHazards } from "./CommunityPages";
+import {
+  CommunityShell,
+  DeathsSection,
+  FacilityBlock,
+  HAZARD_PRODUCTS,
+  Indicator,
+  MORTALITY_PRODUCTS,
+  NriSection,
+  useDeaths,
+  useHazards,
+} from "./CommunityPages";
 import { SectionChartLegend } from "./charts/IndicatorChart";
 import { chartRowMap } from "./charts/scale";
 import { useCharts } from "./charts/useCharts";
@@ -29,6 +39,7 @@ export function CommunityState({ geoid }) {
   const [error, setError] = useState("");
   const charts = useCharts("state", geoid, !!profile);
   const hazards = useHazards("state", geoid, !!profile);
+  const deaths = useDeaths("state", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -46,7 +57,7 @@ export function CommunityState({ geoid }) {
   const bySection = useMemo(() => {
     const groups = Object.fromEntries(SECTIONS.map((section) => [section.key, []]));
     for (const row of profile?.values || []) {
-      if (HAZARD_PRODUCTS.has(row.product)) continue;
+      if (HAZARD_PRODUCTS.has(row.product) || MORTALITY_PRODUCTS.has(row.product)) continue;
       groups[sectionFor(row)].push(row);
     }
     return groups;
@@ -55,6 +66,7 @@ export function CommunityState({ geoid }) {
   const fundingCode = getStateCodeForFips(geoid);
   const counties = profile?.counties || [];
   const districts = profile?.districts || [];
+  const hasDeaths = Boolean(deaths?.heart_stroke?.length || deaths?.cancer?.length);
 
   return <CommunityShell><div className="community-wrap community-profile community-state-profile">
     <a className="community-back" href="/">← Find another place</a>
@@ -73,23 +85,33 @@ export function CommunityState({ geoid }) {
         </div>
       </header>
       <nav className="community-section-nav" aria-label="Profile sections">
-        {SECTIONS.filter((section) => bySection[section.key].length).map((section) => <a href={`#${section.key}`} key={section.key}>{section.title}</a>)}
+        {SECTIONS.map((section) => <Fragment key={section.key}>
+          {bySection[section.key].length > 0 && <a href={`#${section.key}`}>{section.title}</a>}
+          {section.key === "health" && hasDeaths && <a href="#deaths">Death rates</a>}
+        </Fragment>)}
         {hazards?.nri?.length > 0 && <a href="#fema-nri">Natural hazard risk (FEMA NRI)</a>}
         <a href="#facilities">Facilities</a><a href="#places">Places in this state</a><a href="#limitations">What this data cannot tell you</a>
       </nav>
       {SECTIONS.map((section) => {
-        if (!bySection[section.key].length) return null;
-        const sectionChartRows = bySection[section.key]
+        const rows = bySection[section.key];
+        const deathBlock = section.key === "health" ? (
+          <DeathsSection level="state" geoid={geoid} stateName={profile.area.name} deaths={deaths} />
+        ) : null;
+        if (!rows.length && !deathBlock) return null;
+        const sectionChartRows = rows
           .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
           .filter(Boolean);
-        return <section className="community-profile-section" id={section.key} key={section.key}>
-          <div className="community-section-heading">
-            <h2>{section.title}</h2>
-            <p>{section.intro}</p>
-            <SectionChartLegend rows={sectionChartRows} areaLabel={profile.area.name} stateLabel={profile.area.name} />
-          </div>
-          <div className="community-indicator-grid">{bySection[section.key].map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={profile.area.name} stateLabel={profile.area.name} />)}</div>
-        </section>;
+        return <Fragment key={section.key}>
+          {rows.length > 0 && <section className="community-profile-section" id={section.key}>
+            <div className="community-section-heading">
+              <h2>{section.title}</h2>
+              <p>{section.intro}</p>
+              <SectionChartLegend rows={sectionChartRows} areaLabel={profile.area.name} stateLabel={profile.area.name} />
+            </div>
+            <div className="community-indicator-grid">{rows.map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={profile.area.name} stateLabel={profile.area.name} />)}</div>
+          </section>}
+          {deathBlock}
+        </Fragment>;
       })}
       <NriSection level="state" geoid={geoid} rows={hazards?.nri} source={hazards?.sources?.fema_nri} />
       <section className="community-profile-section" id="facilities">

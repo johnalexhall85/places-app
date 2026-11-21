@@ -3,6 +3,9 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import {
   CommunityCounty,
   NRI_RISK_SPCTL_NOTE,
+  deathAgeAdjustmentNote,
+  formatDeathInterval,
+  formatDeathRate,
   formatIndicatorValue,
   formatNriPercentile,
   formatNriValue,
@@ -429,5 +432,432 @@ describe("county and state profile hazard sections", () => {
     expect(within(nriSection).getByText("$3,210,450,124")).toBeInTheDocument();
     expect(within(nriSection).queryByText(NRI_RISK_SPCTL_NOTE)).not.toBeInTheDocument();
     expect(within(nriSection).getByRole("link", { name: /Explore FEMA NRI on the map/ })).toHaveAttribute("href", "/area/fema-nri?focus=state:37");
+  });
+});
+
+const SAMPLE_COUNTY_DEATHS = {
+  level: "county",
+  geoid: "37063",
+  name: "Durham",
+  state: { geoid: "37", name: "North Carolina" },
+  heart_stroke: [
+    {
+      measure_id: "heart_disease_death_rate",
+      label: "Heart disease death rate, adults 35 and older (per 100,000, age-adjusted)",
+      period: "2022–2024",
+      county: {
+        value: 227.2,
+        period: "2022–2024",
+        value_type: "Age-adjusted, Spatially Smoothed, 3-year Average Rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+        citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+      },
+      state: {
+        value: 305.4,
+        period: "2022–2024",
+        value_type: "Age-adjusted, 3-year Average Rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+        citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+      },
+      us: {
+        value: 315.3,
+        period: "2022–2024",
+        value_type: "Age-adjusted, 3-year Average Rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+        citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+      },
+      status: "available",
+      status_text: "Published value",
+      uncertainty: { kind: "none", label: "No uncertainty published" },
+      citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+    },
+    {
+      measure_id: "stroke_death_rate",
+      label: "Stroke death rate, adults 35 and older (per 100,000, age-adjusted)",
+      period: "2022–2024",
+      county: {
+        value: null,
+        period: "2022–2024",
+        value_type: "Age-adjusted, Spatially Smoothed, 3-year Average Rate",
+        status: "suppressed",
+        status_text: "Insufficient data (CDC Heart Disease and Stroke Atlas)",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+        citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+      },
+      state: {
+        value: 84.6,
+        period: "2022–2024",
+        value_type: "Age-adjusted, 3-year Average Rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+      },
+      us: {
+        value: 75.9,
+        period: "2022–2024",
+        value_type: "Age-adjusted, 3-year Average Rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "none", label: "No uncertainty published" },
+      },
+      status: "suppressed",
+      status_text: "Insufficient data (CDC Heart Disease and Stroke Atlas)",
+      uncertainty: { kind: "none", label: "No uncertainty published" },
+      citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+    },
+  ],
+  cancer: [
+    {
+      measure_id: "cancer_death_rate_all",
+      label: "Cancer death rate, all sites (per 100,000, age-adjusted)",
+      period: "2020–2024",
+      county: {
+        value: 132.6,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 127.2, high: 138.2, label: "95% confidence interval" },
+      },
+      state: {
+        value: 147.8,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 146.9, high: 148.8, label: "95% confidence interval" },
+      },
+      us: {
+        value: 143.2,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 143.0, high: 143.4, label: "95% confidence interval" },
+      },
+      status: "available",
+      status_text: "Published value",
+      uncertainty: { kind: "ci95", low: 127.2, high: 138.2, label: "95% confidence interval" },
+      citation: "Source: NCI/CDC · NCI cancer deaths · 2020–2024",
+    },
+    {
+      measure_id: "cancer_death_rate_colorectal",
+      label: "Colon and rectum cancer death rate (per 100,000, age-adjusted)",
+      period: "2020–2024",
+      county: {
+        value: null,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "suppressed",
+        status_text: "Suppressed by NCI (fewer than 16 deaths in 2020–2024)",
+        uncertainty: { kind: "ci95", low: null, high: null, label: "95% confidence interval" },
+      },
+      state: {
+        value: 12.4,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 12.1, high: 12.7, label: "95% confidence interval" },
+      },
+      us: {
+        value: 12.7,
+        period: "2020–2024",
+        value_type: "age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 12.7, high: 12.8, label: "95% confidence interval" },
+      },
+      status: "suppressed",
+      status_text: "Suppressed by NCI (fewer than 16 deaths in 2020–2024)",
+      uncertainty: { kind: "ci95", low: null, high: null, label: "95% confidence interval" },
+      citation: "Source: NCI/CDC · NCI cancer deaths · 2020–2024",
+    },
+  ],
+  drug_poisoning: [
+    {
+      measure_id: "drug_poisoning_death_rate",
+      label: "Drug poisoning death rate, model-based (per 100,000, age-adjusted)",
+      period: "2021",
+      county: {
+        value: 23.87115,
+        period: "2021",
+        value_type: "model_based_age_adjusted_rate",
+        status: "available",
+        status_text: "Published value",
+        uncertainty: { kind: "ci95", low: 22.12165, high: 25.75957, label: "95% interval from NCHS's model" },
+      },
+      status: "available",
+      status_text: "Published value",
+      uncertainty: { kind: "ci95", low: 22.12165, high: 25.75957, label: "95% interval from NCHS's model" },
+      citation: "Source: NCHS · NCHS drug poisoning deaths (modelled) · 2021",
+    },
+  ],
+  sources: {
+    cdc_hds_mortality: {
+      citation: "Source: CDC · CDC heart disease and stroke deaths · 2022–2024",
+      landing_page: "https://www.cdc.gov/dhdsp/maps/atlas/index.htm",
+    },
+    nci_cancer_mortality: {
+      citation: "Source: NCI/CDC · NCI cancer deaths · 2020–2024",
+      landing_page: "https://statecancerprofiles.cancer.gov/deathrates/index.php",
+    },
+    nchs_drug_poisoning: {
+      citation: "Source: NCHS · NCHS drug poisoning deaths (modelled) · 2021",
+      landing_page: "https://data.cdc.gov/NCHS/NCHS-Drug-Poisoning-Mortality-by-County-United-Sta/rpvx-m2md",
+    },
+  },
+  limitations: {
+    cdc_hds_mortality: [
+      "These are CDC's age-adjusted death rates for adults 35 and older, averaged over 2022–2024. They are not the share of people with the disease.",
+    ],
+    nci_cancer_mortality: [
+      "These are NCI's age-adjusted death rates for 2020–2024, with 95% confidence intervals. They are deaths, not new cases.",
+    ],
+    nchs_drug_poisoning: [
+      "These are NCHS model-based estimates, not counts of recorded deaths. NCHS says that they may over- or under-estimate true rates, and that they may not match CDC WONDER.",
+    ],
+  },
+};
+
+describe("county and state profile Death rates sections", () => {
+  it("formats death rates, intervals, age-adjustment notes, and suppressed status text", () => {
+    expect(formatDeathRate({ value: 227.2, status: "available" })).toBe("227.2 per 100,000");
+    expect(formatDeathRate({ value: 23.87115, status: "available" })).toBe("23.9 per 100,000");
+    expect(formatDeathRate({ value: null, status: "suppressed", status_text: "Suppressed by NCI (fewer than 16 deaths in 2020–2024)" }))
+      .toBe("Suppressed by NCI (fewer than 16 deaths in 2020–2024)");
+    expect(formatDeathInterval({ value: 132.6, uncertainty: { kind: "ci95", low: 127.2, high: 138.2, label: "95% confidence interval" } }))
+      .toBe("95% confidence interval: 127.2–138.2");
+    expect(formatDeathInterval({ value: 23.87115, uncertainty: { kind: "ci95", low: 22.12165, high: 25.75957, label: "95% interval from NCHS's model" } }))
+      .toBe("95% interval from NCHS's model: 22.1–25.8");
+    expect(formatDeathInterval({ value: null, uncertainty: { kind: "ci95", low: null, high: null } })).toBeNull();
+    expect(deathAgeAdjustmentNote({ value_type: "age_adjusted_rate" })).toBe("Age-adjusted rate (2000 U.S. standard population)");
+    expect(deathAgeAdjustmentNote({ value_type: "model_based_age_adjusted_rate" })).toBe("Model-based age-adjusted rate (2000 U.S. standard population)");
+    expect(deathAgeAdjustmentNote({ value_type: "Age-adjusted, Spatially Smoothed, 3-year Average Rate" }))
+      .toBe("Age-adjusted, Spatially Smoothed, 3-year Average Rate");
+  });
+
+  it("renders county Death rates tables, skips mortality products in other sections, and shows suppressed status_text", async () => {
+    const profileWithMortality = {
+      ...SAMPLE_COUNTY_PROFILE,
+      values: [
+        ...SAMPLE_COUNTY_PROFILE.values,
+        {
+          product: "cdc_hds_mortality",
+          measure_id: "heart_disease_death_rate",
+          geoid: "37063",
+          level: "county",
+          label: "Heart disease death rate, adults 35 and older (per 100,000, age-adjusted)",
+          value: 227.2,
+          unit: "deaths per 100,000 population (age-adjusted)",
+          period: "2022–2024",
+          population: "Adults aged 35 and older",
+          status: "available",
+          status_text: "Published value",
+          uncertainty: { kind: "none" },
+          source_release_id: "CDC Atlas 2022-2024",
+          source: { publisher: "CDC", product_name: "CDC heart disease and stroke deaths" },
+        },
+        {
+          product: "nci_cancer_mortality",
+          measure_id: "cancer_death_rate_all",
+          geoid: "37063",
+          level: "county",
+          label: "Cancer death rate, all sites (per 100,000, age-adjusted)",
+          value: 132.6,
+          unit: "deaths per 100,000 population (age-adjusted)",
+          period: "2020–2024",
+          population: "All ages, both sexes (2000 U.S. standard population)",
+          status: "available",
+          status_text: "Published value",
+          uncertainty: { kind: "ci95", low: 127.2, high: 138.2 },
+          source_release_id: "NCI 2020-2024",
+          source: { publisher: "NCI/CDC", product_name: "NCI cancer deaths" },
+        },
+        {
+          product: "nchs_drug_poisoning",
+          measure_id: "drug_poisoning_death_rate",
+          geoid: "37063",
+          level: "county",
+          label: "Drug poisoning death rate, model-based (per 100,000, age-adjusted)",
+          value: 23.87115,
+          unit: "deaths per 100,000 population (age-adjusted, model-based)",
+          period: "2021",
+          population: "All ages (2000 U.S. standard population)",
+          status: "available",
+          status_text: "Published value",
+          uncertainty: { kind: "ci95", low: 22.12165, high: 25.75957 },
+          source_release_id: "NCHS 2021",
+          source: { publisher: "NCHS", product_name: "NCHS drug poisoning deaths (modelled)" },
+        },
+      ],
+    };
+
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (String(url).endsWith("/community/county/37063")) return { ok: true, json: async () => profileWithMortality };
+      if (String(url).endsWith("/community/county/37063/deaths")) return { ok: true, json: async () => SAMPLE_COUNTY_DEATHS };
+      if (String(url).endsWith("/community/catalog")) return { ok: true, json: async () => ({ measures: [] }) };
+      return { ok: false, status: 404 };
+    }));
+
+    const { container } = render(<CommunityCounty geoid="37063" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Death rates" })).toBeInTheDocument());
+
+    // Mortality rows in profile.values must NOT be dumped into Community conditions
+    const sectionIds = Array.from(container.querySelectorAll("section.community-profile-section")).map((el) => el.id);
+    expect(sectionIds).toContain("deaths");
+    expect(sectionIds).not.toContain("conditions");
+
+    const deathsSection = container.querySelector("#deaths");
+    expect(within(deathsSection).getByRole("heading", { name: "CDC heart disease and stroke deaths" })).toBeInTheDocument();
+    expect(within(deathsSection).getByRole("heading", { name: "NCI cancer deaths" })).toBeInTheDocument();
+    expect(within(deathsSection).getByRole("heading", { name: "NCHS drug poisoning deaths (modelled)" })).toBeInTheDocument();
+
+    // Three tables (one per product)
+    const tables = deathsSection.querySelectorAll("table");
+    expect(tables).toHaveLength(3);
+    expect(Array.from(tables[0].querySelectorAll("thead th")).map((th) => th.textContent)).toEqual([
+      "Measure", "Durham County", "North Carolina", "United States",
+    ]);
+    expect(Array.from(tables[1].querySelectorAll("thead th")).map((th) => th.textContent)).toEqual([
+      "Measure", "Durham County", "North Carolina", "United States",
+    ]);
+    expect(Array.from(tables[2].querySelectorAll("thead th")).map((th) => th.textContent)).toEqual([
+      "Measure", "Durham County",
+    ]);
+
+    // Values, intervals, periods, age-adjustment notes, and suppressed status text
+    expect(within(deathsSection).getByText("227.2 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("315.3 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByText(/Age-adjusted, Spatially Smoothed, 3-year Average Rate/)).toBeInTheDocument();
+    expect(within(deathsSection).getByText("Insufficient data (CDC Heart Disease and Stroke Atlas)")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("132.6 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("95% confidence interval: 127.2–138.2")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("Suppressed by NCI (fewer than 16 deaths in 2020–2024)")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("23.9 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("95% interval from NCHS's model: 22.1–25.8")).toBeInTheDocument();
+
+    // Product notes (first limitation + model-based 2021 for drug poisoning)
+    expect(within(deathsSection).getByText(/averaged over 2022–2024\. They are not the share of people with the disease\./)).toBeInTheDocument();
+    expect(within(deathsSection).getByText(/They are deaths, not new cases\./)).toBeInTheDocument();
+    expect(within(deathsSection).getByText(/Model-based 2021 county estimate/)).toBeInTheDocument();
+
+    // Map links
+    expect(within(deathsSection).getByRole("link", { name: /Explore CDC heart disease and stroke deaths on the map/ }))
+      .toHaveAttribute("href", "/area/heart-stroke-mortality?focus=county:37063");
+    expect(within(deathsSection).getByRole("link", { name: /Explore NCI cancer deaths on the map/ }))
+      .toHaveAttribute("href", "/area/cancer-mortality?focus=county:37063");
+    expect(within(deathsSection).getByRole("link", { name: /Explore NCHS drug poisoning deaths on the map/ }))
+      .toHaveAttribute("href", "/area/drug-poisoning-mortality?focus=county:37063");
+  });
+
+  it("keeps the county profile intact when /deaths fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (String(url).endsWith("/community/county/37063")) return { ok: true, json: async () => SAMPLE_COUNTY_PROFILE };
+      if (String(url).endsWith("/community/county/37063/deaths")) throw new Error("network down");
+      if (String(url).endsWith("/community/catalog")) return { ok: true, json: async () => ({ measures: [] }) };
+      return { ok: false, status: 404 };
+    }));
+
+    render(<CommunityCounty geoid="37063" />);
+    await waitFor(() => expect(screen.getByTestId("profile-ready")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Environment" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Death rates" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders state Death rates without drug_poisoning and skips mortality products in other sections", async () => {
+    const stateProfile = {
+      area: { geoid: "37", name: "North Carolina", state_geoid: "37", state_name: "North Carolina", boundary_vintage: "TIGER/Line 2024" },
+      values: [
+        {
+          product: "cdc_hds_mortality",
+          measure_id: "heart_disease_death_rate",
+          geoid: "37",
+          level: "state",
+          label: "Heart disease death rate, adults 35 and older (per 100,000, age-adjusted)",
+          value: 305.4,
+          unit: "deaths per 100,000 population (age-adjusted)",
+          period: "2022–2024",
+          population: "Adults aged 35 and older",
+          status: "available",
+          status_text: "Published value",
+          uncertainty: { kind: "none" },
+          source_release_id: "CDC Atlas 2022-2024",
+          source: { publisher: "CDC", product_name: "CDC heart disease and stroke deaths" },
+        },
+        {
+          product: "nci_cancer_mortality",
+          measure_id: "cancer_death_rate_all",
+          geoid: "37",
+          level: "state",
+          label: "Cancer death rate, all sites (per 100,000, age-adjusted)",
+          value: 147.8,
+          unit: "deaths per 100,000 population (age-adjusted)",
+          period: "2020–2024",
+          population: "All ages, both sexes (2000 U.S. standard population)",
+          status: "available",
+          status_text: "Published value",
+          uncertainty: { kind: "ci95", low: 146.9, high: 148.8 },
+          source_release_id: "NCI 2020-2024",
+          source: { publisher: "NCI/CDC", product_name: "NCI cancer deaths" },
+        },
+      ],
+      facilities: { health_centers: null, nursing_homes: null, tri_facilities: null },
+      counties: [],
+      districts: [],
+      limitations: ["State limitation"],
+    };
+    const stateDeaths = {
+      level: "state",
+      geoid: "37",
+      name: "North Carolina",
+      state: { geoid: "37", name: "North Carolina" },
+      heart_stroke: [SAMPLE_COUNTY_DEATHS.heart_stroke[0]],
+      cancer: [SAMPLE_COUNTY_DEATHS.cancer[0]],
+      sources: {
+        cdc_hds_mortality: SAMPLE_COUNTY_DEATHS.sources.cdc_hds_mortality,
+        nci_cancer_mortality: SAMPLE_COUNTY_DEATHS.sources.nci_cancer_mortality,
+      },
+      limitations: {
+        cdc_hds_mortality: SAMPLE_COUNTY_DEATHS.limitations.cdc_hds_mortality,
+        nci_cancer_mortality: SAMPLE_COUNTY_DEATHS.limitations.nci_cancer_mortality,
+      },
+    };
+
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (String(url).endsWith("/community/state/37")) return { ok: true, json: async () => stateProfile };
+      if (String(url).endsWith("/community/state/37/deaths")) return { ok: true, json: async () => stateDeaths };
+      return { ok: false, status: 404 };
+    }));
+
+    const { container } = render(<CommunityState geoid="37" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Death rates" })).toBeInTheDocument());
+
+    // Mortality rows in profile.values must NOT trigger Health conditions and status
+    expect(screen.queryByRole("heading", { name: "Health conditions and status" })).not.toBeInTheDocument();
+
+    const deathsSection = container.querySelector("#deaths");
+    const tables = deathsSection.querySelectorAll("table");
+    expect(tables).toHaveLength(2);
+    expect(Array.from(tables[0].querySelectorAll("thead th")).map((th) => th.textContent)).toEqual([
+      "Measure", "North Carolina", "United States",
+    ]);
+    expect(Array.from(tables[1].querySelectorAll("thead th")).map((th) => th.textContent)).toEqual([
+      "Measure", "North Carolina", "United States",
+    ]);
+    expect(within(deathsSection).queryByRole("heading", { name: /drug poisoning/i })).not.toBeInTheDocument();
+    expect(within(deathsSection).getByText("305.4 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByText("147.8 per 100,000")).toBeInTheDocument();
+    expect(within(deathsSection).getByRole("link", { name: /Explore CDC heart disease and stroke deaths on the map/ }))
+      .toHaveAttribute("href", "/area/heart-stroke-mortality?focus=state:37");
+    expect(within(deathsSection).getByRole("link", { name: /Explore NCI cancer deaths on the map/ }))
+      .toHaveAttribute("href", "/area/cancer-mortality?focus=state:37");
   });
 });
