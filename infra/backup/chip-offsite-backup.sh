@@ -47,7 +47,12 @@ if [ "$DOW" = 7 ]; then
 fi
 
 # Retention.
-rclone delete --min-age 8d "${REMOTE}db/daily"
-rclone delete --min-age 29d "${REMOTE}db/weekly"
+# (The weekly folder does not exist until the first Sunday run; skip a missing folder.)
+for spec in "daily 8d" "weekly 29d"; do
+  set -- $spec
+  if rclone lsf "${REMOTE}db/$1" >/dev/null 2>&1; then
+    rclone delete --min-age "$2" "${REMOTE}db/$1"
+  fi
+done
 
 echo "$STAMP ok entries=$ENTRIES bytes=$SIZE" >> "$LOG_DIR/runs.log"
