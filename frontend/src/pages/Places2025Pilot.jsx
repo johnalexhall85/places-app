@@ -14,6 +14,25 @@ import { BASE_MAP_OPTIONS } from "../branding/baseMaps";
 import { BLUES, HOVER_LINE, SELECTION_CASING, SELECTION_LINE, quantileColor, quantileCuts, quantileLabels, rampColors } from "../branding/mapColors";
 import { gridForZoom } from "../utils/mapGrid";
 import { MAP_HOVER_TOOLTIP_OPTIONS, areaTooltipHtml, isCoarsePointer } from "../utils/mapTooltip";
+import SviQuartileBar, {
+  SVI_LEVELS,
+  SVI_NO_DATA_COLOR,
+  SVI_RANGE_TEXT,
+  SVI_STATES,
+  SVI_THEMES,
+  SVI_UNAVAILABLE_MESSAGE,
+  normalizeSviStateParam,
+  sviCountyHeading,
+  sviFormatValue,
+  sviIsMissing,
+  sviLevel,
+  sviLevelIndex,
+  sviPaletteColor,
+  sviPanelRankTitle,
+  sviStateAbbrForGeoid,
+  sviStateByFips,
+  sviThemeForMeasure,
+} from "../components/SviQuartileBar";
 import "./Places2025Pilot.css";
 
 const cache = new Map();
@@ -131,33 +150,79 @@ export function gvBinLabels(breaks, kind) {
 }
 
 export const SVI_DATASET_ID = "cdc_svi_2022";
-// CDC/ATSDR quartile classes (0.25, 0.5, 0.75) on the PDO brand blue ramp; higher values = more vulnerable.
-const sviColors = rampColors(4);
-export const SVI_STATUS_COLORS = { not_available: "#d8dee3", not_in_release: "#ffffff" };
+export const SVI_STATUS_COLORS = { not_available: SVI_NO_DATA_COLOR, not_in_release: SVI_NO_DATA_COLOR };
 export const SVI_STATUS_TEXT = {
   not_available: "Not ranked by CDC (−999 in the source file)",
   not_in_release: "No row in this SVI release",
 };
-const sviDecimal = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+export const SVI_DC_SWITCH_MESSAGE = "There is no State comparison data for county, switched to census.";
+export const SVI_CHOOSE_STATE_MESSAGE = "Choose a state to see statewide rankings.";
+export const SVI_STATE_DISABLED_HINT = "Switch Geographic Comparison to Statewide to select a state/district/territory";
+export const SVI_COMPARISON_TOOLTIP = "Toggle to view nationwide or statewide data comparison level";
+export { SVI_LEVELS, SVI_THEMES, SVI_STATES, SVI_UNAVAILABLE_MESSAGE, sviLevel, sviLevelIndex, sviThemeForMeasure };
+
 export function sviNumber(value) {
-  return value == null ? "—" : sviDecimal.format(value);
+  return sviFormatValue(value);
 }
 export function sviValueText(item) {
-  if (SVI_STATUS_TEXT[item.status] || item.value == null) return item.status_text || SVI_STATUS_TEXT[item.status] || SVI_STATUS_TEXT.not_available;
+  if (sviIsMissing(item?.value, item?.status)) {
+    return item?.status_text || SVI_STATUS_TEXT[item?.status] || SVI_STATUS_TEXT.not_available;
+  }
   return sviNumber(item.value);
 }
-export function sviColor(value, status, breaks = [0.25, 0.5, 0.75]) {
-  if (SVI_STATUS_COLORS[status]) return SVI_STATUS_COLORS[status];
-  if (value == null) return SVI_STATUS_COLORS.not_available;
-  const index = breaks.findIndex((upper) => value < upper);
-  return sviColors[index < 0 ? sviColors.length - 1 : index];
+export function sviColor(value, status, measureIdOrBreaks = "rpl_themes") {
+  const measureId = typeof measureIdOrBreaks === "string" ? measureIdOrBreaks : "rpl_themes";
+  return sviPaletteColor(value, status, measureId);
 }
-export function sviBinLabels(breaks = [0.25, 0.5, 0.75]) {
-  return [
-    `Under ${sviNumber(breaks[0])}`,
-    ...breaks.slice(1).map((upper, i) => `${sviNumber(breaks[i])} to under ${sviNumber(upper)}`),
-    `${sviNumber(breaks[breaks.length - 1])} to 1.00`,
-  ];
+export function sviBinLabels() {
+  return SVI_LEVELS.map((level) => `${level.label} (${level.range})`);
+}
+export function sviFeatureStyle(feature, { scope = "us", selectedState = "", measureId = "rpl_themes" } = {}) {
+  const props = feature?.properties || {};
+  if (scope === "state" && !selectedState) {
+    return { color: "#b0bec5", weight: 0.5, fill: false, fillOpacity: 0, fillColor: "transparent", dashArray: null };
+  }
+  const geoid = featureId(props);
+  if (scope === "state" && selectedState && !geoid.startsWith(selectedState)) {
+    return { color: "#b0bec5", weight: 0.5, fill: false, fillOpacity: 0, fillColor: "transparent", dashArray: null };
+  }
+  const idx = sviLevelIndex(props.value, props.status);
+  if (idx < 0) {
+    return {
+      color: "#555555",
+      weight: 0.6,
+      fill: true,
+      fillOpacity: props.status === "not_in_release" ? 0.35 : 0.7,
+      dashArray: props.status === "not_in_release" ? "2 3" : null,
+      fillColor: SVI_NO_DATA_COLOR,
+    };
+  }
+  return {
+    color: "#555555",
+    weight: idx === 0 ? 1 : 0.6,
+    fill: true,
+    fillOpacity: 0.88,
+    dashArray: null,
+    fillColor: sviPaletteColor(props.value, props.status, measureId),
+  };
+}
+export function clipBboxToState(viewportBbox, stateBounds) {
+  if (!stateBounds || stateBounds.length !== 4) return viewportBbox;
+  const [sW, sS, sE, sN] = stateBounds.map(Number);
+  if (![sW, sS, sE, sN].every(Number.isFinite) || sE - sW > 180) return viewportBbox;
+  const padLon = Math.max(0.05, (sE - sW) * 0.05);
+  const padLat = Math.max(0.05, (sN - sS) * 0.05);
+  const pW = Math.max(-180, sW - padLon);
+  const pE = Math.min(180, sE + padLon);
+  const pS = Math.max(-90, sS - padLat);
+  const pN = Math.min(90, sN + padLat);
+  if (!viewportBbox) return [pW, pS, pE, pN].join(",");
+  const [vW, vS, vE, vN] = viewportBbox.split(",").map(Number);
+  const iW = Math.max(vW, pW);
+  const iS = Math.max(vS, pS);
+  const iE = Math.min(vE, pE);
+  const iN = Math.min(vN, pN);
+  return iW < iE && iS < iN ? [iW, iS, iE, iN].join(",") : [pW, pS, pE, pN].join(",");
 }
 export function sviScopeForMeasure(measureId) {
   return String(measureId || "").endsWith("_state") ? "state" : "us";
@@ -371,21 +436,29 @@ export function areaFeatureDetails(dataset, item, measure, context = {}) {
       "No confidence interval or margin of error is published."];
   } else if (dataset === "svi") {
     const isStateRank = measure?.source_scope === "state" || sviScopeForMeasure(measure?.measure_id) === "state";
-    const rankLabel = measure?.population_by_level?.[geography]
-      ?? (isStateRank
-        ? (geography === "tract" ? "Rank among census tracts in the same state" : "Rank among counties in the same state")
-        : (catalog?.population_by_level?.[geography] ?? (geography === "tract" ? "Rank among all U.S. census tracts" : "Rank among all U.S. counties")));
-    base.explanation = isStateRank
-      ? "CDC/ATSDR within-state percentile rank (0–1), not a rate; colors compare areas only within their own state."
-      : "CDC/ATSDR U.S.-wide percentile rank (0–1), not a rate; higher values indicate greater vulnerability.";
-    value = sviValueText(item);
-    lines = [
-      `${period} · ${rankLabel}`,
-      item.source_value != null ? `CDC SVI source value: ${item.source_value}` : null,
-      isStateRank
-        ? "Within-state percentile rank (0–1). Colors compare areas only within their own state. No uncertainty is published."
-        : "U.S.-wide percentile rank (0–1), not a rate. No confidence interval or margin of error is published.",
-    ];
+    if (context.sviScope === "state" && (!context.sviState || !featureId(item).startsWith(context.sviState))) {
+      base.explanation = context.sviState ? "Outside the selected state." : SVI_CHOOSE_STATE_MESSAGE;
+      value = "No Data";
+      lines = [context.sviState ? "Areas outside the selected state have no statewide fill." : SVI_CHOOSE_STATE_MESSAGE];
+    } else {
+      const rankLabel = measure?.population_by_level?.[geography]
+        ?? (isStateRank
+          ? (geography === "tract" ? "Rank among census tracts in the same state" : "Rank among counties in the same state")
+          : (catalog?.population_by_level?.[geography] ?? (geography === "tract" ? "Rank among all U.S. census tracts" : "Rank among all U.S. counties")));
+      base.explanation = isStateRank
+        ? "CDC/ATSDR within-state percentile rank (0–1), not a rate; colors compare areas only within their own state."
+        : "CDC/ATSDR U.S.-wide percentile rank (0–1), not a rate; higher values indicate greater vulnerability.";
+      const level = sviLevel(item.value, item.status);
+      value = sviValueText(item);
+      lines = [
+        level ? `Level of vulnerability: ${level.label} (${level.phrase})` : SVI_UNAVAILABLE_MESSAGE,
+        `${period} · ${rankLabel}`,
+        item.source_value != null ? `CDC SVI source value: ${item.source_value}` : null,
+        isStateRank
+          ? "Within-state percentile rank (0–1). Colors compare areas only within their own state. No uncertainty is published."
+          : "U.S.-wide percentile rank (0–1), not a rate. No confidence interval or margin of error is published.",
+      ];
+    }
   } else if (dataset === "nri") {
     const higherBetter = measure?.direction === "higher_better";
     base.explanation = higherBetter
@@ -479,8 +552,17 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
   const [initialView] = useState(initialMapView);
-  const [measureId, setMeasureId] = useState(() => new URLSearchParams(window.location.search).get("measure_id") ||
-    (isProfile ? "poverty_pct" : isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isSvi ? "rpl_themes" : isNri ? "eal_score" : isFea ? "low_income_low_access_pct" : isBrfss ? "diabetes" : "dental_crudeprev"));
+  const [measureId, setMeasureId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rawMeasure = params.get("measure_id");
+    if (isSvi) {
+      const scopeParam = params.get("scope");
+      const initScope = scopeParam === "state" || (!scopeParam && String(rawMeasure || "").endsWith("_state")) ? "state" : "us";
+      return swapSviMeasureScope(rawMeasure || "rpl_themes", initScope);
+    }
+    return rawMeasure ||
+      (isProfile ? "poverty_pct" : isAcs ? "B19013_001E" : isAhrf ? "phys_nf_prim_care_pc_exc_rsdt_23" : isClh ? "ACS_PCT_HH_BROADBAND_ANY" : isAqi ? "median_aqi" : isGv ? "std_payment_per_capita" : isNri ? "eal_score" : isFea ? "low_income_low_access_pct" : isBrfss ? "diabetes" : "dental_crudeprev");
+  });
   const [requestedPeriod, setRequestedPeriod] = useState(() => new URLSearchParams(window.location.search).get("period"));
   const [profileGeography, setProfileGeography] = useState(() => new URLSearchParams(window.location.search).get("geography") || "auto");
   const [bbox, setBBox] = useState(null);
@@ -502,6 +584,25 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const [selection, setSelection] = useState(null);
   const [focusRequest] = useState(parseFocus);
   const [focusStatus, setFocusStatus] = useState("");
+  const [sviState, setSviState] = useState(() => {
+    if (!isSvi) return "";
+    const params = new URLSearchParams(window.location.search);
+    const rawMeasure = params.get("measure_id");
+    const scopeParam = params.get("scope");
+    const initScope = scopeParam === "state" || (!scopeParam && String(rawMeasure || "").endsWith("_state")) ? "state" : "us";
+    if (initScope !== "state") return "";
+    const fromParam = normalizeSviStateParam(params.get("state"));
+    if (fromParam) return fromParam;
+    const focus = parseFocus(window.location.search);
+    return focus ? normalizeSviStateParam(focus.geoid.slice(0, 2)) : "";
+  });
+  const [sviStateInfo, setSviStateInfo] = useState(null);
+  const [sviDcNotice, setSviDcNotice] = useState(() => isSvi && sviState === "11" && initialView.zoom < PILOT_TRACT_ZOOM);
+  const [sviOutlineData, setSviOutlineData] = useState(null);
+  const sviStateSelectRef = useRef(null);
+  const pendingStateFocusRef = useRef(false);
+  const sviZoomStateRef = useRef(isSvi && Boolean(sviState) && !(focusRequest && focusRequest.level !== "state" && focusRequest.geoid.startsWith(sviState)));
+  const areaInfoCacheRef = useRef(new Map());
   const [map, setMap] = useState(null);
   const mapSurfaceRef = useRef(null);
   const resizeMap = useCallback(() => map?.invalidateSize?.(), [map]);
@@ -559,15 +660,29 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const wantsTracts = mapZoom >= (isAcs || isNri ? ACS_TRACT_ZOOM : PILOT_TRACT_ZOOM);
   const supportedLevels = periodEntry?.levels ?? measure?.geographies ?? catalog?.geographies ?? ["county"];
   const tractSupported = supportedLevels.includes("tract");
-  const capSelectionKey = `${releaseId}|${measureId}|${period}|${bbox}`;
+  const sviScope = isSvi ? sviScopeForMeasure(measureId) : "us";
+  const sviStateObj = isSvi && sviScope === "state" && sviState ? sviStateByFips(sviState) : null;
+  const sviAwaitingState = isSvi && sviScope === "state" && !sviState;
+  const sviWaitingForStateBounds = isSvi && sviScope === "state" && Boolean(sviState) && sviStateInfo?.fips !== sviState;
+  const effectiveBbox = useMemo(() => {
+    if (!bbox) return null;
+    if (isSvi && sviScope === "state" && sviState && sviStateInfo?.fips === sviState && sviStateInfo.bbox) {
+      return clipBboxToState(bbox, sviStateInfo.bbox);
+    }
+    return bbox;
+  }, [bbox, isSvi, sviScope, sviState, sviStateInfo]);
+  const capSelectionKey = `${releaseId}|${measureId}|${period}|${effectiveBbox}`;
   const tractCapExceeded = tractCapKey === capSelectionKey;
+  const sviDcForcedTracts = isSvi && sviScope === "state" && sviState === "11" && tractSupported && !tractCapExceeded;
   // USDA FEA publishes no state value for its selected measures, so counties are shown at every zoom.
   const wantedGeography = isBrfss ? "state" : isProfile && ["state", "county", "tract", "cd"].includes(profileGeography) ? profileGeography
-    : isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom) : areaGeography(mapZoom, isAcs || isProfile || isNri, tractSupported, tractCapExceeded);
+    : isAhrf || isAqi || isFea ? "county" : isGv ? gvGeography(mapZoom, catalog?.state_to_county_zoom)
+    : sviDcForcedTracts ? "tract"
+    : areaGeography(mapZoom, isAcs || isProfile || isNri, tractSupported, tractCapExceeded);
   const geography = supportedLevels.includes(wantedGeography) ? wantedGeography
     : supportedLevels.includes("county") ? "county" : supportedLevels.includes("state") ? "state" : supportedLevels[0] ?? wantedGeography;
-  const sviScope = isSvi ? sviScopeForMeasure(measureId) : "us";
   const sviHasStateMeasures = isSvi && Boolean(catalog?.measures?.some((item) => sviScopeForMeasure(item.measure_id) === "state"));
+  const sviTheme = isSvi ? sviThemeForMeasure(measureId) : null;
   const visibleMeasures = useMemo(() => {
     if (!catalog?.measures) return [];
     if (!isSvi || !sviHasStateMeasures) return catalog.measures;
@@ -579,9 +694,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
   const dataSelection = useMemo(() => releaseId && measure ? {
     datasetId: catalog.dataset_id, releaseId, period, measure, valueType: catalog.value_type, geography,
   } : null, [releaseId, period, measure, catalog, geography]);
-  const requestKey = useMemo(() => dataSelection && bbox
-    ? String(pilotQuery(dataSelection, bbox, { simplify: String(simplify), limit: "100", offset: String(page * 100) }))
-    : null, [dataSelection, bbox, page]);
+  const requestKey = useMemo(() => dataSelection && effectiveBbox && !sviAwaitingState && !sviWaitingForStateBounds
+    ? String(pilotQuery(dataSelection, effectiveBbox, { simplify: String(simplify), limit: "100", offset: String(page * 100) }))
+    : null, [dataSelection, effectiveBbox, page, simplify, sviAwaitingState, sviWaitingForStateBounds]);
   const onViewport = useCallback((next, zoomLevel, center) => {
     const key = `${next}|${zoomLevel}`;
     if (viewportRef.current === key) return;
@@ -598,13 +713,23 @@ export default function Places2025Pilot({ dataset = "places" }) {
     url.searchParams.set("measure_id", measureId);
     if (period) url.searchParams.set("period", period);
     if (isProfile) url.searchParams.set("geography", profileGeography);
+    if (isSvi) {
+      if (sviScope === "state") {
+        url.searchParams.set("scope", "state");
+        if (sviState) url.searchParams.set("state", sviState);
+        else url.searchParams.delete("state");
+      } else {
+        url.searchParams.delete("scope");
+        url.searchParams.delete("state");
+      }
+    }
     url.searchParams.set("lat", viewCenter[0].toFixed(5));
     url.searchParams.set("lon", viewCenter[1].toFixed(5));
     url.searchParams.set("zoom", String(mapZoom));
     if (selection) url.searchParams.set("focus", `${selection.level}:${selection.geoid}`);
     else if (!focusRequest || focusedOnce.current) url.searchParams.delete("focus");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [bbox, releaseId, measureId, period, mapZoom, viewCenter, isProfile, profileGeography, selection?.level, selection?.geoid, focusRequest]);
+  }, [bbox, releaseId, measureId, period, mapZoom, viewCenter, isProfile, profileGeography, isSvi, sviScope, sviState, selection?.level, selection?.geoid, focusRequest]);
 
   async function copyMapLink() {
     try {
@@ -616,12 +741,62 @@ export default function Places2025Pilot({ dataset = "places" }) {
   }
 
   useEffect(() => {
-    if (!dataSelection || !bbox) return;
+    if (!isSvi || sviScope !== "state" || sviState !== "11") {
+      setSviDcNotice(false);
+    } else if (mapZoom < PILOT_TRACT_ZOOM) {
+      setSviDcNotice(true);
+    }
+  }, [isSvi, sviScope, sviState, mapZoom]);
+
+  useEffect(() => {
+    if (isSvi && sviScope === "state" && pendingStateFocusRef.current) {
+      pendingStateFocusRef.current = false;
+      sviStateSelectRef.current?.focus();
+    }
+  }, [isSvi, sviScope]);
+
+  useEffect(() => {
+    if (!isSvi || sviScope !== "state" || !sviState) {
+      setSviStateInfo(null);
+      return;
+    }
+    const cacheKey = `state:${sviState}`;
+    if (areaInfoCacheRef.current.has(cacheKey)) {
+      const area = areaInfoCacheRef.current.get(cacheKey);
+      setSviStateInfo({ fips: sviState, bbox: area?.bbox || null, name: area?.name || sviStateByFips(sviState)?.name || "" });
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`${API_BASE}/community/area/state/${sviState}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((area) => {
+        if (area) areaInfoCacheRef.current.set(cacheKey, area);
+        setSviStateInfo({ fips: sviState, bbox: area?.bbox || null, name: area?.name || sviStateByFips(sviState)?.name || "" });
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setSviStateInfo({ fips: sviState, bbox: null, name: sviStateByFips(sviState)?.name || "" });
+        }
+      });
+    return () => controller.abort();
+  }, [isSvi, sviScope, sviState]);
+
+  useEffect(() => {
+    if (sviAwaitingState) {
+      ++requestId.current;
+      setError("");
+      setLoadedKey(null);
+      setMapData(null);
+      setLegend(null);
+      setTable(null);
+      return;
+    }
+    if (!dataSelection || !effectiveBbox || sviWaitingForStateBounds) return;
     const controller = new AbortController();
     const id = ++requestId.current;
-    const base = pilotQuery(dataSelection, bbox);
-    const withMap = pilotQuery(dataSelection, bbox, { simplify: String(simplify) });
-    const withTable = pilotQuery(dataSelection, bbox, { limit: "100", offset: String(page * 100) });
+    const base = pilotQuery(dataSelection, effectiveBbox);
+    const withMap = pilotQuery(dataSelection, effectiveBbox, { simplify: String(simplify) });
+    const withTable = pilotQuery(dataSelection, effectiveBbox, { limit: "100", offset: String(page * 100) });
     setError("");
     setLoadedKey(null);
     setMapData(null);
@@ -637,6 +812,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
         throw new Error("Release, period, or geography mismatch");
       }
       setMapData(nextMap); setLegend(nextLegend); setTable(nextTable);
+      if (isSvi) setSviOutlineData(nextMap);
       setLoadedKey(requestKey);
     }).catch((err) => {
       if (err.name !== "AbortError" && id === requestId.current) {
@@ -645,13 +821,15 @@ export default function Places2025Pilot({ dataset = "places" }) {
       }
     });
     return () => controller.abort();
-  }, [dataSelection, bbox, page, releaseId, period, requestKey, geography, capSelectionKey]);
+  }, [dataSelection, effectiveBbox, page, releaseId, period, requestKey, geography, capSelectionKey, simplify, isSvi, sviAwaitingState, sviWaitingForStateBounds]);
 
   const ready = Boolean(requestKey && loadedKey === requestKey);
-  const settled = ready || Boolean(error) || Boolean(catalogError) || Boolean(catalog && !releaseId);
+  const settled = ready || sviAwaitingState || Boolean(error) || Boolean(catalogError) || Boolean(catalog && !releaseId);
   useEffect(() => { if (settled) setFirstLoadDone(true); }, [settled]);
   const sourceTitle = isBrfss ? "BRFSS state survey estimates" : isProfile ? `ACS ${period ?? "2020–2024"} community characteristics` : isAcs ? `ACS ${period ?? "2020–2024"} 5-year income` : isAhrf ? `AHRF ${period ?? "2023"} county resources` : isClh ? "AHRQ CLH community conditions" : isAqi ? `EPA annual AQI by county, ${period ?? "2025"}` : isGv ? `CMS Original Medicare Geographic Variation, ${period ?? "2024"}` : isSvi ? `CDC Social Vulnerability Index, ${period ?? "2018–2022"}` : isNri ? `FEMA National Risk Index, ${period ?? "NRI v1.20 (December 2025)"}` : isFea ? "USDA Food Environment Atlas: county food access and retailers" : `PLACES county and tract estimates${period ? `, ${period}` : ""}`;
   const features = ready ? mapData?.features || [] : [];
+  const geoJsonData = isSvi && sviAwaitingState ? sviOutlineData : mapData;
+  const geoJsonFeatures = isSvi && sviAwaitingState ? (sviOutlineData?.features || []) : features;
   // Quintile cut points for the whole release at this level (PLACES, ACS income, AHRF, CLH).
   const cuts = useMemo(() => quantileCuts(ready ? legend?.quantile_breaks : null), [ready, legend]);
   const cutColors = rampColors(cuts.length + 1);
@@ -660,7 +838,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
     : isClh ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)
     : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}%`;
   const zoom = initialView.zoom;
-  const detailContext = useMemo(() => ({ geography, catalog, releaseId, period }), [geography, catalog, releaseId, period]);
+  const detailContext = useMemo(() => ({ geography, catalog, releaseId, period, sviScope, sviState }), [geography, catalog, releaseId, period, sviScope, sviState]);
   const dataKey = `${releaseId}|${measureId}|${period}|${geography}`;
 
   const zoomRange = useCallback((level) => focusZoomRange(level, {
@@ -680,6 +858,13 @@ export default function Places2025Pilot({ dataset = "places" }) {
     map.setView([(south + north) / 2, (west + east) / 2], target);
   }, [map, zoomRange]);
 
+  useEffect(() => {
+    if (!isSvi || sviScope !== "state" || !sviState || !map || !sviZoomStateRef.current) return;
+    if (sviStateInfo?.fips !== sviState || !sviStateInfo.bbox) return;
+    sviZoomStateRef.current = false;
+    fitArea(sviStateInfo.bbox, sviState === "11" ? "tract" : "state");
+  }, [isSvi, sviScope, sviState, map, sviStateInfo, fitArea]);
+
   // Search results and links from profile pages land here: fetch the area's box and outline, zoom, select.
   const focusArea = useCallback(async (level, geoid) => {
     setFocusStatus("Finding that place…");
@@ -687,7 +872,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
       const response = await fetch(`${API_BASE}/community/area/${level}/${geoid}`);
       if (!response.ok) throw new Error(response.status === 404 ? "That place is not on the published boundary." : "That place could not be loaded right now.");
       const area = await response.json();
-      setSelection({ level, geoid: area.geoid, name: area.name, bbox: area.bbox, geometry: area.geometry,
+      setSelection({ level, geoid: area.geoid, name: area.name, countyName: area.county_name || null, bbox: area.bbox, geometry: area.geometry,
         shapeKey: periodEntry?.current ? dataKey : null, properties: null, propsKey: null });
       fitArea(area.bbox, level);
       setFocusStatus("");
@@ -709,6 +894,82 @@ export default function Places2025Pilot({ dataset = "places" }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [clearSelection]);
 
+  // SVI clicked-area panel closes when theme, comparison, state, or geography changes (CDC map behavior).
+  const sviPrevContextRef = useRef(null);
+  useEffect(() => {
+    if (!isSvi) return;
+    const prev = sviPrevContextRef.current;
+    const next = { measureId, sviScope, sviState, geography };
+    sviPrevContextRef.current = next;
+    if (!prev) return;
+    const nonGeoChanged = prev.measureId !== next.measureId || prev.sviScope !== next.sviScope || prev.sviState !== next.sviState;
+    const geoChanged = prev.geography !== next.geography;
+    if (nonGeoChanged) {
+      clearSelection();
+    } else if (geoChanged) {
+      setSelection((current) => (current && current.level !== next.geography ? null : current));
+    }
+  }, [isSvi, measureId, sviScope, sviState, geography, clearSelection]);
+
+  // Look up parent county name when an SVI tract is clicked so the panel shows "Census Tract ..., County Name, ST".
+  useEffect(() => {
+    if (!isSvi || !selection || selection.level !== "tract" || selection.countyName) return;
+    const countyGeoid = String(selection.geoid || "").slice(0, 5);
+    if (countyGeoid.length !== 5) return;
+    const cacheKey = `county:${countyGeoid}`;
+    if (areaInfoCacheRef.current.has(cacheKey)) {
+      const cached = areaInfoCacheRef.current.get(cacheKey);
+      if (cached?.name) {
+        setSelection((cur) => (cur && cur.geoid === selection.geoid ? { ...cur, countyName: cached.name } : cur));
+      }
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`${API_BASE}/community/area/county/${countyGeoid}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((area) => {
+        if (area?.name) {
+          areaInfoCacheRef.current.set(cacheKey, area);
+          setSelection((cur) => (cur && cur.geoid === selection.geoid ? { ...cur, countyName: area.name } : cur));
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [isSvi, selection?.level, selection?.geoid, selection?.countyName]);
+
+  function handleSviScopeChange(targetScope) {
+    if (targetScope === sviScope) return;
+    if (targetScope === "state") {
+      const preselect = selection?.geoid ? normalizeSviStateParam(String(selection.geoid).slice(0, 2)) : "";
+      clearSelection();
+      if (preselect) {
+        sviZoomStateRef.current = true;
+        setSviState(preselect);
+        if (preselect === "11" && mapZoom < PILOT_TRACT_ZOOM) setSviDcNotice(true);
+      }
+      pendingStateFocusRef.current = true;
+      setMeasureId(swapSviMeasureScope(measureId, "state"));
+      setPage(0);
+    } else {
+      clearSelection();
+      setSviState("");
+      setSviStateInfo(null);
+      setSviDcNotice(false);
+      sviZoomStateRef.current = false;
+      setMeasureId(swapSviMeasureScope(measureId, "us"));
+      setPage(0);
+    }
+  }
+
+  function handleSviStateChange(nextState) {
+    clearSelection();
+    sviZoomStateRef.current = Boolean(nextState);
+    if (nextState === "11" && mapZoom < PILOT_TRACT_ZOOM) setSviDcNotice(true);
+    else if (nextState !== "11") setSviDcNotice(false);
+    setSviState(nextState);
+    setPage(0);
+  }
+
   // Values for the selected area: the live feature when it is in view, else what was read when it was clicked.
   const liveFeature = selection && selection.level === geography
     ? features.find((feature) => featureId(feature.properties) === selection.geoid) ?? null : null;
@@ -728,7 +989,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <ZoomControl position="bottomright" />
           <MapReady onReady={setMap} />
           <Viewport onChange={onViewport} />
-          {features.length > 0 && <GeoJSON key={`${releaseId}:${measureId}:${period}:${geography}:${bbox}`} data={mapData} style={(feature) => isBrfss ? {
+          {geoJsonFeatures.length > 0 && <GeoJSON key={`${releaseId}:${measureId}:${period}:${geography}:${effectiveBbox}:${isSvi ? `${sviScope}:${sviState}` : ""}`} data={geoJsonData} style={(feature) => isBrfss ? {
             color: "#516677", weight: 0.5,
             fillOpacity: feature.properties.status === "not_published" ? 0.35 : 0.85,
             dashArray: feature.properties.status === "not_published" ? "2 3" : null,
@@ -743,12 +1004,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
             fillOpacity: feature.properties.status === "not_published" ? 0.35 : 0.85,
             dashArray: feature.properties.status === "not_published" ? "2 3" : null,
             fillColor: gvColor(feature.properties.value, feature.properties.status, mapData?.legend_breaks || []),
-          } : isSvi ? {
-            color: "#516677", weight: 0.5,
-            fillOpacity: feature.properties.status === "not_in_release" ? 0.35 : 0.85,
-            dashArray: feature.properties.status === "not_in_release" ? "2 3" : null,
-            fillColor: sviColor(feature.properties.value, feature.properties.status, mapData?.legend_breaks || measure?.legend_breaks?.[geography] || [0.25, 0.5, 0.75]),
-          } : isNri ? {
+          } : isSvi ? sviFeatureStyle(feature, { scope: sviScope, selectedState: sviState, measureId }) : isNri ? {
             color: "#516677", weight: 0.5,
             fillOpacity: feature.properties.status === "not_in_release" ? 0.35 : 0.85,
             dashArray: feature.properties.status === "not_in_release" ? "2 3" : null,
@@ -764,19 +1020,22 @@ export default function Places2025Pilot({ dataset = "places" }) {
               : quintileColor(feature.properties.value, feature.properties.status, cuts),
           })} onEachFeature={(feature, layer) => {
             const item = feature.properties;
+            const baseSviStyle = isSvi ? sviFeatureStyle(feature, { scope: sviScope, selectedState: sviState, measureId }) : null;
             // Same hover tooltip as the legacy map; skipped on touch pointers.
             if (!isCoarsePointer() && typeof layer.bindTooltip === "function") {
               layer.bindTooltip(areaTooltip(datasetKey, item, measure, detailContext), MAP_HOVER_TOOLTIP_OPTIONS);
             }
             layer.on?.("mouseover", () => layer.setStyle?.({ weight: 2, color: HOVER_LINE }));
-            layer.on?.("mouseout", () => layer.setStyle?.({ weight: 0.5, color: "#516677" }));
+            layer.on?.("mouseout", () => layer.setStyle?.(baseSviStyle ? { weight: baseSviStyle.weight, color: baseSviStyle.color } : { weight: 0.5, color: "#516677" }));
             layer.on?.("click", () => {
+              if (isSvi && sviAwaitingState) return;
               const box = typeof layer.getBounds === "function" ? layer.getBounds() : null;
               setSelection({
-                level: geography, geoid: featureId(item), name: item.name, geometry: feature.geometry,
+                level: geography, geoid: featureId(item), name: item.name, countyName: item.county_name || null, geometry: feature.geometry,
                 bbox: box?.isValid?.() ? [box.getWest(), box.getSouth(), box.getEast(), box.getNorth()] : null,
                 properties: item, propsKey: dataKey, shapeKey: dataKey,
               });
+              if (isSvi) setLegendOpen(true);
               setFocusStatus("");
             });
           }} />}
@@ -835,14 +1094,60 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <label>Measure <select value={measureId} onChange={(event) => { setMeasureId(event.target.value); setPage(0); }}>
             {visibleMeasures.map((item) => <option key={item.measure_id} value={item.measure_id}>{item.label} ({item.observation_period})</option>)}
           </select></label>
-          {isSvi && <fieldset className="pilot-svi-scope">
-            <legend>Rank among</legend>
-            <div className="pilot-svi-scope-options">
-              <label><input type="radio" name="svi-rank-scope" value="us" checked={sviScope === "us"} onChange={() => { setMeasureId(swapSviMeasureScope(measureId, "us")); setPage(0); }} /> All U.S. areas</label>
-              <label><input type="radio" name="svi-rank-scope" value="state" checked={sviScope === "state"} onChange={() => { setMeasureId(swapSviMeasureScope(measureId, "state")); setPage(0); }} /> Areas in the same state</label>
+          {isSvi && <div className="pilot-svi-controls">
+            <fieldset className="pilot-svi-scope" title={SVI_COMPARISON_TOOLTIP}>
+              <legend>Geographic Comparison</legend>
+              <div className="pilot-svi-toggle" role="group" aria-label="Geographic Comparison" title={SVI_COMPARISON_TOOLTIP}>
+                <button
+                  type="button"
+                  className={sviScope === "us" ? "is-active" : ""}
+                  aria-pressed={sviScope === "us"}
+                  title={SVI_COMPARISON_TOOLTIP}
+                  onClick={() => handleSviScopeChange("us")}
+                >
+                  Nationwide
+                </button>
+                <button
+                  type="button"
+                  className={sviScope === "state" ? "is-active" : ""}
+                  aria-pressed={sviScope === "state"}
+                  title={SVI_COMPARISON_TOOLTIP}
+                  onClick={() => handleSviScopeChange("state")}
+                >
+                  Statewide
+                </button>
+              </div>
+            </fieldset>
+            <div className="pilot-svi-state-picker">
+              <label htmlFor="svi-state-select">State Selection</label>
+              <select
+                id="svi-state-select"
+                ref={sviStateSelectRef}
+                value={sviState}
+                disabled={sviScope !== "state"}
+                title={sviScope !== "state" ? SVI_STATE_DISABLED_HINT : undefined}
+                aria-describedby={sviScope !== "state" ? "svi-state-hint" : undefined}
+                onChange={(event) => handleSviStateChange(event.target.value)}
+              >
+                <option value="">Select a state…</option>
+                {SVI_STATES.map((st) => (
+                  <option key={st.fips} value={st.fips}>{st.name}</option>
+                ))}
+              </select>
+              {sviScope !== "state" && (
+                <p id="svi-state-hint" className="pilot-svi-hint">{SVI_STATE_DISABLED_HINT}</p>
+              )}
+              {sviAwaitingState && (
+                <p role="status" className="pilot-svi-state-note">{SVI_CHOOSE_STATE_MESSAGE}</p>
+              )}
+              {sviScope === "state" && sviState && (
+                <p role="status" className="pilot-svi-state-note">Colors compare areas only within their own state.</p>
+              )}
+              {sviDcNotice && (
+                <p role="status" className="pilot-svi-dc-note">{SVI_DC_SWITCH_MESSAGE}</p>
+              )}
             </div>
-            {sviScope === "state" && <p role="status" className="pilot-svi-state-note">Colors compare areas only within their own state.</p>}
-          </fieldset>}
+          </div>}
           <label>Year <select value={period ?? ""} onChange={(event) => { setRequestedPeriod(event.target.value); setPage(0); }}>
             {periods.map((item) => <option key={item.period} value={item.period} disabled={!item.available || !item.release_id}>
               {item.period}{item.current ? " (latest)" : !item.available || !item.release_id ? " (not published)" : ""}
@@ -883,7 +1188,9 @@ export default function Places2025Pilot({ dataset = "places" }) {
       {catalog && releaseId && <>
         <section className={`pilot-panel pilot-legend ${legendOpen ? "" : "is-minimized"}`} aria-label="Legend">
           <button type="button" className="pilot-panel-toggle" aria-label={legendOpen ? "Minimize legend" : "Expand legend"} aria-expanded={legendOpen} onClick={() => setLegendOpen((open) => !open)}>{legendOpen ? "\u2212" : "+"}</button>
-          <h2>{isAcs ? "Median household income" : isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isSvi || isNri || isFea ? measure?.label : "Crude prevalence"}, {period} — {geography === "cd" ? "congressional district" : areaName(geography)} level</h2>
+          <h2>{isSvi
+            ? (sviScope === "state" && sviStateObj ? `Levels of Vulnerability (within ${sviStateObj.name})` : "Levels of Vulnerability")
+            : `${isAcs ? "Median household income" : isBrfss || isProfile || isAhrf || isClh || isAqi || isGv || isNri || isFea ? measure?.label : "Crude prevalence"}, ${period} — ${geography === "cd" ? "congressional district" : areaName(geography)} level`}</h2>
           {legendOpen && <>
           {!periodEntry?.current && <div className="pilot-history-notes">
             {periodEntry?.note && <p>{periodEntry.note}</p>}
@@ -928,17 +1235,25 @@ export default function Places2025Pilot({ dataset = "places" }) {
             <p>{legend.statuses.map((item) => `${GV_STATUS_TEXT[item.status] ?? item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>
             {legend.national_reference && <p>United States (CMS-published national value, reference only): {gvValueText(legend.national_reference, measure)}</p>}
             <p>Select a {areaName(geography)} for its value. No confidence interval or margin of error is published.</p>
-          </> : ready && legend && isSvi ? <>
-            <ul className="pilot-swatches">
-              {sviBinLabels(legend.legend_breaks || [0.25, 0.5, 0.75]).map((label, i) => <li key={label}><i style={{ background: sviColors[i] }} />{label}</li>)}
-              <li><i style={{ background: SVI_STATUS_COLORS.not_available }} />{SVI_STATUS_TEXT.not_available}</li>
-              <li><i className="pilot-swatch-none" style={{ background: SVI_STATUS_COLORS.not_in_release }} />{SVI_STATUS_TEXT.not_in_release}</li>
+          </> : isSvi && (sviAwaitingState || (ready && legend)) ? <>
+            {sviAwaitingState && <p className="pilot-svi-state-note">{SVI_CHOOSE_STATE_MESSAGE}</p>}
+            <ul className="pilot-swatches pilot-svi-swatches">
+              {SVI_LEVELS.map((level, i) => (
+                <li key={level.key}>
+                  <i style={{ background: sviTheme.palette[i], borderColor: "#555555" }} />
+                  {level.label} ({level.range})
+                </li>
+              ))}
+              <li>
+                <i className="pilot-swatch-svi-nodata" style={{ background: SVI_NO_DATA_COLOR, borderColor: "#555555" }} />
+                No Data
+              </li>
             </ul>
             <p>{sviScope === "state"
-              ? `CDC/ATSDR quartile classes of within-state percentile ranks (0–1) among ${geography === "tract" ? "census tracts" : "counties"} in the same state; higher values indicate greater vulnerability. Colors compare areas only within their own state. These are percentile ranks, not rates.`
-              : `CDC/ATSDR quartile classes of U.S.-wide percentile ranks (0–1) among all U.S. ${geography === "tract" ? "census tracts" : "counties"}; higher values indicate greater vulnerability. These are percentile ranks, not rates.`}</p>
-            <p>{legend.statuses.map((item) => `${item.status_text || SVI_STATUS_TEXT[item.status] || item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>
-            <p>Select a {areaName(geography)} for its percentile rank and CDC source value. No confidence interval or margin of error is published.</p>
+              ? "Colors compare areas only within their own state."
+              : `2022 National ${sviTheme.title} (${geography === "tract" ? "census tracts" : "counties"}). Higher values indicate greater vulnerability.`}</p>
+            {ready && legend && <p>{legend.statuses.map((item) => `${item.status_text || SVI_STATUS_TEXT[item.status] || item.status.replace("_", " ")}: ${item.n}`).join(" · ")}</p>}
+            {!sviAwaitingState && <p>Select a {areaName(geography)} for its rank and vulnerability level.</p>}
           </> : ready && legend && isNri ? <>
             <ul className="pilot-swatches">
               {nriBinLabels(legend.legend_breaks || measure?.legend_breaks?.[geography] || [20, 40, 60, 80], measure?.kind).map((label, i) => <li key={label}><i style={{ background: nriColors[i] }} />{label}</li>)}
@@ -974,7 +1289,47 @@ export default function Places2025Pilot({ dataset = "places" }) {
             <p>In view: {legend.statuses.map((item) => `${item.status}: ${item.n}`).join(" · ")}</p>
             <p>Click a {areaName(geography)} for its value and {isAcs ? "90% margin of error" : isAhrf || isClh ? "source status" : "95% confidence interval"}. {isAcs ? "Open-ended medians use the published annotation." : isAhrf || isClh ? "Uncertainty was not supplied." : ""}</p>
           </> : error ? <p>Data unavailable</p> : <LegendSkeleton />}
-          {selection && <div className="pilot-selected" data-testid="selected-area">
+          {selection && (isSvi && (selection.level === "county" || selection.level === "tract") ? (() => {
+            const countyGeoid = selection.level === "tract" ? String(selection.geoid).slice(0, 5) : String(selection.geoid);
+            const countyLine = selection.level === "tract"
+              ? (sviCountyHeading(selection.countyName || selectedProps?.county_name, countyGeoid)
+                || (sviStateAbbrForGeoid(selection.geoid) ? `County ${countyGeoid}, ${sviStateAbbrForGeoid(selection.geoid)}` : selection.name))
+              : sviCountyHeading(selection.name, selection.geoid);
+            const outsideSelectedState = sviScope === "state" && (!sviState || !String(selection.geoid).startsWith(sviState));
+            const unavailable = outsideSelectedState || (selectedProps && sviIsMissing(selectedProps.value, selectedProps.status));
+            const sviRankFormatted = selectedProps && !unavailable ? sviFormatValue(selectedProps.value) : null;
+            const sviRankLevel = selectedProps && !unavailable ? sviLevel(selectedProps.value, selectedProps.status) : null;
+            return (
+              <div className="pilot-selected pilot-svi-selected" data-testid="selected-area">
+                <div className="pilot-svi-selected-head">
+                  <h3 className="pilot-svi-heading">
+                    {selection.level === "tract" && (
+                      <span className="pilot-svi-tract-line">Census Tract {selection.geoid},</span>
+                    )}
+                    <span className="pilot-svi-county-line">{countyLine}</span>
+                  </h3>
+                  <button type="button" className="pilot-svi-close" aria-label="Close panel" onClick={clearSelection}>×</button>
+                </div>
+                {unavailable ? (
+                  <p className="pilot-svi-unavailable">{SVI_UNAVAILABLE_MESSAGE}</p>
+                ) : selectedProps && sviRankLevel ? (
+                  <>
+                    <p className="pilot-svi-rank-title">{sviPanelRankTitle(measureId, sviScope)}: {sviRankFormatted}</p>
+                    <SviQuartileBar value={selectedProps.value} status={selectedProps.status} measureId={measureId} />
+                    <p className="pilot-svi-range">{SVI_RANGE_TEXT}</p>
+                    <p className="pilot-svi-phrase">
+                      A rank of <strong>{sviRankFormatted}</strong> indicates a <strong>{sviRankLevel.phrase}</strong> level of vulnerability.
+                    </p>
+                  </>
+                ) : (
+                  <p>{ready ? "This area is outside the current view. Use Zoom to selected area." : "Loading the selected area…"}</p>
+                )}
+                {countyGeoid.length === 5 && (
+                  <p className="pilot-svi-profile-link"><a href={`/community/county/${countyGeoid}`}>Open county profile</a></p>
+                )}
+              </div>
+            );
+          })() : <div className="pilot-selected" data-testid="selected-area">
             <h3>Selected area</h3>
             <p className="pilot-selected-name">{areaTitle(selection.name, selection.level, selection.geoid)}</p>
             {selectedDetails ? <>
@@ -986,7 +1341,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
                 ? "This area has no shape on this year's boundary, so no value is shown or inferred."
                 : ready ? "This area is outside the current view. Use Zoom to selected area." : "Loading the selected area…"}</p>}
             {profileHref && <p><a href={profileHref}>Open {selection.level === "cd" ? "district briefing" : `${areaName(selection.level)} profile`} →</a></p>}
-          </div>}
+          </div>)}
           </>}
         </section>
         <div className="pilot-dock">
@@ -1012,7 +1367,8 @@ export default function Places2025Pilot({ dataset = "places" }) {
           </button>
           {tableOpen && <div className="pilot-table-body">
             {error && <p role="alert">{error}</p>}
-            {!ready && !error && <p role="status">Loading selected {areaName(geography)} estimates…</p>}
+            {isSvi && sviAwaitingState && <p role="status">{SVI_CHOOSE_STATE_MESSAGE}</p>}
+            {!ready && !error && !sviAwaitingState && <p role="status">Loading selected {areaName(geography)} estimates…</p>}
             {ready && table && <>
               <p>{areaName(geography)} areas intersecting the map viewport. Map and table use the same geometry rule.{isBrfss ? " States without a CDC result for this year are marked Not published." : isFea ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties in view are listed with USDA's published value and status.` : isAqi ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.county ?? "published"} boundary counties are listed; counties without an EPA summary are marked No reported value.` : isGv ? ` All ${legend?.boundary_vintage ?? periodEntry?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : "counties"} in view are listed with CMS's published value and status.` : isSvi ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "tract" ? "tracts" : "counties"} in view are listed with CDC/ATSDR's published percentile rank and status.` : isNri ? ` All ${legend?.boundary_vintage ?? catalog?.boundary_vintage?.[geography] ?? "published"} boundary ${geography === "state" ? "states" : geography === "tract" ? "tracts" : "counties"} in view are listed with FEMA's published NRI value, rating, and status.` : ""}</p>
               <div className="pilot-table-scroll"><table><caption>{measure?.label}, {period}; release {releaseId}</caption>
@@ -1028,7 +1384,10 @@ export default function Places2025Pilot({ dataset = "places" }) {
                   if (isBrfss) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{brfssValueText(row)}</td><td>{row.ci_low == null ? "—" : `${row.ci_low}–${row.ci_high}%`}</td><td>{row.sample_size ?? "—"}</td><td>{row.status_text || row.status}</td></tr>;
                   if (isFea) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{feaValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published value" : row.status === "true_zero" ? "Published zero" : FEA_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
                   if (isGv) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{gvValueText(row, measure)}</td><td>{row.source_value ?? "—"}</td><td>{GV_STATUS_TEXT[row.status] ?? row.status}</td></tr>;
-                  if (isSvi) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{sviValueText(row)}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published rank" : row.status === "true_zero" ? "Published zero" : row.status_text || SVI_STATUS_TEXT[row.status] || row.status}</td></tr>;
+                  if (isSvi) {
+                    const outOfState = sviScope === "state" && sviState && !String(key).startsWith(sviState);
+                    return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{outOfState ? "No Data" : sviValueText(row)}</td><td>{outOfState ? "—" : (row.source_value ?? "—")}</td><td>{outOfState ? "Outside selected state" : (row.status === "available" ? "Published rank" : row.status === "true_zero" ? "Published zero" : row.status_text || SVI_STATUS_TEXT[row.status] || row.status)}</td></tr>;
+                  }
                   if (isNri) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{nriValueText(row, measure)}</td><td>{row.rating ?? "—"}</td><td>{row.source_value ?? "—"}</td><td>{row.status === "available" ? "Published value" : row.status === "true_zero" ? "Published zero" : row.status_text || NRI_STATUS_TEXT[row.status] || row.status}</td></tr>;
                   if (isAqi) return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{aqiValueText(row, measure)}</td><td>{row.days_with_aqi ?? "—"}</td><td>{row.source_name ?? "—"}</td><td>{row.status === AQI_NO_VALUE ? "No reported value" : row.status}</td></tr>;
                   return <tr key={key}><th scope="row">{key}</th><td>{row.name}</td><td>{isProfile ? profileValue(row, measure) : displayValue(row, isAcs, isAhrf, isClh, measure?.unit)}</td><td>{isProfile ? profileUncertainty(row) : displayUncertainty(row, isAcs, isAhrf, isClh)}</td><td>{row.status_text || row.status}</td></tr>;
@@ -1045,7 +1404,7 @@ export default function Places2025Pilot({ dataset = "places" }) {
           <TriFacilityPanel tri={tri} />
           <NursingHomePanel homes={homes} />
         </div>
-        <MapLoadingStrip active={firstLoadDone && Boolean(requestKey) && !ready && !error} anchor={toolsEl} container={contentEl}
+        <MapLoadingStrip active={firstLoadDone && Boolean(requestKey) && !ready && !error && !sviAwaitingState} anchor={toolsEl} container={contentEl}
           watch={[toolsOpen, tableOpen]} label={`Loading ${geography === "cd" ? "district" : areaName(geography)} shapes…`} />
       </>}
       </MobileMapPanels>

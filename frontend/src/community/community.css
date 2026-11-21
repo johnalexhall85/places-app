@@ -457,6 +457,95 @@
   margin: 12px 0 0;
 }
 
+.community-svi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.community-svi-card {
+  min-width: 0;
+  padding: 20px 24px;
+  border: 1px solid #cfd8dc;
+  border-radius: 4px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.community-svi-card h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: #003f61;
+}
+
+.community-svi-row {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.community-svi-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+
+.community-svi-row-label {
+  font-weight: 700;
+  color: #1a2f3f;
+}
+
+.community-svi-row-value {
+  font-variant-numeric: tabular-nums;
+  color: #003f61;
+}
+
+.community-svi-row-phrase {
+  color: #546e7a;
+  font-weight: 400;
+}
+
+.community-svi-missing {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #f4f7fb;
+  color: #546e7a;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.community-svi-card-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #e1e8ed;
+  display: grid;
+  gap: 8px;
+}
+
+.community-svi-range {
+  margin: 0;
+  color: #546e7a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.community-svi-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.community-svi-source {
+  margin-top: 16px;
+}
+
 .community-facility h3 {
   font-size: 18px;
 }
@@ -910,6 +999,8 @@
   .community-source { font-size: 10px; }
   .community-hazard-card { padding: 12px; }
   .community-hazard-table tr { break-inside: avoid; }
+  .community-svi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .community-svi-card { padding: 12px; break-inside: avoid; }
 }
 
 @media (max-width: 900px) {
@@ -930,7 +1021,9 @@
   .community-topic-grid,
   .community-example-grid,
   .community-indicator-grid,
-  .community-facility-grid { grid-template-columns: 1fr; }
+  .community-facility-grid,
+  .community-svi-grid { grid-template-columns: 1fr; }
+  .community-svi-card { padding: 16px; }
   .community-section { padding-block: 40px; }
   .community-profile-head { padding: 24px; }
   .community-compare { padding-block: 32px 48px; }

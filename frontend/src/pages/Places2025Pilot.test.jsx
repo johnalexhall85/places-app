@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, sviNumber, sviValueText, sviColor, sviBinLabels, swapSviMeasureScope, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
+import Places2025Pilot, { pilotQuery, safeViewportBbox, initialMapView, PILOT_TRACT_ZOOM, areaGeography, ACS_COUNTY_ZOOM, ACS_TRACT_ZOOM, aqiBinLabels, aqiColor, aqiValueText, aqiReportingText, gvGeography, gvNumber, gvValueText, gvBinLabels, gvColor, SVI_DATASET_ID, SVI_STATUS_TEXT, SVI_UNAVAILABLE_MESSAGE, SVI_DC_SWITCH_MESSAGE, SVI_CHOOSE_STATE_MESSAGE, SVI_STATE_DISABLED_HINT, SVI_COMPARISON_TOOLTIP, SVI_STATES, SVI_THEMES, sviNumber, sviValueText, sviColor, sviBinLabels, sviLevel, sviFeatureStyle, swapSviMeasureScope, NRI_DATASET_ID, NRI_STATUS_TEXT, nriNumber, nriValueText, nriColor, nriBinLabels, FEA_DATASET_ID, FEA_STATUS_TEXT, feaNumber, feaValueText, feaColor, feaBinLabels, brfssColor, brfssValueText, areaFeatureDetails, areaTooltip, parseFocus, profileHrefFor, focusZoomRange, quintileColor } from "./Places2025Pilot";
 import { resolveRoute } from "../utils/routeResolver";
 
 const mapHarness = vi.hoisted(() => ({ zoom: 4, handlers: null, geojson: null, outline: null,
@@ -892,7 +892,7 @@ describe("historical area map years", () => {
 });
 
 describe("CDC Social Vulnerability Index (SVI 2022)", () => {
-  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; });
+  afterEach(() => { vi.unstubAllGlobals(); mapHarness.zoom = 4; mapHarness.handlers = null; mapHarness.geojson = null; mapHarness.map.setView.mockReset(); });
   const usPop = "All U.S. counties or all U.S. census tracts (ACS 2018–2022 estimates for all residents)";
   const statePop = "Counties or census tracts in the same state (ACS 2018–2022 estimates for all residents)";
   const measures = [
@@ -933,69 +933,229 @@ describe("CDC Social Vulnerability Index (SVI 2022)", () => {
     ],
   };
 
-  it("formats percentile ranks, quartile bins, -999 not_available, and US vs state tooltip explanations", () => {
+  it("matches CDC class boundaries, theme palettes, phrases, -999 status, and Statewide no-fill styles", () => {
     expect(resolveRoute("/area/svi")).toEqual({ type: "svi-area" });
+    expect(SVI_STATES).toHaveLength(51);
     expect(sviNumber(0)).toBe("0.00");
+    expect(sviNumber(0.686)).toBe("0.686");
     expect(sviNumber(0.6421)).toBe("0.6421");
-    expect(sviBinLabels([0.25, 0.5, 0.75])).toEqual(["Under 0.25", "0.25 to under 0.50", "0.50 to under 0.75", "0.75 to 1.00"]);
+    expect(sviBinLabels()).toEqual(["Low (0–0.25)", "Low-Medium (0.2501–0.50)", "Medium-High (0.5001–0.75)", "High (0.7501–1.0)"]);
     expect(swapSviMeasureScope("rpl_theme1", "state")).toBe("rpl_theme1_state");
     expect(swapSviMeasureScope("rpl_theme1_state", "us")).toBe("rpl_theme1");
+
+    // Exact CDC quartile boundaries: boundary value belongs to the lower class.
+    expect(sviLevel(0, "true_zero")).toMatchObject({ label: "Low", phrase: "low" });
+    expect(sviLevel(0.25, "available")).toMatchObject({ label: "Low", phrase: "low" });
+    expect(sviLevel(0.2501, "available")).toMatchObject({ label: "Low-Medium", phrase: "low to medium" });
+    expect(sviLevel(0.5, "available")).toMatchObject({ label: "Low-Medium", phrase: "low to medium" });
+    expect(sviLevel(0.5001, "available")).toMatchObject({ label: "Medium-High", phrase: "medium to high" });
+    expect(sviLevel(0.75, "available")).toMatchObject({ label: "Medium-High", phrase: "medium to high" });
+    expect(sviLevel(0.7501, "available")).toMatchObject({ label: "High", phrase: "high" });
+    expect(sviLevel(1, "available")).toMatchObject({ label: "High", phrase: "high" });
+    expect(sviLevel(null, "not_available")).toBeNull();
+    expect(sviLevel(-999, "available")).toBeNull();
+
+    // CDC theme palettes (Overall SVI and Theme 1-4).
+    expect(sviColor(0.25, "available", "rpl_themes")).toBe("#FFFEDD");
+    expect(sviColor(0.2501, "available", "rpl_themes")).toBe("#C0E5CC");
+    expect(sviColor(0.75, "available", "rpl_themes")).toBe("#80CDD5");
+    expect(sviColor(0.7501, "available", "rpl_themes")).toBe("#6596C0");
+    expect(sviColor(0.1, "available", "rpl_theme1")).toBe("#F3FAF0");
+    expect(sviColor(0.9, "available", "rpl_theme2")).toBe("#D97B54");
+    expect(sviColor(0.6, "available", "rpl_theme3")).toBe("#BAB9D7");
+    expect(sviColor(0.4, "available", "rpl_theme4_state")).toBe("#D1E3EE");
+    expect(SVI_THEMES.map((t) => t.title)).toEqual([
+      "Overall SVI",
+      "Socioeconomic Status",
+      "Household Characteristics",
+      "Racial & Ethnic Minority Status",
+      "Housing Type & Transportation",
+    ]);
+
     expect(sviValueText({ value: null, status: "not_available" })).toBe(SVI_STATUS_TEXT.not_available);
-    expect(sviColor(null, "not_available")).not.toBe(sviColor(null, "not_in_release"));
-    expect(sviColor(0, "true_zero")).not.toBe(sviColor(null, "not_available"));
+    expect(sviColor(0, "true_zero", "rpl_themes")).not.toBe(sviColor(null, "not_available", "rpl_themes"));
+
+    // Statewide mode with no state selected -> no fill; outside selected state -> no fill and light outline.
+    const durhamFeature = { properties: { geography_id: "37063", value: 0.596, status: "available" } };
+    const vaFeature = { properties: { geography_id: "51059", value: 0.2, status: "available" } };
+    expect(sviFeatureStyle(durhamFeature, { scope: "state", selectedState: "", measureId: "rpl_themes_state" }))
+      .toMatchObject({ fill: false, fillOpacity: 0, fillColor: "transparent" });
+    expect(sviFeatureStyle(vaFeature, { scope: "state", selectedState: "37", measureId: "rpl_themes_state" }))
+      .toMatchObject({ fill: false, fillOpacity: 0, fillColor: "transparent" });
+    expect(sviFeatureStyle(durhamFeature, { scope: "state", selectedState: "37", measureId: "rpl_themes_state" }))
+      .toMatchObject({ fill: true, fillColor: "#80CDD5" });
+
     const usDetails = areaFeatureDetails("svi", { name: "Durham County", geography_id: "37063", value: 0.686,
       source_value: "0.6860", status: "available" }, measures[0], { geography: "county", catalog });
     expect(usDetails.explanation).toMatch(/U\.S\.-wide percentile rank/i);
     expect(usDetails.lines.join(" | ")).toContain("Rank among all U.S. counties");
     const stateDetails = areaFeatureDetails("svi", { name: "Durham County", geography_id: "37063", value: 0.596,
-      source_value: "0.5960", status: "available" }, measures[2], { geography: "county", catalog });
+      source_value: "0.5960", status: "available" }, measures[2], { geography: "county", catalog, sviScope: "state", sviState: "37" });
     expect(stateDetails.explanation).toMatch(/within-state percentile rank/i);
     expect(stateDetails.lines.join(" | ")).toContain("Rank among counties in the same state");
   });
 
-  it("defaults to U.S. ranks, swaps theme to within-state with map switch, and switches to tracts on zoom", async () => {
+  it("renders CDC map panel for county, tract, and -999, closes on change, and handles Statewide + DC switch", async () => {
     const urls = [];
+    const countyFeature = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-79, 36], [-78.8, 36], [-78.8, 36.2], [-79, 36.2], [-79, 36]]] },
+      properties: { geography_id: "37063", name: "Durham", value: 0.686, source_value: "0.6860", status: "available" },
+    };
+    const countyFeatureState = {
+      ...countyFeature,
+      properties: { geography_id: "37063", name: "Durham", value: 0.596, source_value: "0.5960", status: "available" },
+    };
+    const vaCountyFeature = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-78, 37], [-77.8, 37], [-77.8, 37.2], [-78, 37.2], [-78, 37]]] },
+      properties: { geography_id: "51059", name: "Fairfax", value: 0.15, source_value: "0.1500", status: "available" },
+    };
+    const tractValid = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-78.95, 36.0], [-78.9, 36.0], [-78.9, 36.05], [-78.95, 36.05], [-78.95, 36.0]]] },
+      properties: { geography_id: "37063001502", name: "15.02", value: 0.686, source_value: "0.6860", status: "available" },
+    };
+    const tractMissing = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-78.9, 36.0], [-78.85, 36.0], [-78.85, 36.05], [-78.9, 36.05], [-78.9, 36.0]]] },
+      properties: { geography_id: "37063980100", name: "9801", value: null, source_value: "-999.0", status: "not_available", status_text: SVI_STATUS_TEXT.not_available },
+    };
+    const dcTract = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[-77.05, 38.88], [-77.0, 38.88], [-77.0, 38.92], [-77.05, 38.92], [-77.05, 38.88]]] },
+      properties: { geography_id: "11001000101", name: "1.01", value: 0.25, source_value: "0.2500", status: "available" },
+    };
+
     vi.stubGlobal("fetch", vi.fn(async (url) => {
       const path = String(url); urls.push(path);
       if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      if (path.includes("/community/area/state/37")) {
+        return { ok: true, json: async () => ({ level: "state", geoid: "37", name: "North Carolina", bbox: [-84.32, 33.84, -75.46, 36.59] }) };
+      }
+      if (path.includes("/community/area/state/11")) {
+        return { ok: true, json: async () => ({ level: "state", geoid: "11", name: "District of Columbia", bbox: [-77.12, 38.79, -76.91, 38.99] }) };
+      }
+      if (path.includes("/community/area/county/37063")) {
+        return { ok: true, json: async () => ({ level: "county", geoid: "37063", name: "Durham", state_name: "North Carolina", bbox: [-79, 35.9, -78.7, 36.2] }) };
+      }
       const geography = path.includes("geography=tract") ? "tract" : "county";
       const isStateMeasure = path.includes("_state");
-      const rows = geography === "county"
-        ? [{ geography_id: "37063", name: "Durham County", value: isStateMeasure ? 0.596 : 0.686,
-             source_value: isStateMeasure ? "0.5960" : "0.6860", status: "available" }]
-        : [{ geography_id: "09110500100", name: "Census Tract 5001", value: 0, source_value: "0.0", status: "true_zero" },
-           { geography_id: "09110980000", name: "Census Tract 9800", value: null, source_value: "-999.0", status: "not_available",
-             status_text: SVI_STATUS_TEXT.not_available }];
-      const payload = path.includes("/map?") ? { features: [], legend_breaks: [0.25, 0.5, 0.75] }
+      const isDcBbox = path.includes("-77.") || path.includes("38.");
+      const featList = geography === "county"
+        ? (isStateMeasure ? [countyFeatureState, vaCountyFeature] : [countyFeature])
+        : (isDcBbox ? [dcTract] : [tractValid, tractMissing]);
+      const rows = featList.map((f) => f.properties);
+      const payload = path.includes("/map?") ? { type: "FeatureCollection", features: featList, legend_breaks: [0.25, 0.5, 0.75] }
         : path.includes("/legend?") ? { legend_breaks: [0.25, 0.5, 0.75], statuses: rows.map((r) => ({ status: r.status, n: 1, status_text: r.status_text })) }
         : { total: rows.length, rows };
       return { ok: true, json: async () => ({ ...payload, release_id: "svi-release", geography }) };
     }));
-    render(<Places2025Pilot dataset="svi" />);
+
+    const { container } = render(<Places2025Pilot dataset="svi" />);
     expect(await screen.findByText("37063")).toBeInTheDocument();
-    expect(screen.getByLabelText("All U.S. areas")).toBeChecked();
-    expect(screen.queryByText("Colors compare areas only within their own state.")).not.toBeInTheDocument();
-    expect(screen.getAllByText(/U\.S\.-wide percentile ranks/i).length).toBeGreaterThan(0);
 
-    // Select Theme 1, then switch to "Areas in the same state": keeps Theme 1 and swaps to rpl_theme1_state!
-    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "rpl_theme1" } });
-    await screen.findByText("0.6860");
-    fireEvent.click(screen.getByLabelText("Areas in the same state"));
-    expect(await screen.findByText("0.5960")).toBeInTheDocument();
-    expect(screen.getByLabelText("Areas in the same state")).toBeChecked();
-    expect(screen.getByLabelText("Measure")).toHaveValue("rpl_theme1_state");
-    expect(screen.getAllByText(/Colors compare areas only within their own state\./).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/within-state percentile ranks/i).length).toBeGreaterThan(0);
+    // Nationwide mode defaults: Geographic Comparison toggle, tooltip, disabled State Selection with hint, Levels of Vulnerability legend.
+    const nationwideBtn = screen.getByRole("button", { name: "Nationwide" });
+    const statewideBtn = screen.getByRole("button", { name: "Statewide" });
+    expect(nationwideBtn).toHaveAttribute("aria-pressed", "true");
+    expect(statewideBtn).toHaveAttribute("aria-pressed", "false");
+    expect(nationwideBtn).toHaveAttribute("title", SVI_COMPARISON_TOOLTIP);
+    const stateSelect = screen.getByLabelText("State Selection");
+    expect(stateSelect).toBeDisabled();
+    expect(screen.getByText(SVI_STATE_DISABLED_HINT)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Levels of Vulnerability" })).toBeInTheDocument();
+    expect(screen.getByText("Low (0–0.25)")).toBeInTheDocument();
+    expect(screen.getByText("High (0.7501–1.0)")).toBeInTheDocument();
+    expect(screen.getByText("No Data")).toBeInTheDocument();
 
-    // Zoom to tracts.
+    // Part A: click Durham County -> opens CDC SVI panel with quartile bar, exact phrase, and county profile link.
+    let clickHandler;
+    mapHarness.geojson.onEachFeature(countyFeature, { on: (ev, fn) => { if (ev === "click") clickHandler = fn; } });
+    act(() => clickHandler());
+    const panel = await screen.findByTestId("selected-area");
+    expect(panel).toHaveTextContent("Durham County, NC");
+    expect(panel).toHaveTextContent("2022 National Overall SVI Rank: 0.686");
+    expect(panel).toHaveTextContent("Possible ranks range from 0 (lowest vulnerability) to 1 (highest vulnerability).");
+    expect(panel).toHaveTextContent("A rank of 0.686 indicates a medium to high level of vulnerability.");
+    expect(screen.getByRole("img", { name: "Rank 0.686 of 1, medium to high vulnerability" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open county profile" })).toHaveAttribute("href", "/community/county/37063");
+
+    // Switching to Statewide while Durham County is selected: closes panel, moves focus to State Selection, preselects NC (37), zooms, updates URL & legend title!
+    fireEvent.click(statewideBtn);
+    expect(screen.queryByTestId("selected-area")).not.toBeInTheDocument();
+    expect(stateSelect).not.toBeDisabled();
+    expect(document.activeElement).toBe(stateSelect);
+    expect(stateSelect).toHaveValue("37");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Levels of Vulnerability (within North Carolina)" })).toBeInTheDocument());
+    expect(screen.getAllByText("Colors compare areas only within their own state.").length).toBeGreaterThan(0);
+    expect(mapHarness.map.setView).toHaveBeenCalled();
+    expect(window.location.search).toContain("scope=state");
+    expect(window.location.search).toContain("state=37");
+
+    // Verify NC county filled while VA county has no fill in Statewide mode.
+    expect(mapHarness.geojson.style(countyFeatureState)).toMatchObject({ fill: true, fillColor: "#80CDD5" });
+    expect(mapHarness.geojson.style(vaCountyFeature)).toMatchObject({ fill: false, fillOpacity: 0 });
+
+    // Clear state selection -> no fill colors, "Choose a state to see statewide rankings.", no new rpl_X_state fetch!
+    const stateMapCallsBefore = urls.filter((u) => u.includes("/map?") && u.includes("_state")).length;
+    fireEvent.change(stateSelect, { target: { value: "" } });
+    expect(screen.getAllByText(SVI_CHOOSE_STATE_MESSAGE).length).toBeGreaterThan(0);
+    expect(mapHarness.geojson.style(countyFeatureState)).toMatchObject({ fill: false, fillOpacity: 0, fillColor: "transparent" });
+    expect(urls.filter((u) => u.includes("/map?") && u.includes("_state")).length).toBe(stateMapCallsBefore);
+
+    // DC in Statewide mode at county level (zoom 4) -> shows CDC message and switches to tracts!
+    fireEvent.change(stateSelect, { target: { value: "11" } });
+    expect(await screen.findByText(SVI_DC_SWITCH_MESSAGE)).toBeInTheDocument();
+    await waitFor(() => expect(urls.some((u) => u.includes("/map?") && u.includes("measure_id=rpl_themes_state") && u.includes("geography=tract"))).toBe(true));
+    expect(screen.getByRole("heading", { name: "Levels of Vulnerability (within District of Columbia)" })).toBeInTheDocument();
+
+    // Switch back to Nationwide and zoom to tracts -> verify tract heading (2 lines) + -999 message + closing on theme change.
+    fireEvent.click(nationwideBtn);
+    expect(screen.queryByText(SVI_DC_SWITCH_MESSAGE)).not.toBeInTheDocument();
     mapHarness.zoom = PILOT_TRACT_ZOOM;
     act(() => mapHarness.handlers.zoomend());
-    expect(await screen.findByText("09110980000")).toBeInTheDocument();
-    expect(screen.getAllByText(SVI_STATUS_TEXT.not_available).length).toBeGreaterThan(0);
-    const data = urls.filter((url) => url.includes("/area/") && !url.includes("/catalog"));
-    expect(data.some((url) => url.includes("measure_id=rpl_themes") && url.includes("geography=county"))).toBe(true);
-    expect(data.some((url) => url.includes("measure_id=rpl_theme1_state") && url.includes("geography=county"))).toBe(true);
-    expect(data.some((url) => url.includes("measure_id=rpl_theme1_state") && url.includes("geography=tract"))).toBe(true);
+    expect(await screen.findByText("37063980100")).toBeInTheDocument();
+
+    let tractValidClick;
+    mapHarness.geojson.onEachFeature(tractValid, { on: (ev, fn) => { if (ev === "click") tractValidClick = fn; } });
+    act(() => tractValidClick());
+    await waitFor(() => expect(screen.getByTestId("selected-area")).toHaveTextContent("Census Tract 37063001502,"));
+    await waitFor(() => expect(screen.getByTestId("selected-area")).toHaveTextContent("Durham County, NC"));
+    expect(screen.getByRole("link", { name: "Open county profile" })).toHaveAttribute("href", "/community/county/37063");
+
+    // Click -999 tract -> shows CDC unavailable message, no quartile bar or dot!
+    let tractMissingClick;
+    mapHarness.geojson.onEachFeature(tractMissing, { on: (ev, fn) => { if (ev === "click") tractMissingClick = fn; } });
+    act(() => tractMissingClick());
+    const missingPanel = await screen.findByTestId("selected-area");
+    expect(missingPanel).toHaveTextContent(SVI_UNAVAILABLE_MESSAGE);
+    expect(container.querySelector("[data-testid='svi-quartile-dot']")).toBeNull();
+
+    // Changing theme closes the panel (Part A item 3).
+    fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "rpl_theme1" } });
+    expect(screen.queryByTestId("selected-area")).not.toBeInTheDocument();
+  });
+
+  it("reopens Statewide mode and selected state from URL query string scope=state&state=37", async () => {
+    window.history.replaceState(null, "", "/area/svi?scope=state&state=37");
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const path = String(url);
+      if (path.includes("/catalog")) return { ok: true, json: async () => catalog };
+      if (path.includes("/community/area/state/37")) {
+        return { ok: true, json: async () => ({ level: "state", geoid: "37", name: "North Carolina", bbox: [-84.32, 33.84, -75.46, 36.59] }) };
+      }
+      const rows = [{ geography_id: "37063", name: "Durham", value: 0.596, source_value: "0.5960", status: "available" }];
+      const payload = path.includes("/map?") ? { type: "FeatureCollection", features: [], legend_breaks: [0.25, 0.5, 0.75] }
+        : path.includes("/legend?") ? { legend_breaks: [0.25, 0.5, 0.75], statuses: [{ status: "available", n: 1 }] }
+        : { total: 1, rows };
+      return { ok: true, json: async () => ({ ...payload, release_id: "svi-release", geography: "county" }) };
+    }));
+    render(<Places2025Pilot dataset="svi" />);
+    expect(await screen.findByText("37063")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Statewide" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("State Selection")).toHaveValue("37");
+    expect(screen.getByRole("heading", { name: "Levels of Vulnerability (within North Carolina)" })).toBeInTheDocument();
   });
 });
 
@@ -1080,8 +1240,9 @@ describe("FEMA National Risk Index (NRI v1.20)", () => {
     expect(screen.getByLabelText("Measure")).toHaveValue("eal_score");
     expect(screen.getByRole("columnheader", { name: "FEMA rating" })).toBeInTheDocument();
     expect(screen.getByText("Relatively Moderate")).toBeInTheDocument();
-    // SVI rank switch must NOT appear for NRI.
-    expect(screen.queryByText("Rank among")).not.toBeInTheDocument();
+    // SVI comparison controls must NOT appear for NRI.
+    expect(screen.queryByText("Geographic Comparison")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("State Selection")).not.toBeInTheDocument();
 
     // Switch to risk_score (no state value) while still at zoom 4 -> shows counties!
     fireEvent.change(screen.getByLabelText("Measure"), { target: { value: "risk_score" } });
