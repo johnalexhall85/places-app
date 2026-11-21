@@ -1,0 +1,12 @@
+[Unit]
+Description=CHIP encrypted off-VM backup to Google Drive
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=john
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/home/john/places-app/infra/backup/chip-offsite-backup.sh
+TimeoutStartSec=6h
