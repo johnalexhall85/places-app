@@ -1,5 +1,53 @@
 # Antigravity status: mortality
 
+## M6 (2026-11-21T02:27Z)
+
+Implemented the "Death rates" section on county and state community profiles (`GET /api/community/county/{geoid}/deaths`, `GET /api/community/state/{geoid}/deaths`, `DeathsSection` in the frontend, and skipping mortality products in all other profile sections). No commits, pushes, merges, deploys, network calls, or database writes were made.
+
+### Files changed (`git status --short`)
+
+```text
+ M backend/app/community/router.py
+ M docs/mortality/status/antigravity.md
+ M frontend/src/community/CommunityPages.jsx
+ M frontend/src/community/CommunityPages.test.jsx
+ M frontend/src/community/CommunityState.jsx
+?? backend/app/community/deaths.py
+?? backend/tests/test_community_deaths.py
+?? frontend/node_modules
+```
+
+*(Note: `frontend/node_modules` is a pre-existing symlink to `/home/john/chip-claude/frontend/node_modules`. `frontend/scripts/beta-walkthrough.mjs` does not list profile sections and keeps its `.community-indicator` counts unchanged because mortality products are skipped from the card sections and rendered in tables under `#deaths`.)*
+
+### Test commands and results
+
+1. **Community backend tests (including read-only `places_staging` check for Durham County `37063` and North Carolina `37`):**
+   `cd backend && PYTHONPATH=. /home/john/chip-claude/backend/.venv/bin/python -m pytest tests/test_community_deaths.py tests/test_community_hazards*.py tests/test_community_api.py tests/test_community_state.py tests/test_community_charts_api.py -q`
+   - **Result:** `25 passed` in 1.98s (`0 failed`, `0 skipped`)
+     - `tests/test_community_deaths.py`: 5 passed (county shape/order/references, suppressed rows, empty group when a product has no active release, state response without `drug_poisoning`, and live `places_staging` read for Durham County `37063` and North Carolina `37`)
+     - `tests/test_community_hazards_api.py`: 5 passed
+     - `tests/test_community_api.py`: 8 passed
+     - `tests/test_community_state.py`: 2 passed
+     - `tests/test_community_charts_api.py`: 5 passed
+
+2. **Contract example snapshot diff:**
+   `git diff --exit-code docs/beta/contract-examples`
+   - **Result:** Exit code `0` (byte-identical)
+
+3. **Frontend Vitest suite and production build:**
+   `cd frontend && npx vitest run && npm run build`
+   - **Result:** `26 passed (26)` test files, `207 passed (207)` tests (including `src/community/CommunityPages.test.jsx`: 12 passed); `vite build` succeeded cleanly (`dist/index.html`, `dist/assets/index-B3qynT0e.css`, `dist/assets/index-CURaiKsR.js`).
+
+### Failures
+
+None.
+
+### Open questions / notes for Claude
+
+- **National reference reads in `deaths.py`:** Because `lookup.area_values` accepts only `state`, `county`, `tract`, and `cd`, `deaths.py` reads the `us` reference rows through `lookup.national_reference(db)` (which reads the same active published mortality releases and builds the same `_row` shape) alongside `lookup.area_values` and `lookup.catalog`, with zero direct SQL queries.
+- **Columns in the county `drug_poisoning` table:** Because NCHS publishes no state or national value in `rpvx-m2md.csv` (and the county `/deaths` response omits `state` and `us` on `drug_poisoning`), the county `NCHS drug poisoning deaths (modelled)` table shows `Measure` and `[County]` columns with a note stating it is a model-based 2021 county estimate with no state or U.S. value in this file; `CDC heart disease and stroke deaths` and `NCI cancer deaths` show `Measure`, `[County]`, `[State]`, and `United States` on county profiles (and `Measure`, `[State]`, and `United States` on state profiles).
+- **No open blockers.**
+
 ## M3 (2026-11-21T02:17Z)
 
 Implemented `nchs_drug_poisoning` (NCHS Drug Poisoning Mortality by County, model-based; staging all 2003–2021 rows and publishing 2021 county-level rates with 95% intervals from NCHS's model) across backend ingest/CLI/API/lookup/router/comparability, `/area/drug-poisoning-mortality` map page, and public MCP config. Reused helpers by import from `hds_mortality`, `hds_mortality_cli`, and `hds_mortality_api`. No commits, pushes, merges, deploys, network calls, or database writes were made.

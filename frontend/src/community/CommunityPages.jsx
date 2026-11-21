@@ -45,9 +45,17 @@ export const MAP_ROUTES = {
   usda_fea: "/area/usda-fea",
   cdc_svi: "/area/svi",
   fema_nri: "/area/fema-nri",
+  cdc_hds_mortality: "/area/heart-stroke-mortality",
+  nci_cancer_mortality: "/area/cancer-mortality",
+  nchs_drug_poisoning: "/area/drug-poisoning-mortality",
 };
 
 export const HAZARD_PRODUCTS = new Set(["cdc_svi", "fema_nri"]);
+export const MORTALITY_PRODUCTS = new Set([
+  "cdc_hds_mortality",
+  "nci_cancer_mortality",
+  "nchs_drug_poisoning",
+]);
 
 export function useHazards(level, geoid, ready) {
   const [hazards, setHazards] = useState(null);
@@ -64,6 +72,173 @@ export function useHazards(level, geoid, ready) {
     return () => controller.abort();
   }, [level, geoid, ready]);
   return hazards;
+}
+
+export function useDeaths(level, geoid, ready) {
+  const [deaths, setDeaths] = useState(null);
+  useEffect(() => {
+    setDeaths(null);
+    if (!ready) return;
+    const controller = new AbortController();
+    fetch(`${API_BASE}/community/${level}/${geoid}/deaths`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (body && typeof body === "object") setDeaths(body);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [level, geoid, ready]);
+  return deaths;
+}
+
+const DEATH_RATE_FORMAT = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+export function formatDeathRate(cell) {
+  if (!cell) return "—";
+  if (cell.value == null) return cell.status_text || "Not available";
+  return `${DEATH_RATE_FORMAT.format(cell.value)} per 100,000`;
+}
+
+export function formatDeathInterval(cell) {
+  if (!cell || cell.value == null) return null;
+  const uncertainty = cell.uncertainty || {};
+  if (uncertainty.kind === "ci95" && uncertainty.low != null && uncertainty.high != null) {
+    return `${uncertainty.label || "95% confidence interval"}: ${DEATH_RATE_FORMAT.format(uncertainty.low)}–${DEATH_RATE_FORMAT.format(uncertainty.high)}`;
+  }
+  return null;
+}
+
+export function deathAgeAdjustmentNote(cell) {
+  if (!cell) return null;
+  if (cell.value_type === "age_adjusted_rate") {
+    return "Age-adjusted rate (2000 U.S. standard population)";
+  }
+  if (cell.value_type === "model_based_age_adjusted_rate") {
+    return "Model-based age-adjusted rate (2000 U.S. standard population)";
+  }
+  return cell.value_type || "Age-adjusted rate";
+}
+
+function DeathRateCell({ cell, label }) {
+  if (!cell) {
+    return <td data-label={label} className="community-hazard-missing">—</td>;
+  }
+  if (cell.value == null) {
+    return <td data-label={label} className="community-hazard-missing">
+      <div>
+        <div>{cell.status_text || "Not available"}</div>
+        {cell.period && <small style={{ display: "block", fontSize: "12px", color: "#546e7a" }}>{cell.period}</small>}
+      </div>
+    </td>;
+  }
+  const interval = formatDeathInterval(cell);
+  const meta = [cell.period, deathAgeAdjustmentNote(cell)].filter(Boolean).join(" · ");
+  return <td data-label={label}>
+    <div>
+      <div className="community-hazard-num">{formatDeathRate(cell)}</div>
+      {interval && <small style={{ display: "block", fontSize: "12px", color: "#546e7a", fontWeight: 400 }}>{interval}</small>}
+      {meta && <small style={{ display: "block", fontSize: "12px", color: "#546e7a", fontWeight: 400 }}>{meta}</small>}
+    </div>
+  </td>;
+}
+
+function DeathsProductCard({ title, note, rows, columns, source, mapUrl, mapLabel }) {
+  if (!rows?.length) return null;
+  const citation = source?.citation || rows[0]?.citation;
+  return <article className="community-hazard-card">
+    <h3 style={{ margin: "0 0 6px", fontSize: "18px" }}>{title}</h3>
+    {note && <p className="community-hazard-direction" style={{ margin: "0 0 14px" }}>{note}</p>}
+    <table className="community-hazard-table">
+      <thead>
+        <tr>
+          <th scope="col">Measure</th>
+          {columns.map((col) => <th scope="col" key={col.key}>{col.label}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => <tr key={row.measure_id}>
+          <th scope="row">{row.label}</th>
+          {columns.map((col) => <DeathRateCell key={col.key} cell={row[col.key]} label={col.label} />)}
+        </tr>)}
+      </tbody>
+    </table>
+    {citation && <p className="community-source">
+      {citation}
+      {source?.landing_page && <> · <a href={source.landing_page} target="_blank" rel="noreferrer">Source documentation</a></>}
+    </p>}
+    <p className="community-hazard-actions">
+      <a className="community-map-link" href={mapUrl}>{mapLabel}</a>
+    </p>
+  </article>;
+}
+
+export function DeathsSection({ level, geoid, areaLabel, stateName, deaths }) {
+  const isState = level === "state";
+  const heartStroke = deaths?.heart_stroke || [];
+  const cancer = deaths?.cancer || [];
+  const drugPoisoning = isState ? [] : (deaths?.drug_poisoning || []);
+  if (!heartStroke.length && !cancer.length && !drugPoisoning.length) return null;
+
+  const resolvedState = stateName || deaths?.state?.name || "State";
+  const resolvedCounty = areaLabel || (deaths?.name ? `${deaths.name} County` : "County");
+  const refColumns = isState
+    ? [{ key: "state", label: resolvedState }, { key: "us", label: "United States" }]
+    : [
+      { key: "county", label: resolvedCounty },
+      { key: "state", label: resolvedState },
+      { key: "us", label: "United States" },
+    ];
+  const drugColumns = [{ key: "county", label: resolvedCounty }];
+
+  const hdsNote = deaths?.limitations?.cdc_hds_mortality?.[0]
+    || "These are CDC's age-adjusted death rates for adults 35 and older, averaged over 2022–2024. They are not the share of people with the disease.";
+  const cancerNote = deaths?.limitations?.nci_cancer_mortality?.[0]
+    || "These are NCI's age-adjusted death rates for 2020–2024, with 95% confidence intervals. They are deaths, not new cases.";
+  const drugBaseNote = deaths?.limitations?.nchs_drug_poisoning?.[0]
+    || "These are NCHS model-based estimates, not counts of recorded deaths. NCHS says that they may over- or under-estimate true rates, and that they may not match CDC WONDER.";
+  const drugNote = /\b2021\b/.test(drugBaseNote)
+    ? drugBaseNote
+    : `${drugBaseNote} Model-based 2021 county estimate; NCHS publishes no state or U.S. value in this file.`;
+
+  const focusParam = `focus=${encodeURIComponent(level)}:${encodeURIComponent(geoid)}`;
+  return <section className="community-profile-section community-hazard-section" id="deaths">
+    <div className="community-section-heading">
+      <h2>Death rates</h2>
+      <p>Source-published age-adjusted death rates per 100,000 population. Compare each table on its own terms; rates from different mortality sources are not combined.</p>
+    </div>
+    <div style={{ display: "grid", gap: "16px" }}>
+      <DeathsProductCard
+        title="CDC heart disease and stroke deaths"
+        note={hdsNote}
+        rows={heartStroke}
+        columns={refColumns}
+        source={deaths?.sources?.cdc_hds_mortality}
+        mapUrl={`/area/heart-stroke-mortality?${focusParam}`}
+        mapLabel="Explore CDC heart disease and stroke deaths on the map →"
+      />
+      <DeathsProductCard
+        title="NCI cancer deaths"
+        note={cancerNote}
+        rows={cancer}
+        columns={refColumns}
+        source={deaths?.sources?.nci_cancer_mortality}
+        mapUrl={`/area/cancer-mortality?${focusParam}`}
+        mapLabel="Explore NCI cancer deaths on the map →"
+      />
+      {!isState && <DeathsProductCard
+        title="NCHS drug poisoning deaths (modelled)"
+        note={drugNote}
+        rows={drugPoisoning}
+        columns={drugColumns}
+        source={deaths?.sources?.nchs_drug_poisoning}
+        mapUrl={`/area/drug-poisoning-mortality?focus=county:${encodeURIComponent(geoid)}`}
+        mapLabel="Explore NCHS drug poisoning deaths on the map →"
+      />}
+    </div>
+  </section>;
 }
 
 export function formatSviRank(cell) {
@@ -374,6 +549,7 @@ export function CommunityCounty({ geoid }) {
   const [error, setError] = useState("");
   const charts = useCharts("county", geoid, !!profile);
   const hazards = useHazards("county", geoid, !!profile);
+  const deaths = useDeaths("county", geoid, !!profile);
   useEffect(() => {
     const controller = new AbortController();
     setProfile(null);
@@ -399,7 +575,7 @@ export function CommunityCounty({ geoid }) {
   const bySection = useMemo(() => {
     const groups = Object.fromEntries(SECTIONS.map((section) => [section.key, []]));
     for (const row of profile?.values || []) {
-      if (HAZARD_PRODUCTS.has(row.product)) continue;
+      if (HAZARD_PRODUCTS.has(row.product) || MORTALITY_PRODUCTS.has(row.product)) continue;
       groups[sectionFor(row)].push(row);
     }
     return groups;
@@ -408,11 +584,12 @@ export function CommunityCounty({ geoid }) {
   const chartRows = useMemo(() => chartRowMap(charts), [charts]);
   const countyLabel = profile ? (/County|Parish|Borough|Planning Region|Municipality|Census Area|City$/i.test(profile.area.name) ? profile.area.name : `${profile.area.name} County`) : "";
   const tractMeasures = useMemo(() => {
-    const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published && !HAZARD_PRODUCTS.has(measure.product))
+    const capable = new Set((catalog?.measures || []).filter((measure) => measure.levels?.includes("tract") && measure.published && !HAZARD_PRODUCTS.has(measure.product) && !MORTALITY_PRODUCTS.has(measure.product))
       .map((measure) => `${measure.product}:${measure.measure_id}`));
-    return (profile?.values || []).filter((row) => !HAZARD_PRODUCTS.has(row.product) && capable.has(`${row.product}:${row.measure_id}`));
+    return (profile?.values || []).filter((row) => !HAZARD_PRODUCTS.has(row.product) && !MORTALITY_PRODUCTS.has(row.product) && capable.has(`${row.product}:${row.measure_id}`));
   }, [catalog, profile]);
   const selectedTractRow = tractMeasures.find((row) => `${row.product}:${row.measure_id}` === selectedTractKey) || tractMeasures[0];
+  const hasDeaths = Boolean(deaths?.heart_stroke?.length || deaths?.cancer?.length || deaths?.drug_poisoning?.length);
 
   return <CommunityShell>
     <div className="community-wrap community-profile">
@@ -435,6 +612,7 @@ export function CommunityCounty({ geoid }) {
         <nav className="community-section-nav" aria-label="Profile sections">
           {SECTIONS.map((section) => <Fragment key={section.key}>
             {bySection[section.key]?.length > 0 && <a href={`#${section.key}`}>{section.title}</a>}
+            {section.key === "health" && hasDeaths && <a href="#deaths">Death rates</a>}
             {section.key === "environment" && <>
               {hazards?.svi?.length > 0 && <a href="#svi">Social vulnerability (CDC/ATSDR SVI 2022)</a>}
               {hazards?.nri?.length > 0 && <a href="#fema-nri">Natural hazard risk (FEMA NRI)</a>}
@@ -448,11 +626,14 @@ export function CommunityCounty({ geoid }) {
           const sectionChartRows = rows
             .map((row) => chartRows.get(`${row.product}:${row.measure_id}`))
             .filter(Boolean);
+          const deathBlock = section.key === "health" ? (
+            <DeathsSection level="county" geoid={geoid} areaLabel={countyLabel} stateName={profile.area.state_name} deaths={deaths} />
+          ) : null;
           const hazardBlocks = section.key === "environment" ? <>
             <CountySviSection geoid={geoid} stateGeoid={profile.area.state_geoid} stateName={profile.area.state_name} rows={hazards?.svi} source={hazards?.sources?.cdc_svi} />
             <NriSection level="county" geoid={geoid} rows={hazards?.nri} source={hazards?.sources?.fema_nri} />
           </> : null;
-          if (!rows.length && !hazardBlocks) return null;
+          if (!rows.length && !deathBlock && !hazardBlocks) return null;
           return <Fragment key={section.key}>
             {rows.length > 0 && <section className="community-profile-section" id={section.key}>
               <div className="community-section-heading">
@@ -462,6 +643,7 @@ export function CommunityCounty({ geoid }) {
               </div>
               <div className="community-indicator-grid">{rows.map((row) => <Indicator key={`${row.product}:${row.measure_id}`} row={row} stateRow={stateValues.get(`${row.product}:${row.measure_id}`)} surveyCompanion={profile.survey_companions?.[row.measure_id]} chart={chartRows.get(`${row.product}:${row.measure_id}`)} areaLabel={countyLabel} stateLabel={profile.area.state_name} />)}</div>
             </section>}
+            {deathBlock}
             {hazardBlocks}
           </Fragment>;
         })}

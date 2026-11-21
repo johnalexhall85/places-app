@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.area_pilot import lookup
-from app.community import charts, hazards
+from app.community import charts, deaths, hazards
 from app.db import get_db
 from app.routers.search import search_counties
 from app.demo_access.settings import get_demo_access_settings
@@ -157,6 +157,22 @@ def county_hazards(geoid: str, db: Session = Depends(get_db)):
 def state_hazards(geoid: str, db: Session = Depends(get_db)):
     try:
         return hazards.build_state_hazards(db, _state_info(db, geoid))
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/county/{geoid}/deaths")
+def county_deaths(geoid: str, db: Session = Depends(get_db)):
+    try:
+        return deaths.build_county_deaths(db, _county_info(db, geoid))
+    except lookup.LookupError_ as error:
+        raise _bad_request(error) from error
+
+
+@router.get("/state/{geoid}/deaths")
+def state_deaths(geoid: str, db: Session = Depends(get_db)):
+    try:
+        return deaths.build_state_deaths(db, _state_info(db, geoid))
     except lookup.LookupError_ as error:
         raise _bad_request(error) from error
 
