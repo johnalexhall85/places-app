@@ -1,5 +1,7 @@
 # CHIP project handbook
 
+**Staging through Tailscale, 2026-11-21 (Claude, at John's request):** the staging site is also served privately at `https://chip-app.tailc034bd.ts.net/` through `tailscale serve`, proxying to Nginx port 8080. John confirmed it works from his phone. `chip-beta.publicdataobservatory.org` is unchanged and still public. A cutover that keeps only `/mcp` and `/funding/nofo/` public is drafted in [infra/staging/nginx-chip-beta-mcp-only.conf](../infra/staging/nginx-chip-beta-mcp-only.conf) but not installed. It waits for John, because other testers use the public site. Details: [staging guide](../infra/staging/README.md#viewing-staging).
+
 **Mortality: live since 2026-11-21T15:17Z (Gate B); on staging since 03:40Z (Claude, Antigravity).** Plan: [docs/mortality/PLAN.md](mortality/PLAN.md); contract: [docs/mortality/CONTRACT.md](mortality/CONTRACT.md); MCP [Amendment 6](mcp/TOOL_CONTRACT.md).
 - **Products** (migration `c3e7a1f5b9d2`, applied on live and staging):
   - `cdc_hds_mortality`: CDC heart disease and stroke death rates, adults 35+, 2022–2024. State and county, with a national reference. Live release `b4e3e6c5-9c4d-4ee3-8160-62b003a36b31` (staging `0563fdb4…`; same digests).

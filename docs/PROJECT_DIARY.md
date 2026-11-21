@@ -2,6 +2,21 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T17:30:00+00:00: Remote Control and private staging through Tailscale (Claude)
+
+- **Requests (John):** reach this VM's Claude Code from his phone, and make staging reachable only through Tailscale.
+- **Remote Control:** John installed the standalone CLI (`~/.local/bin/claude`, 2.1.330) and runs `claude rc` in tmux in `/home/john/chip-claude` with spawn mode same-dir. It is connected to his phone.
+- **Tailscale:**
+  - Installed 1.104.7 from the Tailscale apt repository (noble).
+  - Ran `tailscale up --operator=john --hostname=chip-app`; John approved the login. The tailnet name is `chip-app.tailc034bd.ts.net` (`100.112.9.3`).
+  - Ran `tailscale serve --bg --https=443 http://127.0.0.1:8080`.
+  - **Verified:** John opened the address on his phone and it works. From the VM itself, the tailnet address reaches the VM's own Nginx on 443 instead, so it can't be tested there.
+- **Not changed:** the public `chip-beta.publicdataobservatory.org` site, UFW, live, and every service.
+  - John chose to keep `/mcp` public for the claude.ai beta connector. Other testers still use the public staging site, so the cutover waits for him.
+  - The cutover config is drafted in `infra/staging/nginx-chip-beta-mcp-only.conf` on branch `claude/staging-tailscale`. It is not installed and not merged.
+- **Unverified risk:** the chip-beta Let's Encrypt certificate (expires 2027-02-14) renews by webroot over port 80, which UFW does not allow, so renewal will probably fail. Check it before the cutover.
+- **Next:** when John says the testers have been told, install the cutover config, run `nginx -t`, reload, check that `/mcp` still answers publicly and `/` returns 404, then merge the branch to `beta`.
+
 ## 2026-11-21T16:30:00+00:00: GitHub push, worktree cleanup, off-VM backup to Google Drive, decks updated (Claude)
 
 - **Requests (John):** push to GitHub; send off-VM backups to his Google Drive; remove the old worktrees; update the slide decks with the new information. He will delete the decks and `chip-nofo-recipient-profile.zip` from the live checkout himself after downloading.

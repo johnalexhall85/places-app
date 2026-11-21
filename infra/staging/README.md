@@ -14,7 +14,11 @@ Agent development backends use ports 8002 (Codex) and 8003 (Claude) against `pla
 
 ## Viewing staging
 
-Port 8080 is not open to the internet. From your own computer:
+**Private access through Tailscale (since 2026-11-21).** The VM is on John's tailnet as `chip-app`. `tailscale serve` proxies `https://chip-app.tailc034bd.ts.net/` to Nginx port 8080, so the staging site is reachable from John's devices on the tailnet, with a Tailscale certificate. The staging access code still applies. Check it with `tailscale serve status`; turn it off with `tailscale serve --https=443 off`. Tailscale is installed from its apt repository (`/etc/apt/sources.list.d/tailscale.list`), with `--operator=john`. You can't test the address from the VM itself: there, the tailnet IP reaches the VM's own Nginx on 443, not `tailscale serve`. Test from another tailnet device.
+
+**Public host.** `https://chip-beta.publicdataobservatory.org/` still serves the full staging site ([nginx-chip-beta.conf](nginx-chip-beta.conf)) because other testers use it. **Planned cutover, not applied:** install [nginx-chip-beta-mcp-only.conf](nginx-chip-beta-mcp-only.conf) as `/etc/nginx/sites-available/chip-beta` so that only `/mcp` and `/funding/nofo/` stay public, leaving the website Tailscale-only. Wait until John says the other testers have been told. Before the cutover, check certificate renewal: its HTTP-01 challenge uses port 80, which UFW does not allow.
+
+**SSH tunnel.** Port 8080 is not open to the internet. From your own computer:
 
 ```bash
 ssh -L 8080:127.0.0.1:8080 john@<server>
