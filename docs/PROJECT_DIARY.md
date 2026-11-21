@@ -2,6 +2,17 @@
 
 Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit timezone. Entries describe verified actions; guide-only history is labeled. Keep current state in [the handbook](PROJECT_HANDBOOK.md), not here. Preserve entries and add corrections when evidence changes.
 
+## 2026-11-21T01:20:00+00:00: Live Nginx caching fix applied; main and beta pushed (Claude)
+
+- **Approval:** John approved the live caching fix that had been blocked earlier, then pushes of `main` and `beta`.
+- **Change:** in `/etc/nginx/sites-available/places-demo`, installed from `infra/nginx/places-demo.conf`:
+  - `Cache-Control: no-cache` for the page (`location /`).
+  - `public, max-age=31536000, immutable` for hashed `/assets/`.
+  
+  The previous file is saved as `data/deploy-recovery/vuln-20261121/nginx-places-demo-before.conf`.
+- **Verification:** `nginx -t` passed and Nginx was reloaded. `/area/svi` returns `Cache-Control: no-cache`, the bundle returns the immutable header, and `/api/health` returns 200.
+- **Correction to the 01:15 entry:** the live caching fix is now done. `main` and `beta` were pushed to `origin` as fast-forwards.
+
 ## 2026-11-21T01:15:00+00:00: CDC SVI and FEMA NRI promoted to live (Claude, Gate B)
 
 - **Approval:** John said "Everything works. We can push live." He did not ask for git pushes, so none were made.
