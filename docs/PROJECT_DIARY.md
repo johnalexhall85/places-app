@@ -13,7 +13,7 @@ Reverse chronological handoff record. Timestamps use ISO 8601 with an explicit t
 - **Data:**
   - Archived the 102 CDC SVI 2022 state-ranked files and John's three NRI v1.20 ZIPs.
   - Migration `a6c4e8b2d0f7` (SVI `source_scope`, NRI tables) was applied to `places_staging`.
-  - Published on staging: SVI release `f18b5b2a…` (10 measures) and NRI release `be1ab07b…` (9 measures). An 10-measure NRI release `060c3d55…` preceded it.
+  - Published on staging: SVI release `f18b5b2a…` (10 measures) and NRI release `be1ab07b…` (9 measures). A 10-measure NRI release `060c3d55…` preceded it.
   - Durham County (37063) matches the CDC and FEMA files.
 - **Findings:**
   - FEMA's v1.20 `RISK_SPCTL` equals `RISK_SCORE` for every county and tract, so it was dropped (contract Amendment 2).
